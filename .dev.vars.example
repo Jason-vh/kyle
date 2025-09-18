@@ -1,0 +1,7 @@
+ANTHROPIC_API_KEY=your_anthropic_api_key_here
+OPENAI_API_KEY=your_openapi_api_key_here
+RADARR_API_KEY=your_radarr_api_key_here
+SLACK_BOT_TOKEN=xoxb-your-slack-bot-token-here
+SLACK_SIGNING_SECRET=your_slack_signing_secret_here
+SONARR_API_KEY=your_sonarr_api_key_here
+ULTRA_API_TOKEN=your_ultra_api_token_here

@@ -1,0 +1,26 @@
+{
+	"name": "kyle",
+	"version": "0.0.0",
+	"private": true,
+	"scripts": {
+		"deploy": "wrangler deploy",
+		"dev": "wrangler dev",
+		"start": "wrangler dev",
+		"cf-typegen": "wrangler types"
+	},
+	"devDependencies": {
+		"@cloudflare/vitest-pool-workers": "^0.8.19",
+		"@types/node": "^24.5.2",
+		"typescript": "^5.5.2",
+		"vitest": "~3.2.0",
+		"wrangler": "^4.38.0"
+	},
+	"dependencies": {
+		"@ai-sdk/anthropic": "^2.0.17",
+		"@ai-sdk/openai": "^2.0.32",
+		"ai": "^5.0.45",
+		"grammy": "^1.37.0",
+		"hono": "^4.8.12",
+		"zod": "^3.25.76"
+	}
+}
