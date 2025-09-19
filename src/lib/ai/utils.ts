@@ -13,20 +13,20 @@ export async function generateStatus(message: string) {
 		const model = openai("gpt-3.5-turbo");
 
 		const prompt = `
-      A user has asked an agent to perform a task. The agent is currently processing the task,
-      and we need a status message to indicate that the agent is working on it.
+			A user has asked an agent to perform a task. The agent is currently processing the task,
+			and we need a status message to indicate that the agent is working on it.
 
-      Generate that status message.
+			Generate that status message.
 
-      The message should be:
+			The message should be:
 			- amusing
-      - a single line of text
-      - between one and three words
+			- a single line of text
+			- between one and three words
 			- in the form "is {verb}ing..." (without the quotation marks)
   
-      An example of a good status message is "is cooking..." or "is flabbergasting...".
+			An example of a good status message is "is cooking..." or "is flabbergasting...".
 
-      The original user message is: ${message}
+			The original user message is: ${message}
     `;
 		const result = await generateText({
 			model,

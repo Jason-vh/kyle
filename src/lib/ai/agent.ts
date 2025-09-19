@@ -1,4 +1,4 @@
-import { generateText, stepCountIs, tool, type ModelMessage } from "ai";
+import { generateText, stepCountIs, type ModelMessage } from "ai";
 
 import { getSystemPrompt } from "@/lib/ai/prompt";
 import { createLogger } from "@/lib/logger";
@@ -6,8 +6,7 @@ import { radarrTools } from "@/lib/radarr/tools";
 import { sonarrTools } from "@/lib/sonarr/tools";
 import { ultraTools } from "@/lib/ultra/tools";
 import { MessageWithContext } from "@/types";
-import { createOpenAI } from "@ai-sdk/openai";
-import z from "zod";
+import { createAnthropic } from "@ai-sdk/anthropic";
 import { MAX_TOOL_CALLS } from "./constants";
 
 const logger = createLogger("ai/agent");
@@ -18,11 +17,11 @@ export async function processMessage(
 	updateStatus: (status: string) => Promise<void>
 ): Promise<void> {
 	try {
-		const openai = createOpenAI({
-			apiKey: process.env.OPENAI_API_KEY,
+		const anthropic = createAnthropic({
+			apiKey: process.env.ANTHROPIC_API_KEY,
 		});
 
-		const model = openai("gpt-5-nano");
+		const model = anthropic("claude-3-7-sonnet-20250219");
 
 		const systemPrompt = getSystemPrompt({
 			username: message.user.username,
@@ -45,31 +44,10 @@ export async function processMessage(
 			content: message.text,
 		});
 
-		// we track whether the agent has replied to the user
-		let hasReplied = false;
-
-		const slackTools = {
-			reply: tool({
-				description:
-					"Reply in the thread. No need to reply if it's your final reply - this will be sent automatically.",
-				inputSchema: z.object({
-					message: z.string(),
-				}),
-				execute: async ({ message }) => {
-					hasReplied = true;
-					await reply(message);
-				},
-			}),
-		};
-
 		const tools = {
 			...radarrTools,
 			...sonarrTools,
 			...ultraTools,
-			...slackTools,
-			webSearch: openai.tools.webSearch({
-				searchContextSize: "low",
-			}),
 		};
 
 		logger.log("generating text", { originalMessage: message.text });
@@ -91,11 +69,7 @@ export async function processMessage(
 			result,
 		});
 
-		await updateStatus("");
-
-		if (!hasReplied) {
-			await reply(result.text);
-		}
+		await reply(result.text);
 	} catch (error) {
 		logger.error("error:", { error });
 		await reply(
