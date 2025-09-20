@@ -38,7 +38,7 @@ async function handleMessage(
 	}
 
 	const isDirectMessage = event.channel_type === "im";
-	if (!isDirectMessage && !event.text.includes(`<@${BOT_USER_ID}>`)) {
+	if (!isDirectMessage && !event.text?.includes(`<@${BOT_USER_ID}>`)) {
 		logger.debug(
 			"message is not a direct message and does not mention the bot - skipping"
 		);

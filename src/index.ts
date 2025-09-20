@@ -22,7 +22,7 @@ app.post(
 				return c.json({ challenge: body.challenge });
 			}
 
-			logger.log(`received ${body.event.type} event`);
+			logger.log(`received ${body.event.type} event`, { body });
 
 			// we first respond with 200 to the Slack API to confirm that we received the event
 			await next();

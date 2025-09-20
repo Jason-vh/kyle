@@ -56,11 +56,6 @@ export async function processMessage(
 			model,
 			tools,
 			messages,
-			providerOptions: {
-				openai: {
-					reasoning_effort: "minimal",
-				},
-			},
 			stopWhen: stepCountIs(MAX_TOOL_CALLS),
 		});
 
