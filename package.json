@@ -14,17 +14,15 @@
 		"deploy": "bun run build && pm2 restart kyle"
 	},
 	"devDependencies": {
+		"@types/bun": "^1.2.22",
 		"@types/node": "^24.5.2",
 		"typescript": "^5.5.2"
 	},
 	"dependencies": {
 		"@ai-sdk/anthropic": "^2.0.17",
 		"@ai-sdk/openai": "^2.0.32",
-		"@hono/node-server": "^1.12.0",
 		"ai": "^5.0.45",
-		"grammy": "^1.37.0",
-		"hono": "^4.8.12",
-		"zod": "^3.25.76",
-		"dotenv": "^16.4.5"
+		"dotenv": "^16.4.5",
+		"zod": "^3.25.76"
 	}
 }

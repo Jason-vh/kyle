@@ -1,6 +1,4 @@
-import { html } from "hono/html";
-
-export const indexHtml = html`<!DOCTYPE html>
+export const indexHtml = `<!DOCTYPE html>
 	<html>
 		<head>
 			<title>Kyle Bot</title>

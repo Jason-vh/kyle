@@ -5,19 +5,21 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 # Kyle - Media Management Bot (Slack)
 
 ## Overview
+
 Kyle is an AI-powered bot for Slack that helps manage media libraries through Radarr, Sonarr, and Ultra services. It uses OpenAI models to understand natural language requests and execute actions on your media services through a tools-based architecture.
 
 ## Tech Stack
+
 - **Runtime**: Bun (JavaScript runtime)
 - **Language**: TypeScript
 - **AI**: OpenAI GPT models via AI SDK
 - **Bot Framework**: Custom Slack client (no Bolt dependency)
-- **HTTP Framework**: Hono (lightweight web framework)
 - **Package Manager**: npm/bun
 - **Process Manager**: PM2
 - **Deployment**: Self-hosted on media server
 
 ## Architecture
+
 - **Self-hosted**: Runs on your media server with PM2 process management
 - **Webhook-based**: Slack sends updates via webhooks (no polling)
 - **Stateless**: Each request is independent, context built from Slack conversation history
@@ -26,6 +28,7 @@ Kyle is an AI-powered bot for Slack that helps manage media libraries through Ra
 ## Development Commands
 
 ### Local Development
+
 ```bash
 # Install dependencies
 bun install
@@ -41,6 +44,7 @@ bun run dev
 ```
 
 ### Production Deployment
+
 ```bash
 # Build the application
 bun run build
@@ -60,7 +64,9 @@ bun run pm2:status
 ```
 
 ### Environment Setup
+
 Set environment variables in `.env` file:
+
 ```bash
 # Copy the example file
 cp .env.example .env
@@ -84,6 +90,7 @@ NODE_ENV=production
 ```
 
 ## Project Structure
+
 ```
 /src
   /index.ts           - Main entry point, webhook handler
@@ -118,36 +125,42 @@ NODE_ENV=production
 ## Key Architectural Patterns
 
 ### AI Tools Pattern
+
 Each service exposes "tools" that the AI can use:
+
 ```typescript
 export function getServiceTools(env: Env) {
-  return {
-    searchService: tool({
-      description: "Search for items",
-      inputSchema: z.object({
-        query: z.string(),
-      }),
-      execute: async ({ query }) => {
-        // Implementation with error handling
-      },
-    }),
-  };
+	return {
+		searchService: tool({
+			description: "Search for items",
+			inputSchema: z.object({
+				query: z.string(),
+			}),
+			execute: async ({ query }) => {
+				// Implementation with error handling
+			},
+		}),
+	};
 }
 ```
 
 ### Error Handling
+
 - All API errors are caught and returned as readable JSON strings to the AI
 - The `createLogger` utility provides namespaced logging
 - Bot always responds to user, even on errors
 
 ### Slack Integration Patterns
+
 - **Thread-aware messaging**: Responds in threads when Kyle was mentioned in parent or has participated
 - **Status updates**: Shows "is cooking..." style indicators during long operations
 - **Username resolution**: Converts user IDs to friendly display names in conversation context
 - **Event filtering**: Only processes messages that mention the bot or are in relevant threads
 
 ### Service API Pattern
+
 Each service follows consistent patterns:
+
 - `api.ts` - HTTP client with authentication and error handling
 - `tools.ts` - AI tool definitions with Zod schemas
 - `types.ts` - TypeScript interfaces for API responses
@@ -156,6 +169,7 @@ Each service follows consistent patterns:
 ## Development Notes
 
 ### Adding New Services
+
 1. Create a new folder under `/src/lib/` with the standard pattern:
    - `api.ts` - API client implementation
    - `tools.ts` - AI tool definitions
@@ -164,32 +178,39 @@ Each service follows consistent patterns:
 3. Add environment variables to type definitions and `.env`
 
 ### AI Integration
+
 - Uses OpenAI GPT models through AI SDK
 - **Tool execution limit**: MAX_TOOL_CALLS = 10 per conversation
 - **Context building**: Fetches Slack conversation history for AI context
 - **Progressive updates**: Real-time status messages during tool execution
 
 ### Slack Event Handling
+
 Kyle processes these Slack events:
+
 - `message` - Direct messages and channel messages that mention the bot
 - `app_mention` - When someone mentions the bot with @kyle
 - Thread replies where Kyle has participated or was mentioned in the parent
 
 ### Type Safety
+
 - Strict TypeScript configuration with path mapping (`@/*`)
 - Environment variable types defined in `src/types/env.ts`
 - Zod schemas for AI tool parameter validation
 - Comprehensive interfaces for all service APIs
 
 ### Logging
+
 Uses a simple namespaced logger:
+
 ```typescript
-const logger = createLogger('namespace');
-logger.log('message', { contextData });
-logger.error('error', { errorData });
+const logger = createLogger("namespace");
+logger.log("message", { contextData });
+logger.error("error", { errorData });
 ```
 
 ## Important Limitations
+
 - **Stateless**: Bot doesn't remember conversation history beyond what's fetched from Slack
 - **Server dependency**: Requires your media server to be running and accessible
 - **Network access**: Bot must be reachable from Slack (requires public IP or tunneling)
@@ -198,6 +219,7 @@ logger.error('error', { errorData });
 ## Troubleshooting
 
 ### Bot not responding
+
 1. Check webhook endpoint in Slack app settings points to your server
 2. Check PM2 logs: `bun run pm2:logs` or `pm2 logs kyle`
 3. Verify environment variables are set in `.env`
@@ -205,23 +227,27 @@ logger.error('error', { errorData });
 5. Check if process is running: `bun run pm2:status`
 
 ### API connection issues
+
 1. Verify API keys are correct and have proper permissions
 2. Check host URLs in `.env` are accessible from your server
 3. Ensure your server can reach your media services (Radarr, Sonarr, Ultra)
 
 ### Development setup issues
+
 1. Ensure `.env` has all required environment variables
 2. Check that Bun is installed: `bun --version`
 3. For webhook testing, use ngrok or similar tunneling service
 4. Update Slack app webhook URL if your server URL changes
 
 ### PM2 Process Issues
+
 1. Check if PM2 is installed: `pm2 --version`
 2. View detailed logs: `pm2 logs kyle --lines 100`
 3. Restart if needed: `pm2 restart kyle`
 4. Check memory usage: `pm2 monit`
 
 ## Security Considerations
+
 - All sensitive keys stored in `.env` file (keep secure, don't commit)
 - Slack webhook signature verification should be implemented for production
 - No data persistence - stateless operation reduces attack surface
