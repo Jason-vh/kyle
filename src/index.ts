@@ -5,7 +5,7 @@ import "dotenv/config";
 
 const logger = createLogger("main");
 
-const port = 37230;
+const port = parseInt(process.env.PORT || "3000");
 
 const server = Bun.serve({
 	port,
