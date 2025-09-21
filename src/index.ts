@@ -10,8 +10,8 @@ const port = parseInt(process.env.PORT || "3000");
 const server = Bun.serve({
 	port,
 	routes: {
-		"/": Response.json({ hello: "world" }),
-		"/slack/events": {
+		"/kyle": Response.json({ hello: "world" }),
+		"/kyle/slack/events": {
 			POST: async (req: Request) => {
 				try {
 					const body = (await req.json()) as SlackEventBody;
