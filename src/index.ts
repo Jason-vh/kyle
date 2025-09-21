@@ -1,13 +1,14 @@
 import { indexHtml } from "@/index-template";
 import { createLogger } from "@/lib/logger";
 import { handleSlackEvent } from "@/lib/slack/handler";
-import { waitUntil } from "cloudflare:workers";
+import { serve } from "@hono/node-server";
+import "dotenv/config";
 import { Hono } from "hono";
 import { SlackEventBody } from "./lib/slack/types";
 
 const logger = createLogger("main");
 
-const app = new Hono<{ Bindings: Env }>();
+const app = new Hono();
 
 app.get("/", (c) => c.html(indexHtml));
 
@@ -28,7 +29,7 @@ app.post(
 			await next();
 
 			// ... and then handle the event
-			waitUntil(handleSlackEvent(body.event));
+			handleSlackEvent(body.event);
 		} catch (error) {
 			logger.error("Failed to handle Slack event", { error });
 			return c.json({ error: "Internal server error" }, 500);
@@ -39,6 +40,32 @@ app.post(
 
 app.get("/health", (c) => {
 	return c.json({ status: "healthy", timestamp: new Date().toISOString() });
+});
+
+const port = parseInt(process.env.PORT || "3000");
+
+const server = serve({
+	fetch: app.fetch,
+	port,
+});
+
+logger.log(`🤖 Kyle bot started on port ${port}`);
+
+// Graceful shutdown handling for PM2
+process.on("SIGTERM", () => {
+	logger.log("Received SIGTERM, shutting down gracefully");
+	server.close(() => {
+		logger.log("Server closed");
+		process.exit(0);
+	});
+});
+
+process.on("SIGINT", () => {
+	logger.log("Received SIGINT, shutting down gracefully");
+	server.close(() => {
+		logger.log("Server closed");
+		process.exit(0);
+	});
 });
 
 export default app;

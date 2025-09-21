@@ -1,17 +1,15 @@
 import { logStructured } from "@/lib/logger";
-import type { Env } from "@/types/env";
 
 /**
  * Verify Slack request signature
  * https://api.slack.com/authentication/verifying-requests-from-slack
  */
 export async function verifySlackSignature(
-	env: Env,
 	signature: string,
 	timestamp: string,
 	body: string
 ): Promise<boolean> {
-	if (!env.SLACK_SIGNING_SECRET) {
+	if (!process.env.SLACK_SIGNING_SECRET) {
 		logStructured("SLACK_SIGNING_SECRET not configured", {});
 		return false;
 	}
@@ -31,7 +29,7 @@ export async function verifySlackSignature(
 		const baseString = `v0:${timestamp}:${body}`;
 
 		// Convert signing secret to Uint8Array for HMAC
-		const signingSecret = new TextEncoder().encode(env.SLACK_SIGNING_SECRET);
+		const signingSecret = new TextEncoder().encode(process.env.SLACK_SIGNING_SECRET!);
 		const message = new TextEncoder().encode(baseString);
 
 		// Import the key
