@@ -1,4 +1,3 @@
-import { indexHtml } from "@/index-template";
 import { createLogger } from "@/lib/logger";
 import { handleSlackEvent } from "@/lib/slack/handler";
 import type { SlackEventBody } from "@/lib/slack/types";
@@ -6,19 +5,12 @@ import "dotenv/config";
 
 const logger = createLogger("main");
 
-const port = parseInt(process.env.PORT || "3000");
+const port = 37230;
 
-const bun = (globalThis as any).Bun;
-if (!bun?.serve) {
-	throw new Error("This app must run on Bun runtime.");
-}
-
-const server = bun.serve({
+const server = Bun.serve({
 	port,
 	routes: {
-		"/": new Response(indexHtml, {
-			headers: { "content-type": "text/html; charset=utf-8" },
-		}),
+		"/": Response.json({ hello: "world" }),
 		"/slack/events": {
 			POST: async (req: Request) => {
 				try {
