@@ -9,8 +9,8 @@ const port = parseInt(process.env.PORT || "3000");
 
 const server = Bun.serve({
 	port,
+	hostname: "0.0.0.0",
 	routes: {
-		"/kyle": Response.json({ hello: "world" }),
 		"/kyle/slack/events": {
 			POST: async (req: Request) => {
 				try {
@@ -41,7 +41,7 @@ const server = Bun.serve({
 	},
 	// Fallback for unmatched routes
 	fetch() {
-		return new Response("Not Found", { status: 404 });
+		return new Response("Hi! I'm Kyle :)", { status: 404 });
 	},
 });
 
