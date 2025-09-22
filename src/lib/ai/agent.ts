@@ -73,7 +73,11 @@ export async function processMessage(
 			context,
 		});
 
-		await reply(result.text);
+		// Slack uses single asterisks for bold, but the AI model uses double asterisks
+		// this is a quick fix to ensure the formatting is correct
+		const textWithCorrectedFormatting = result.text.replace(/\*\*/g, "*");
+
+		await reply(textWithCorrectedFormatting);
 	} catch (error) {
 		logger.error("error:", { error, context });
 		await reply(

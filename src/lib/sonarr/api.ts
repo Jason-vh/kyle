@@ -1,6 +1,9 @@
 import { createLogger } from "@/lib/logger";
-import {
+import type {
+	SonarrCalendarEpisode,
+	SonarrCommand,
 	SonarrEpisode,
+	SonarrHistoryResponse,
 	SonarrQualityProfile,
 	SonarrQueueResponse,
 	SonarrRootFolder,
@@ -16,11 +19,20 @@ async function makeRequest(
 	endpoint: string,
 	options: RequestInit = {}
 ): Promise<unknown> {
-	const url = `${process.env.SONARR_HOST}/api/v3${endpoint}`;
+	const url = `${Bun.env.SONARR_HOST}/api/v3${endpoint}`;
+
+	if (!Bun.env.SONARR_API_KEY) {
+		throw new Error("SONARR_API_KEY is not set");
+	}
+
+	if (!Bun.env.SONARR_HOST) {
+		throw new Error("SONARR_HOST is not set");
+	}
+
 	const response = await fetch(url, {
 		...options,
 		headers: {
-			"X-Api-Key": process.env.SONARR_API_KEY,
+			"X-Api-Key": Bun.env.SONARR_API_KEY,
 			"Content-Type": "application/json",
 			...options.headers,
 		},
@@ -149,4 +161,84 @@ export async function getQualityProfiles(): Promise<SonarrQualityProfile[]> {
  */
 export async function getRootFolders(): Promise<SonarrRootFolder[]> {
 	return (await makeRequest("/rootfolder")) as SonarrRootFolder[];
+}
+
+/**
+ * Get calendar episodes for a date range.
+ */
+export async function getCalendar(
+	start?: string,
+	end?: string,
+	includeSeries: boolean = true
+): Promise<SonarrCalendarEpisode[]> {
+	const params = new URLSearchParams();
+	if (start) params.append("start", start);
+	if (end) params.append("end", end);
+	params.append("includeSeries", includeSeries.toString());
+
+	const endpoint = `/calendar${params.toString() ? `?${params.toString()}` : ""}`;
+	return (await makeRequest(endpoint)) as SonarrCalendarEpisode[];
+}
+
+/**
+ * Search for episodes (missing episodes for a series or specific episodes).
+ */
+export async function searchEpisodes(
+	seriesId?: number,
+	episodeIds?: number[]
+): Promise<SonarrCommand> {
+	const commandBody: Record<string, unknown> = {};
+
+	if (seriesId && !episodeIds) {
+		commandBody.name = "SeriesSearch";
+		commandBody.seriesId = seriesId;
+	} else if (episodeIds && episodeIds.length > 0) {
+		commandBody.name = "EpisodeSearch";
+		commandBody.episodeIds = episodeIds;
+	} else {
+		throw new Error("Must provide either seriesId or episodeIds");
+	}
+
+	return (await makeRequest("/command", {
+		method: "POST",
+		body: JSON.stringify(commandBody),
+	})) as SonarrCommand;
+}
+
+/**
+ * Get download/import history.
+ */
+export async function getHistory(
+	page: number = 1,
+	pageSize: number = 20,
+	includeSeries: boolean = true,
+	includeEpisode: boolean = true
+): Promise<SonarrHistoryResponse> {
+	const params = new URLSearchParams({
+		page: page.toString(),
+		pageSize: pageSize.toString(),
+		includeSeries: includeSeries.toString(),
+		includeEpisode: includeEpisode.toString(),
+	});
+
+	return (await makeRequest(`/history?${params.toString()}`)) as SonarrHistoryResponse;
+}
+
+/**
+ * Get episodes that haven't met quality cutoff (missing/wanted episodes).
+ */
+export async function getWantedMissing(
+	page: number = 1,
+	pageSize: number = 20,
+	includeSeries: boolean = true,
+	includeEpisode: boolean = true
+): Promise<SonarrQueueResponse> {
+	const params = new URLSearchParams({
+		page: page.toString(),
+		pageSize: pageSize.toString(),
+		includeSeries: includeSeries.toString(),
+		includeEpisode: includeEpisode.toString(),
+	});
+
+	return (await makeRequest(`/wanted/cutoff?${params.toString()}`)) as SonarrQueueResponse;
 }

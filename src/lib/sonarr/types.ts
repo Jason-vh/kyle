@@ -240,3 +240,56 @@ export interface SonarrRootFolder {
 		path: string;
 	}>;
 }
+
+export interface SonarrCalendarEpisode extends SonarrEpisode {
+	series: SonarrSeries;
+}
+
+export interface SonarrHistoryEventType {
+	id: number;
+	name: string;
+}
+
+export interface SonarrHistoryItem {
+	id: number;
+	episodeId: number;
+	seriesId: number;
+	sourceTitle: string;
+	quality: SonarrQualityInfo;
+	customFormats?: Array<{
+		id: number;
+		name: string;
+	}>;
+	customFormatScore?: number;
+	date: string;
+	downloadId?: string;
+	eventType: SonarrHistoryEventType;
+	series: SonarrSeries;
+	episode: SonarrEpisode;
+}
+
+export interface SonarrHistoryResponse {
+	page: number;
+	pageSize: number;
+	sortKey: string;
+	sortDirection: string;
+	totalRecords: number;
+	records: SonarrHistoryItem[];
+}
+
+export interface SonarrCommand {
+	id?: number;
+	name: string;
+	commandName: string;
+	message?: string;
+	body: Record<string, unknown>;
+	priority: "normal" | "high" | "low";
+	status: "queued" | "started" | "completed" | "failed" | "aborted" | "cancelled";
+	result?: "successful" | "unsuccessful";
+	queued: string;
+	started?: string;
+	ended?: string;
+	duration?: string;
+	exception?: string;
+	trigger: "manual" | "scheduled" | "automatic";
+}

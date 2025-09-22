@@ -80,7 +80,14 @@ export function getRadarrTools(context: SlackContext) {
 				});
 
 				const movies = await radarr.searchMovies(title);
-				return movies.map(toPartialMovie);
+				const results = movies.map(toPartialMovie);
+
+				logger.info("successfully searched for movies", {
+					title,
+					results,
+					context,
+				});
+				return results;
 			} catch (error) {
 				logger.error("Failed to search movies", { title, error, context });
 				return `Failed to search movies with title "${title}": ${JSON.stringify(

@@ -5,7 +5,9 @@ import { createLogger } from "@/lib/logger";
 import * as slack from "@/lib/slack/api";
 import * as sonarr from "@/lib/sonarr/api";
 import {
+	toPartialCalendarEpisode,
 	toPartialEpisode,
+	toPartialHistoryItem,
 	toPartialQueueItem,
 	toPartialSeries,
 } from "@/lib/sonarr/utils";
@@ -266,6 +268,172 @@ export function getSonarrTools(context: SlackContext) {
 		},
 	});
 
+	const getCalendar = tool({
+		description: "Get upcoming episodes from the calendar for a date range",
+		inputSchema: z.object({
+			start: z
+				.string()
+				.optional()
+				.describe("Start date in ISO format (default: today)"),
+			end: z
+				.string()
+				.optional()
+				.describe("End date in ISO format (default: 7 days from start)"),
+			includeSeries: z
+				.boolean()
+				.optional()
+				.default(true)
+				.describe("Include series information with each episode"),
+		}),
+		execute: async ({ start, end, includeSeries = true }) => {
+			logger.info("calling getCalendar tool", {
+				start,
+				end,
+				includeSeries,
+				context,
+			});
+			try {
+				slack.setThreadStatus({
+					channel_id: context.slack_channel_id,
+					thread_ts: context.slack_thread_ts,
+					status: "is checking the Sonarr calendar...",
+				});
+
+				const episodes = await sonarr.getCalendar(start, end, includeSeries);
+				const results = episodes.map(toPartialCalendarEpisode);
+				logger.info("successfully retrieved calendar episodes", {
+					count: results.length,
+					context,
+				});
+				return results;
+			} catch (error) {
+				logger.error("Failed to get calendar", { error, context });
+				return `Failed to get calendar: ${JSON.stringify(error)}`;
+			}
+		},
+	});
+
+	const searchEpisodes = tool({
+		description:
+			"Search for missing episodes for a series or specific episodes",
+		inputSchema: z.object({
+			seriesId: z
+				.number()
+				.optional()
+				.describe("The ID of the series to search for missing episodes"),
+			episodeIds: z
+				.array(z.number())
+				.optional()
+				.describe("Array of specific episode IDs to search for"),
+		}),
+		execute: async ({ seriesId, episodeIds }) => {
+			logger.info("calling searchEpisodes tool", {
+				seriesId,
+				episodeIds,
+				context,
+			});
+			try {
+				slack.setThreadStatus({
+					channel_id: context.slack_channel_id,
+					thread_ts: context.slack_thread_ts,
+					status: "is searching for episodes in Sonarr...",
+				});
+
+				const command = await sonarr.searchEpisodes(seriesId, episodeIds);
+				const response = {
+					commandId: command.id,
+					status: command.status,
+					message: `Search command queued for ${
+						seriesId ? `series ${seriesId}` : `${episodeIds?.length} episodes`
+					}`,
+				};
+				logger.info("successfully queued episode search", {
+					command: response,
+					context,
+				});
+				return response;
+			} catch (error) {
+				logger.error("Failed to search episodes", {
+					seriesId,
+					episodeIds,
+					error,
+					context,
+				});
+				return `Failed to search episodes: ${JSON.stringify(error)}`;
+			}
+		},
+	});
+
+	const getHistory = tool({
+		description: "Get download and import history from Sonarr",
+		inputSchema: z.object({
+			page: z
+				.number()
+				.optional()
+				.default(1)
+				.describe("Page number for pagination"),
+			pageSize: z
+				.number()
+				.optional()
+				.default(20)
+				.describe("Number of items per page"),
+			includeSeries: z
+				.boolean()
+				.optional()
+				.default(true)
+				.describe("Include series information"),
+			includeEpisode: z
+				.boolean()
+				.optional()
+				.default(true)
+				.describe("Include episode information"),
+		}),
+		execute: async ({
+			page = 1,
+			pageSize = 20,
+			includeSeries = true,
+			includeEpisode = true,
+		}) => {
+			logger.info("calling getHistory tool", {
+				page,
+				pageSize,
+				includeSeries,
+				includeEpisode,
+				context,
+			});
+			try {
+				slack.setThreadStatus({
+					channel_id: context.slack_channel_id,
+					thread_ts: context.slack_thread_ts,
+					status: "is checking Sonarr history...",
+				});
+
+				const historyResponse = await sonarr.getHistory(
+					page,
+					pageSize,
+					includeSeries,
+					includeEpisode
+				);
+				const results = historyResponse.records.map(toPartialHistoryItem);
+				const response = {
+					totalRecords: historyResponse.totalRecords,
+					page: historyResponse.page,
+					pageSize: historyResponse.pageSize,
+					items: results,
+				};
+				logger.info("successfully retrieved history", {
+					totalRecords: response.totalRecords,
+					itemCount: results.length,
+					context,
+				});
+				return response;
+			} catch (error) {
+				logger.error("Failed to get history", { error, context });
+				return `Failed to get history: ${JSON.stringify(error)}`;
+			}
+		},
+	});
+
 	return {
 		getSeries,
 		getAllSeries,
@@ -274,5 +442,8 @@ export function getSonarrTools(context: SlackContext) {
 		removeSeries,
 		getEpisodes,
 		getQueue,
+		getCalendar,
+		searchEpisodes,
+		getHistory,
 	};
 }

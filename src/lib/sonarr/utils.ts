@@ -1,4 +1,10 @@
-import { SonarrEpisode, SonarrQueueItem, SonarrSeries } from "./types";
+import {
+	SonarrCalendarEpisode,
+	SonarrEpisode,
+	SonarrHistoryItem,
+	SonarrQueueItem,
+	SonarrSeries
+} from "./types";
 
 /**
  * Convert a full series object to a partial representation for AI tools.
@@ -36,5 +42,34 @@ export function toPartialQueueItem(item: SonarrQueueItem) {
 		status: item.status,
 		estimatedCompletionTime: item.estimatedCompletionTime,
 		quality: item.quality.quality.name,
+	};
+}
+
+export function toPartialCalendarEpisode(episode: SonarrCalendarEpisode) {
+	return {
+		id: episode.id,
+		seriesId: episode.seriesId,
+		seasonNumber: episode.seasonNumber,
+		episodeNumber: episode.episodeNumber,
+		title: episode.title,
+		airDate: episode.airDate,
+		airDateUtc: episode.airDateUtc,
+		hasFile: episode.hasFile,
+		monitored: episode.monitored,
+		series: toPartialSeries(episode.series),
+	};
+}
+
+export function toPartialHistoryItem(item: SonarrHistoryItem) {
+	return {
+		id: item.id,
+		episodeId: item.episodeId,
+		seriesId: item.seriesId,
+		sourceTitle: item.sourceTitle,
+		quality: item.quality.quality.name,
+		date: item.date,
+		eventType: item.eventType.name,
+		series: toPartialSeries(item.series),
+		episode: toPartialEpisode(item.episode),
 	};
 }
