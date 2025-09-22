@@ -1,17 +1,21 @@
-import { UltraStats } from "@/lib/ultra/types";
+import type { UltraStats } from "@/lib/ultra/types";
 
 /**
  * Make a request to the Ultra API.
  */
 async function makeRequest(endpoint: string) {
-	if (!process.env.ULTRA_API_TOKEN) {
+	if (!Bun.env.ULTRA_API_TOKEN) {
 		throw new Error("ULTRA_API_TOKEN must be set");
 	}
 
-	const url = `${process.env.ULTRA_BASE_URL}${endpoint}`;
+	if (!Bun.env.ULTRA_HOST) {
+		throw new Error("ULTRA_HOST must be set");
+	}
+
+	const url = `${Bun.env.ULTRA_HOST}/${endpoint}`;
 	const response = await fetch(url, {
 		headers: {
-			Authorization: `Bearer ${process.env.ULTRA_API_TOKEN}`,
+			Authorization: `Bearer ${Bun.env.ULTRA_API_TOKEN}`,
 			"Content-Type": "application/json",
 		},
 	});
