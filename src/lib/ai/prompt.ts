@@ -36,6 +36,7 @@ IMPORTANT: Use Slack's mrkdwn format (NOT standard markdown):
 - Use > for block quotes when highlighting important information
 - Format links as <URL|descriptive text> when referencing external resources
 - NEVER use double asterisks for bold - always use single asterisks
+- NEVER use emojis in your responses
 - Avoid excessive formatting - use sparingly for maximum impact
 
 # TECHNICAL CONSTRAINTS
