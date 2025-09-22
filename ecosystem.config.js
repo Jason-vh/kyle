@@ -26,5 +26,15 @@ module.exports = {
       merge_logs: true,
       log_date_format: 'YYYY-MM-DD HH:mm:ss Z'
     }
-  ]
+  ],
+  deploy: {
+    production: {
+      "user": "jasonvh",
+      "host": ["jasonvh.rigel.usbx.me"],
+      "ref": "origin/feat/bun", // todo: change to main
+      "repo": "git@github.com:jasonvh/kyle.git",
+      "path": "/home/jasonvh/kyle",
+      "post-deploy": "bun ci"
+    }
+  }
 };
