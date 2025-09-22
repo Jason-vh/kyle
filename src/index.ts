@@ -4,6 +4,8 @@ import type { SlackEventBody } from "@/lib/slack/types";
 
 const logger = createLogger("main");
 
+console.log(Bun.env);
+
 if (!Bun.env.PORT) {
 	throw new Error("PORT is not set");
 }
