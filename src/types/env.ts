@@ -15,6 +15,6 @@ export interface Env {
 	ULTRA_HOST: string;
 
 	// Server Configuration
-	PORT?: string;
-	NODE_ENV?: string;
+	PORT: string;
+	NODE_ENV: "production" | "development";
 }
