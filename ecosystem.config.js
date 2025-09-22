@@ -35,7 +35,7 @@ module.exports = {
     production: {
       "user": "jasonvh",
       "host": ["rigel.usbx.me"],
-      "ref": "origin/feat/bun", // todo: change to main
+      "ref": "origin/main",
       "repo": "https://github.com/Jason-vh/kyle",
       "path": "/home/jasonvh/kyle",
       "post-deploy": "/home/jasonvh/.bun/bin/bun ci && /home/jasonvh/.bun/bin/bunx pm2 startOrRestart ecosystem.config.js --env production",
