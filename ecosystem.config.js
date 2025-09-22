@@ -34,7 +34,7 @@ module.exports = {
       "ref": "origin/feat/bun", // todo: change to main
       "repo": "https://github.com/Jason-vh/kyle",
       "path": "/home/jasonvh/kyle",
-      "post-deploy": "bun ci"
+      "post-deploy": "/home/jasonvh/.bun/bin/bun ci"
     }
   }
 };
