@@ -6,8 +6,6 @@ const logger = createLogger("main");
 
 const port = parseInt(process.env.PORT || "3000");
 
-console.log(process.env);
-
 const server = Bun.serve({
 	port,
 	hostname: "0.0.0.0",
