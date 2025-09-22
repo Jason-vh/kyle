@@ -1,6 +1,7 @@
 import { createLogger } from "@/lib/logger";
 import { handleSlackEvent } from "@/lib/slack/handler";
 import type { SlackEventBody } from "@/lib/slack/types";
+import type { SlackContext } from "./types";
 
 const logger = createLogger("main");
 
@@ -24,11 +25,21 @@ const server = Bun.serve({
 						return Response.json({ challenge: body.challenge });
 					}
 
-					logger.info(`received ${body.event.type} event`, { body });
+					const context: SlackContext = {
+						request_id: Bun.randomUUIDv7(),
+						timestamp: new Date().toISOString(),
+						slack_thread_ts: body.event.thread_ts || body.event.ts,
+						slack_channel_id: body.event.channel,
+					};
+
+					logger.info(`received event with type ${body.event.type}`, {
+						body,
+						context,
+					});
 
 					// Handle the event asynchronously after acknowledging
 					queueMicrotask(() => {
-						handleSlackEvent(body.event);
+						handleSlackEvent(body.event, context);
 					});
 
 					return Response.json({ status: "ok" });
@@ -48,8 +59,6 @@ const server = Bun.serve({
 		return new Response("Hi! I'm Kyle :) 🤖", { status: 404 });
 	},
 });
-
-logger.info(`🤖 Kyle bot listening on http://localhost:${server.port}`);
 
 // Graceful shutdown handling for PM2
 process.on("SIGTERM", () => {

@@ -1,10 +1,10 @@
 import { createLogger } from "@/lib/logger";
-import { SlackClient } from "@/lib/slack/client";
-import {
+import * as slack from "@/lib/slack/api";
+import type {
 	SlackConversationsRepliesResponse,
 	SlackMessageEvent,
 } from "@/lib/slack/types";
-import { MessageWithContext } from "@/types";
+import type { MessageWithContext } from "@/types";
 import { BOT_USER_ID } from "./constants";
 
 const logger = createLogger("slack/utils");
@@ -30,18 +30,17 @@ function cleanMessageText(
  */
 export async function buildMessageContext(
 	threadTs: string,
-	message: SlackMessageEvent,
-	slackClient: SlackClient
+	message: SlackMessageEvent
 ): Promise<MessageWithContext> {
 	logger.debug("building message context", { event: message });
 
 	let threadHistory: SlackConversationsRepliesResponse;
 	try {
-		threadHistory = await slackClient.conversationsReplies(
-			message.channel,
-			threadTs,
-			20
-		);
+		threadHistory = await slack.fetchThreadReplies({
+			channel: message.channel,
+			ts: threadTs,
+			limit: 20,
+		});
 	} catch (err) {
 		logger.error("failed to fetch thread history", { err });
 		return {
@@ -74,7 +73,7 @@ export async function buildMessageContext(
 	const usernameMap = new Map<string, string>([[BOT_USER_ID, "Kyle"]]);
 	for (const userId of uniqueUserIds) {
 		try {
-			const info = await slackClient.usersInfo(userId);
+			const info = await slack.fetchUserInfo(userId);
 			const profileName =
 				info.user.profile?.display_name ||
 				info.user.profile?.real_name ||

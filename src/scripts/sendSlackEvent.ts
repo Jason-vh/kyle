@@ -3,19 +3,17 @@ import { parseArgs } from "util";
 
 const DEFAULT_CHANNEL = "D099N4BMT6E";
 const DEFAULT_USER = "UPGT38Z8F";
+const DEFAULT_URL = "https://jasonvh.rigel.usbx.me/kyle";
 
 const CLI_OPTIONS = {
 	text: { type: "string", short: "t" },
 	thread: { type: "string", short: "t" },
 	channel: { type: "string", default: DEFAULT_CHANNEL },
 	user: { type: "string", default: DEFAULT_USER },
+	url: { type: "string", default: DEFAULT_URL, short: "u" },
 } as const;
 
 async function main() {
-	if (!Bun.env.URL) {
-		throw new Error("The URL environment variable is required");
-	}
-
 	const args = parseArgs({
 		args: Bun.argv,
 		options: CLI_OPTIONS,
@@ -23,7 +21,7 @@ async function main() {
 		allowPositionals: true,
 	});
 
-	const { text, thread: threadTs, channel, user } = args.values;
+	const { text, thread: threadTs, channel, user, url } = args.values;
 
 	if (!threadTs) {
 		throw new Error("The thread argument is required");
@@ -48,7 +46,7 @@ async function main() {
 		},
 	};
 
-	const webhookURL = `${Bun.env.URL}/slack/events`;
+	const webhookURL = `${url}/slack/events`;
 
 	console.log("sending event to", webhookURL);
 	console.log("body:", body);

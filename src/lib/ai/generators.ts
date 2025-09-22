@@ -4,7 +4,7 @@ import { generateText } from "ai";
 
 const logger = createLogger("ai/utils");
 
-export async function generateStatus(message: string) {
+export async function generateInitialStatus(message: string) {
 	try {
 		const openai = createOpenAI({
 			apiKey: process.env.OPENAI_API_KEY,

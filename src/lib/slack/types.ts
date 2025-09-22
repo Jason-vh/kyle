@@ -10,7 +10,6 @@ export type SlackAppMentionEvent = {
 	channel: string;
 	ts: string;
 	event_ts: string;
-	thread_ts?: string;
 };
 
 export type SlackAssistantThreadStartedEvent = {
@@ -26,7 +25,6 @@ export type SlackAssistantThreadStartedEvent = {
 	};
 	user: string;
 	channel: string;
-	thread_ts: string;
 };
 
 /**
@@ -39,8 +37,6 @@ export type SlackMessageEvent = {
 	user: string;
 	channel_type: "im" | "group" | "channel" | "mpim";
 	channel: string;
-	ts: string;
-	thread_ts?: string;
 	bot_profile?: {
 		id: string;
 		name: string;
@@ -50,10 +46,15 @@ export type SlackMessageEvent = {
 	};
 };
 
-export type SlackEvent =
+export type SlackEvent = (
 	| SlackAppMentionEvent
 	| SlackAssistantThreadStartedEvent
-	| SlackMessageEvent;
+	| SlackMessageEvent
+) & {
+	ts: string;
+	thread_ts: string;
+	channel: string;
+};
 
 export type SlackEventCallback = {
 	type: "event_callback";

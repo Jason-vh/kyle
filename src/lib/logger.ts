@@ -19,6 +19,7 @@ const logger = new Logger({
 		}),
 		new ConsoleTransport({
 			prettyPrint: true,
+			logLevel: "debug",
 		}),
 	],
 });

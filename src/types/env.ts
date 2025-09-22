@@ -9,9 +9,6 @@ export interface Env {
 	// Logging
 	AXIOM_DATASET: string;
 
-	// Used for testing
-	URL: string;
-
 	// Media Service APIs
 	RADARR_API_KEY: string;
 	RADARR_HOST: string;
