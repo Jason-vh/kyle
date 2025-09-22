@@ -70,28 +70,7 @@ export async function handleSlackEvent(
 	// this is intentionally not awaited so that we can continue processing the message
 	setStatus(event, threadTs);
 
-	await agent.processMessage(
-		message,
-		context,
-		async (responseText) => {
-			logger.debug("sending reply", { responseText, context });
-
-			await slack.sendMessage({
-				channel: event.channel,
-				thread_ts: threadTs,
-				text: responseText,
-			});
-		},
-		async (status) => {
-			logger.debug("updating status", { status, context });
-
-			await slack.setThreadStatus({
-				channel_id: event.channel,
-				thread_ts: threadTs,
-				status,
-			});
-		}
-	);
+	await agent.processMessage(message, context);
 
 	// clear the thread status
 	await slack.setThreadStatus({

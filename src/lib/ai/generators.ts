@@ -34,7 +34,7 @@ const INITIAL_STATUS_PROMPT = `
 	User request: {message}"
 `;
 
-export async function generateInitialStatus(message: string) {
+export async function generateInitialStatus(message: string): Promise<string> {
 	try {
 		const openai = createOpenAI({
 			apiKey: Bun.env.OPENAI_API_KEY,
@@ -59,16 +59,6 @@ export async function generateInitialStatus(message: string) {
 		return result.text.replace(/""/g, "").trim();
 	} catch (error) {
 		logger.error("Error generating status", { error });
-
-		// Varied fallback messages
-		const fallbacks = [
-			"is cooking...",
-			"is brewing...",
-			"is contemplating...",
-			"is orchestrating...",
-			"is pondering...",
-		];
-
-		return fallbacks[Math.floor(Math.random() * fallbacks.length)];
+		return "is cooking...";
 	}
 }

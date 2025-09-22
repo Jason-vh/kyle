@@ -39,7 +39,7 @@ export function getQbittorrentTools(context: SlackContext) {
 				slack.setThreadStatus({
 					channel_id: context.slack_channel_id,
 					thread_ts: context.slack_thread_ts,
-					status: "is checking qBittorrent downloads...",
+					status: "is looking up torrents...",
 				});
 
 				const torrents = await qbittorrent.getTorrents(filter);
@@ -63,7 +63,52 @@ export function getQbittorrentTools(context: SlackContext) {
 		},
 	});
 
+	const deleteTorrents = tool({
+		description: "Delete torrents from qBittorrent by hash.",
+		inputSchema: z.object({
+			hashes: z
+				.array(z.string())
+				.min(1)
+				.describe("Array of torrent hashes to delete"),
+		}),
+		execute: async ({ hashes }) => {
+			try {
+				logger.info("calling deleteTorrents tool", {
+					hashes,
+					context,
+				});
+
+				slack.setThreadStatus({
+					channel_id: context.slack_channel_id,
+					thread_ts: context.slack_thread_ts,
+					status: "is removing torrents...",
+				});
+
+				await qbittorrent.deleteTorrents(hashes);
+
+				logger.info("successfully deleted torrents", {
+					hashes,
+					context,
+				});
+
+				return {
+					success: true,
+					deletedCount: hashes.length,
+					message: `Successfully deleted ${hashes.length} torrent(s) and their files`,
+				};
+			} catch (error) {
+				logger.error("Failed to delete torrents", {
+					hashes,
+					error,
+					context,
+				});
+				return `Failed to delete torrents: ${JSON.stringify(error)}`;
+			}
+		},
+	});
+
 	return {
 		getTorrents,
+		deleteTorrents,
 	};
 }

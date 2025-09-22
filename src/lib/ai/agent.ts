@@ -3,10 +3,11 @@ import { generateText, stepCountIs, type ModelMessage } from "ai";
 import { MAX_TOOL_CALLS } from "@/lib/ai/constants";
 import { getSystemPrompt } from "@/lib/ai/prompt";
 import { createLogger } from "@/lib/logger";
+import { getQbittorrentTools } from "@/lib/qbittorrent/tools";
 import { getRadarrTools } from "@/lib/radarr/tools";
+import * as slack from "@/lib/slack/api";
 import { getSonarrTools } from "@/lib/sonarr/tools";
 import { getUltraTools } from "@/lib/ultra/tools";
-import { getQbittorrentTools } from "@/lib/qbittorrent/tools";
 import type { MessageWithContext, SlackContext } from "@/types";
 import { createOpenAI } from "@ai-sdk/openai";
 
@@ -14,9 +15,7 @@ const logger = createLogger("ai/agent");
 
 export async function processMessage(
 	message: MessageWithContext,
-	context: SlackContext,
-	reply: (message: string) => Promise<void>,
-	updateStatus: (status: string) => Promise<void>
+	context: SlackContext
 ): Promise<void> {
 	try {
 		const openai = createOpenAI({
@@ -79,11 +78,18 @@ export async function processMessage(
 		// this is a quick fix to ensure the formatting is correct
 		const textWithCorrectedFormatting = result.text.replace(/\*\*/g, "*");
 
-		await reply(textWithCorrectedFormatting);
+		await slack.sendMessage({
+			channel: context.slack_channel_id,
+			thread_ts: context.slack_thread_ts,
+			text: textWithCorrectedFormatting,
+		});
 	} catch (error) {
 		logger.error("error:", { error, context });
-		await reply(
-			"Alas, a thing has gone wrong. Please do make another attempt at a later date (or not - up to you)."
-		);
+
+		await slack.sendMessage({
+			channel: context.slack_channel_id,
+			thread_ts: context.slack_thread_ts,
+			text: "Alas, a thing has gone wrong. Please do make another attempt at a later date (or not - up to you).",
+		});
 	}
 }

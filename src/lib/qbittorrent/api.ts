@@ -137,3 +137,23 @@ export async function getTorrents(
 	}`;
 	return (await makeRequest(endpoint)) as QbittorrentTorrent[];
 }
+
+/**
+ * Delete torrents by hash(es)
+ */
+export async function deleteTorrents(
+	hashes: string[],
+	deleteFiles: boolean = true
+): Promise<void> {
+	const formData = new URLSearchParams();
+	formData.append("hashes", hashes.join("|"));
+	formData.append("deleteFiles", deleteFiles.toString());
+
+	await makeRequest("/torrents/delete", {
+		method: "POST",
+		headers: {
+			"Content-Type": "application/x-www-form-urlencoded",
+		},
+		body: formData,
+	});
+}
