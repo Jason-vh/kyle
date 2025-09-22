@@ -1,0 +1,69 @@
+import { tool } from "ai";
+import { z } from "zod";
+
+import { createLogger } from "@/lib/logger";
+import * as qbittorrent from "@/lib/qbittorrent/api";
+import { toPartialTorrent } from "@/lib/qbittorrent/utils";
+import * as slack from "@/lib/slack/api";
+import type { SlackContext } from "@/types";
+
+const logger = createLogger("qbittorrent/tools");
+
+export function getQbittorrentTools(context: SlackContext) {
+	const getTorrents = tool({
+		description: "Get list of torrents from qBittorrent with optional filter",
+		inputSchema: z.object({
+			filter: z
+				.enum([
+					"all",
+					"downloading",
+					"completed",
+					"paused",
+					"active",
+					"inactive",
+					"resumed",
+					"stalled",
+					"stalled_uploading",
+					"stalled_downloading",
+					"errored",
+				])
+				.optional()
+				.describe(
+					"Filter torrents by state. Default is 'all' if not specified."
+				),
+		}),
+		execute: async ({ filter }) => {
+			try {
+				logger.info("calling getTorrents tool", { filter, context });
+
+				slack.setThreadStatus({
+					channel_id: context.slack_channel_id,
+					thread_ts: context.slack_thread_ts,
+					status: "is checking qBittorrent downloads...",
+				});
+
+				const torrents = await qbittorrent.getTorrents(filter);
+				const results = torrents.map(toPartialTorrent);
+
+				logger.info("successfully retrieved torrents", {
+					filter,
+					count: results.length,
+					context,
+				});
+
+				return {
+					totalCount: results.length,
+					filter: filter || "all",
+					torrents: results,
+				};
+			} catch (error) {
+				logger.error("Failed to get torrents", { filter, error, context });
+				return `Failed to get torrents: ${JSON.stringify(error)}`;
+			}
+		},
+	});
+
+	return {
+		getTorrents,
+	};
+}

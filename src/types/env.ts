@@ -16,6 +16,9 @@ export interface Env {
 	SONARR_HOST: string;
 	ULTRA_API_TOKEN: string;
 	ULTRA_HOST: string;
+	QBITTORRENT_HOST: string;
+	QBITTORRENT_USERNAME: string;
+	QBITTORRENT_PASSWORD: string;
 	AXIOM_TOKEN: string;
 
 	// Server Configuration

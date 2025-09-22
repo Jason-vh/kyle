@@ -1,4 +1,8 @@
-import { RadarrHistoryRecord, RadarrMovie, RadarrQueueItem } from "./types";
+import type {
+	RadarrHistoryRecord,
+	RadarrMovie,
+	RadarrQueueItem,
+} from "./types";
 
 /**
  * We need the entire movie object for most operations, and we want to minimise the amount of tokens that we use.

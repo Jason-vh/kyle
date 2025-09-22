@@ -6,6 +6,7 @@ import { createLogger } from "@/lib/logger";
 import { getRadarrTools } from "@/lib/radarr/tools";
 import { getSonarrTools } from "@/lib/sonarr/tools";
 import { getUltraTools } from "@/lib/ultra/tools";
+import { getQbittorrentTools } from "@/lib/qbittorrent/tools";
 import type { MessageWithContext, SlackContext } from "@/types";
 import { createOpenAI } from "@ai-sdk/openai";
 
@@ -49,6 +50,7 @@ export async function processMessage(
 			...getRadarrTools(context),
 			...getSonarrTools(context),
 			...getUltraTools(context),
+			...getQbittorrentTools(context),
 		};
 
 		logger.info("generating text", { message, context });

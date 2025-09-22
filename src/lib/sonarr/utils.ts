@@ -1,10 +1,10 @@
-import {
+import type {
 	SonarrCalendarEpisode,
 	SonarrEpisode,
 	SonarrHistoryItem,
 	SonarrQueueItem,
-	SonarrSeries
-} from "./types";
+	SonarrSeries,
+} from "@/lib/sonarr/types";
 
 /**
  * Convert a full series object to a partial representation for AI tools.
