@@ -1,4 +1,6 @@
-import { logStructured } from "@/lib/logger";
+import { createLogger } from "@/lib/logger";
+
+const logger = createLogger("slack/verification");
 
 /**
  * Verify Slack request signature
@@ -10,7 +12,7 @@ export async function verifySlackSignature(
 	body: string
 ): Promise<boolean> {
 	if (!process.env.SLACK_SIGNING_SECRET) {
-		logStructured("SLACK_SIGNING_SECRET not configured", {});
+		logger.error("SLACK_SIGNING_SECRET not configured", {});
 		return false;
 	}
 
@@ -20,7 +22,7 @@ export async function verifySlackSignature(
 	const fiveMinutesAgo = currentTime - 5 * 60 * 1000;
 
 	if (requestTime < fiveMinutesAgo) {
-		logStructured("Request is too old", { timestamp, currentTime });
+		logger.error("Request is too old", { timestamp, currentTime });
 		return false;
 	}
 
@@ -29,7 +31,9 @@ export async function verifySlackSignature(
 		const baseString = `v0:${timestamp}:${body}`;
 
 		// Convert signing secret to Uint8Array for HMAC
-		const signingSecret = new TextEncoder().encode(process.env.SLACK_SIGNING_SECRET!);
+		const signingSecret = new TextEncoder().encode(
+			process.env.SLACK_SIGNING_SECRET!
+		);
 		const message = new TextEncoder().encode(baseString);
 
 		// Import the key
@@ -56,7 +60,7 @@ export async function verifySlackSignature(
 		const isValid = signature === expectedSignature;
 
 		if (!isValid) {
-			logStructured("Invalid signature", {
+			logger.error("Invalid signature", {
 				received: signature,
 				expected: expectedSignature,
 				baseString: baseString.substring(0, 100) + "...",
@@ -65,7 +69,7 @@ export async function verifySlackSignature(
 
 		return isValid;
 	} catch (error) {
-		logStructured("Error verifying signature", { error });
+		logger.error("Error verifying signature", { error });
 		return false;
 	}
 }

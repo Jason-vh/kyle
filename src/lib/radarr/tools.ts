@@ -20,7 +20,7 @@ const getMovie = tool({
 	}),
 	execute: async ({ movieId }) => {
 		try {
-			logger.log("calling getMovie tool", { movieId });
+			logger.info("calling getMovie tool", { movieId });
 			const movie = await radarrApi.getMovie(movieId);
 			return toPartialMovie(movie);
 		} catch (error) {
@@ -35,7 +35,7 @@ const getMovies = tool({
 	inputSchema: z.object({}),
 	execute: async () => {
 		try {
-			logger.log("calling getMovies tool");
+			logger.info("calling getMovies tool");
 			const movies = await radarrApi.getMovies();
 			return movies.map(toPartialMovie);
 		} catch (error) {
@@ -52,7 +52,7 @@ const searchMovies = tool({
 	}),
 	execute: async ({ title }) => {
 		try {
-			logger.log("calling searchMovies tool", { title });
+			logger.info("calling searchMovies tool", { title });
 			const movies = await radarrApi.searchMovies(title);
 			return movies.map(toPartialMovie);
 		} catch (error) {
@@ -74,7 +74,7 @@ const addMovie = tool({
 	}),
 	execute: async ({ title, year, tmdbId }) => {
 		try {
-			logger.log("calling addMovie tool", { title, year, tmdbId });
+			logger.info("calling addMovie tool", { title, year, tmdbId });
 			const result = await radarrApi.addMovie(title, year, tmdbId);
 			return {
 				title: result.title,
@@ -99,7 +99,7 @@ const removeMovie = tool({
 	}),
 	execute: async ({ movieId }) => {
 		try {
-			logger.log("calling removeMovie tool", { movieId });
+			logger.info("calling removeMovie tool", { movieId });
 			await radarrApi.removeMovie(movieId, true);
 			return {
 				success: true,
@@ -119,7 +119,7 @@ const getQueue = tool({
 	inputSchema: z.object({}),
 	execute: async () => {
 		try {
-			logger.log("calling getQueue tool");
+			logger.info("calling getQueue tool");
 			const queue = await radarrApi.getQueue();
 
 			return {
@@ -144,7 +144,7 @@ const getHistory = tool({
 			),
 	}),
 	execute: async ({ pageSize }) => {
-		logger.log("calling getHistory tool", { pageSize });
+		logger.info("calling getHistory tool", { pageSize });
 		const history = await radarrApi.getHistory(pageSize);
 		return history.records.map(toPartialHistoryRecord);
 	},

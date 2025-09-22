@@ -1,8 +1,10 @@
 import { tool } from "ai";
 import { z } from "zod";
 
-import { handleError } from "@/lib/utils";
+import { createLogger } from "@/lib/logger";
 import * as ultraApi from "./api";
+
+const logger = createLogger("ultra/tools");
 
 const ultraStats = tool({
 	description:
@@ -17,10 +19,12 @@ const ultraStats = tool({
 				usedStorage: stats.service_stats_info.used_storage_value,
 			};
 		} catch (error) {
-			return handleError(
-				"Failed to get storage and traffic usage statistics",
+			logger.error("Failed to get storage and traffic usage statistics", {
+				error,
+			});
+			return `Failed to get storage and traffic usage statistics: ${JSON.stringify(
 				error
-			);
+			)}`;
 		}
 	},
 });

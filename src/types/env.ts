@@ -6,6 +6,12 @@ export interface Env {
 	SLACK_BOT_TOKEN: string;
 	SLACK_SIGNING_SECRET: string;
 
+	// Logging
+	AXIOM_DATASET: string;
+
+	// Used for testing
+	URL: string;
+
 	// Media Service APIs
 	RADARR_API_KEY: string;
 	RADARR_HOST: string;
@@ -13,6 +19,7 @@ export interface Env {
 	SONARR_HOST: string;
 	ULTRA_API_TOKEN: string;
 	ULTRA_HOST: string;
+	AXIOM_TOKEN: string;
 
 	// Server Configuration
 	PORT: string;

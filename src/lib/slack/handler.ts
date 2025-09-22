@@ -15,12 +15,12 @@ export async function handleSlackEvent(event: SlackEvent): Promise<void> {
 	}
 
 	if (event.type !== "message") {
-		logger.log(`skipping unknown ${event.type} event`);
+		logger.info(`skipping unknown ${event.type} event`);
 		return;
 	}
 
 	if (event.subtype === "message_changed") {
-		logger.log(`skipping message.message_changed event`);
+		logger.info(`skipping message.message_changed event`);
 		return;
 	}
 
@@ -70,7 +70,7 @@ async function handleMessage(
 	await agent.processMessage(
 		messageWithContext,
 		async (responseText) => {
-			logger.log("sending reply", { responseText });
+			logger.info("sending reply", { responseText });
 
 			await slackClient.postMessage({
 				channel: event.channel,
@@ -79,7 +79,7 @@ async function handleMessage(
 			});
 		},
 		async (status) => {
-			logger.log("updating status", { status });
+			logger.info("updating status", { status });
 
 			await slackClient.setThreadStatus({
 				channel_id: event.channel,

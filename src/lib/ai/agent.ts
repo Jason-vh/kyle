@@ -50,7 +50,7 @@ export async function processMessage(
 			...ultraTools,
 		};
 
-		logger.log("generating text", { originalMessage: message.text });
+		logger.info("generating text", { originalMessage: message.text });
 
 		const result = await generateText({
 			model,
@@ -59,7 +59,7 @@ export async function processMessage(
 			stopWhen: stepCountIs(MAX_TOOL_CALLS),
 		});
 
-		logger.log(`completed text generation`, {
+		logger.info(`completed text generation`, {
 			originalMessage: message.text,
 			result,
 		});

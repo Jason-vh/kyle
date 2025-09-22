@@ -4,8 +4,6 @@ import type { SlackEventBody } from "@/lib/slack/types";
 
 const logger = createLogger("main");
 
-console.log(Bun.env);
-
 if (!Bun.env.PORT) {
 	throw new Error("PORT is not set");
 }
@@ -22,11 +20,11 @@ const server = Bun.serve({
 					const body = (await req.json()) as SlackEventBody;
 
 					if (body.type === "url_verification") {
-						logger.log("handling URL verification challenge");
+						logger.info("handling URL verification challenge");
 						return Response.json({ challenge: body.challenge });
 					}
 
-					logger.log(`received ${body.event.type} event`, { body });
+					logger.info(`received ${body.event.type} event`, { body });
 
 					// Handle the event asynchronously after acknowledging
 					queueMicrotask(() => {
@@ -45,22 +43,23 @@ const server = Bun.serve({
 		},
 	},
 	// Fallback for unmatched routes
-	fetch() {
+	fetch(req: Request) {
+		logger.info(`received request to unmatched route ${req.url}`);
 		return new Response("Hi! I'm Kyle :) 🤖", { status: 404 });
 	},
 });
 
-logger.log(`🤖 Kyle bot listening on http://localhost:${server.port}`);
+logger.info(`🤖 Kyle bot listening on http://localhost:${server.port}`);
 
 // Graceful shutdown handling for PM2
 process.on("SIGTERM", () => {
-	logger.log("Received SIGTERM, shutting down gracefully");
+	logger.info("Received SIGTERM, shutting down gracefully");
 	server.stop();
 	process.exit(0);
 });
 
 process.on("SIGINT", () => {
-	logger.log("Received SIGINT, shutting down gracefully");
+	logger.info("Received SIGINT, shutting down gracefully");
 	server.stop();
 	process.exit(0);
 });

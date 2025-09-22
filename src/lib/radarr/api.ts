@@ -116,7 +116,7 @@ export async function removeMovie(
 	movieId: number,
 	deleteFiles: boolean = true
 ): Promise<void> {
-	logger.log("removing movie", { movieId, deleteFiles });
+	logger.info("removing movie", { movieId, deleteFiles });
 	await makeRequest(`/movie/${movieId}?deleteFiles=${deleteFiles}`, {
 		method: "DELETE",
 	});

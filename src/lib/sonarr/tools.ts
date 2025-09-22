@@ -8,7 +8,6 @@ import {
 	toPartialQueueItem,
 	toPartialSeries,
 } from "@/lib/sonarr/utils";
-import { handleError } from "@/lib/utils";
 
 const logger = createLogger("sonarr/tools");
 
@@ -20,18 +19,18 @@ const getSeries = tool({
 			.describe("The ID of the series to get information about"),
 	}),
 	execute: async ({ seriesId }) => {
-		logger.log("calling getSeries tool", { seriesId });
+		logger.info("calling getSeries tool", { seriesId });
 		try {
 			const series = await sonarrApi.getSeries(seriesId);
 			const result = toPartialSeries(series);
-			logger.log("successfully retrieved series", {
+			logger.info("successfully retrieved series", {
 				seriesId,
 				title: result.title,
 			});
 			return result;
 		} catch (error) {
-			logger.error("failed to get series", { seriesId, error });
-			return handleError("Failed to get series", error);
+			logger.error("Failed to get series", { error });
+			return `Failed to get series: ${JSON.stringify(error)}`;
 		}
 	},
 });
@@ -40,17 +39,17 @@ const getAllSeries = tool({
 	description: "Get all TV series in the Sonarr library",
 	inputSchema: z.object({}),
 	execute: async () => {
-		logger.log("calling getAllSeries tool");
+		logger.info("calling getAllSeries tool");
 		try {
 			const series = await sonarrApi.getAllSeries();
 			const results = series.map(toPartialSeries);
-			logger.log("successfully retrieved all series", {
+			logger.info("successfully retrieved all series", {
 				results,
 			});
 			return results;
 		} catch (error) {
-			logger.error("failed to get all series", { error });
-			return handleError("Failed to get all series", error);
+			logger.error("Failed to get all series", { error });
+			return `Failed to get all series: ${JSON.stringify(error)}`;
 		}
 	},
 });
@@ -61,18 +60,20 @@ const searchSeries = tool({
 		title: z.string().describe("The title of the TV series to search for"),
 	}),
 	execute: async ({ title }) => {
-		logger.log("calling searchSeries tool", { title });
+		logger.info("calling searchSeries tool", { title });
 		try {
 			const series = await sonarrApi.searchSeries(title);
 			const results = series.map(toPartialSeries).filter((s) => !!s.id); // some series don't have an ID
-			logger.log("successfully searched for series", {
+			logger.info("successfully searched for series", {
 				title,
 				results,
 			});
 			return results;
 		} catch (error) {
-			logger.error("failed to search series", { title, error });
-			return handleError("Failed to search series", error);
+			logger.error("Failed to search series", { title, error });
+			return `Failed to search series with title "${title}": ${JSON.stringify(
+				error
+			)}`;
 		}
 	},
 });
@@ -86,7 +87,7 @@ const addSeries = tool({
 		tvdbId: z.number().describe("The TVDB ID of the series to add"),
 	}),
 	execute: async ({ title, year, tvdbId }) => {
-		logger.log("calling addSeries tool", { title, year, tvdbId });
+		logger.info("calling addSeries tool", { title, year, tvdbId });
 		try {
 			const series = await sonarrApi.addSeries(title, year, tvdbId);
 			const result = toPartialSeries(series);
@@ -94,16 +95,18 @@ const addSeries = tool({
 				series: result,
 				message: `Added "${title}" (${year}) to Sonarr for monitoring and downloading`,
 			};
-			logger.log("successfully added series", response);
+			logger.info("successfully added series", response);
 			return response;
 		} catch (error) {
-			logger.error("failed to add series", {
+			logger.error("Failed to add series", {
 				title,
 				year,
 				tvdbId,
 				error,
 			});
-			return handleError("Failed to add series", error);
+			return `Failed to add series with title "${title}", year "${year}", and TVDB ID "${tvdbId}": ${JSON.stringify(
+				error
+			)}`;
 		}
 	},
 });
@@ -119,7 +122,7 @@ const removeSeries = tool({
 			.describe("Whether to delete files from disk (default: false)"),
 	}),
 	execute: async ({ seriesId, deleteFiles = false }) => {
-		logger.log("calling removeSeries tool", { seriesId, deleteFiles });
+		logger.info("calling removeSeries tool", { seriesId, deleteFiles });
 		try {
 			await sonarrApi.removeSeries(seriesId, deleteFiles);
 			const response = {
@@ -128,15 +131,17 @@ const removeSeries = tool({
 					deleteFiles ? " and deleted files from disk" : ""
 				}`,
 			};
-			logger.log("successfully removed series", { seriesId, deleteFiles });
+			logger.info("successfully removed series", { seriesId, deleteFiles });
 			return response;
 		} catch (error) {
-			logger.error("failed to remove series", {
+			logger.error("Failed to remove series", {
 				seriesId,
 				deleteFiles,
 				error,
 			});
-			return handleError("Failed to remove series", error);
+			return `Failed to remove series with ID ${seriesId}${
+				deleteFiles ? " and deleted files from disk" : ""
+			}: ${JSON.stringify(error)}`;
 		}
 	},
 });
@@ -154,21 +159,23 @@ const getEpisodes = tool({
 			.default(false),
 	}),
 	execute: async ({ seriesId, hasFile = false }) => {
-		logger.log("calling getEpisodes tool", { seriesId, hasFile });
+		logger.info("calling getEpisodes tool", { seriesId, hasFile });
 		try {
 			const episodes = await sonarrApi.getEpisodes(seriesId);
 			const results = episodes
 				.map(toPartialEpisode)
 				.filter((episode) => episode.hasFile === hasFile);
 
-			logger.log("successfully retrieved episodes", {
+			logger.info("successfully retrieved episodes", {
 				seriesId,
 				results,
 			});
 			return results;
 		} catch (error) {
-			logger.error("failed to get episodes", { seriesId, error });
-			return handleError("Failed to get episodes", error);
+			logger.error("Failed to get episodes", { seriesId, error });
+			return `Failed to get episodes for series with ID ${seriesId}: ${JSON.stringify(
+				error
+			)}`;
 		}
 	},
 });
@@ -177,13 +184,13 @@ const getQueue = tool({
 	description: "Get TV series episodes currently downloading or in the queue",
 	inputSchema: z.object({}),
 	execute: async () => {
-		logger.log("calling getQueue tool");
+		logger.info("calling getQueue tool");
 		try {
 			const queueResponse = await sonarrApi.getQueue();
 			const queueItems = queueResponse.records.map(toPartialQueueItem);
 
 			if (queueItems.length === 0) {
-				logger.log("no downloads in progress");
+				logger.info("no downloads in progress");
 				return { message: "No downloads in progress" };
 			}
 
@@ -192,11 +199,11 @@ const getQueue = tool({
 				items: queueItems,
 			};
 
-			logger.log("retrieved download queue", response);
+			logger.info("retrieved download queue", response);
 			return response;
 		} catch (error) {
-			logger.error("failed to get queue", { error });
-			return handleError("Failed to get queue", error);
+			logger.error("Failed to get queue", { error });
+			return `Failed to get queue: ${JSON.stringify(error)}`;
 		}
 	},
 });
