@@ -44,7 +44,7 @@ const server = Bun.serve({
 	},
 	// Fallback for unmatched routes
 	fetch() {
-		return new Response("Hi! I'm Kyle :)", { status: 404 });
+		return new Response("Hi! I'm Kyle :) 🤖", { status: 404 });
 	},
 });
 
