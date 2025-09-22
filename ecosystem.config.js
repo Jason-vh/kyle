@@ -8,13 +8,6 @@ module.exports = {
       autorestart: true,
       watch: false,
       max_memory_restart: '1G',
-      env: {
-        PORT: 37245,
-        NODE_ENV: 'production',
-        RADARR_HOST: 'https://jasonvh.rigel.usbx.me/radarr',
-        SONARR_HOST: 'https://jasonvh.rigel.usbx.me/sonarr',
-        ULTRA_HOST: 'https://jasonvh.rigel.usbx.me/ultra-api',
-      },
       // Logging
       out_file: './logs/kyle-out.log',
       error_file: './logs/kyle-error.log',
