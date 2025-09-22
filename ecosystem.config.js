@@ -30,9 +30,9 @@ module.exports = {
   deploy: {
     production: {
       "user": "jasonvh",
-      "host": ["jasonvh.rigel.usbx.me"],
+      "host": ["rigel.usbx.me"],
       "ref": "origin/feat/bun", // todo: change to main
-      "repo": "git@github.com:jasonvh/kyle.git",
+      "repo": "https://github.com/Jason-vh/kyle",
       "path": "/home/jasonvh/kyle",
       "post-deploy": "bun ci"
     }
