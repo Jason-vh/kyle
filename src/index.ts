@@ -1,11 +1,12 @@
 import { createLogger } from "@/lib/logger";
 import { handleSlackEvent } from "@/lib/slack/handler";
 import type { SlackEventBody } from "@/lib/slack/types";
-import "dotenv/config";
 
 const logger = createLogger("main");
 
 const port = parseInt(process.env.PORT || "3000");
+
+console.log(process.env);
 
 const server = Bun.serve({
 	port,

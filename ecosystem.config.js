@@ -10,11 +10,14 @@ module.exports = {
       max_memory_restart: '1G',
       env: {
         NODE_ENV: 'production',
-        PORT: 37245
+        PORT: 37245,
+
+        RADARR_HOST: 'https://jasonvh.rigel.usbx.me/radarr',
+        SONARR_HOST: 'https://jasonvh.rigel.usbx.me/sonarr',
+        ULTRA_HOST: 'https://jasonvh.rigel.usbx.me/ultra-api',
       },
       env_development: {
         NODE_ENV: 'development',
-        PORT: 37245
       },
       // Logging
       out_file: './logs/kyle-out.log',
