@@ -18,6 +18,7 @@ export function toPartialSeries(series: SonarrSeries) {
 		overview: series.overview,
 		monitored: series.monitored,
 		seasonCount: series.seasons.length,
+		tvdbId: series.tvdbId,
 	};
 }
 
@@ -31,6 +32,7 @@ export function toPartialEpisode(episode: SonarrEpisode) {
 		airDate: episode.airDate,
 		hasFile: episode.hasFile,
 		monitored: episode.monitored,
+		tvdbId: episode.tvdbId,
 	};
 }
 
@@ -42,6 +44,7 @@ export function toPartialQueueItem(item: SonarrQueueItem) {
 		status: item.status,
 		estimatedCompletionTime: item.estimatedCompletionTime,
 		quality: item.quality.quality.name,
+		tvdbId: item.episode.tvdbId,
 	};
 }
 
@@ -57,6 +60,7 @@ export function toPartialCalendarEpisode(episode: SonarrCalendarEpisode) {
 		hasFile: episode.hasFile,
 		monitored: episode.monitored,
 		series: toPartialSeries(episode.series),
+		tvdbId: episode.tvdbId,
 	};
 }
 
