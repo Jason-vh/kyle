@@ -20,15 +20,28 @@ async function makeRequest(endpoint: string) {
 		},
 	});
 
+	const text = await response.text();
+	let json: unknown;
+	try {
+		json = JSON.parse(text);
+	} catch (error) {
+		json = text;
+	}
+
 	if (!response.ok) {
 		throw {
+			response,
 			status: response.status,
 			statusText: response.statusText,
-			body: await response.json(),
+			body: json,
 		};
 	}
 
-	return response.json();
+	try {
+		return json;
+	} catch (error) {
+		return undefined;
+	}
 }
 
 /**

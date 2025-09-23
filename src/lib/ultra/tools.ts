@@ -20,7 +20,7 @@ export function getUltraTools(context: SlackContext) {
 				slack.setThreadStatus({
 					channel_id: context.slack_channel_id,
 					thread_ts: context.slack_thread_ts,
-					status: `is checking the Ultra storage and traffic usage statistics...`,
+					status: `is counting bytes...`,
 				});
 
 				const stats = await ultra.getTotalStats();

@@ -53,23 +53,29 @@ async function makeRequest(
  * Get a specific series by ID.
  */
 export async function getSeries(seriesId: number): Promise<SonarrSeries> {
-	return (await makeRequest(`/series/${seriesId}`)) as SonarrSeries;
+	const results = await makeRequest(`/series/${seriesId}`);
+
+	return results as SonarrSeries;
 }
 
 /**
  * Get all series in the library.
  */
 export async function getAllSeries(): Promise<SonarrSeries[]> {
-	return (await makeRequest("/series")) as SonarrSeries[];
+	const results = await makeRequest("/series");
+
+	return results as SonarrSeries[];
 }
 
 /**
  * Search for series to add to Sonarr.
  */
 export async function searchSeries(term: string): Promise<SonarrSeries[]> {
-	return (await makeRequest(
+	const results = await makeRequest(
 		`/series/lookup?term=${encodeURIComponent(term)}`
-	)) as SonarrSeries[];
+	);
+
+	return results as SonarrSeries[];
 }
 
 /**
@@ -94,8 +100,8 @@ export async function addSeries(
 		throw new Error("No root folders found");
 	}
 
-	const qualityProfile = qualityProfiles[0];
-	const rootFolder = rootFolders[0];
+	const qualityProfile = qualityProfiles[0]!;
+	const rootFolder = rootFolders[0]!;
 
 	const seriesData = {
 		title,
@@ -113,10 +119,12 @@ export async function addSeries(
 		},
 	};
 
-	return (await makeRequest("/series", {
+	const results = await makeRequest("/series", {
 		method: "POST",
 		body: JSON.stringify(seriesData),
-	})) as SonarrSeries;
+	});
+
+	return results as SonarrSeries;
 }
 
 /**
@@ -135,32 +143,38 @@ export async function removeSeries(
  * Get episodes for a series.
  */
 export async function getEpisodes(seriesId: number): Promise<SonarrEpisode[]> {
-	return (await makeRequest(
-		`/episode?seriesId=${seriesId}`
-	)) as SonarrEpisode[];
+	const results = await makeRequest(`/episode?seriesId=${seriesId}`);
+
+	return results as SonarrEpisode[];
 }
 
 /**
  * Get series in the download queue.
  */
 export async function getQueue(): Promise<SonarrQueueResponse> {
-	return (await makeRequest(
+	const results = await makeRequest(
 		"/queue?includeEpisode=true&includeSeries=true"
-	)) as SonarrQueueResponse;
+	);
+
+	return results as SonarrQueueResponse;
 }
 
 /**
  * Get quality profiles.
  */
 export async function getQualityProfiles(): Promise<SonarrQualityProfile[]> {
-	return (await makeRequest("/qualityprofile")) as SonarrQualityProfile[];
+	const results = await makeRequest("/qualityprofile");
+
+	return results as SonarrQualityProfile[];
 }
 
 /**
  * Get root folders.
  */
 export async function getRootFolders(): Promise<SonarrRootFolder[]> {
-	return (await makeRequest("/rootfolder")) as SonarrRootFolder[];
+	const results = await makeRequest("/rootfolder");
+
+	return results as SonarrRootFolder[];
 }
 
 /**
@@ -176,8 +190,12 @@ export async function getCalendar(
 	if (end) params.append("end", end);
 	params.append("includeSeries", includeSeries.toString());
 
-	const endpoint = `/calendar${params.toString() ? `?${params.toString()}` : ""}`;
-	return (await makeRequest(endpoint)) as SonarrCalendarEpisode[];
+	const endpoint = `/calendar${
+		params.toString() ? `?${params.toString()}` : ""
+	}`;
+	const results = await makeRequest(endpoint);
+
+	return results as SonarrCalendarEpisode[];
 }
 
 /**
@@ -199,10 +217,12 @@ export async function searchEpisodes(
 		throw new Error("Must provide either seriesId or episodeIds");
 	}
 
-	return (await makeRequest("/command", {
+	const results = await makeRequest("/command", {
 		method: "POST",
 		body: JSON.stringify(commandBody),
-	})) as SonarrCommand;
+	});
+
+	return results as SonarrCommand;
 }
 
 /**
@@ -221,7 +241,9 @@ export async function getHistory(
 		includeEpisode: includeEpisode.toString(),
 	});
 
-	return (await makeRequest(`/history?${params.toString()}`)) as SonarrHistoryResponse;
+	const results = await makeRequest(`/history?${params.toString()}`);
+
+	return results as SonarrHistoryResponse;
 }
 
 /**
@@ -240,5 +262,7 @@ export async function getWantedMissing(
 		includeEpisode: includeEpisode.toString(),
 	});
 
-	return (await makeRequest(`/wanted/cutoff?${params.toString()}`)) as SonarrQueueResponse;
+	const results = await makeRequest(`/wanted/cutoff?${params.toString()}`);
+
+	return results as SonarrQueueResponse;
 }

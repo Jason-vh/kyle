@@ -1,5 +1,5 @@
 import { createLogger } from "@/lib/logger";
-import {
+import type {
 	RadarrHistoryResponse,
 	RadarrMovie,
 	RadarrQueueResponse,
@@ -11,14 +11,20 @@ const logger = createLogger("radarr/api");
  * Make a request to the Radarr API.
  */
 async function makeRequest(endpoint: string, options: RequestInit = {}) {
-	const url = `${process.env.RADARR_HOST}/api/v3${endpoint}`;
+	if (!Bun.env.RADARR_API_KEY) {
+		throw new Error("RADARR_API_KEY is not set");
+	}
 
-	logger.debug("making request", { url, options });
+	if (!Bun.env.RADARR_HOST) {
+		throw new Error("RADARR_HOST is not set");
+	}
+
+	const url = `${Bun.env.RADARR_HOST}/api/v3${endpoint}`;
 
 	const response = await fetch(url, {
 		...options,
 		headers: {
-			"X-Api-Key": process.env.RADARR_API_KEY,
+			"X-Api-Key": Bun.env.RADARR_API_KEY,
 			"Content-Type": "application/json",
 			...options.headers,
 		},
@@ -31,8 +37,6 @@ async function makeRequest(endpoint: string, options: RequestInit = {}) {
 	} catch (error) {
 		json = text;
 	}
-
-	logger.debug("response", { response });
 
 	if (!response.ok) {
 		throw {
@@ -116,7 +120,6 @@ export async function removeMovie(
 	movieId: number,
 	deleteFiles: boolean = true
 ): Promise<void> {
-	logger.info("removing movie", { movieId, deleteFiles });
 	await makeRequest(`/movie/${movieId}?deleteFiles=${deleteFiles}`, {
 		method: "DELETE",
 	});

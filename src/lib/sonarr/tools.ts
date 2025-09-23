@@ -89,7 +89,8 @@ export function getSonarrTools(context: SlackContext) {
 				});
 
 				const series = await sonarr.searchSeries(title);
-				const results = series.map(toPartialSeries).filter((s) => !!s.id); // some series don't have an ID
+				const results = series.map(toPartialSeries);
+
 				logger.info("successfully searched for series", {
 					title,
 					results,
