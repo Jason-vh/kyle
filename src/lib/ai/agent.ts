@@ -22,7 +22,7 @@ export async function processMessage(
 			apiKey: Bun.env.OPENAI_API_KEY,
 		});
 
-		const model = openai("gpt-4o");
+		const model = openai("gpt-5-mini");
 
 		const systemPrompt = getSystemPrompt({
 			username: message.user.username,
