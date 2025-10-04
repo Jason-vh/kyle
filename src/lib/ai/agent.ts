@@ -1,4 +1,9 @@
-import { generateText, stepCountIs, type ModelMessage } from "ai";
+import {
+	APICallError,
+	generateText,
+	stepCountIs,
+	type ModelMessage,
+} from "ai";
 
 import { MAX_TOOL_CALLS } from "@/lib/ai/constants";
 import { getSystemPrompt } from "@/lib/ai/prompt";
@@ -86,10 +91,18 @@ export async function processMessage(
 	} catch (error) {
 		logger.error("error:", { error, context });
 
+		let errorMessage =
+			"Alas, a thing has gone wrong. Please do make another attempt at a later date (or not - up to you).";
+
+		if (APICallError.isInstance(error) && error.statusCode === 429) {
+			errorMessage =
+				"Whoa there, I'm being rate limited by the AI provider. Please try again in a few moments.";
+		}
+
 		await slack.sendMessage({
 			channel: context.slack_channel_id,
 			thread_ts: context.slack_thread_ts,
-			text: "Alas, a thing has gone wrong. Please do make another attempt at a later date (or not - up to you).",
+			text: errorMessage,
 		});
 	}
 }
