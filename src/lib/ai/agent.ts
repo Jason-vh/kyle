@@ -1,9 +1,4 @@
-import {
-	APICallError,
-	generateText,
-	stepCountIs,
-	type ModelMessage,
-} from "ai";
+import { APICallError, generateText, stepCountIs, type ModelMessage } from "ai";
 
 import { MAX_TOOL_CALLS } from "@/lib/ai/constants";
 import { getSystemPrompt } from "@/lib/ai/prompt";
@@ -27,7 +22,7 @@ export async function processMessage(
 			apiKey: Bun.env.OPENAI_API_KEY,
 		});
 
-		const model = openai("gpt-5-mini");
+		const model = openai("gpt-5-nano");
 
 		const systemPrompt = getSystemPrompt({
 			username: message.user.username,
