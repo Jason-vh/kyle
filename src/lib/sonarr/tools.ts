@@ -195,6 +195,82 @@ export function getSonarrTools(context: SlackContext) {
 		},
 	});
 
+	const removeSeason = tool({
+		description:
+			"Remove a specific season from a TV series in Sonarr and delete all episode files from disk",
+		inputSchema: z.object({
+			seriesId: z.number().describe("The ID of the series"),
+			seasonNumber: z
+				.number()
+				.describe("The season number to remove (e.g., 1 for Season 1, 0 for Specials)"),
+		}),
+		execute: async ({ seriesId, seasonNumber }) => {
+			logger.info("calling removeSeason tool", {
+				seriesId,
+				seasonNumber,
+				context,
+			});
+			try {
+				slack.setThreadStatus({
+					channel_id: context.slack_channel_id,
+					thread_ts: context.slack_thread_ts,
+					status: `is removing season ${seasonNumber} from Sonarr...`,
+				});
+
+				// Get all episodes for the series
+				const episodes = await sonarr.getEpisodes(seriesId);
+
+				// Filter to episodes in the target season that have files
+				const seasonEpisodes = episodes.filter(
+					(ep) => ep.seasonNumber === seasonNumber && ep.hasFile && ep.episodeFileId
+				);
+
+				// Delete all episode files for this season
+				for (const episode of seasonEpisodes) {
+					if (episode.episodeFileId) {
+						await sonarr.deleteEpisodeFile(episode.episodeFileId);
+					}
+				}
+
+				// Get the series and unmonitor the season
+				const series = await sonarr.getSeries(seriesId);
+				const season = series.seasons.find((s) => s.seasonNumber === seasonNumber);
+
+				if (!season) {
+					throw new Error(`Season ${seasonNumber} not found in series ${seriesId}`);
+				}
+
+				season.monitored = false;
+				await sonarr.updateSeries(seriesId, series);
+
+				const response = {
+					success: true,
+					message:
+						seasonEpisodes.length > 0
+							? `Removed season ${seasonNumber} from series ${seriesId}, deleted ${seasonEpisodes.length} episode file${seasonEpisodes.length === 1 ? "" : "s"} and unmonitored the season`
+							: `Unmonitored season ${seasonNumber} from series ${seriesId} (no files to delete)`,
+					filesDeleted: seasonEpisodes.length,
+				};
+
+				logger.info("successfully removed season", {
+					seriesId,
+					seasonNumber,
+					filesDeleted: seasonEpisodes.length,
+					context,
+				});
+				return response;
+			} catch (error) {
+				logger.error("Failed to remove season", {
+					seriesId,
+					seasonNumber,
+					error,
+					context,
+				});
+				return `Failed to remove season ${seasonNumber} from series ${seriesId}: ${JSON.stringify(error)}`;
+			}
+		},
+	});
+
 	const getEpisodes = tool({
 		description: "Get episodes for a specific TV series",
 		inputSchema: z.object({
@@ -441,6 +517,7 @@ export function getSonarrTools(context: SlackContext) {
 		searchSeries,
 		addSeries,
 		removeSeries,
+		removeSeason,
 		getEpisodes,
 		getQueue,
 		getCalendar,

@@ -140,6 +140,30 @@ export async function removeSeries(
 }
 
 /**
+ * Delete an episode file from disk.
+ */
+export async function deleteEpisodeFile(episodeFileId: number): Promise<void> {
+	await makeRequest(`/episodefile/${episodeFileId}`, {
+		method: "DELETE",
+	});
+}
+
+/**
+ * Update a series in Sonarr (e.g., to change monitoring settings).
+ */
+export async function updateSeries(
+	seriesId: number,
+	seriesData: SonarrSeries
+): Promise<SonarrSeries> {
+	const results = await makeRequest(`/series/${seriesId}`, {
+		method: "PUT",
+		body: JSON.stringify(seriesData),
+	});
+
+	return results as SonarrSeries;
+}
+
+/**
  * Get episodes for a series.
  */
 export async function getEpisodes(seriesId: number): Promise<SonarrEpisode[]> {
