@@ -124,6 +124,22 @@ export function getSonarrTools(context: SlackContext) {
 
 				const series = await sonarr.addSeries(title, year, tvdbId);
 				const result = toPartialSeries(series);
+
+				// Send Block Kit message for visual feedback
+				await slack.sendBlockKitMessage({
+					channel: context.slack_channel_id,
+					thread_ts: context.slack_thread_ts,
+					blocks: [
+						{
+							type: "section",
+							text: {
+								type: "mrkdwn",
+								text: `✅ Added *${title}* (${year}) to Sonarr`,
+							},
+						},
+					],
+				});
+
 				const response = {
 					series: result,
 					message: `Added "${title}" (${year}) to Sonarr for monitoring and downloading`,
