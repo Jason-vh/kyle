@@ -120,9 +120,19 @@ export function getRadarrTools(context: SlackContext) {
 				console.log(JSON.stringify(result, null, 2));
 
 				const movieImage = result.images.find((i) => i.coverType === "poster");
+				let message = `Added *${title}* (${year}) to Radarr`;
+
+				if (result.overview) {
+					message += `\n_${result.overview}_`;
+				}
+
+				if (result.imdbId) {
+					message += `\n<https://www.imdb.com/title/${result.imdbId}|IMDB>`;
+				}
+
 				await slackService.sendToolCallNotification(
 					context,
-					`Added *${title}* (${year}) to Radarr`,
+					message,
 					movieImage?.remoteUrl ?? result.images?.[0]?.remoteUrl
 				);
 
@@ -170,8 +180,7 @@ export function getRadarrTools(context: SlackContext) {
 				const movieImage = movie.images.find((i) => i.coverType === "poster");
 				await slackService.sendToolCallNotification(
 					context,
-					`Removed *${movie.title}* (${movie.year}) from Radarr and deleted files from disk.`,
-					movieImage?.remoteUrl ?? movie.images?.[0]?.remoteUrl
+					`Removed *${movie.title}* (${movie.year})`
 				);
 
 				return {
