@@ -148,7 +148,7 @@ export function getRadarrTools(context: SlackContext) {
 
 				const movieImage = result.images.find((i) => i.coverType === "poster");
 				await slackService.sendMediaObject(context, {
-					title: `*${title}* (${year})`,
+					title: `${title} (${year})`,
 					action: "added a moment ago",
 					description: result.overview,
 					image: movieImage?.remoteUrl ?? result.images?.[0]?.remoteUrl,
@@ -203,7 +203,7 @@ export function getRadarrTools(context: SlackContext) {
 
 				const movieImage = movie.images.find((i) => i.coverType === "poster");
 				await slackService.sendMediaObject(context, {
-					title: `*${movie.title}* (${movie.year})`,
+					title: `${movie.title} (${movie.year})`,
 					action: "removed a moment ago",
 					description: movie.overview,
 					image: movieImage?.remoteUrl ?? movie.images?.[0]?.remoteUrl,
