@@ -2,6 +2,52 @@ import * as slack from "@/lib/slack/api";
 import type { SlackContext } from "@/types";
 import type { SlackBlock, SlackContextBlock, SlackSectionBlock } from "./types";
 
+const STEP_TEXTS = {
+	"reasoning-start": ":thinkspin: is thinking...",
+};
+
+export async function startStream(context: SlackContext) {
+	const { ts } = await slack.startStream({
+		channel: context.slack_channel_id,
+		thread_ts: context.slack_thread_ts,
+	});
+
+	context.slack_stream_ts = ts;
+
+	function append(text: string) {
+		return slack.appendStream({
+			channel: context.slack_channel_id,
+			ts,
+			markdown_text: text,
+		});
+	}
+
+	function stop(text?: string) {
+		return slack.stopStream({
+			channel: context.slack_channel_id,
+			ts,
+			markdown_text: text,
+		});
+	}
+
+	return { append, stop };
+}
+
+export function appendStepNotification(
+	context: SlackContext,
+	step: keyof typeof STEP_TEXTS
+) {
+	if (!context.slack_stream_ts) {
+		return;
+	}
+
+	slack.appendStream({
+		channel: context.slack_channel_id,
+		ts: context.slack_stream_ts,
+		markdown_text: STEP_TEXTS[step],
+	});
+}
+
 export function sendMediaNotification(
 	context: SlackContext,
 	{

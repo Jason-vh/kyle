@@ -15,4 +15,5 @@ export type SlackContext = {
 	// and these fields are used to interact in Slack
 	slack_thread_ts: string;
 	slack_channel_id: string;
+	slack_stream_ts?: string;
 };

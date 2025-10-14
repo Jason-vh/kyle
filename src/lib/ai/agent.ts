@@ -12,12 +12,14 @@ import { createLogger } from "@/lib/logger";
 import { getQbittorrentTools } from "@/lib/qbittorrent/tools";
 import { getRadarrTools } from "@/lib/radarr/tools";
 import * as slack from "@/lib/slack/api";
+import * as slackService from "@/lib/slack/service";
 import { getSlackTools } from "@/lib/slack/tools";
 import { getSonarrTools } from "@/lib/sonarr/tools";
 import { getTMDBTools } from "@/lib/tmdb/tools";
 import { getUltraTools } from "@/lib/ultra/tools";
 import type { MessageWithContext, SlackContext } from "@/types";
 import { createOpenAI } from "@ai-sdk/openai";
+import { TOOL_CALL_TEXTS } from "../slack/constants";
 
 const logger = createLogger("ai/agent");
 
@@ -66,33 +68,28 @@ export async function streamMessage(
 		stopWhen: stepCountIs(MAX_TOOL_CALLS),
 	});
 
-	let ts: string = "unset";
+	let append: Awaited<ReturnType<typeof slackService.startStream>>["append"];
+	let stop: Awaited<ReturnType<typeof slackService.startStream>>["stop"];
 
 	for await (const part of fullStream) {
 		console.log(JSON.stringify(part, null, 2));
 
 		if (part.type === "text-start") {
-			const stream = await slack.startStream({
-				channel: context.slack_channel_id,
-				thread_ts: context.slack_thread_ts,
-			});
+			const stream = await slackService.startStream(context);
+			append = stream.append;
+			stop = stream.stop;
+		}
 
-			ts = stream.ts;
+		if (part.type === "reasoning-start") {
+			await append!(TOOL_CALL_TEXTS["reasoning-start"]);
 		}
 
 		if (part.type === "text-delta") {
-			await slack.appendStream({
-				channel: context.slack_channel_id,
-				ts,
-				markdown_text: part.text,
-			});
+			await append!(part.text);
 		}
 	}
 
-	await slack.stopStream({
-		channel: context.slack_channel_id,
-		ts,
-	});
+	await stop!();
 }
 
 export async function processMessage(
