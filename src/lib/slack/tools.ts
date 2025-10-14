@@ -11,7 +11,7 @@ const logger = createLogger("slack/tools");
 export function getSlackTools(context: SlackContext) {
 	const presentListOfMovies = tool({
 		description:
-			"Present a list of movies (with their names, titles, years and images) to the user.",
+			"Present a list of movies (with their names, titles, years and images) to the user. Use this tool when the user asks for a list of movies, or when you need to present a list of movies to the user.",
 		inputSchema: z.object({
 			movies: z.array(
 				z.object({
