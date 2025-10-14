@@ -52,12 +52,8 @@ export async function streamMessage(
 
 	const tools = {
 		...getRadarrTools(context),
+		...getSonarrTools(context),
 	};
-
-	const { ts } = await slack.startStream({
-		channel: context.slack_channel_id,
-		thread_ts: context.slack_thread_ts,
-	});
 
 	const { fullStream } = streamText({
 		model,
@@ -66,8 +62,18 @@ export async function streamMessage(
 		stopWhen: stepCountIs(MAX_TOOL_CALLS),
 	});
 
+	let ts: string = "unset";
+
 	for await (const part of fullStream) {
-		console.log(JSON.stringify(part, null, 2));
+		if (part.type === "text-start") {
+			const stream = await slack.startStream({
+				channel: context.slack_channel_id,
+				thread_ts: context.slack_thread_ts,
+			});
+
+			ts = stream.ts;
+		}
+
 		if (part.type === "text-delta") {
 			await slack.appendStream({
 				channel: context.slack_channel_id,
