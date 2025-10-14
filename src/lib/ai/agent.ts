@@ -60,19 +60,14 @@ export async function streamMessage(
 		...getSlackTools(context),
 	};
 
-	const { fullStream } = streamText({
+	const { text } = streamText({
 		model,
 		messages,
 		tools,
 		stopWhen: stepCountIs(MAX_TOOL_CALLS),
 	});
 
-	for await (const part of fullStream) {
-		if (part.type === "text-delta") {
-			await slackService.appendToStream(context, part.text);
-		}
-	}
-
+	await slackService.appendToStream(context, await text);
 	await slackService.stopStream(context);
 }
 
