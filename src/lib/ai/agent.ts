@@ -68,24 +68,17 @@ export async function streamMessage(
 		stopWhen: stepCountIs(MAX_TOOL_CALLS),
 	});
 
-	let append: Awaited<ReturnType<typeof slackService.startStream>>["append"];
-	let stop: Awaited<ReturnType<typeof slackService.startStream>>["stop"];
+	const { append, stop } = await slackService.startStream(context);
 
 	for await (const part of fullStream) {
 		console.log(JSON.stringify(part, null, 2));
 
-		if (part.type === "text-start") {
-			const stream = await slackService.startStream(context);
-			append = stream.append;
-			stop = stream.stop;
-		}
-
 		if (part.type === "reasoning-start") {
-			await append!(TOOL_CALL_TEXTS["reasoning-start"]);
+			await append(TOOL_CALL_TEXTS["reasoning-start"]);
 		}
 
 		if (part.type === "text-delta") {
-			await append!(part.text);
+			await append(part.text);
 		}
 	}
 
