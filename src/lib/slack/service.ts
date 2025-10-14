@@ -74,7 +74,7 @@ export function sendMediaObject(
 	} satisfies SlackSectionBlock;
 
 	if (description) {
-		sectionBlock.text!.text += `\n_${description}_`;
+		sectionBlock.text!.text += `\n> ${description}`;
 	}
 
 	if (image) {
