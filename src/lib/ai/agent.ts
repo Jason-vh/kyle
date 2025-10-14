@@ -53,6 +53,10 @@ export async function streamMessage(
 	const tools = {
 		...getRadarrTools(context),
 		...getSonarrTools(context),
+		...getUltraTools(context),
+		...getQbittorrentTools(context),
+		...getTMDBTools(context),
+		...getSlackTools(context),
 	};
 
 	const { fullStream } = streamText({
