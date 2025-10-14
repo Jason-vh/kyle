@@ -27,7 +27,7 @@ export function getSonarrTools(context: SlackContext) {
 		onInputStart: async () => {
 			await slackService.appendToStream(
 				context,
-				"I'm taking a look at the series in Sonarr...\n"
+				":sonarr: _Fetching series details_\n"
 			);
 		},
 		execute: async ({ seriesId }) => {
@@ -61,7 +61,7 @@ export function getSonarrTools(context: SlackContext) {
 		onInputStart: async () => {
 			await slackService.appendToStream(
 				context,
-				"I'm taking a look at all the series in Sonarr...\n"
+				":sonarr: _Fetching all series_\n"
 			);
 		},
 		execute: async () => {
@@ -95,7 +95,7 @@ export function getSonarrTools(context: SlackContext) {
 		onInputStart: async () => {
 			await slackService.appendToStream(
 				context,
-				"I'm searching for the series in Sonarr...\n"
+				":sonarr: _Searching for series_\n"
 			);
 		},
 		execute: async ({ title }) => {
@@ -133,10 +133,7 @@ export function getSonarrTools(context: SlackContext) {
 			tvdbId: z.number().describe("The TVDB ID of the series to add"),
 		}),
 		onInputStart: async () => {
-			await slackService.appendToStream(
-				context,
-				"I'm adding the series to Sonarr...\n"
-			);
+			await slackService.appendToStream(context, ":sonarr: _Adding series_\n");
 		},
 		execute: async ({ title, year, tvdbId }) => {
 			logger.info("calling addSeries tool", { title, year, tvdbId, context });
@@ -190,7 +187,7 @@ export function getSonarrTools(context: SlackContext) {
 		onInputStart: async () => {
 			await slackService.appendToStream(
 				context,
-				"I'm removing the series from Sonarr...\n"
+				":sonarr: _Removing series_\n"
 			);
 		},
 		execute: async ({ seriesId }) => {
@@ -252,7 +249,7 @@ export function getSonarrTools(context: SlackContext) {
 		onInputStart: async () => {
 			await slackService.appendToStream(
 				context,
-				"I'm removing the season from Sonarr...\n"
+				":sonarr: _Removing season_\n"
 			);
 		},
 		execute: async ({ seriesId, seasonNumber }) => {
@@ -357,7 +354,7 @@ export function getSonarrTools(context: SlackContext) {
 		onInputStart: async () => {
 			await slackService.appendToStream(
 				context,
-				"I'm checking the episodes for the series in Sonarr...\n"
+				":sonarr: _Checking episodes_\n"
 			);
 		},
 		execute: async ({ seriesId, hasFile = false }) => {
@@ -392,10 +389,7 @@ export function getSonarrTools(context: SlackContext) {
 		description: "Get TV series episodes currently downloading or in the queue",
 		inputSchema: z.object({}),
 		onInputStart: async () => {
-			await slackService.appendToStream(
-				context,
-				"I'm checking the queue for Sonarr...\n"
-			);
+			await slackService.appendToStream(context, ":sonarr: _Checking queue_\n");
 		},
 		execute: async () => {
 			logger.info("calling getQueue tool", { context });
@@ -448,7 +442,7 @@ export function getSonarrTools(context: SlackContext) {
 		onInputStart: async () => {
 			await slackService.appendToStream(
 				context,
-				"I'm checking the calendar for Sonarr...\n"
+				":sonarr: _Checking calendar_\n"
 			);
 		},
 		execute: async ({ start, end, includeSeries = true }) => {
@@ -495,7 +489,7 @@ export function getSonarrTools(context: SlackContext) {
 		onInputStart: async () => {
 			await slackService.appendToStream(
 				context,
-				"I'm starting a search for the episodes in Sonarr...\n"
+				":sonarr: _Searching for episodes_\n"
 			);
 		},
 		execute: async ({ seriesId, episodeIds }) => {
@@ -563,7 +557,7 @@ export function getSonarrTools(context: SlackContext) {
 		onInputStart: async () => {
 			await slackService.appendToStream(
 				context,
-				"I'm checking the history in Sonarr...\n"
+				":sonarr: _Checking history_\n"
 			);
 		},
 		execute: async ({
@@ -613,7 +607,7 @@ export function getSonarrTools(context: SlackContext) {
 	});
 
 	return {
-		getSeries: getSeriesBySonarrId,
+		getSeriesBySonarrId,
 		getAllSeries,
 		searchSeries,
 		addSeries,
