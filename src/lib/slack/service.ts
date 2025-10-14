@@ -2,12 +2,7 @@ import { createLogger } from "@/lib/logger";
 import * as slack from "@/lib/slack/api";
 import type { SlackContext } from "@/types";
 import { generateToolCallMessage } from "../ai/generators";
-import type {
-	SlackBlock,
-	SlackContextBlock,
-	SlackHeaderBlock,
-	SlackSectionBlock,
-} from "./types";
+import type { SlackBlock, SlackContextBlock, SlackSectionBlock } from "./types";
 
 const logger = createLogger("slack/service");
 
@@ -72,42 +67,40 @@ export function sendMediaObject(
 		image?: string;
 	}
 ) {
-	const blocks: SlackBlock[] = [];
-
-	const headerBlock: SlackHeaderBlock = {
-		type: "header",
-		text: {
-			type: "plain_text",
-			text: title,
+	const blocks: SlackBlock[] = [
+		{
+			type: "section",
+			text: {
+				type: "mrkdwn",
+				text: `*${title}*`,
+			},
 		},
-	};
-
-	blocks.push(headerBlock);
+	];
 
 	if (action) {
-		const contextBlock: SlackContextBlock = {
+		blocks.push({
 			type: "context",
 			elements: [{ type: "mrkdwn", text: action }],
-		};
-
-		blocks.push(contextBlock);
+		});
 	}
 
-	const sectionBlock: SlackSectionBlock = {
+	const descriptionBlock: SlackSectionBlock = {
 		type: "section",
 		text: {
 			type: "mrkdwn",
 			text: `> ${description}`,
 		},
-	} satisfies SlackSectionBlock;
+	};
 
 	if (image) {
-		sectionBlock.accessory = {
+		descriptionBlock.accessory = {
 			type: "image",
 			image_url: image,
 			alt_text: title,
 		};
 	}
+
+	blocks.push(descriptionBlock);
 
 	slack.sendMessage({
 		channel: context.slack_channel_id,
