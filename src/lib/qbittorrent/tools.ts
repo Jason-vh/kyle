@@ -33,12 +33,6 @@ export function getQbittorrentTools(context: SlackContext) {
 					"Filter torrents by state. Default is 'all' if not specified."
 				),
 		}),
-		onInputStart: async () => {
-			await slackService.appendToStream(
-				context,
-				":qbittorrent: _Getting torrents_\n"
-			);
-		},
 		execute: async ({ filter }) => {
 			try {
 				logger.info("calling getTorrents tool", { filter, context });
@@ -48,6 +42,11 @@ export function getQbittorrentTools(context: SlackContext) {
 					thread_ts: context.slack_thread_ts,
 					status: "is looking up torrents...",
 				});
+
+				slackService.appendToStream(
+					context,
+					`I'm fetching the list of torrents from qBittorrent\n`
+				);
 
 				const torrents = await qbittorrent.getTorrents(filter);
 				const results = torrents.map(toPartialTorrent);
@@ -78,18 +77,17 @@ export function getQbittorrentTools(context: SlackContext) {
 				.min(1)
 				.describe("Array of torrent hashes to delete"),
 		}),
-		onInputStart: async () => {
-			await slackService.appendToStream(
-				context,
-				":qbittorrent: _Removing torrents_\n"
-			);
-		},
 		execute: async ({ hashes }) => {
 			try {
 				logger.info("calling deleteTorrents tool", {
 					hashes,
 					context,
 				});
+
+				slackService.appendToStream(
+					context,
+					`I'm removing ${hashes.length} torrent(s) from qBittorrent\n`
+				);
 
 				slack.setThreadStatus({
 					channel_id: context.slack_channel_id,

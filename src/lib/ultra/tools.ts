@@ -14,12 +14,6 @@ export function getUltraTools(context: SlackContext) {
 		description:
 			"Check storage and traffic usage statistics for the media server. Only provide the information that is relevant to the user's question.",
 		inputSchema: z.object({}),
-		onInputStart: async () => {
-			await slackService.appendToStream(
-				context,
-				":ultra: _Checking storage_\n"
-			);
-		},
 		execute: async () => {
 			try {
 				logger.info("calling ultraStats tool", { context });
@@ -29,6 +23,11 @@ export function getUltraTools(context: SlackContext) {
 					thread_ts: context.slack_thread_ts,
 					status: `is counting bytes...`,
 				});
+
+				slackService.appendToStream(
+					context,
+					`I'm checking the storage on the server\n`
+				);
 
 				const stats = await ultra.getTotalStats();
 				return {

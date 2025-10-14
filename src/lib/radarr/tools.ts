@@ -34,7 +34,7 @@ export function getRadarrTools(context: SlackContext) {
 
 				slackService.appendToStream(
 					context,
-					"I'm taking a look at the movie details in Radarr"
+					"I'm taking a look at the movie details in Radarr\n"
 				);
 
 				const movie = await radarr.getMovie(movieId);
@@ -61,7 +61,10 @@ export function getRadarrTools(context: SlackContext) {
 					status: "is fetching movies from Radarr...",
 				});
 
-				slackService.appendToStream(context, "I'm fetching movies from Radarr");
+				slackService.appendToStream(
+					context,
+					"I'm fetching movies from Radarr\n"
+				);
 
 				const movies = await radarr.getMovies();
 				return movies.map(toPartialMovie);
@@ -89,7 +92,7 @@ export function getRadarrTools(context: SlackContext) {
 
 				slackService.appendToStream(
 					context,
-					"I'm searching for movies to add to Radarr"
+					"I'm searching for movies to add to Radarr\n"
 				);
 
 				const movies = await radarr.searchMovies(title);
@@ -124,7 +127,7 @@ export function getRadarrTools(context: SlackContext) {
 
 				slackService.appendToStream(
 					context,
-					`I'm adding ${title} (${year}) to Radarr`
+					`I'm adding ${title} (${year}) to Radarr\n`
 				);
 
 				slack.setThreadStatus({
@@ -176,7 +179,7 @@ export function getRadarrTools(context: SlackContext) {
 				const movie = await radarr.getMovie(movieId);
 				slackService.appendToStream(
 					context,
-					`I'm removing ${movie.title} (${movie.year}) from Radarr`
+					`I'm removing ${movie.title} (${movie.year}) from Radarr\n`
 				);
 
 				slack.setThreadStatus({
@@ -215,7 +218,7 @@ export function getRadarrTools(context: SlackContext) {
 			try {
 				logger.info("calling getQueue tool", { context });
 
-				slackService.appendToStream(context, "I'm checking the Radarr queue");
+				slackService.appendToStream(context, "I'm checking the Radarr queue\n");
 
 				slack.setThreadStatus({
 					channel_id: context.slack_channel_id,
@@ -247,7 +250,7 @@ export function getRadarrTools(context: SlackContext) {
 
 			slackService.appendToStream(
 				context,
-				"I'm taking a look at the history in Radarr"
+				"I'm taking a look at the history in Radarr\n"
 			);
 
 			slack.setThreadStatus({
