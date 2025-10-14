@@ -121,7 +121,7 @@ export function getRadarrTools(context: SlackContext) {
 				// Send Block Kit message for visual feedback
 				await slackService.sendToolCallNotification(
 					context,
-					`Added *${title}* (${year}) to Radarr`
+					`Added ${title} (${year}) to Radarr`
 				);
 
 				return {

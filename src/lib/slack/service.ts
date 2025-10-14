@@ -11,7 +11,7 @@ export function sendToolCallNotification(context: SlackContext, text: string) {
 				elements: [
 					{
 						type: "plain_text",
-						text,
+						text: `✅ ${text}`,
 					},
 				],
 			},
