@@ -184,7 +184,7 @@ export function getRadarrTools(context: SlackContext) {
 			await slackService.appendToolUsageMessage(
 				context,
 				"removeMovie",
-				"Remove a movie from Radarr and delete files from disk"
+				"Remove a movie from Radarr"
 			);
 		},
 		execute: async ({ movieId }) => {
