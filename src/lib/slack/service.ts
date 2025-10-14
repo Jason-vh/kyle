@@ -1,9 +1,20 @@
 import { createLogger } from "@/lib/logger";
 import * as slack from "@/lib/slack/api";
 import type { SlackContext } from "@/types";
+import { generateToolCallMessage } from "../ai/generators";
 import type { SlackBlock, SlackContextBlock, SlackSectionBlock } from "./types";
 
 const logger = createLogger("slack/service");
+
+export async function appendToolUsageMessage(
+	context: SlackContext,
+	tool: string,
+	description: string
+) {
+	const status = await generateToolCallMessage(tool, description);
+
+	await appendToStream(context, status);
+}
 
 export async function startStream(context: SlackContext) {
 	const result = await slack.startStream({

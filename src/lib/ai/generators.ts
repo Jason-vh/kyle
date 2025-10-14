@@ -42,14 +42,7 @@ export async function generateInitialStatus(message: string): Promise<string> {
 
 		const model = openai("gpt-4o-mini");
 
-		const prompt = INITIAL_STATUS_PROMPT.replace("{message}", message).replace(
-			"{date}",
-			new Date().toLocaleDateString("en-US", {
-				month: "long",
-				day: "numeric",
-				year: "numeric",
-			})
-		);
+		const prompt = INITIAL_STATUS_PROMPT.replace("{message}", message);
 
 		const result = await generateText({
 			model,
@@ -60,5 +53,51 @@ export async function generateInitialStatus(message: string): Promise<string> {
 	} catch (error) {
 		logger.error("Error generating status", { error });
 		return "is cooking...";
+	}
+}
+
+const TOOL_CALL_STATUS_PROMPT = `
+	You are Kyle, a media library assistant who is currently processing a user request.
+
+	You are calling a tool to help the user. The tool is {tool}, which has the following description: {description}.
+
+	Generate a short status message for the tool call.
+
+	Some examples:
+	- "I'm taking a look at which movies you have in Radarr"
+	- "I'm checking which series you have in Sonarr"
+	- "I'm fetching the queue from Radarr"
+
+	Feel free to be creative with the status message.
+
+	Never use the actual tool name.
+`;
+
+export async function generateToolCallMessage(
+	tool: string,
+	description: string
+): Promise<string> {
+	try {
+		const openai = createOpenAI({
+			apiKey: Bun.env.OPENAI_API_KEY,
+		});
+
+		const model = openai("gpt-4o-mini");
+
+		const prompt = TOOL_CALL_STATUS_PROMPT.replace("{tool}", tool).replace(
+			"{description}",
+			description
+		);
+
+		const result = await generateText({
+			model,
+			prompt,
+		});
+
+		return result.text.replace(/""/g, "").trim();
+	} catch (error) {
+		logger.error("Error generating tool call status", { error });
+
+		return "is doing a thing";
 	}
 }

@@ -23,9 +23,10 @@ export function getRadarrTools(context: SlackContext) {
 				.describe("The ID of the movie to get information about."),
 		}),
 		onInputStart: async () => {
-			await slackService.appendToStream(
+			await slackService.appendToolUsageMessage(
 				context,
-				":radarr: _Fetching movie details_\n"
+				"getMovie",
+				"Get information about a specific movie in Radarr"
 			);
 		},
 		execute: async ({ radarrMovieId: movieId }) => {
@@ -53,9 +54,10 @@ export function getRadarrTools(context: SlackContext) {
 		description: "Get all movies in the Radarr library",
 		inputSchema: z.object({}),
 		onInputStart: async () => {
-			await slackService.appendToStream(
+			await slackService.appendToolUsageMessage(
 				context,
-				":radarr: _Checking which movies are in Radarr_\n"
+				"getMovies",
+				"Get all movies in the Radarr library"
 			);
 		},
 		execute: async () => {
@@ -83,9 +85,10 @@ export function getRadarrTools(context: SlackContext) {
 			title: z.string().describe("The title of the movie to search for"),
 		}),
 		onInputStart: async () => {
-			await slackService.appendToStream(
+			await slackService.appendToolUsageMessage(
 				context,
-				":radarr: _Searching for movies_\n"
+				"searchMovies",
+				"Search for movies to add to Radarr"
 			);
 		},
 		execute: async ({ title }) => {
@@ -125,7 +128,11 @@ export function getRadarrTools(context: SlackContext) {
 			year: z.string().describe("The year of the movie to add"),
 		}),
 		onInputStart: async () => {
-			await slackService.appendToStream(context, ":radarr: _Adding movie_\n");
+			await slackService.appendToolUsageMessage(
+				context,
+				"addMovie",
+				"Add a movie to Radarr for monitoring and downloading"
+			);
 		},
 		execute: async ({ tmdbId, title, year }) => {
 			try {
@@ -173,7 +180,11 @@ export function getRadarrTools(context: SlackContext) {
 			movieId: z.number().describe("The ID of the movie to remove"),
 		}),
 		onInputStart: async () => {
-			await slackService.appendToStream(context, ":radarr: _Removing movie_\n");
+			await slackService.appendToolUsageMessage(
+				context,
+				"removeMovie",
+				"Remove a movie from Radarr and delete files from disk"
+			);
 		},
 		execute: async ({ movieId }) => {
 			try {
@@ -213,7 +224,11 @@ export function getRadarrTools(context: SlackContext) {
 		description: "Get movies currently downloading or in the queue",
 		inputSchema: z.object({}),
 		onInputStart: async () => {
-			await slackService.appendToStream(context, ":radarr: _Checking queue_\n");
+			await slackService.appendToolUsageMessage(
+				context,
+				"getQueue",
+				"Get movies currently downloading or in the queue"
+			);
 		},
 		execute: async () => {
 			try {
@@ -245,9 +260,10 @@ export function getRadarrTools(context: SlackContext) {
 			pageSize: z.number().describe("The number of items to return."),
 		}),
 		onInputStart: async () => {
-			await slackService.appendToStream(
+			await slackService.appendToolUsageMessage(
 				context,
-				":radarr: _Checking history_\n"
+				"getHistory",
+				"Get the history of movies in Radarr"
 			);
 		},
 		execute: async ({ pageSize }) => {
