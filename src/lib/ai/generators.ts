@@ -70,7 +70,10 @@ const TOOL_CALL_STATUS_PROMPT = `
 
 	Feel free to be creative with the status message.
 
-	Never use the actual tool name.
+	# OUTPUT FORMAT
+	- DO NOT use any punctuation
+	- Only output a single line
+	- Never use the actual tool name
 `;
 
 export async function generateToolCallMessage(

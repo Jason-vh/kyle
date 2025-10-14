@@ -69,7 +69,7 @@ export async function streamMessage(
 
 	for await (const part of fullStream) {
 		if (part.type === "text-delta") {
-			slackService.appendToStream(context, part.text);
+			await slackService.appendToStream(context, part.text);
 		}
 	}
 

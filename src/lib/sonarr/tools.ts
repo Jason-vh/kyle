@@ -149,7 +149,8 @@ export function getSonarrTools(context: SlackContext) {
 				const seriesImage = series.images.find((i) => i.coverType === "poster");
 
 				await slackService.sendMediaObject(context, {
-					title: `*${series.title}* (${series.year}) (just added)`,
+					title: `*${series.title}* (${series.year})`,
+					action: "added a moment ago",
 					description: series.overview,
 					image: seriesImage?.remoteUrl ?? series.images?.[0]?.remoteUrl,
 				});
@@ -208,7 +209,8 @@ export function getSonarrTools(context: SlackContext) {
 
 				const seriesImage = series.images.find((i) => i.coverType === "poster");
 				await slackService.sendMediaObject(context, {
-					title: `*${series.title}* (${series.year}) (now removed)`,
+					title: `*${series.title}* (${series.year})`,
+					action: "removed a moment ago",
 					description: series.overview,
 					image: seriesImage?.remoteUrl ?? series.images?.[0]?.remoteUrl,
 				});
@@ -300,7 +302,8 @@ export function getSonarrTools(context: SlackContext) {
 				const seasonImage = season.images.find((i) => i.coverType === "poster");
 				const seriesImage = series.images.find((i) => i.coverType === "poster");
 				await slackService.sendMediaObject(context, {
-					title: `*${series.title}* (${series.year}) (${seasonNumber} now removed)`,
+					title: `*${series.title}* (${series.year})`,
+					action: `season ${seasonNumber} just removed`,
 					description: series.overview,
 					image: seasonImage?.remoteUrl ?? seriesImage?.remoteUrl,
 				});

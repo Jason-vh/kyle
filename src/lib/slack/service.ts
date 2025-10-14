@@ -2,7 +2,12 @@ import { createLogger } from "@/lib/logger";
 import * as slack from "@/lib/slack/api";
 import type { SlackContext } from "@/types";
 import { generateToolCallMessage } from "../ai/generators";
-import type { SlackBlock, SlackContextBlock, SlackSectionBlock } from "./types";
+import type {
+	SlackBlock,
+	SlackContextBlock,
+	SlackHeaderBlock,
+	SlackSectionBlock,
+} from "./types";
 
 const logger = createLogger("slack/service");
 
@@ -13,7 +18,7 @@ export async function appendToolUsageMessage(
 ) {
 	const status = await generateToolCallMessage(tool, description);
 
-	await appendToStream(context, status);
+	await appendToStream(context, status + "\n");
 }
 
 export async function startStream(context: SlackContext) {
@@ -58,24 +63,43 @@ export function sendMediaObject(
 	{
 		title,
 		description,
+		action,
 		image,
 	}: {
 		title: string;
+		action?: string;
 		description: string;
 		image?: string;
 	}
 ) {
-	const sectionBlock: SlackSectionBlock = {
-		type: "section",
+	const blocks: SlackBlock[] = [];
+
+	const headerBlock: SlackHeaderBlock = {
+		type: "header",
 		text: {
 			type: "mrkdwn",
 			text: title,
 		},
-	} satisfies SlackSectionBlock;
+	};
 
-	if (description) {
-		sectionBlock.text!.text += `\n> ${description}`;
+	blocks.push(headerBlock);
+
+	if (action) {
+		const contextBlock: SlackContextBlock = {
+			type: "context",
+			elements: [{ type: "mrkdwn", text: action }],
+		};
+
+		blocks.push(contextBlock);
 	}
+
+	const sectionBlock: SlackSectionBlock = {
+		type: "section",
+		text: {
+			type: "mrkdwn",
+			text: `> ${description}`,
+		},
+	} satisfies SlackSectionBlock;
 
 	if (image) {
 		sectionBlock.accessory = {
@@ -88,7 +112,7 @@ export function sendMediaObject(
 	slack.sendMessage({
 		channel: context.slack_channel_id,
 		thread_ts: context.slack_thread_ts,
-		blocks: [sectionBlock],
+		blocks,
 	});
 }
 
