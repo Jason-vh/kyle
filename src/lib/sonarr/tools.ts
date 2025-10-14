@@ -124,6 +124,7 @@ export function getSonarrTools(context: SlackContext) {
 				});
 
 				const series = await sonarr.addSeries(title, year, tvdbId);
+				console.log(JSON.stringify(series, null, 2));
 
 				await slackService.sendToolCallNotification(
 					context,
@@ -168,6 +169,7 @@ export function getSonarrTools(context: SlackContext) {
 			});
 			try {
 				const series = await sonarr.getSeries(seriesId);
+				console.log(JSON.stringify(series, null, 2));
 
 				slack.setThreadStatus({
 					channel_id: context.slack_channel_id,

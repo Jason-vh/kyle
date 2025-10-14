@@ -117,6 +117,7 @@ export function getRadarrTools(context: SlackContext) {
 				});
 
 				const result = await radarr.addMovie(title, year, tmdbId);
+				console.log(JSON.stringify(result, null, 2));
 
 				await slackService.sendToolCallNotification(
 					context,
@@ -155,6 +156,7 @@ export function getRadarrTools(context: SlackContext) {
 				logger.info("calling removeMovie tool", { movieId, context });
 
 				const movie = await radarr.getMovie(movieId);
+				console.log(JSON.stringify(movie, null, 2));
 
 				slack.setThreadStatus({
 					channel_id: context.slack_channel_id,
