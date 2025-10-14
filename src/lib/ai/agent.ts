@@ -7,6 +7,7 @@ import { getQbittorrentTools } from "@/lib/qbittorrent/tools";
 import { getRadarrTools } from "@/lib/radarr/tools";
 import * as slack from "@/lib/slack/api";
 import { getSonarrTools } from "@/lib/sonarr/tools";
+import { getTMDBTools } from "@/lib/tmdb/tools";
 import { getUltraTools } from "@/lib/ultra/tools";
 import type { MessageWithContext, SlackContext } from "@/types";
 import { createOpenAI } from "@ai-sdk/openai";
@@ -50,6 +51,7 @@ export async function processMessage(
 			...getSonarrTools(context),
 			...getUltraTools(context),
 			...getQbittorrentTools(context),
+			...getTMDBTools(context),
 		};
 
 		logger.info("generating text", { message, context });

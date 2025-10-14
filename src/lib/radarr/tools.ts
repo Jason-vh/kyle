@@ -18,11 +18,11 @@ export function getRadarrTools(context: SlackContext) {
 	const getMovie = tool({
 		description: "Get information about a specific movie in Radarr by ID",
 		inputSchema: z.object({
-			movieId: z
+			radarrMovieId: z
 				.number()
-				.describe("The ID of the movie to get information about"),
+				.describe("The ID of the movie to get information about."),
 		}),
-		execute: async ({ movieId }) => {
+		execute: async ({ radarrMovieId: movieId }) => {
 			try {
 				logger.info("calling getMovie tool", { movieId, context });
 
@@ -100,15 +100,15 @@ export function getRadarrTools(context: SlackContext) {
 
 	const addMovie = tool({
 		description:
-			"Add a movie to Radarr for monitoring and downloading. Requires title, year, and TMDB ID.",
+			"Add a movie to Radarr for monitoring and downloading. Requires TMDB ID, title, and year.",
 		inputSchema: z.object({
+			tmdbId: z.number().describe("The TMDB ID of the movie to add"),
 			title: z.string().describe("The title of the movie to add"),
 			year: z.string().describe("The year of the movie to add"),
-			tmdbId: z.number().describe("The TMDB ID of the movie to add"),
 		}),
-		execute: async ({ title, year, tmdbId }) => {
+		execute: async ({ tmdbId, title, year }) => {
 			try {
-				logger.info("calling addMovie tool", { title, year, tmdbId, context });
+				logger.info("calling addMovie tool", { tmdbId, context });
 
 				slack.setThreadStatus({
 					channel_id: context.slack_channel_id,
@@ -118,10 +118,10 @@ export function getRadarrTools(context: SlackContext) {
 
 				const result = await radarr.addMovie(title, year, tmdbId);
 
-				// Send Block Kit message for visual feedback
 				await slackService.sendToolCallNotification(
 					context,
-					`Added ${title} (${year}) to Radarr`
+					`Added ${title} (${year}) to Radarr`,
+					result.images[0]?.url
 				);
 
 				return {

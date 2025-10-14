@@ -20,6 +20,7 @@ export interface Env {
 	QBITTORRENT_USERNAME: string;
 	QBITTORRENT_PASSWORD: string;
 	AXIOM_TOKEN: string;
+	TMDB_API_TOKEN: string;
 
 	// Server Configuration
 	PORT: string;

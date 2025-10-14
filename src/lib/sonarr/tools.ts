@@ -124,13 +124,15 @@ export function getSonarrTools(context: SlackContext) {
 				});
 
 				const series = await sonarr.addSeries(title, year, tvdbId);
-				const result = toPartialSeries(series);
 
 				// Send Block Kit message for visual feedback
 				await slackService.sendToolCallNotification(
 					context,
-					`Added ${title} (${year}) to Sonarr`
+					`Added *${title}* (${year}) to Radarr`,
+					series.images[0]?.url
 				);
+
+				const result = toPartialSeries(series);
 
 				const response = {
 					series: result,
