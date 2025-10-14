@@ -6,6 +6,7 @@ import { createLogger } from "@/lib/logger";
 import { getQbittorrentTools } from "@/lib/qbittorrent/tools";
 import { getRadarrTools } from "@/lib/radarr/tools";
 import * as slack from "@/lib/slack/api";
+import { getSlackTools } from "@/lib/slack/tools";
 import { getSonarrTools } from "@/lib/sonarr/tools";
 import { getTMDBTools } from "@/lib/tmdb/tools";
 import { getUltraTools } from "@/lib/ultra/tools";
@@ -52,6 +53,7 @@ export async function processMessage(
 			...getUltraTools(context),
 			...getQbittorrentTools(context),
 			...getTMDBTools(context),
+			...getSlackTools(context),
 		};
 
 		logger.info("generating text", { message, context });

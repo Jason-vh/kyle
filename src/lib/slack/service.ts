@@ -1,6 +1,6 @@
 import * as slack from "@/lib/slack/api";
 import type { SlackContext } from "@/types";
-import type { SlackContextBlock, SlackSectionBlock } from "./types";
+import type { SlackBlock, SlackContextBlock, SlackSectionBlock } from "./types";
 
 export function sendMediaNotification(
 	context: SlackContext,
@@ -37,7 +37,55 @@ export function sendMediaNotification(
 	slack.sendMessage({
 		channel: context.slack_channel_id,
 		thread_ts: context.slack_thread_ts,
-		blocks: [sectionBlock],
+		blocks: [
+			sectionBlock,
+			{
+				type: "context",
+				elements: [
+					{
+						type: "mrkdwn",
+						text: `(_this is a system message indicating that an action has been taken_)`,
+					},
+				],
+			},
+		],
+	});
+}
+
+export function sendMediaItems(
+	context: SlackContext,
+	items: {
+		title: string;
+		description: string;
+		image?: string;
+	}[]
+) {
+	const blocks: SlackBlock[] = [];
+
+	for (const item of items) {
+		const block: SlackSectionBlock = {
+			type: "section",
+			text: {
+				type: "mrkdwn",
+				text: `*${item.title}*\n_${item.description}_`,
+			},
+		};
+
+		if (item.image) {
+			block.accessory = {
+				type: "image",
+				image_url: item.image,
+				alt_text: item.title,
+			};
+		}
+
+		blocks.push(block);
+	}
+
+	slack.sendMessage({
+		channel: context.slack_channel_id,
+		thread_ts: context.slack_thread_ts,
+		blocks,
 	});
 }
 
