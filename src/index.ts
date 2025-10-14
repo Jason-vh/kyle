@@ -33,7 +33,6 @@ const server = Bun.serve({
 					};
 
 					logger.info(`received event with type ${body.event.type}`, {
-						body,
 						context,
 					});
 
