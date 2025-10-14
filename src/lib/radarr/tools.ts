@@ -140,8 +140,8 @@ export function getRadarrTools(context: SlackContext) {
 				const result = await radarr.addMovie(title, year, tmdbId);
 
 				const movieImage = result.images.find((i) => i.coverType === "poster");
-				await slackService.sendMediaNotification(context, {
-					title: `Added *${title}* (${year})`,
+				await slackService.sendMediaObject(context, {
+					title: `*${title}* (${year}) (just added)`,
 					description: result.overview,
 					image: movieImage?.remoteUrl ?? result.images?.[0]?.remoteUrl,
 				});
@@ -190,8 +190,8 @@ export function getRadarrTools(context: SlackContext) {
 				await radarr.removeMovie(movieId, true);
 
 				const movieImage = movie.images.find((i) => i.coverType === "poster");
-				await slackService.sendMediaNotification(context, {
-					title: `Removed *${movie.title}* (${movie.year})`,
+				await slackService.sendMediaObject(context, {
+					title: `*${movie.title}* (${movie.year}) (now removed)`,
 					description: movie.overview,
 					image: movieImage?.remoteUrl ?? movie.images?.[0]?.remoteUrl,
 				});

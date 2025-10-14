@@ -42,7 +42,7 @@ export function stopStream(context: SlackContext, text?: string) {
 	});
 }
 
-export function sendMediaNotification(
+export function sendMediaObject(
 	context: SlackContext,
 	{
 		title,
