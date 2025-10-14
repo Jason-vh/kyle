@@ -77,7 +77,7 @@ export function sendMediaObject(
 	const headerBlock: SlackHeaderBlock = {
 		type: "header",
 		text: {
-			type: "mrkdwn",
+			type: "plain_text",
 			text: title,
 		},
 	};
