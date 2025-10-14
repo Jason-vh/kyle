@@ -98,7 +98,6 @@ export interface RadarrMovie {
 	inCinemas?: string;
 	physicalRelease?: string;
 	digitalRelease?: string;
-	remotePoster?: string;
 	releaseDate?: string;
 	images: RadarrImage[];
 	website?: string;

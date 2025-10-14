@@ -85,7 +85,6 @@ export interface SonarrSeries {
 	airTime: string;
 	images: SonarrImage[];
 	originalLanguage: SonarrLanguage;
-	remotePoster?: string;
 	seasons: SonarrSeason[];
 	year: number;
 	path: string;

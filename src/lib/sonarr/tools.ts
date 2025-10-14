@@ -126,10 +126,11 @@ export function getSonarrTools(context: SlackContext) {
 				const series = await sonarr.addSeries(title, year, tvdbId);
 				console.log(JSON.stringify(series, null, 2));
 
+				const seriesImage = series.images.find((i) => i.coverType === "poster");
 				await slackService.sendToolCallNotification(
 					context,
 					`Added *${title}* (${year}) to Sonarr`,
-					series.remotePoster
+					seriesImage?.remoteUrl ?? series.images?.[0]?.remoteUrl
 				);
 
 				const result = toPartialSeries(series);
@@ -179,10 +180,11 @@ export function getSonarrTools(context: SlackContext) {
 
 				await sonarr.removeSeries(seriesId, true);
 
+				const seriesImage = series.images.find((i) => i.coverType === "poster");
 				await slackService.sendToolCallNotification(
 					context,
 					`Removed *${series.title}* (${series.year}) from Sonarr`,
-					series.remotePoster
+					seriesImage?.remoteUrl ?? series.images?.[0]?.remoteUrl
 				);
 
 				const response = {
@@ -268,7 +270,7 @@ export function getSonarrTools(context: SlackContext) {
 				await slackService.sendToolCallNotification(
 					context,
 					`Removed season ${seasonNumber} of *${series.title}* (${series.year}) from Sonarr. The user has been notified of the removal.`,
-					seasonImage?.remoteUrl ?? series.remotePoster
+					seasonImage?.remoteUrl ?? series.images?.[0]?.remoteUrl
 				);
 
 				const response = {
