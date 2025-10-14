@@ -59,19 +59,22 @@ export async function streamMessage(
 		thread_ts: context.slack_thread_ts,
 	});
 
-	const { textStream } = streamText({
+	const { fullStream } = streamText({
 		model,
 		messages,
 		tools,
 		stopWhen: stepCountIs(MAX_TOOL_CALLS),
 	});
 
-	for await (const textPart of textStream) {
-		await slack.appendStream({
-			channel: context.slack_channel_id,
-			ts,
-			markdown_text: textPart,
-		});
+	for await (const part of fullStream) {
+		console.log(JSON.stringify(part, null, 2));
+		if (part.type === "text-delta") {
+			await slack.appendStream({
+				channel: context.slack_channel_id,
+				ts,
+				markdown_text: part.text,
+			});
+		}
 	}
 
 	await slack.stopStream({
