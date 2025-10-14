@@ -4,7 +4,14 @@ export interface SonarrLanguage {
 }
 
 export interface SonarrImage {
-	coverType: string;
+	coverType:
+		| "unknown"
+		| "poster"
+		| "banner"
+		| "fanart"
+		| "screenshot"
+		| "headshot"
+		| "clearlogo";
 	url: string;
 	remoteUrl: string;
 }
@@ -30,6 +37,7 @@ export interface SonarrAlternateTitles {
 export interface SonarrSeason {
 	seasonNumber: number;
 	monitored: boolean;
+	images: SonarrImage[];
 	statistics?: {
 		episodeFileCount: number;
 		episodeCount: number;
@@ -77,6 +85,7 @@ export interface SonarrSeries {
 	airTime: string;
 	images: SonarrImage[];
 	originalLanguage: SonarrLanguage;
+	remotePoster?: string;
 	seasons: SonarrSeason[];
 	year: number;
 	path: string;
@@ -284,7 +293,13 @@ export interface SonarrCommand {
 	message?: string;
 	body: Record<string, unknown>;
 	priority: "normal" | "high" | "low";
-	status: "queued" | "started" | "completed" | "failed" | "aborted" | "cancelled";
+	status:
+		| "queued"
+		| "started"
+		| "completed"
+		| "failed"
+		| "aborted"
+		| "cancelled";
 	result?: "successful" | "unsuccessful";
 	queued: string;
 	started?: string;

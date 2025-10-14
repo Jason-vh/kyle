@@ -125,11 +125,10 @@ export function getSonarrTools(context: SlackContext) {
 
 				const series = await sonarr.addSeries(title, year, tvdbId);
 
-				// Send Block Kit message for visual feedback
 				await slackService.sendToolCallNotification(
 					context,
-					`Added *${title}* (${year}) to Radarr`,
-					series.images[0]?.url
+					`Added *${title}* (${year}) to Sonarr`,
+					series.remotePoster
 				);
 
 				const result = toPartialSeries(series);
@@ -172,16 +171,25 @@ export function getSonarrTools(context: SlackContext) {
 				context,
 			});
 			try {
+				const series = await sonarr.getSeries(seriesId);
+
 				slack.setThreadStatus({
 					channel_id: context.slack_channel_id,
 					thread_ts: context.slack_thread_ts,
-					status: `is removing series from Sonarr...`,
+					status: `is removing ${series.title} (${series.year}) from Sonarr...`,
 				});
 
 				await sonarr.removeSeries(seriesId, deleteFiles);
+
+				await slackService.sendToolCallNotification(
+					context,
+					`Removed *${series.title}* (${series.year}) from Sonarr`,
+					series.remotePoster
+				);
+
 				const response = {
 					success: true,
-					message: `Removed series with ID ${seriesId}${
+					message: `Removed *${series.title}* (${series.year}) from Sonarr${
 						deleteFiles ? " and deleted files from disk" : ""
 					}`,
 				};
@@ -223,10 +231,12 @@ export function getSonarrTools(context: SlackContext) {
 				context,
 			});
 			try {
+				const series = await sonarr.getSeries(seriesId);
+
 				slack.setThreadStatus({
 					channel_id: context.slack_channel_id,
 					thread_ts: context.slack_thread_ts,
-					status: `is removing season ${seasonNumber} from Sonarr...`,
+					status: `is removing season ${seasonNumber} of ${series.title} (${series.year})...`,
 				});
 
 				// Get all episodes for the series
@@ -246,7 +256,6 @@ export function getSonarrTools(context: SlackContext) {
 				}
 
 				// Get the series and unmonitor the season
-				const series = await sonarr.getSeries(seriesId);
 				const season = series.seasons.find(
 					(s) => s.seasonNumber === seasonNumber
 				);
@@ -259,6 +268,14 @@ export function getSonarrTools(context: SlackContext) {
 
 				season.monitored = false;
 				await sonarr.updateSeries(seriesId, series);
+
+				const seasonImage = season.images.find((i) => i.coverType === "poster");
+
+				await slackService.sendToolCallNotification(
+					context,
+					`Removed season ${seasonNumber} of *${series.title}* (${series.year}) from Sonarr`,
+					seasonImage?.remoteUrl ?? series.remotePoster
+				);
 
 				const response = {
 					success: true,

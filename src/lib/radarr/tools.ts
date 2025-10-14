@@ -121,7 +121,7 @@ export function getRadarrTools(context: SlackContext) {
 				await slackService.sendToolCallNotification(
 					context,
 					`Added ${title} (${year}) to Radarr`,
-					result.images[0]?.url
+					result.remotePoster
 				);
 
 				return {
@@ -155,16 +155,25 @@ export function getRadarrTools(context: SlackContext) {
 			try {
 				logger.info("calling removeMovie tool", { movieId, context });
 
+				const movie = await radarr.getMovie(movieId);
+
 				slack.setThreadStatus({
 					channel_id: context.slack_channel_id,
 					thread_ts: context.slack_thread_ts,
-					status: `is removing movies from Radarr...`,
+					status: `is removing ${movie.title} (${movie.year}) from Radarr...`,
 				});
 
 				await radarr.removeMovie(movieId, true);
+
+				await slackService.sendToolCallNotification(
+					context,
+					`Removed ${movie.title} (${movie.year}) from Radarr and deleted files from disk`,
+					movie.remotePoster
+				);
+
 				return {
 					success: true,
-					message: `Removed movie with ID ${movieId} and deleted files from disk`,
+					message: `Removed ${movie.title} (${movie.year}) from Radarr and deleted files from disk`,
 				};
 			} catch (error) {
 				logger.error("Failed to remove movie", { movieId, error, context });
