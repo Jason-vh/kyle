@@ -69,6 +69,8 @@ export async function streamMessage(
 	let ts: string = "unset";
 
 	for await (const part of fullStream) {
+		console.log(JSON.stringify(part, null, 2));
+
 		if (part.type === "text-start") {
 			const stream = await slack.startStream({
 				channel: context.slack_channel_id,
