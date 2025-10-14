@@ -67,22 +67,17 @@ export function sendMediaObject(
 		image?: string;
 	}
 ) {
-	const blocks: SlackBlock[] = [
-		{
-			type: "section",
-			text: {
-				type: "mrkdwn",
-				text: `*${title}*`,
-			},
-		},
-	];
+	const blocks: SlackBlock[] = [];
 
-	if (action) {
-		blocks.push({
-			type: "context",
-			elements: [{ type: "mrkdwn", text: action }],
-		});
-	}
+	const titleBlock: SlackSectionBlock = {
+		type: "section",
+		text: {
+			type: "mrkdwn",
+			text: `*${title}*`,
+		},
+	};
+
+	blocks.push(titleBlock);
 
 	const descriptionBlock: SlackSectionBlock = {
 		type: "section",
