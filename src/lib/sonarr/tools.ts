@@ -61,7 +61,7 @@ export function getSonarrTools(context: SlackContext) {
 		onInputStart: async () => {
 			await slackService.appendToStream(
 				context,
-				":sonarr: _Fetching all series_\n"
+				":sonarr: _Checking which series are in Sonarr_\n"
 			);
 		},
 		execute: async () => {

@@ -55,7 +55,7 @@ export function getRadarrTools(context: SlackContext) {
 		onInputStart: async () => {
 			await slackService.appendToStream(
 				context,
-				":radarr: _Fetching all movies_\n"
+				":radarr: _Checking which movies are in Radarr_\n"
 			);
 		},
 		execute: async () => {
