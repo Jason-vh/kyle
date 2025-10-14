@@ -135,7 +135,7 @@ export function getSonarrTools(context: SlackContext) {
 
 				const response = {
 					series: result,
-					message: `Added "${title}" (${year}) to Sonarr for monitoring and downloading`,
+					message: `Added "${title}" (${year}) to Sonarr for monitoring and downloading. The user has been notified of the addition.`,
 				};
 				logger.info("successfully added series", { response, context });
 				return response;
@@ -147,6 +147,7 @@ export function getSonarrTools(context: SlackContext) {
 					tvdbId,
 					error,
 				});
+
 				return `Failed to add series with title "${title}", year "${year}", and TVDB ID "${tvdbId}": ${JSON.stringify(
 					error
 				)}`;
@@ -159,15 +160,10 @@ export function getSonarrTools(context: SlackContext) {
 			"Remove a TV series from Sonarr and optionally delete files from disk",
 		inputSchema: z.object({
 			seriesId: z.number().describe("The ID of the series to remove"),
-			deleteFiles: z
-				.boolean()
-				.optional()
-				.describe("Whether to delete files from disk (default: false)"),
 		}),
-		execute: async ({ seriesId, deleteFiles = false }) => {
+		execute: async ({ seriesId }) => {
 			logger.info("calling removeSeries tool", {
 				seriesId,
-				deleteFiles,
 				context,
 			});
 			try {
@@ -179,7 +175,7 @@ export function getSonarrTools(context: SlackContext) {
 					status: `is removing ${series.title} (${series.year}) from Sonarr...`,
 				});
 
-				await sonarr.removeSeries(seriesId, deleteFiles);
+				await sonarr.removeSeries(seriesId, true);
 
 				await slackService.sendToolCallNotification(
 					context,
@@ -189,13 +185,10 @@ export function getSonarrTools(context: SlackContext) {
 
 				const response = {
 					success: true,
-					message: `Removed *${series.title}* (${series.year}) from Sonarr${
-						deleteFiles ? " and deleted files from disk" : ""
-					}`,
+					message: `Removed *${series.title}* (${series.year}) from Sonarr and deleted files from disk. The user has been notified of the removal.`,
 				};
 				logger.info("successfully removed series", {
 					seriesId,
-					deleteFiles,
 					context,
 				});
 				return response;
@@ -203,12 +196,11 @@ export function getSonarrTools(context: SlackContext) {
 				logger.error("Failed to remove series", {
 					context,
 					seriesId,
-					deleteFiles,
 					error,
 				});
-				return `Failed to remove series with ID ${seriesId}${
-					deleteFiles ? " and deleted files from disk" : ""
-				}: ${JSON.stringify(error)}`;
+				return `Failed to remove series with ID ${seriesId}: ${JSON.stringify(
+					error
+				)}`;
 			}
 		},
 	});
@@ -273,7 +265,7 @@ export function getSonarrTools(context: SlackContext) {
 
 				await slackService.sendToolCallNotification(
 					context,
-					`Removed season ${seasonNumber} of *${series.title}* (${series.year}) from Sonarr`,
+					`Removed season ${seasonNumber} of *${series.title}* (${series.year}) from Sonarr. The user has been notified of the removal.`,
 					seasonImage?.remoteUrl ?? series.remotePoster
 				);
 

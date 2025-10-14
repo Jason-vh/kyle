@@ -128,7 +128,7 @@ export function getRadarrTools(context: SlackContext) {
 					title: result.title,
 					year: result.year,
 					id: result.id,
-					message: `Added "${title}" (${year}) to Radarr for monitoring and downloading`,
+					message: `Added "${title}" (${year}) to Radarr for monitoring and downloading. The user has been notified of the addition.`,
 				};
 			} catch (error) {
 				logger.error("Failed to add movie", {
@@ -146,8 +146,7 @@ export function getRadarrTools(context: SlackContext) {
 	});
 
 	const removeMovie = tool({
-		description:
-			"Remove a movie from Radarr and optionally delete files from disk",
+		description: "Remove a movie from Radarr and delete files from disk",
 		inputSchema: z.object({
 			movieId: z.number().describe("The ID of the movie to remove"),
 		}),
@@ -167,13 +166,13 @@ export function getRadarrTools(context: SlackContext) {
 
 				await slackService.sendToolCallNotification(
 					context,
-					`Removed ${movie.title} (${movie.year}) from Radarr and deleted files from disk`,
+					`Removed ${movie.title} (${movie.year}) from Radarr and deleted files from disk.`,
 					movie.remotePoster
 				);
 
 				return {
 					success: true,
-					message: `Removed ${movie.title} (${movie.year}) from Radarr and deleted files from disk`,
+					message: `Removed ${movie.title} (${movie.year}) from Radarr and deleted files from disk. The user has been notified of the removal.`,
 				};
 			} catch (error) {
 				logger.error("Failed to remove movie", { movieId, error, context });
@@ -212,13 +211,9 @@ export function getRadarrTools(context: SlackContext) {
 
 	const getHistory = tool({
 		description:
-			"Get the history of movies in Radarr. Each item has a type, which indicates what action was taken (grabbed, downloaded, deleted, etc.). Grabbing in this context means to start downloading it.",
+			"Get the history of movies in Radarr. Each item has a type, which indicates what action was taken (grabbed, downloaded, deleted, etc.). Grabbing in this context means to start downloading it. History can be quite noisy, and there may be an unexpected number of items returned.",
 		inputSchema: z.object({
-			pageSize: z
-				.number()
-				.describe(
-					"The number of items to return. Use a larger number than you think, because history can be quite granular and noisy."
-				),
+			pageSize: z.number().describe("The number of items to return."),
 		}),
 		execute: async ({ pageSize }) => {
 			logger.info("calling getHistory tool", { pageSize });
