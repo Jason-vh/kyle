@@ -77,18 +77,7 @@ export function sendMediaObject(
 	slack.sendMessage({
 		channel: context.slack_channel_id,
 		thread_ts: context.slack_thread_ts,
-		blocks: [
-			sectionBlock,
-			{
-				type: "context",
-				elements: [
-					{
-						type: "mrkdwn",
-						text: `(_this is a system message indicating that an action has been taken_)`,
-					},
-				],
-			},
-		],
+		blocks: [sectionBlock],
 	});
 }
 
