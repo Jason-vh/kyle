@@ -131,7 +131,7 @@ export function getRadarrTools(context: SlackContext) {
 			await slackService.appendToolUsageMessage(
 				context,
 				"addMovie",
-				"Add a movie to Radarr for monitoring and downloading"
+				"Add a movie to Radarr"
 			);
 		},
 		execute: async ({ tmdbId, title, year }) => {
