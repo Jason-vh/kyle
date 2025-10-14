@@ -5,6 +5,7 @@ import { createLogger } from "@/lib/logger";
 import * as qbittorrent from "@/lib/qbittorrent/api";
 import { toPartialTorrent } from "@/lib/qbittorrent/utils";
 import * as slack from "@/lib/slack/api";
+import * as slackService from "@/lib/slack/service";
 import type { SlackContext } from "@/types";
 
 const logger = createLogger("qbittorrent/tools");
@@ -86,6 +87,11 @@ export function getQbittorrentTools(context: SlackContext) {
 
 				await qbittorrent.deleteTorrents(hashes);
 
+				await slackService.sendToolCallNotification(
+					context,
+					`Deleted ${hashes.length} torrent(s)`
+				);
+
 				logger.info("successfully deleted torrents", {
 					hashes,
 					context,
@@ -94,7 +100,7 @@ export function getQbittorrentTools(context: SlackContext) {
 				return {
 					success: true,
 					deletedCount: hashes.length,
-					message: `Successfully deleted ${hashes.length} torrent(s) and their files`,
+					message: `Successfully deleted ${hashes.length} torrent(s) and their files. The user has been notified of the deletion.`,
 				};
 			} catch (error) {
 				logger.error("Failed to delete torrents", {

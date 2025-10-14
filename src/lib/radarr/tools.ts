@@ -122,7 +122,7 @@ export function getRadarrTools(context: SlackContext) {
 				const movieImage = result.images.find((i) => i.coverType === "poster");
 				await slackService.sendToolCallNotification(
 					context,
-					`Added ${title} (${year}) to Radarr`,
+					`Added *${title}* (${year}) to Radarr`,
 					movieImage?.remoteUrl ?? result.images?.[0]?.remoteUrl
 				);
 
@@ -170,7 +170,7 @@ export function getRadarrTools(context: SlackContext) {
 				const movieImage = movie.images.find((i) => i.coverType === "poster");
 				await slackService.sendToolCallNotification(
 					context,
-					`Removed ${movie.title} (${movie.year}) from Radarr and deleted files from disk.`,
+					`Removed *${movie.title}* (${movie.year}) from Radarr and deleted files from disk.`,
 					movieImage?.remoteUrl ?? movie.images?.[0]?.remoteUrl
 				);
 
