@@ -1,5 +1,6 @@
 import { createLogger } from "@/lib/logger";
 import type {
+	SlackBlock,
 	SlackConversationsRepliesResponse,
 	SlackUsersInfoResponse,
 } from "./types";
@@ -69,26 +70,9 @@ async function request({
 
 export async function sendMessage(params: {
 	channel: string;
-	text: string;
+	text?: string;
 	thread_ts: string;
-}): Promise<unknown> {
-	return request({
-		operation: "chat.postMessage",
-		method: "POST",
-		data: params,
-	});
-}
-
-export async function sendBlockKitMessage(params: {
-	channel: string;
-	blocks: Array<{
-		type: string;
-		text?: {
-			type: string;
-			text: string;
-		};
-	}>;
-	thread_ts: string;
+	blocks?: SlackBlock[];
 }): Promise<unknown> {
 	return request({
 		operation: "chat.postMessage",

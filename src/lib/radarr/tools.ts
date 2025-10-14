@@ -9,6 +9,7 @@ import {
 	toPartialQueueItem,
 } from "@/lib/radarr/utils";
 import * as slack from "@/lib/slack/api";
+import * as slackService from "@/lib/slack/service";
 import type { SlackContext } from "@/types";
 
 const logger = createLogger("radarr/tools");
@@ -118,19 +119,10 @@ export function getRadarrTools(context: SlackContext) {
 				const result = await radarr.addMovie(title, year, tmdbId);
 
 				// Send Block Kit message for visual feedback
-				await slack.sendBlockKitMessage({
-					channel: context.slack_channel_id,
-					thread_ts: context.slack_thread_ts,
-					blocks: [
-						{
-							type: "section",
-							text: {
-								type: "mrkdwn",
-								text: `✅ Added *${title}* (${year}) to Radarr`,
-							},
-						},
-					],
-				});
+				await slackService.sendToolCallNotification(
+					context,
+					`Added *${title}* (${year}) to Radarr`
+				);
 
 				return {
 					title: result.title,

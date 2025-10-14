@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { createLogger } from "@/lib/logger";
 import * as slack from "@/lib/slack/api";
+import * as slackService from "@/lib/slack/service";
 import * as sonarr from "@/lib/sonarr/api";
 import {
 	toPartialCalendarEpisode,
@@ -126,19 +127,10 @@ export function getSonarrTools(context: SlackContext) {
 				const result = toPartialSeries(series);
 
 				// Send Block Kit message for visual feedback
-				await slack.sendBlockKitMessage({
-					channel: context.slack_channel_id,
-					thread_ts: context.slack_thread_ts,
-					blocks: [
-						{
-							type: "section",
-							text: {
-								type: "mrkdwn",
-								text: `✅ Added *${title}* (${year}) to Sonarr`,
-							},
-						},
-					],
-				});
+				await slackService.sendToolCallNotification(
+					context,
+					`Added *${title}* (${year}) to Radarr`
+				);
 
 				const response = {
 					series: result,
@@ -218,7 +210,9 @@ export function getSonarrTools(context: SlackContext) {
 			seriesId: z.number().describe("The ID of the series"),
 			seasonNumber: z
 				.number()
-				.describe("The season number to remove (e.g., 1 for Season 1, 0 for Specials)"),
+				.describe(
+					"The season number to remove (e.g., 1 for Season 1, 0 for Specials)"
+				),
 		}),
 		execute: async ({ seriesId, seasonNumber }) => {
 			logger.info("calling removeSeason tool", {
@@ -238,7 +232,8 @@ export function getSonarrTools(context: SlackContext) {
 
 				// Filter to episodes in the target season that have files
 				const seasonEpisodes = episodes.filter(
-					(ep) => ep.seasonNumber === seasonNumber && ep.hasFile && ep.episodeFileId
+					(ep) =>
+						ep.seasonNumber === seasonNumber && ep.hasFile && ep.episodeFileId
 				);
 
 				// Delete all episode files for this season
@@ -250,10 +245,14 @@ export function getSonarrTools(context: SlackContext) {
 
 				// Get the series and unmonitor the season
 				const series = await sonarr.getSeries(seriesId);
-				const season = series.seasons.find((s) => s.seasonNumber === seasonNumber);
+				const season = series.seasons.find(
+					(s) => s.seasonNumber === seasonNumber
+				);
 
 				if (!season) {
-					throw new Error(`Season ${seasonNumber} not found in series ${seriesId}`);
+					throw new Error(
+						`Season ${seasonNumber} not found in series ${seriesId}`
+					);
 				}
 
 				season.monitored = false;
@@ -263,7 +262,11 @@ export function getSonarrTools(context: SlackContext) {
 					success: true,
 					message:
 						seasonEpisodes.length > 0
-							? `Removed season ${seasonNumber} from series ${seriesId}, deleted ${seasonEpisodes.length} episode file${seasonEpisodes.length === 1 ? "" : "s"} and unmonitored the season`
+							? `Removed season ${seasonNumber} from series ${seriesId}, deleted ${
+									seasonEpisodes.length
+							  } episode file${
+									seasonEpisodes.length === 1 ? "" : "s"
+							  } and unmonitored the season`
 							: `Unmonitored season ${seasonNumber} from series ${seriesId} (no files to delete)`,
 					filesDeleted: seasonEpisodes.length,
 				};
@@ -282,7 +285,9 @@ export function getSonarrTools(context: SlackContext) {
 					error,
 					context,
 				});
-				return `Failed to remove season ${seasonNumber} from series ${seriesId}: ${JSON.stringify(error)}`;
+				return `Failed to remove season ${seasonNumber} from series ${seriesId}: ${JSON.stringify(
+					error
+				)}`;
 			}
 		},
 	});
