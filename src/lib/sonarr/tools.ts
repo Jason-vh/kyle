@@ -27,16 +27,16 @@ export function getSonarrTools(context: SlackContext) {
 		execute: async ({ seriesId }) => {
 			logger.info("calling getSeries tool", { seriesId, context });
 			try {
+				slackService.appendToStream(
+					context,
+					"I'm looking up the series in Sonarr\n"
+				);
+
 				slack.setThreadStatus({
 					channel_id: context.slack_channel_id,
 					thread_ts: context.slack_thread_ts,
 					status: "is checking series details in Sonarr...",
 				});
-
-				slackService.appendToStream(
-					context,
-					"I'm looking up the series in Sonarr\n"
-				);
 
 				const series = await sonarr.getSeries(seriesId);
 				const result = toPartialSeries(series);
@@ -93,16 +93,16 @@ export function getSonarrTools(context: SlackContext) {
 		execute: async ({ title }) => {
 			logger.info("calling searchSeries tool", { title, context });
 			try {
+				slackService.appendToStream(
+					context,
+					"I'm searching for the series to add to Sonarr\n"
+				);
+
 				slack.setThreadStatus({
 					channel_id: context.slack_channel_id,
 					thread_ts: context.slack_thread_ts,
 					status: "is searching for series in Sonarr...",
 				});
-
-				slackService.appendToStream(
-					context,
-					"I'm searching for the series to add to Sonarr\n"
-				);
 
 				const series = await sonarr.searchSeries(title);
 				const results = series.map(toPartialSeries);
@@ -132,16 +132,16 @@ export function getSonarrTools(context: SlackContext) {
 		execute: async ({ title, year, tvdbId }) => {
 			logger.info("calling addSeries tool", { title, year, tvdbId, context });
 			try {
+				slackService.appendToStream(
+					context,
+					`I'm adding ${title} (${year}) to Sonarr\n`
+				);
+
 				slack.setThreadStatus({
 					channel_id: context.slack_channel_id,
 					thread_ts: context.slack_thread_ts,
 					status: `is adding ${title} (${year}) to Sonarr...`,
 				});
-
-				slackService.appendToStream(
-					context,
-					`I'm adding ${title} (${year}) to Sonarr\n`
-				);
 
 				const series = await sonarr.addSeries(title, year, tvdbId);
 
@@ -359,16 +359,16 @@ export function getSonarrTools(context: SlackContext) {
 		execute: async ({ seriesId, hasFile = false }) => {
 			logger.info("calling getEpisodes tool", { seriesId, hasFile, context });
 			try {
+				slackService.appendToStream(
+					context,
+					`I'm checking which episodes we have in Sonarr\n`
+				);
+
 				slack.setThreadStatus({
 					channel_id: context.slack_channel_id,
 					thread_ts: context.slack_thread_ts,
 					status: `is checking episodes for series in Sonarr...`,
 				});
-
-				slackService.appendToStream(
-					context,
-					`I'm checking which episodes we have in Sonarr\n`
-				);
 
 				const episodes = await sonarr.getEpisodes(seriesId);
 				const results = episodes
@@ -395,13 +395,13 @@ export function getSonarrTools(context: SlackContext) {
 		execute: async () => {
 			logger.info("calling getQueue tool", { context });
 			try {
+				slackService.appendToStream(context, `I'm checking the Sonarr queue\n`);
+
 				slack.setThreadStatus({
 					channel_id: context.slack_channel_id,
 					thread_ts: context.slack_thread_ts,
 					status: `is checking the Sonarr queue...`,
 				});
-
-				slackService.appendToStream(context, `I'm checking the Sonarr queue\n`);
 
 				const queueResponse = await sonarr.getQueue();
 				const queueItems = queueResponse.records.map(toPartialQueueItem);
@@ -450,16 +450,16 @@ export function getSonarrTools(context: SlackContext) {
 				context,
 			});
 			try {
+				slackService.appendToStream(
+					context,
+					`I'm checking the Sonarr calendar\n`
+				);
+
 				slack.setThreadStatus({
 					channel_id: context.slack_channel_id,
 					thread_ts: context.slack_thread_ts,
 					status: "is checking the Sonarr calendar...",
 				});
-
-				slackService.appendToStream(
-					context,
-					`I'm checking the Sonarr calendar\n`
-				);
 
 				const episodes = await sonarr.getCalendar(start, end, includeSeries);
 				const results = episodes.map(toPartialCalendarEpisode);
@@ -495,16 +495,16 @@ export function getSonarrTools(context: SlackContext) {
 				context,
 			});
 			try {
+				slackService.appendToStream(
+					context,
+					`I'm starting a search for episodes in Sonarr\n`
+				);
+
 				slack.setThreadStatus({
 					channel_id: context.slack_channel_id,
 					thread_ts: context.slack_thread_ts,
 					status: "is searching for episodes in Sonarr...",
 				});
-
-				slackService.appendToStream(
-					context,
-					`I'm starting a search for episodes in Sonarr\n`
-				);
 
 				const command = await sonarr.searchEpisodes(seriesId, episodeIds);
 				const response = {
@@ -569,16 +569,16 @@ export function getSonarrTools(context: SlackContext) {
 				context,
 			});
 			try {
+				slackService.appendToStream(
+					context,
+					`I'm checking the Sonarr history\n`
+				);
+
 				slack.setThreadStatus({
 					channel_id: context.slack_channel_id,
 					thread_ts: context.slack_thread_ts,
 					status: "is checking Sonarr history...",
 				});
-
-				slackService.appendToStream(
-					context,
-					`I'm checking the Sonarr history\n`
-				);
 
 				const historyResponse = await sonarr.getHistory(
 					page,

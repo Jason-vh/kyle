@@ -18,16 +18,16 @@ export function getUltraTools(context: SlackContext) {
 			try {
 				logger.info("calling ultraStats tool", { context });
 
+				slackService.appendToStream(
+					context,
+					`I'm checking the storage on the server\n`
+				);
+
 				slack.setThreadStatus({
 					channel_id: context.slack_channel_id,
 					thread_ts: context.slack_thread_ts,
 					status: `is counting bytes...`,
 				});
-
-				slackService.appendToStream(
-					context,
-					`I'm checking the storage on the server\n`
-				);
 
 				const stats = await ultra.getTotalStats();
 				return {

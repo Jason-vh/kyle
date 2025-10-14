@@ -88,16 +88,16 @@ export function getTMDBTools(context: SlackContext) {
 			try {
 				logger.info("calling searchTV tool", { query, page, context });
 
+				slackService.appendToStream(
+					context,
+					`I'm searching for TV shows on TMDB\n`
+				);
+
 				slack.setThreadStatus({
 					channel_id: context.slack_channel_id,
 					thread_ts: context.slack_thread_ts,
 					status: `is searching for TV shows on TMDB...`,
 				});
-
-				slackService.appendToStream(
-					context,
-					`I'm searching for TV shows on TMDB\n`
-				);
 
 				const results = await tmdb.searchTV(query, {
 					page,
@@ -135,16 +135,16 @@ export function getTMDBTools(context: SlackContext) {
 			try {
 				logger.info("calling searchMulti tool", { query, page, context });
 
+				slackService.appendToStream(
+					context,
+					`I'm searching for something on TMDB\n`
+				);
+
 				slack.setThreadStatus({
 					channel_id: context.slack_channel_id,
 					thread_ts: context.slack_thread_ts,
 					status: `is searching TMDB...`,
 				});
-
-				slackService.appendToStream(
-					context,
-					`I'm searching for something on TMDB\n`
-				);
 
 				const results = await tmdb.searchMulti(query, {
 					page,
@@ -219,16 +219,16 @@ export function getTMDBTools(context: SlackContext) {
 			try {
 				logger.info("calling getTVShowDetails tool", { tmdbTVId, context });
 
+				slackService.appendToStream(
+					context,
+					`I'm looking up a series in TMDB\n`
+				);
+
 				slack.setThreadStatus({
 					channel_id: context.slack_channel_id,
 					thread_ts: context.slack_thread_ts,
 					status: `is fetching TV show details from TMDB...`,
 				});
-
-				slackService.appendToStream(
-					context,
-					`I'm looking up a series in TMDB\n`
-				);
 
 				const show = await tmdb.getTVShow(tmdbTVId);
 				return toPartialTVShowDetails(show);

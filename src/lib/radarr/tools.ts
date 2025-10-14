@@ -26,16 +26,16 @@ export function getRadarrTools(context: SlackContext) {
 			try {
 				logger.info("calling getMovie tool", { movieId, context });
 
+				slackService.appendToStream(
+					context,
+					"I'm taking a look at the movie details in Radarr\n"
+				);
+
 				slack.setThreadStatus({
 					channel_id: context.slack_channel_id,
 					thread_ts: context.slack_thread_ts,
 					status: "is checking movie details in Radarr...",
 				});
-
-				slackService.appendToStream(
-					context,
-					"I'm taking a look at the movie details in Radarr\n"
-				);
 
 				const movie = await radarr.getMovie(movieId);
 				return toPartialMovie(movie);
@@ -55,16 +55,16 @@ export function getRadarrTools(context: SlackContext) {
 			try {
 				logger.info("calling getMovies tool", { context });
 
+				slackService.appendToStream(
+					context,
+					"I'm fetching movies from Radarr\n"
+				);
+
 				slack.setThreadStatus({
 					channel_id: context.slack_channel_id,
 					thread_ts: context.slack_thread_ts,
 					status: "is fetching movies from Radarr...",
 				});
-
-				slackService.appendToStream(
-					context,
-					"I'm fetching movies from Radarr\n"
-				);
 
 				const movies = await radarr.getMovies();
 				return movies.map(toPartialMovie);
@@ -84,16 +84,16 @@ export function getRadarrTools(context: SlackContext) {
 			try {
 				logger.info("calling searchMovies tool", { title, context });
 
+				slackService.appendToStream(
+					context,
+					"I'm searching for movies to add to Radarr\n"
+				);
+
 				slack.setThreadStatus({
 					channel_id: context.slack_channel_id,
 					thread_ts: context.slack_thread_ts,
 					status: "is searching for movies...",
 				});
-
-				slackService.appendToStream(
-					context,
-					"I'm searching for movies to add to Radarr\n"
-				);
 
 				const movies = await radarr.searchMovies(title);
 				const results = movies.map(toPartialMovie);
@@ -176,10 +176,13 @@ export function getRadarrTools(context: SlackContext) {
 			try {
 				logger.info("calling removeMovie tool", { movieId, context });
 
+				slackService.appendToStream(context, `I'm removing`);
+
 				const movie = await radarr.getMovie(movieId);
+
 				slackService.appendToStream(
 					context,
-					`I'm removing ${movie.title} (${movie.year}) from Radarr\n`
+					` ${movie.title} (${movie.year}) from Radarr\n`
 				);
 
 				slack.setThreadStatus({
