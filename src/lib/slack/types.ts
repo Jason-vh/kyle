@@ -236,6 +236,7 @@ export type SlackElement =
 	| SlackTimePickerElement
 	| SlackRadioButtonsElement
 	| SlackCheckboxesElement
+	| SlackImageBlock
 	| SlackPlainTextInputElement;
 
 export type SlackOption = {

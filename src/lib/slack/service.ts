@@ -1,35 +1,31 @@
 import * as slack from "@/lib/slack/api";
 import type { SlackContext } from "@/types";
-import type { SlackBlock } from "./types";
+import type { SlackSectionBlock } from "./types";
 
 export function sendToolCallNotification(
 	context: SlackContext,
 	text: string,
 	image?: string
 ) {
-	const blocks: SlackBlock[] = [];
+	const sectionBlock: SlackSectionBlock = {
+		type: "section",
+		text: {
+			type: "mrkdwn",
+			text: text,
+		},
+	};
 
 	if (image) {
-		blocks.push({
+		sectionBlock.accessory = {
 			type: "image",
 			image_url: image,
 			alt_text: text,
-		});
+		};
 	}
-
-	blocks.push({
-		type: "context",
-		elements: [
-			{
-				type: "mrkdwn",
-				text: text,
-			},
-		],
-	});
 
 	slack.sendMessage({
 		channel: context.slack_channel_id,
 		thread_ts: context.slack_thread_ts,
-		blocks,
+		blocks: [sectionBlock],
 	});
 }
