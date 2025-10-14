@@ -117,24 +117,13 @@ export function getRadarrTools(context: SlackContext) {
 				});
 
 				const result = await radarr.addMovie(title, year, tmdbId);
-				console.log(JSON.stringify(result, null, 2));
 
 				const movieImage = result.images.find((i) => i.coverType === "poster");
-				let message = `Added *${title}* (${year}) to Radarr`;
-
-				if (result.overview) {
-					message += `\n_${result.overview}_`;
-				}
-
-				if (result.imdbId) {
-					message += `\n<https://www.imdb.com/title/${result.imdbId}|IMDB>`;
-				}
-
-				await slackService.sendToolCallNotification(
-					context,
-					message,
-					movieImage?.remoteUrl ?? result.images?.[0]?.remoteUrl
-				);
+				await slackService.sendMediaNotification(context, {
+					title: `Added *${title}* (${year})`,
+					description: result.overview,
+					image: movieImage?.remoteUrl ?? result.images?.[0]?.remoteUrl,
+				});
 
 				return {
 					title: result.title,
@@ -167,7 +156,6 @@ export function getRadarrTools(context: SlackContext) {
 				logger.info("calling removeMovie tool", { movieId, context });
 
 				const movie = await radarr.getMovie(movieId);
-				console.log(JSON.stringify(movie, null, 2));
 
 				slack.setThreadStatus({
 					channel_id: context.slack_channel_id,
@@ -178,10 +166,11 @@ export function getRadarrTools(context: SlackContext) {
 				await radarr.removeMovie(movieId, true);
 
 				const movieImage = movie.images.find((i) => i.coverType === "poster");
-				await slackService.sendToolCallNotification(
-					context,
-					`Removed *${movie.title}* (${movie.year})`
-				);
+				await slackService.sendMediaNotification(context, {
+					title: `Removed *${movie.title}* (${movie.year})`,
+					description: movie.overview,
+					image: movieImage?.remoteUrl ?? movie.images?.[0]?.remoteUrl,
+				});
 
 				return {
 					success: true,

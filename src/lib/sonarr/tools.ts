@@ -124,14 +124,14 @@ export function getSonarrTools(context: SlackContext) {
 				});
 
 				const series = await sonarr.addSeries(title, year, tvdbId);
-				console.log(JSON.stringify(series, null, 2));
 
 				const seriesImage = series.images.find((i) => i.coverType === "poster");
-				await slackService.sendToolCallNotification(
-					context,
-					`Added *${title}* (${year}) to Sonarr`,
-					seriesImage?.remoteUrl ?? series.images?.[0]?.remoteUrl
-				);
+
+				await slackService.sendMediaNotification(context, {
+					title: `Added *${series.title}* (${series.year})`,
+					description: series.overview,
+					image: seriesImage?.remoteUrl ?? series.images?.[0]?.remoteUrl,
+				});
 
 				const result = toPartialSeries(series);
 
@@ -170,7 +170,6 @@ export function getSonarrTools(context: SlackContext) {
 			});
 			try {
 				const series = await sonarr.getSeries(seriesId);
-				console.log(JSON.stringify(series, null, 2));
 
 				slack.setThreadStatus({
 					channel_id: context.slack_channel_id,
@@ -181,11 +180,11 @@ export function getSonarrTools(context: SlackContext) {
 				await sonarr.removeSeries(seriesId, true);
 
 				const seriesImage = series.images.find((i) => i.coverType === "poster");
-				await slackService.sendToolCallNotification(
-					context,
-					`Removed *${series.title}* (${series.year}) from Sonarr`,
-					seriesImage?.remoteUrl ?? series.images?.[0]?.remoteUrl
-				);
+				await slackService.sendMediaNotification(context, {
+					title: `Removed *${series.title}* (${series.year})`,
+					description: series.overview,
+					image: seriesImage?.remoteUrl ?? series.images?.[0]?.remoteUrl,
+				});
 
 				const response = {
 					success: true,
@@ -266,12 +265,12 @@ export function getSonarrTools(context: SlackContext) {
 				await sonarr.updateSeries(seriesId, series);
 
 				const seasonImage = season.images.find((i) => i.coverType === "poster");
-
-				await slackService.sendToolCallNotification(
-					context,
-					`Removed season ${seasonNumber} of *${series.title}* (${series.year}) from Sonarr. The user has been notified of the removal.`,
-					seasonImage?.remoteUrl ?? series.images?.[0]?.remoteUrl
-				);
+				const seriesImage = series.images.find((i) => i.coverType === "poster");
+				await slackService.sendMediaNotification(context, {
+					title: `Removed season ${seasonNumber} of *${series.title}* (${series.year})`,
+					description: series.overview,
+					image: seasonImage?.remoteUrl ?? seriesImage?.remoteUrl,
+				});
 
 				const response = {
 					success: true,
