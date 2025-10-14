@@ -1,50 +1,44 @@
+import { createLogger } from "@/lib/logger";
 import * as slack from "@/lib/slack/api";
 import type { SlackContext } from "@/types";
 import type { SlackBlock, SlackContextBlock, SlackSectionBlock } from "./types";
 
-const STEP_TEXTS = {
-	"reasoning-start": ":thinkspin: is thinking...",
-};
+const logger = createLogger("slack/service");
 
 export async function startStream(context: SlackContext) {
-	const { ts } = await slack.startStream({
+	const result = await slack.startStream({
 		channel: context.slack_channel_id,
 		thread_ts: context.slack_thread_ts,
 	});
 
-	context.slack_stream_ts = ts;
+	context.slack_stream_ts = result.ts;
 
-	function append(text: string) {
-		return slack.appendStream({
-			channel: context.slack_channel_id,
-			ts,
-			markdown_text: text,
-		});
-	}
-
-	function stop(text?: string) {
-		return slack.stopStream({
-			channel: context.slack_channel_id,
-			ts,
-			markdown_text: text,
-		});
-	}
-
-	return { append, stop };
+	return result;
 }
 
-export function appendStepNotification(
-	context: SlackContext,
-	step: keyof typeof STEP_TEXTS
-) {
+export function appendToStream(context: SlackContext, text: string) {
 	if (!context.slack_stream_ts) {
+		logger.warn("appendToStream: no stream timestamp", { context });
 		return;
 	}
 
-	slack.appendStream({
+	return slack.appendStream({
 		channel: context.slack_channel_id,
 		ts: context.slack_stream_ts,
-		markdown_text: STEP_TEXTS[step],
+		markdown_text: text,
+	});
+}
+
+export function stopStream(context: SlackContext, text?: string) {
+	if (!context.slack_stream_ts) {
+		logger.warn("stopStream: no stream timestamp", { context });
+		return;
+	}
+
+	return slack.stopStream({
+		channel: context.slack_channel_id,
+		ts: context.slack_stream_ts,
+		markdown_text: text,
 	});
 }
 

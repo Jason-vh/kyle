@@ -17,13 +17,19 @@ import type { SlackContext } from "@/types";
 const logger = createLogger("sonarr/tools");
 
 export function getSonarrTools(context: SlackContext) {
-	const getSeries = tool({
+	const getSeriesBySonarrId = tool({
 		description: "Get information about a specific TV series in Sonarr by ID",
 		inputSchema: z.object({
 			seriesId: z
 				.number()
 				.describe("The ID of the series to get information about"),
 		}),
+		onInputStart: async () => {
+			await slackService.appendToStream(
+				context,
+				"I'm taking a look at the series in Sonarr...\n"
+			);
+		},
 		execute: async ({ seriesId }) => {
 			logger.info("calling getSeries tool", { seriesId, context });
 			try {
@@ -52,6 +58,12 @@ export function getSonarrTools(context: SlackContext) {
 	const getAllSeries = tool({
 		description: "Get all TV series in the Sonarr library",
 		inputSchema: z.object({}),
+		onInputStart: async () => {
+			await slackService.appendToStream(
+				context,
+				"I'm taking a look at all the series in Sonarr...\n"
+			);
+		},
 		execute: async () => {
 			logger.info("calling getAllSeries tool", { context });
 			try {
@@ -80,6 +92,12 @@ export function getSonarrTools(context: SlackContext) {
 		inputSchema: z.object({
 			title: z.string().describe("The title of the TV series to search for"),
 		}),
+		onInputStart: async () => {
+			await slackService.appendToStream(
+				context,
+				"I'm searching for the series in Sonarr...\n"
+			);
+		},
 		execute: async ({ title }) => {
 			logger.info("calling searchSeries tool", { title, context });
 			try {
@@ -114,6 +132,12 @@ export function getSonarrTools(context: SlackContext) {
 			year: z.number().describe("The year the series started"),
 			tvdbId: z.number().describe("The TVDB ID of the series to add"),
 		}),
+		onInputStart: async () => {
+			await slackService.appendToStream(
+				context,
+				"I'm adding the series to Sonarr...\n"
+			);
+		},
 		execute: async ({ title, year, tvdbId }) => {
 			logger.info("calling addSeries tool", { title, year, tvdbId, context });
 			try {
@@ -163,6 +187,12 @@ export function getSonarrTools(context: SlackContext) {
 		inputSchema: z.object({
 			seriesId: z.number().describe("The ID of the series to remove"),
 		}),
+		onInputStart: async () => {
+			await slackService.appendToStream(
+				context,
+				"I'm removing the series from Sonarr...\n"
+			);
+		},
 		execute: async ({ seriesId }) => {
 			logger.info("calling removeSeries tool", {
 				seriesId,
@@ -219,6 +249,12 @@ export function getSonarrTools(context: SlackContext) {
 					"The season number to remove (e.g., 1 for Season 1, 0 for Specials)"
 				),
 		}),
+		onInputStart: async () => {
+			await slackService.appendToStream(
+				context,
+				"I'm removing the season from Sonarr...\n"
+			);
+		},
 		execute: async ({ seriesId, seasonNumber }) => {
 			logger.info("calling removeSeason tool", {
 				seriesId,
@@ -318,6 +354,12 @@ export function getSonarrTools(context: SlackContext) {
 				)
 				.default(false),
 		}),
+		onInputStart: async () => {
+			await slackService.appendToStream(
+				context,
+				"I'm checking the episodes for the series in Sonarr...\n"
+			);
+		},
 		execute: async ({ seriesId, hasFile = false }) => {
 			logger.info("calling getEpisodes tool", { seriesId, hasFile, context });
 			try {
@@ -349,6 +391,12 @@ export function getSonarrTools(context: SlackContext) {
 	const getQueue = tool({
 		description: "Get TV series episodes currently downloading or in the queue",
 		inputSchema: z.object({}),
+		onInputStart: async () => {
+			await slackService.appendToStream(
+				context,
+				"I'm checking the queue for Sonarr...\n"
+			);
+		},
 		execute: async () => {
 			logger.info("calling getQueue tool", { context });
 			try {
@@ -397,6 +445,12 @@ export function getSonarrTools(context: SlackContext) {
 				.default(true)
 				.describe("Include series information with each episode"),
 		}),
+		onInputStart: async () => {
+			await slackService.appendToStream(
+				context,
+				"I'm checking the calendar for Sonarr...\n"
+			);
+		},
 		execute: async ({ start, end, includeSeries = true }) => {
 			logger.info("calling getCalendar tool", {
 				start,
@@ -438,6 +492,12 @@ export function getSonarrTools(context: SlackContext) {
 				.optional()
 				.describe("Array of specific episode IDs to search for"),
 		}),
+		onInputStart: async () => {
+			await slackService.appendToStream(
+				context,
+				"I'm starting a search for the episodes in Sonarr...\n"
+			);
+		},
 		execute: async ({ seriesId, episodeIds }) => {
 			logger.info("calling searchEpisodes tool", {
 				seriesId,
@@ -500,6 +560,12 @@ export function getSonarrTools(context: SlackContext) {
 				.default(true)
 				.describe("Include episode information"),
 		}),
+		onInputStart: async () => {
+			await slackService.appendToStream(
+				context,
+				"I'm checking the history in Sonarr...\n"
+			);
+		},
 		execute: async ({
 			page = 1,
 			pageSize = 20,
@@ -547,7 +613,7 @@ export function getSonarrTools(context: SlackContext) {
 	});
 
 	return {
-		getSeries,
+		getSeries: getSeriesBySonarrId,
 		getAllSeries,
 		searchSeries,
 		addSeries,

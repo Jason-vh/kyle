@@ -19,7 +19,6 @@ import { getTMDBTools } from "@/lib/tmdb/tools";
 import { getUltraTools } from "@/lib/ultra/tools";
 import type { MessageWithContext, SlackContext } from "@/types";
 import { createOpenAI } from "@ai-sdk/openai";
-import { TOOL_CALL_TEXTS } from "../slack/constants";
 
 const logger = createLogger("ai/agent");
 
@@ -68,21 +67,19 @@ export async function streamMessage(
 		stopWhen: stepCountIs(MAX_TOOL_CALLS),
 	});
 
-	const { append, stop } = await slackService.startStream(context);
+	await slackService.startStream(context);
 
 	for await (const part of fullStream) {
-		console.log(JSON.stringify(part, null, 2));
-
 		if (part.type === "reasoning-start") {
-			await append(TOOL_CALL_TEXTS["reasoning-start"]);
+			await slackService.appendToStream(context, "let me think...\n");
 		}
 
 		if (part.type === "text-delta") {
-			await append(part.text);
+			await slackService.appendToStream(context, part.text);
 		}
 	}
 
-	await stop!();
+	await slackService.stopStream(context);
 }
 
 export async function processMessage(

@@ -35,5 +35,8 @@ export const createLogger = (scope: string) => {
 		error(message: string, args: Record<string, unknown> = {}) {
 			logger.error(`[${scope}] ${message}`, args);
 		},
+		warn(message: string, args: Record<string, unknown> = {}) {
+			logger.warn(`[${scope}] ${message}`, args);
+		},
 	};
 };
