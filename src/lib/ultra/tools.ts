@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { createLogger } from "@/lib/logger";
 import * as slack from "@/lib/slack/api";
+import * as slackService from "@/lib/slack/service";
 import * as ultra from "@/lib/ultra/api";
 import type { SlackContext } from "@/types";
 
@@ -13,6 +14,12 @@ export function getUltraTools(context: SlackContext) {
 		description:
 			"Check storage and traffic usage statistics for the media server. Only provide the information that is relevant to the user's question.",
 		inputSchema: z.object({}),
+		onInputStart: async () => {
+			await slackService.appendToStream(
+				context,
+				":ultra: _Checking storage_\n"
+			);
+		},
 		execute: async () => {
 			try {
 				logger.info("calling ultraStats tool", { context });

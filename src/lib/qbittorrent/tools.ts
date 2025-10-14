@@ -33,6 +33,12 @@ export function getQbittorrentTools(context: SlackContext) {
 					"Filter torrents by state. Default is 'all' if not specified."
 				),
 		}),
+		onInputStart: async () => {
+			await slackService.appendToStream(
+				context,
+				":qbittorrent: _Getting torrents_\n"
+			);
+		},
 		execute: async ({ filter }) => {
 			try {
 				logger.info("calling getTorrents tool", { filter, context });
@@ -72,6 +78,12 @@ export function getQbittorrentTools(context: SlackContext) {
 				.min(1)
 				.describe("Array of torrent hashes to delete"),
 		}),
+		onInputStart: async () => {
+			await slackService.appendToStream(
+				context,
+				":qbittorrent: _Removing torrents_\n"
+			);
+		},
 		execute: async ({ hashes }) => {
 			try {
 				logger.info("calling deleteTorrents tool", {

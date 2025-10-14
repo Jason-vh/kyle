@@ -70,10 +70,6 @@ export async function streamMessage(
 	await slackService.startStream(context);
 
 	for await (const part of fullStream) {
-		if (part.type === "reasoning-start") {
-			await slackService.appendToStream(context, "let me think...\n");
-		}
-
 		if (part.type === "text-delta") {
 			await slackService.appendToStream(context, part.text);
 		}
