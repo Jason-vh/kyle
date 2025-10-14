@@ -87,7 +87,7 @@ export function getQbittorrentTools(context: SlackContext) {
 
 				await qbittorrent.deleteTorrents(hashes);
 
-				await slackService.sendToolCallNotification(
+				await slackService.sendSystemMessage(
 					context,
 					`Deleted ${hashes.length} torrent(s)`
 				);

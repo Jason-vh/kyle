@@ -70,7 +70,8 @@ export async function handleSlackEvent(
 	// this is intentionally not awaited so that we can continue processing the message
 	setStatus(event, threadTs);
 
-	await agent.processMessage(message, context);
+	// await agent.processMessage(message, context);
+	await agent.streamMessage(message, context);
 
 	// clear the thread status
 	await slack.setThreadStatus({

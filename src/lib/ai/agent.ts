@@ -1,4 +1,10 @@
-import { APICallError, generateText, stepCountIs, type ModelMessage } from "ai";
+import {
+	APICallError,
+	generateText,
+	stepCountIs,
+	streamText,
+	type ModelMessage,
+} from "ai";
 
 import { MAX_TOOL_CALLS } from "@/lib/ai/constants";
 import { getSystemPrompt } from "@/lib/ai/prompt";
@@ -15,17 +21,70 @@ import { createOpenAI } from "@ai-sdk/openai";
 
 const logger = createLogger("ai/agent");
 
+const openai = createOpenAI({
+	apiKey: Bun.env.OPENAI_API_KEY,
+});
+
+const model = openai("gpt-5-nano");
+
+export async function streamMessage(
+	message: MessageWithContext,
+	context: SlackContext
+): Promise<void> {
+	const systemPrompt = getSystemPrompt({
+		username: message.user.username,
+		userId: message.user.id,
+	});
+
+	const messages: ModelMessage[] = [{ role: "system", content: systemPrompt }];
+
+	messages.push({
+		role: "system",
+		content: `This is the conversation history: ${JSON.stringify(
+			message.history
+		)}`,
+	});
+
+	messages.push({
+		role: "user",
+		content: message.text,
+	});
+
+	const tools = {
+		...getRadarrTools(context),
+	};
+
+	const { ts } = await slack.startStream({
+		channel: context.slack_channel_id,
+		thread_ts: context.slack_thread_ts,
+	});
+
+	const { textStream } = streamText({
+		model,
+		messages,
+		tools,
+		stopWhen: stepCountIs(MAX_TOOL_CALLS),
+	});
+
+	for await (const textPart of textStream) {
+		await slack.appendStream({
+			channel: context.slack_channel_id,
+			ts,
+			markdown_text: textPart,
+		});
+	}
+
+	await slack.stopStream({
+		channel: context.slack_channel_id,
+		ts,
+	});
+}
+
 export async function processMessage(
 	message: MessageWithContext,
 	context: SlackContext
 ): Promise<void> {
 	try {
-		const openai = createOpenAI({
-			apiKey: Bun.env.OPENAI_API_KEY,
-		});
-
-		const model = openai("gpt-5-nano");
-
 		const systemPrompt = getSystemPrompt({
 			username: message.user.username,
 			userId: message.user.id,
