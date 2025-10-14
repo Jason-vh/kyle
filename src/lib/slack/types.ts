@@ -32,7 +32,8 @@ export type SlackAssistantThreadStartedEvent = {
  */
 export type SlackMessageEvent = {
 	type: "message";
-	subtype?: string | "message_changed";
+	subtype?: string | "message_changed" | "bot_message";
+	streaming_state?: "in_progress" | "completed";
 	text: string;
 	user: string;
 	channel_type: "im" | "group" | "channel" | "mpim";

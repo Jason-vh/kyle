@@ -40,8 +40,13 @@ export async function handleSlackEvent(
 		return;
 	}
 
-	if (event.subtype === "message_changed") {
-		logger.debug(`skipping message.message_changed event`, { context });
+	if (event.subtype === "message_changed" || event.subtype === "bot_message") {
+		logger.debug(`skipping ${event.subtype} event`, { context });
+		return;
+	}
+
+	if (event.streaming_state == "in_progress") {
+		logger.debug(`skipping in_progress stream event`, { context });
 		return;
 	}
 
