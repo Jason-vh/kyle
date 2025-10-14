@@ -16,10 +16,10 @@ export async function startStream(context: SlackContext) {
 	return result;
 }
 
-export function appendToStream(context: SlackContext, text: string) {
+export async function appendToStream(context: SlackContext, text: string) {
 	if (!context.slack_stream_ts) {
-		logger.warn("appendToStream: no stream timestamp", { context });
-		return;
+		const stream = await startStream(context);
+		context.slack_stream_ts = stream.ts;
 	}
 
 	return slack.appendStream({

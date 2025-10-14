@@ -67,8 +67,6 @@ export async function streamMessage(
 		stopWhen: stepCountIs(MAX_TOOL_CALLS),
 	});
 
-	await slackService.startStream(context);
-
 	for await (const part of fullStream) {
 		if (part.type === "text-delta") {
 			await slackService.appendToStream(context, part.text);
