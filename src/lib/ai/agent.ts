@@ -9,6 +9,7 @@ import {
 import { MAX_TOOL_CALLS } from "@/lib/ai/constants";
 import { getSystemPrompt } from "@/lib/ai/prompt";
 import { createLogger } from "@/lib/logger";
+import { getOdesliTools } from "@/lib/odesli/tools";
 import { getQbittorrentTools } from "@/lib/qbittorrent/tools";
 import { getRadarrTools } from "@/lib/radarr/tools";
 import * as slack from "@/lib/slack/api";
@@ -58,6 +59,7 @@ export async function streamMessage(
 		...getQbittorrentTools(context),
 		...getTMDBTools(context),
 		...getSlackTools(context),
+		...getOdesliTools(context),
 	};
 
 	const { text } = streamText({
