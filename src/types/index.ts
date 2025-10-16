@@ -16,5 +16,6 @@ export type SlackContext = {
 	slack_thread_ts: string;
 	slack_channel_id: string;
 	slack_team_id?: string;
+	slack_user_id?: string;
 	slack_stream_ts?: string;
 };

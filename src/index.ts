@@ -32,6 +32,8 @@ const server = Bun.serve({
 						slack_channel_id: body.event.channel,
 						slack_team_id:
 							body.event.type === "message" ? body.event.team : undefined,
+						slack_user_id:
+							body.event.type === "message" ? body.event.user : undefined,
 					};
 
 					logger.info(`received event with type ${body.event.type}`, {
