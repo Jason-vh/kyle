@@ -30,6 +30,8 @@ const server = Bun.serve({
 						timestamp: new Date().toISOString(),
 						slack_thread_ts: body.event.thread_ts || body.event.ts,
 						slack_channel_id: body.event.channel,
+						slack_team_id:
+							body.event.type === "message" ? body.event.team : undefined,
 					};
 
 					logger.info(`received event with type ${body.event.type}`, {

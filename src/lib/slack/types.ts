@@ -38,6 +38,7 @@ export type SlackMessageEvent = {
 	user: string;
 	channel_type: "im" | "group" | "channel" | "mpim";
 	channel: string;
+	team?: string;
 	bot_profile?: {
 		id: string;
 		name: string;

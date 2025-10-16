@@ -20,6 +20,7 @@ export async function startStream(context: SlackContext) {
 	const result = await slack.startStream({
 		channel: context.slack_channel_id,
 		thread_ts: context.slack_thread_ts,
+		recipient_team_id: context.slack_team_id,
 	});
 
 	context.slack_stream_ts = result.ts;
