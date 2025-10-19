@@ -45,7 +45,7 @@ export function getQbittorrentTools(context: SlackContext) {
 
 				slackService.appendToStream(
 					context,
-					`I'm fetching the list of torrents from qBittorrent\n`
+					"Fetching torrents...\n"
 				);
 
 				const torrents = await qbittorrent.getTorrents(filter);
@@ -86,7 +86,7 @@ export function getQbittorrentTools(context: SlackContext) {
 
 				slackService.appendToStream(
 					context,
-					`I'm removing ${hashes.length} torrent(s) from qBittorrent\n`
+					"Removing torrents...\n"
 				);
 
 				slack.setThreadStatus({

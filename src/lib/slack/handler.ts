@@ -14,7 +14,7 @@ async function setStatus(event: SlackMessageEvent, threadTs: string) {
 	await slack.setThreadStatus({
 		channel_id: event.channel,
 		thread_ts: threadTs,
-		status: "is cooking...",
+		status: "is thinking...",
 	});
 
 	// ... and then generate a more interesting status

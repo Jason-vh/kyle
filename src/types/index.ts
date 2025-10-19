@@ -1,3 +1,5 @@
+import type { SlackBlock } from "@/lib/slack/types";
+
 export type MessageWithContext = {
 	text: string;
 	user: {
@@ -18,4 +20,5 @@ export type SlackContext = {
 	slack_team_id?: string;
 	slack_user_id?: string;
 	slack_stream_ts?: string;
+	message_queue?: SlackBlock[];
 };

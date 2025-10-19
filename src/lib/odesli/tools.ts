@@ -37,7 +37,7 @@ export function getOdesliTools(context: SlackContext) {
 
 				slackService.appendToStream(
 					context,
-					`I'm converting that music link for you\n`
+					"Converting link...\n"
 				);
 
 				slack.setThreadStatus({

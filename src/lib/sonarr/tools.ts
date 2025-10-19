@@ -29,7 +29,7 @@ export function getSonarrTools(context: SlackContext) {
 			try {
 				slackService.appendToStream(
 					context,
-					"I'm looking up the series in Sonarr\n"
+					"Looking up series...\n"
 				);
 
 				slack.setThreadStatus({
@@ -62,7 +62,7 @@ export function getSonarrTools(context: SlackContext) {
 			try {
 				slackService.appendToStream(
 					context,
-					"I'm taking a look at the series in Sonarr\n"
+					"Looking up details...\n"
 				);
 
 				slack.setThreadStatus({
@@ -95,7 +95,7 @@ export function getSonarrTools(context: SlackContext) {
 			try {
 				slackService.appendToStream(
 					context,
-					"I'm searching for the series to add to Sonarr\n"
+					"Searching...\n"
 				);
 
 				slack.setThreadStatus({
@@ -134,7 +134,7 @@ export function getSonarrTools(context: SlackContext) {
 			try {
 				slackService.appendToStream(
 					context,
-					`I'm adding ${title} (${year}) to Sonarr\n`
+					"Adding to library...\n"
 				);
 
 				slack.setThreadStatus({
@@ -149,7 +149,6 @@ export function getSonarrTools(context: SlackContext) {
 
 				await slackService.sendMediaObject(context, {
 					title: `${series.title} (${series.year})`,
-					action: "added a moment ago",
 					description: series.overview,
 					image: seriesImage?.remoteUrl ?? series.images?.[0]?.remoteUrl,
 				});
@@ -194,7 +193,7 @@ export function getSonarrTools(context: SlackContext) {
 
 				slackService.appendToStream(
 					context,
-					`I'm removing ${series.title} (${series.year}) from Sonarr\n`
+					"Removing...\n"
 				);
 
 				slack.setThreadStatus({
@@ -205,17 +204,9 @@ export function getSonarrTools(context: SlackContext) {
 
 				await sonarr.removeSeries(seriesId, true);
 
-				const seriesImage = series.images.find((i) => i.coverType === "poster");
-				await slackService.sendMediaObject(context, {
-					title: `${series.title} (${series.year})`,
-					action: "removed a moment ago",
-					description: series.overview,
-					image: seriesImage?.remoteUrl ?? series.images?.[0]?.remoteUrl,
-				});
-
 				const response = {
 					success: true,
-					message: `Removed *${series.title}* (${series.year}) from Sonarr and deleted files from disk. The user has been notified of the removal.`,
+					message: `Removed *${series.title}* (${series.year}) from Sonarr and deleted files from disk.`,
 				};
 				logger.info("successfully removed series", {
 					seriesId,
@@ -255,15 +246,11 @@ export function getSonarrTools(context: SlackContext) {
 			try {
 				slackService.appendToStream(
 					context,
-					`I'm removing season ${seasonNumber} `
+					"Removing season...\n"
 				);
 
 				const series = await sonarr.getSeries(seriesId);
 
-				slackService.appendToStream(
-					context,
-					`of ${series.title} (${series.year}) from Sonarr\n`
-				);
 
 				slack.setThreadStatus({
 					channel_id: context.slack_channel_id,
@@ -300,15 +287,6 @@ export function getSonarrTools(context: SlackContext) {
 
 				season.monitored = false;
 				await sonarr.updateSeries(seriesId, series);
-
-				const seasonImage = season.images.find((i) => i.coverType === "poster");
-				const seriesImage = series.images.find((i) => i.coverType === "poster");
-				await slackService.sendMediaObject(context, {
-					title: `${series.title} (${series.year})`,
-					action: `season ${seasonNumber} just removed`,
-					description: series.overview,
-					image: seasonImage?.remoteUrl ?? seriesImage?.remoteUrl,
-				});
 
 				const response = {
 					success: true,
@@ -361,7 +339,7 @@ export function getSonarrTools(context: SlackContext) {
 			try {
 				slackService.appendToStream(
 					context,
-					`I'm checking which episodes we have in Sonarr\n`
+					"Checking episodes...\n"
 				);
 
 				slack.setThreadStatus({
@@ -395,7 +373,7 @@ export function getSonarrTools(context: SlackContext) {
 		execute: async () => {
 			logger.info("calling getQueue tool", { context });
 			try {
-				slackService.appendToStream(context, `I'm checking the Sonarr queue\n`);
+				slackService.appendToStream(context, "Checking queue...\n");
 
 				slack.setThreadStatus({
 					channel_id: context.slack_channel_id,
@@ -452,7 +430,7 @@ export function getSonarrTools(context: SlackContext) {
 			try {
 				slackService.appendToStream(
 					context,
-					`I'm checking the Sonarr calendar\n`
+					"Checking calendar...\n"
 				);
 
 				slack.setThreadStatus({
@@ -497,7 +475,7 @@ export function getSonarrTools(context: SlackContext) {
 			try {
 				slackService.appendToStream(
 					context,
-					`I'm starting a search for episodes in Sonarr\n`
+					"Starting search...\n"
 				);
 
 				slack.setThreadStatus({
@@ -571,7 +549,7 @@ export function getSonarrTools(context: SlackContext) {
 			try {
 				slackService.appendToStream(
 					context,
-					`I'm checking the Sonarr history\n`
+					"Checking history...\n"
 				);
 
 				slack.setThreadStatus({

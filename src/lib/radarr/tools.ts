@@ -28,7 +28,7 @@ export function getRadarrTools(context: SlackContext) {
 
 				slackService.appendToStream(
 					context,
-					"I'm taking a look at the movie details in Radarr\n"
+					"Looking up details...\n"
 				);
 
 				slack.setThreadStatus({
@@ -57,7 +57,7 @@ export function getRadarrTools(context: SlackContext) {
 
 				slackService.appendToStream(
 					context,
-					"I'm fetching movies from Radarr\n"
+					"Fetching library...\n"
 				);
 
 				slack.setThreadStatus({
@@ -86,7 +86,7 @@ export function getRadarrTools(context: SlackContext) {
 
 				slackService.appendToStream(
 					context,
-					"I'm searching for movies to add to Radarr\n"
+					"Searching...\n"
 				);
 
 				slack.setThreadStatus({
@@ -127,7 +127,7 @@ export function getRadarrTools(context: SlackContext) {
 
 				slackService.appendToStream(
 					context,
-					`I'm adding ${title} (${year}) to Radarr\n`
+					"Adding to library...\n"
 				);
 
 				slack.setThreadStatus({
@@ -141,7 +141,6 @@ export function getRadarrTools(context: SlackContext) {
 				const movieImage = result.images.find((i) => i.coverType === "poster");
 				await slackService.sendMediaObject(context, {
 					title: `${title} (${year})`,
-					action: "added a moment ago",
 					description: result.overview,
 					image: movieImage?.remoteUrl ?? result.images?.[0]?.remoteUrl,
 				});
@@ -176,13 +175,11 @@ export function getRadarrTools(context: SlackContext) {
 			try {
 				logger.info("calling removeMovie tool", { movieId, context });
 
-				slackService.appendToStream(context, `I'm removing`);
-
 				const movie = await radarr.getMovie(movieId);
 
 				slackService.appendToStream(
 					context,
-					` ${movie.title} (${movie.year}) from Radarr\n`
+					"Removing...\n"
 				);
 
 				slack.setThreadStatus({
@@ -193,17 +190,9 @@ export function getRadarrTools(context: SlackContext) {
 
 				await radarr.removeMovie(movieId, true);
 
-				const movieImage = movie.images.find((i) => i.coverType === "poster");
-				await slackService.sendMediaObject(context, {
-					title: `${movie.title} (${movie.year})`,
-					action: "removed a moment ago",
-					description: movie.overview,
-					image: movieImage?.remoteUrl ?? movie.images?.[0]?.remoteUrl,
-				});
-
 				return {
 					success: true,
-					message: `Removed ${movie.title} (${movie.year}) from Radarr and deleted files from disk. The user has been notified of the removal.`,
+					message: `Removed ${movie.title} (${movie.year}) from Radarr and deleted files from disk.`,
 				};
 			} catch (error) {
 				logger.error("Failed to remove movie", { movieId, error, context });
@@ -221,7 +210,7 @@ export function getRadarrTools(context: SlackContext) {
 			try {
 				logger.info("calling getQueue tool", { context });
 
-				slackService.appendToStream(context, "I'm checking the Radarr queue\n");
+				slackService.appendToStream(context, "Checking queue...\n");
 
 				slack.setThreadStatus({
 					channel_id: context.slack_channel_id,
@@ -253,7 +242,7 @@ export function getRadarrTools(context: SlackContext) {
 
 			slackService.appendToStream(
 				context,
-				"I'm taking a look at the history in Radarr\n"
+				"Checking history...\n"
 			);
 
 			slack.setThreadStatus({

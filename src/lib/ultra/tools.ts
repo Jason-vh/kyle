@@ -11,17 +11,13 @@ const logger = createLogger("ultra/tools");
 
 export function getUltraTools(context: SlackContext) {
 	const ultraStats = tool({
-		description:
-			"Check storage and traffic usage statistics for the media server. Only provide the information that is relevant to the user's question.",
+		description: "Check storage statistics for the media server.",
 		inputSchema: z.object({}),
 		execute: async () => {
 			try {
 				logger.info("calling ultraStats tool", { context });
 
-				slackService.appendToStream(
-					context,
-					`I'm checking the storage on the server\n`
-				);
+				slackService.appendToStream(context, "Checking storage...\n");
 
 				slack.setThreadStatus({
 					channel_id: context.slack_channel_id,
@@ -36,14 +32,12 @@ export function getUltraTools(context: SlackContext) {
 					usedStorage: stats.service_stats_info.used_storage_value,
 				};
 			} catch (error) {
-				logger.error("Failed to get storage and traffic usage statistics", {
+				logger.error("Failed to get storage statistics", {
 					context,
 					error,
 				});
 
-				return `Failed to get storage and traffic usage statistics: ${JSON.stringify(
-					error
-				)}`;
+				return `Failed to get storage statistics: ${JSON.stringify(error)}`;
 			}
 		},
 	});

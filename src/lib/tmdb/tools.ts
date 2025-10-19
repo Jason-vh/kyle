@@ -42,7 +42,7 @@ export function getTMDBTools(context: SlackContext) {
 
 				slackService.appendToStream(
 					context,
-					`I'm searching for movies on TMDB\n`
+					"Searching...\n"
 				);
 
 				slack.setThreadStatus({
@@ -90,7 +90,7 @@ export function getTMDBTools(context: SlackContext) {
 
 				slackService.appendToStream(
 					context,
-					`I'm searching for TV shows on TMDB\n`
+					"Searching...\n"
 				);
 
 				slack.setThreadStatus({
@@ -137,7 +137,7 @@ export function getTMDBTools(context: SlackContext) {
 
 				slackService.appendToStream(
 					context,
-					`I'm searching for something on TMDB\n`
+					"Searching...\n"
 				);
 
 				slack.setThreadStatus({
@@ -183,7 +183,7 @@ export function getTMDBTools(context: SlackContext) {
 
 				slackService.appendToStream(
 					context,
-					`I'm looking up a movie in TMDB\n`
+					"Looking up movie...\n"
 				);
 
 				slack.setThreadStatus({
@@ -221,7 +221,7 @@ export function getTMDBTools(context: SlackContext) {
 
 				slackService.appendToStream(
 					context,
-					`I'm looking up a series in TMDB\n`
+					"Looking up series...\n"
 				);
 
 				slack.setThreadStatus({
