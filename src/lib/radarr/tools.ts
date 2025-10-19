@@ -8,7 +8,6 @@ import {
 	toPartialMovie,
 	toPartialQueueItem,
 } from "@/lib/radarr/utils";
-import * as slack from "@/lib/slack/api";
 import * as slackService from "@/lib/slack/service";
 import type { SlackContext } from "@/types";
 
@@ -26,15 +25,9 @@ export function getRadarrTools(context: SlackContext) {
 			try {
 				logger.info("calling getMovie tool", { movieId, context });
 
-				slackService.appendToStream(
-					context,
-					"Looking up details...\n"
-				);
-
-				slack.setThreadStatus({
-					channel_id: context.slack_channel_id,
-					thread_ts: context.slack_thread_ts,
+				slackService.sendToolCallUpdate(context, {
 					status: "is checking movie details in Radarr...",
+					progressMessage: "Looking up movie details...",
 				});
 
 				const movie = await radarr.getMovie(movieId);
@@ -55,15 +48,9 @@ export function getRadarrTools(context: SlackContext) {
 			try {
 				logger.info("calling getMovies tool", { context });
 
-				slackService.appendToStream(
-					context,
-					"Fetching library...\n"
-				);
-
-				slack.setThreadStatus({
-					channel_id: context.slack_channel_id,
-					thread_ts: context.slack_thread_ts,
+				slackService.sendToolCallUpdate(context, {
 					status: "is fetching movies from Radarr...",
+					progressMessage: "Checking movie library...",
 				});
 
 				const movies = await radarr.getMovies();
@@ -84,15 +71,9 @@ export function getRadarrTools(context: SlackContext) {
 			try {
 				logger.info("calling searchMovies tool", { title, context });
 
-				slackService.appendToStream(
-					context,
-					"Searching...\n"
-				);
-
-				slack.setThreadStatus({
-					channel_id: context.slack_channel_id,
-					thread_ts: context.slack_thread_ts,
-					status: "is searching for movies...",
+				slackService.sendToolCallUpdate(context, {
+					status: `is searching for ${title} in Radarr...`,
+					progressMessage: `Searching for ${title}...`,
 				});
 
 				const movies = await radarr.searchMovies(title);
@@ -115,7 +96,7 @@ export function getRadarrTools(context: SlackContext) {
 
 	const addMovie = tool({
 		description:
-			"Add a movie to Radarr for monitoring and downloading. Requires TMDB ID, title, and year.",
+			"Add a movie to Radarr. Requires TMDB ID, title, and year. The movie will be monitored and downloaded (if available).",
 		inputSchema: z.object({
 			tmdbId: z.number().describe("The TMDB ID of the movie to add"),
 			title: z.string().describe("The title of the movie to add"),
@@ -125,15 +106,9 @@ export function getRadarrTools(context: SlackContext) {
 			try {
 				logger.info("calling addMovie tool", { tmdbId, context });
 
-				slackService.appendToStream(
-					context,
-					"Adding to library...\n"
-				);
-
-				slack.setThreadStatus({
-					channel_id: context.slack_channel_id,
-					thread_ts: context.slack_thread_ts,
+				slackService.sendToolCallUpdate(context, {
 					status: `is adding ${title} (${year}) to Radarr...`,
+					progressMessage: `Adding ${title}...`,
 				});
 
 				const result = await radarr.addMovie(title, year, tmdbId);
@@ -177,15 +152,9 @@ export function getRadarrTools(context: SlackContext) {
 
 				const movie = await radarr.getMovie(movieId);
 
-				slackService.appendToStream(
-					context,
-					"Removing...\n"
-				);
-
-				slack.setThreadStatus({
-					channel_id: context.slack_channel_id,
-					thread_ts: context.slack_thread_ts,
+				slackService.sendToolCallUpdate(context, {
 					status: `is removing ${movie.title} (${movie.year}) from Radarr...`,
+					progressMessage: `Removing ${movie.title}...`,
 				});
 
 				await radarr.removeMovie(movieId, true);
@@ -210,12 +179,8 @@ export function getRadarrTools(context: SlackContext) {
 			try {
 				logger.info("calling getQueue tool", { context });
 
-				slackService.appendToStream(context, "Checking queue...\n");
-
-				slack.setThreadStatus({
-					channel_id: context.slack_channel_id,
-					thread_ts: context.slack_thread_ts,
-					status: `is checking the Radarr queue...`,
+				slackService.sendToolCallUpdate(context, {
+					status: "is checking the Radarr queue...",
 				});
 
 				const queue = await radarr.getQueue();
@@ -240,15 +205,8 @@ export function getRadarrTools(context: SlackContext) {
 		execute: async ({ pageSize }) => {
 			logger.info("calling getHistory tool", { pageSize });
 
-			slackService.appendToStream(
-				context,
-				"Checking history...\n"
-			);
-
-			slack.setThreadStatus({
-				channel_id: context.slack_channel_id,
-				thread_ts: context.slack_thread_ts,
-				status: `is taking a look at the history in Radarr...`,
+			slackService.sendToolCallUpdate(context, {
+				status: "is checking the Radarr history...",
 			});
 
 			const history = await radarr.getHistory(pageSize);

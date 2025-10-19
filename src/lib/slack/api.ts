@@ -75,6 +75,7 @@ export async function sendMessage(params: {
 	channel: string;
 	text?: string;
 	thread_ts: string;
+	markdown_text?: string;
 	blocks?: SlackBlock[];
 }): Promise<unknown> {
 	return request({

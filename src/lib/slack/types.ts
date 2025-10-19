@@ -334,6 +334,21 @@ export type SlackVideoBlock = {
 	description?: SlackTextObject;
 };
 
+export type SlackTableBlock = {
+	type: "table";
+	column_settings: {
+		align?: "left" | "center" | "right";
+		is_wrapped?: boolean;
+	}[];
+	block_id?: string;
+	rows: Array<
+		Array<{
+			type: "raw_text";
+			text: string;
+		}>
+	>;
+};
+
 export type SlackBlock =
 	| SlackSectionBlock
 	| SlackDividerBlock
@@ -343,4 +358,5 @@ export type SlackBlock =
 	| SlackInputBlock
 	| SlackFileBlock
 	| SlackHeaderBlock
-	| SlackVideoBlock;
+	| SlackVideoBlock
+	| SlackTableBlock;

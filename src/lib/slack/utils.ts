@@ -111,3 +111,10 @@ export async function buildMessageContext(
 		history,
 	};
 }
+
+/**
+ * Replace standard markdown with Slack mrkdwn formatting
+ */
+export function mrkdwnFormat(text: string): string {
+	return text.replace(/\*\*/g, "*"); // bold
+}

@@ -1,8 +1,15 @@
+import { generateToolCallMessage } from "@/lib/ai/generators";
 import { createLogger } from "@/lib/logger";
 import * as slack from "@/lib/slack/api";
+import { setThreadStatus } from "@/lib/slack/api";
+import type {
+	SlackBlock,
+	SlackContextBlock,
+	SlackSectionBlock,
+	SlackTableBlock,
+} from "@/lib/slack/types";
+import { mrkdwnFormat } from "@/lib/slack/utils";
 import type { SlackContext } from "@/types";
-import { generateToolCallMessage } from "../ai/generators";
-import type { SlackBlock, SlackContextBlock, SlackSectionBlock } from "./types";
 
 const logger = createLogger("slack/service");
 
@@ -38,21 +45,30 @@ export async function appendToStream(context: SlackContext, text: string) {
 	return slack.appendStream({
 		channel: context.slack_channel_id,
 		ts: context.slack_stream_ts,
-		markdown_text: text,
+		markdown_text: mrkdwnFormat(text),
 	});
 }
 
-export function stopStream(context: SlackContext) {
-	if (!context.slack_stream_ts) {
-		logger.warn("stopStream: no stream timestamp", { context });
-		return;
+export function stopStream(context: SlackContext, finalText?: string) {
+	const formattedFinalText = finalText ? mrkdwnFormat(finalText) : undefined;
+
+	if (context.slack_stream_ts) {
+		return slack.stopStream({
+			channel: context.slack_channel_id,
+			ts: context.slack_stream_ts,
+			markdown_text: "\n" + formattedFinalText,
+			blocks: context.message_queue,
+		});
 	}
 
-	return slack.stopStream({
-		channel: context.slack_channel_id,
-		ts: context.slack_stream_ts,
-		blocks: context.message_queue,
-	});
+	if (formattedFinalText || context.message_queue?.length) {
+		return slack.sendMessage({
+			channel: context.slack_channel_id,
+			thread_ts: context.slack_thread_ts,
+			markdown_text: formattedFinalText,
+			blocks: context.message_queue,
+		});
+	}
 }
 
 function createMediaObjectBlock(
@@ -62,7 +78,10 @@ function createMediaObjectBlock(
 ): SlackSectionBlock {
 	const block: SlackSectionBlock = {
 		type: "section",
-		text: { type: "mrkdwn", text: `> *${title}*\n> ${description}` },
+		text: {
+			type: "mrkdwn",
+			text: `> *${mrkdwnFormat(title)}*\n> ${mrkdwnFormat(description)}`,
+		},
 	};
 
 	if (image) {
@@ -113,7 +132,7 @@ export function sendSystemMessage(context: SlackContext, text: string) {
 		elements: [
 			{
 				type: "mrkdwn",
-				text: `System: ${text}`,
+				text: `System: ${mrkdwnFormat(text)}`,
 			},
 		],
 	};
@@ -135,23 +154,53 @@ export function queueMessage(context: SlackContext, blocks: SlackBlock[]) {
 	logger.debug("queued message", { blockCount: blocks.length, context });
 }
 
-// export function sendMessageQueue(context: SlackContext) {
-// 	if (!context.message_queue?.length) {
-// 		return;
-// 	}
+/**
+ * note: this causes the Slack API to throw a 500
+ */
+export function sendTable(context: SlackContext, rows: string[][]) {
+	const columnSettings = rows[0]!.map(
+		() =>
+			({
+				align: "left",
+				is_wrapped: true,
+			} as const)
+	);
 
-// 	logger.debug("sending message queue", {
-// 		queueLength: context.message_queue.length,
-// 		context,
-// 	});
+	const tableBlock: SlackTableBlock = {
+		type: "table",
+		column_settings: columnSettings,
+		rows: rows.map((row) =>
+			row.map((cell) => ({
+				type: "raw_text",
+				text: cell,
+			}))
+		),
+	};
 
-// 	for (const blocks of context.message_queue) {
-// 		slack.sendMessage({
-// 			channel: context.slack_channel_id,
-// 			thread_ts: context.slack_thread_ts,
-// 			blocks,
-// 		});
-// 	}
+	console.log(JSON.stringify(tableBlock, null, 2));
 
-// 	context.message_queue = [];
-// }
+	queueMessage(context, [tableBlock]);
+}
+
+export function sendToolCallUpdate(
+	context: SlackContext,
+	{
+		status,
+		progressMessage,
+	}: {
+		status?: string;
+		progressMessage?: string;
+	} = {}
+) {
+	if (status) {
+		setThreadStatus({
+			channel_id: context.slack_channel_id,
+			thread_ts: context.slack_thread_ts,
+			status,
+		});
+	}
+
+	if (progressMessage) {
+		appendToStream(context, progressMessage + "\n");
+	}
+}

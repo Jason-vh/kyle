@@ -2,7 +2,6 @@ import { tool } from "ai";
 import { z } from "zod";
 
 import { createLogger } from "@/lib/logger";
-import * as slack from "@/lib/slack/api";
 import * as slackService from "@/lib/slack/service";
 import * as ultra from "@/lib/ultra/api";
 import type { SlackContext } from "@/types";
@@ -17,12 +16,9 @@ export function getUltraTools(context: SlackContext) {
 			try {
 				logger.info("calling ultraStats tool", { context });
 
-				slackService.appendToStream(context, "Checking storage...\n");
-
-				slack.setThreadStatus({
-					channel_id: context.slack_channel_id,
-					thread_ts: context.slack_thread_ts,
-					status: `is counting bytes...`,
+				slackService.sendToolCallUpdate(context, {
+					status: `is checking storage...`,
+					progressMessage: `Checking storage...`,
 				});
 
 				const stats = await ultra.getTotalStats();
