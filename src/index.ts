@@ -11,6 +11,8 @@ if (!Bun.env.PORT) {
 
 const port = parseInt(Bun.env.PORT);
 
+logger.info(`starting server on port ${port}`);
+
 const server = Bun.serve({
 	port,
 	hostname: "0.0.0.0",

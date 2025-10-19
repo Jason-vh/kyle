@@ -1,30 +1,39 @@
 import { Axiom } from "@axiomhq/js";
-import { AxiomJSTransport, ConsoleTransport, Logger } from "@axiomhq/logging";
+import {
+	AxiomJSTransport,
+	ConsoleTransport,
+	Logger,
+	type Transport,
+} from "@axiomhq/logging";
 
-if (!Bun.env.AXIOM_TOKEN || !Bun.env.AXIOM_DATASET) {
-	throw new Error("AXIOM_TOKEN or AXIOM_DATASET are not set");
+const transports: [Transport, ...Transport[]] = [
+	new ConsoleTransport({
+		prettyPrint: true,
+		logLevel: "debug",
+	}),
+];
+
+if (
+	Bun.env.NODE_ENV === "production" &&
+	Bun.env.AXIOM_TOKEN &&
+	Bun.env.AXIOM_DATASET
+) {
+	console.log("Logging to Axiom dataset", Bun.env.AXIOM_DATASET);
+
+	const axiom = new Axiom({
+		token: Bun.env.AXIOM_TOKEN,
+	});
+
+	transports.push(
+		new AxiomJSTransport({ axiom, dataset: Bun.env.AXIOM_DATASET })
+	);
 }
 
-console.log("Logging to Axiom dataset", Bun.env.AXIOM_DATASET);
-
-const axiom = new Axiom({
-	token: Bun.env.AXIOM_TOKEN,
-});
-
 const logger = new Logger({
-	transports: [
-		new AxiomJSTransport({
-			axiom,
-			dataset: Bun.env.AXIOM_DATASET,
-		}),
-		new ConsoleTransport({
-			prettyPrint: true,
-			logLevel: "debug",
-		}),
-	],
+	transports,
 });
 
-export const createLogger = (scope: string) => {
+export function createLogger(scope: string) {
 	return {
 		debug(message: string, args: Record<string, unknown> = {}) {
 			logger.debug(`[${scope}] ${message}`, args);
@@ -39,4 +48,4 @@ export const createLogger = (scope: string) => {
 			logger.warn(`[${scope}] ${message}`, args);
 		},
 	};
-};
+}
