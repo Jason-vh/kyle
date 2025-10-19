@@ -104,7 +104,7 @@ export function getSonarrTools(context: SlackContext) {
 
 	const addSeries = tool({
 		description:
-			"Add a TV series to Sonarr for monitoring and downloading. Requires title, year, and TVDB ID.",
+			"Add a TV series to Sonarr for. Requires title, year, and TVDB ID. After being added, the series will start downloading (if available).",
 		inputSchema: z.object({
 			title: z.string().describe("The title of the series to add"),
 			year: z.number().describe("The year the series started"),
@@ -132,7 +132,7 @@ export function getSonarrTools(context: SlackContext) {
 
 				const response = {
 					series: result,
-					message: `Added "${title}" (${year}) to Sonarr for monitoring and downloading. The user has been notified of the addition.`,
+					message: `Added "${title}" (${year}) to Sonarr for. The user has been notified of the addition.`,
 				};
 				logger.info("successfully added series", { response, context });
 				return response;

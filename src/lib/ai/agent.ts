@@ -1,4 +1,9 @@
-import { stepCountIs, streamText, type ModelMessage } from "ai";
+import { createOpenAI } from "@ai-sdk/openai";
+import {
+	Experimental_Agent as Agent,
+	stepCountIs,
+	type ModelMessage,
+} from "ai";
 
 import { MAX_TOOL_CALLS } from "@/lib/ai/constants";
 import { getSystemPrompt } from "@/lib/ai/prompt";
@@ -11,7 +16,6 @@ import { getSonarrTools } from "@/lib/sonarr/tools";
 import { getTMDBTools } from "@/lib/tmdb/tools";
 import { getUltraTools } from "@/lib/ultra/tools";
 import type { MessageWithContext, SlackContext } from "@/types";
-import { createOpenAI } from "@ai-sdk/openai";
 
 const openai = createOpenAI({
 	apiKey: Bun.env.OPENAI_API_KEY,
@@ -52,13 +56,15 @@ export async function streamMessage(
 		...getOdesliTools(context),
 	};
 
-	const { text } = streamText({
+	const agent = new Agent({
 		model,
-		messages,
 		tools,
 		stopWhen: stepCountIs(MAX_TOOL_CALLS),
 	});
 
-	await slackService.appendToStream(context, await text);
-	await slackService.stopStream(context);
+	const { text } = await agent.stream({
+		messages,
+	});
+
+	await slackService.stopStream(context, await text);
 }

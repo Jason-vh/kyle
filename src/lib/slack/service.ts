@@ -50,22 +50,20 @@ export async function appendToStream(context: SlackContext, text: string) {
 }
 
 export function stopStream(context: SlackContext, finalText?: string) {
-	const formattedFinalText = finalText ? mrkdwnFormat(finalText) : undefined;
-
 	if (context.slack_stream_ts) {
 		return slack.stopStream({
 			channel: context.slack_channel_id,
 			ts: context.slack_stream_ts,
-			markdown_text: "\n" + formattedFinalText,
+			markdown_text: finalText ? "\n" + mrkdwnFormat(finalText) : undefined,
 			blocks: context.message_queue,
 		});
 	}
 
-	if (formattedFinalText || context.message_queue?.length) {
+	if (finalText || context.message_queue?.length) {
 		return slack.sendMessage({
 			channel: context.slack_channel_id,
 			thread_ts: context.slack_thread_ts,
-			markdown_text: formattedFinalText,
+			markdown_text: finalText ? mrkdwnFormat(finalText) : undefined,
 			blocks: context.message_queue,
 		});
 	}

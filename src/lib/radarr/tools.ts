@@ -124,7 +124,7 @@ export function getRadarrTools(context: SlackContext) {
 					title: result.title,
 					year: result.year,
 					id: result.id,
-					message: `Added "${title}" (${year}) to Radarr for monitoring and downloading. The user has been notified of the addition.`,
+					message: `Added "${title}" (${year}) to Radarr. The user has been notified of the addition. If the movie is available, it will start downloading shortly.`,
 				};
 			} catch (error) {
 				logger.error("Failed to add movie", {
