@@ -7,6 +7,11 @@ import {
 
 import { MAX_TOOL_CALLS } from "@/lib/ai/constants";
 import { getSystemPrompt } from "@/lib/ai/prompt";
+import {
+	formatToolCallsForContext,
+	getToolCallsForThread,
+} from "@/lib/db/repository";
+import { createLogger } from "@/lib/logger";
 import { getOdesliTools } from "@/lib/odesli/tools";
 import { getQbittorrentTools } from "@/lib/qbittorrent/tools";
 import { getRadarrTools } from "@/lib/radarr/tools";
@@ -16,6 +21,8 @@ import { getSonarrTools } from "@/lib/sonarr/tools";
 import { getTMDBTools } from "@/lib/tmdb/tools";
 import { getUltraTools } from "@/lib/ultra/tools";
 import type { MessageWithContext, SlackContext } from "@/types";
+
+const logger = createLogger("ai/agent");
 
 const openai = createOpenAI({
 	apiKey: Bun.env.OPENAI_API_KEY,
@@ -33,6 +40,24 @@ export async function streamMessage(
 	});
 
 	const messages: ModelMessage[] = [{ role: "system", content: systemPrompt }];
+
+	// Inject previous tool calls from this conversation
+	const previousToolCalls = await getToolCallsForThread(
+		context.slack_thread_ts,
+		context.slack_channel_id
+	);
+
+	if (previousToolCalls.length > 0) {
+		const toolHistoryContext = formatToolCallsForContext(previousToolCalls);
+		messages.push({
+			role: "system",
+			content: toolHistoryContext,
+		});
+		logger.debug("injected tool history", {
+			count: previousToolCalls.length,
+			context,
+		});
+	}
 
 	messages.push({
 		role: "system",

@@ -1,6 +1,7 @@
 import { tool } from "ai";
 import { z } from "zod";
 
+import { saveToolCall } from "@/lib/db/repository";
 import { createLogger } from "@/lib/logger";
 import * as slackService from "@/lib/slack/service";
 import * as sonarr from "@/lib/sonarr/api";
@@ -33,6 +34,17 @@ export function getSonarrTools(context: SlackContext) {
 
 				const series = await sonarr.getSeries(seriesId);
 				const result = toPartialSeries(series);
+
+				await saveToolCall(context, "getSeriesBySonarrId", {
+					input: { seriesId },
+					result,
+					mediaRef: {
+						mediaType: "series",
+						action: "query",
+						ids: { sonarr: result.id, tvdb: result.tvdbId },
+						title: result.title,
+					},
+				});
 
 				logger.info("successfully retrieved series", {
 					seriesId,
@@ -88,6 +100,11 @@ export function getSonarrTools(context: SlackContext) {
 				const series = await sonarr.searchSeries(title);
 				const results = series.map(toPartialSeries);
 
+				await saveToolCall(context, "searchSeries", {
+					input: { title },
+					result: results,
+				});
+
 				logger.info("successfully searched for series", {
 					title,
 					results,
@@ -130,12 +147,24 @@ export function getSonarrTools(context: SlackContext) {
 
 				const result = toPartialSeries(series);
 
-				const response = {
+				const toolResult = {
 					series: result,
 					message: `Added "${title}" (${year}) to Sonarr for. The user has been notified of the addition.`,
 				};
-				logger.info("successfully added series", { response, context });
-				return response;
+
+				await saveToolCall(context, "addSeries", {
+					input: { title, year, tvdbId },
+					result: toolResult,
+					mediaRef: {
+						mediaType: "series",
+						action: "add",
+						ids: { tvdb: tvdbId, sonarr: result.id },
+						title,
+					},
+				});
+
+				logger.info("successfully added series", { response: toolResult, context });
+				return toolResult;
 			} catch (error) {
 				logger.error("Failed to add series", {
 					context,
@@ -173,15 +202,27 @@ export function getSonarrTools(context: SlackContext) {
 
 				await sonarr.removeSeries(seriesId, true);
 
-				const response = {
+				const toolResult = {
 					success: true,
 					message: `Removed *${series.title}* (${series.year}) from Sonarr and deleted files from disk.`,
 				};
+
+				await saveToolCall(context, "removeSeries", {
+					input: { seriesId },
+					result: toolResult,
+					mediaRef: {
+						mediaType: "series",
+						action: "remove",
+						ids: { sonarr: seriesId, tvdb: series.tvdbId },
+						title: series.title,
+					},
+				});
+
 				logger.info("successfully removed series", {
 					seriesId,
 					context,
 				});
-				return response;
+				return toolResult;
 			} catch (error) {
 				logger.error("Failed to remove series", {
 					context,
@@ -337,16 +378,26 @@ export function getSonarrTools(context: SlackContext) {
 
 				if (queueItems.length === 0) {
 					logger.info("no downloads in progress");
-					return { message: "No downloads in progress" };
+					const toolResult = { message: "No downloads in progress" };
+					await saveToolCall(context, "getQueue", {
+						input: {},
+						result: toolResult,
+					});
+					return toolResult;
 				}
 
-				const response = {
+				const toolResult = {
 					totalRecords: queueResponse.totalRecords,
 					items: queueItems,
 				};
 
-				logger.info("retrieved download queue", { response, context });
-				return response;
+				await saveToolCall(context, "getQueue", {
+					input: {},
+					result: toolResult,
+				});
+
+				logger.info("retrieved download queue", { response: toolResult, context });
+				return toolResult;
 			} catch (error) {
 				logger.error("Failed to get queue", { error, context });
 				return `Failed to get queue: ${JSON.stringify(error)}`;
@@ -496,18 +547,24 @@ export function getSonarrTools(context: SlackContext) {
 					includeEpisode
 				);
 				const results = historyResponse.records.map(toPartialHistoryItem);
-				const response = {
+				const toolResult = {
 					totalRecords: historyResponse.totalRecords,
 					page: historyResponse.page,
 					pageSize: historyResponse.pageSize,
 					items: results,
 				};
+
+				await saveToolCall(context, "getHistory", {
+					input: { page, pageSize, includeSeries, includeEpisode },
+					result: toolResult,
+				});
+
 				logger.info("successfully retrieved history", {
-					totalRecords: response.totalRecords,
+					totalRecords: toolResult.totalRecords,
 					itemCount: results.length,
 					context,
 				});
-				return response;
+				return toolResult;
 			} catch (error) {
 				logger.error("Failed to get history", { error, context });
 				return `Failed to get history: ${JSON.stringify(error)}`;

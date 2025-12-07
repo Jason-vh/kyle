@@ -1,6 +1,7 @@
 import { tool } from "ai";
 import { z } from "zod";
 
+import { saveToolCall } from "@/lib/db/repository";
 import { createLogger } from "@/lib/logger";
 import * as radarr from "@/lib/radarr/api";
 import {
@@ -31,7 +32,20 @@ export function getRadarrTools(context: SlackContext) {
 				});
 
 				const movie = await radarr.getMovie(movieId);
-				return toPartialMovie(movie);
+				const result = toPartialMovie(movie);
+
+				await saveToolCall(context, "getMovie", {
+					input: { radarrMovieId: movieId },
+					result,
+					mediaRef: {
+						mediaType: "movie",
+						action: "query",
+						ids: { radarr: result.id, tmdb: result.tmdbId },
+						title: result.title,
+					},
+				});
+
+				return result;
 			} catch (error) {
 				logger.error("Failed to get movie", { movieId, error, context });
 				return `Failed to get movie with ID ${movieId}: ${JSON.stringify(
@@ -79,6 +93,11 @@ export function getRadarrTools(context: SlackContext) {
 				const movies = await radarr.searchMovies(title);
 				const results = movies.map(toPartialMovie);
 
+				await saveToolCall(context, "searchMovies", {
+					input: { title },
+					result: results,
+				});
+
 				logger.info("successfully searched for movies", {
 					title,
 					results,
@@ -120,12 +139,25 @@ export function getRadarrTools(context: SlackContext) {
 					image: movieImage?.remoteUrl ?? result.images?.[0]?.remoteUrl,
 				});
 
-				return {
+				const toolResult = {
 					title: result.title,
 					year: result.year,
 					id: result.id,
 					message: `Added "${title}" (${year}) to Radarr. The user has been notified of the addition. If the movie is available, it will start downloading shortly.`,
 				};
+
+				await saveToolCall(context, "addMovie", {
+					input: { tmdbId, title, year },
+					result: toolResult,
+					mediaRef: {
+						mediaType: "movie",
+						action: "add",
+						ids: { tmdb: tmdbId, radarr: result.id },
+						title,
+					},
+				});
+
+				return toolResult;
 			} catch (error) {
 				logger.error("Failed to add movie", {
 					title,
@@ -159,10 +191,23 @@ export function getRadarrTools(context: SlackContext) {
 
 				await radarr.removeMovie(movieId, true);
 
-				return {
+				const toolResult = {
 					success: true,
 					message: `Removed ${movie.title} (${movie.year}) from Radarr and deleted files from disk.`,
 				};
+
+				await saveToolCall(context, "removeMovie", {
+					input: { movieId },
+					result: toolResult,
+					mediaRef: {
+						mediaType: "movie",
+						action: "remove",
+						ids: { radarr: movieId, tmdb: movie.tmdbId },
+						title: movie.title,
+					},
+				});
+
+				return toolResult;
 			} catch (error) {
 				logger.error("Failed to remove movie", { movieId, error, context });
 				return `Failed to remove movie with ID ${movieId}: ${JSON.stringify(
@@ -185,10 +230,17 @@ export function getRadarrTools(context: SlackContext) {
 
 				const queue = await radarr.getQueue();
 
-				return {
+				const toolResult = {
 					totalRecords: queue.totalRecords,
 					downloads: queue.records.map(toPartialQueueItem),
 				};
+
+				await saveToolCall(context, "getQueue", {
+					input: {},
+					result: toolResult,
+				});
+
+				return toolResult;
 			} catch (error) {
 				logger.error("Failed to get queue", { error, context });
 				return `Failed to get queue: ${JSON.stringify(error)}`;
@@ -210,7 +262,14 @@ export function getRadarrTools(context: SlackContext) {
 			});
 
 			const history = await radarr.getHistory(pageSize);
-			return history.records.map(toPartialHistoryRecord);
+			const toolResult = history.records.map(toPartialHistoryRecord);
+
+			await saveToolCall(context, "getHistory", {
+				input: { pageSize },
+				result: toolResult,
+			});
+
+			return toolResult;
 		},
 	});
 
