@@ -1,11 +1,7 @@
 import { createLogger } from "@/lib/logger";
 import * as slack from "@/lib/slack/api";
 import { setThreadStatus } from "@/lib/slack/api";
-import type {
-	SlackBlock,
-	SlackSectionBlock,
-	SlackTableBlock,
-} from "@/lib/slack/types";
+import type { SlackBlock, SlackSectionBlock } from "@/lib/slack/types";
 import { mrkdwnFormat } from "@/lib/slack/utils";
 import type { SlackContext } from "@/types";
 
@@ -22,14 +18,26 @@ function createTextBlock(text: string): SlackSectionBlock {
 }
 
 export function sendResponse(context: SlackContext, text?: string) {
+	const hasQueuedBlocks = context.message_queue?.length;
+
+	// If text only with no blocks, send as markdown_text
+	if (text && !hasQueuedBlocks) {
+		return slack.sendMessage({
+			channel: context.slack_channel_id,
+			thread_ts: context.slack_thread_ts,
+			markdown_text: mrkdwnFormat(text),
+		});
+	}
+
+	// If blocks (with or without text), send everything as blocks
 	const blocks: SlackBlock[] = [];
 
 	if (text) {
 		blocks.push(createTextBlock(text));
 	}
 
-	if (context.message_queue?.length) {
-		blocks.push(...context.message_queue);
+	if (hasQueuedBlocks) {
+		blocks.push(...context.message_queue!);
 	}
 
 	if (blocks.length === 0) {
@@ -106,34 +114,6 @@ export function queueMessage(context: SlackContext, blocks: SlackBlock[]) {
 	// add blocks to the end of the queue
 	context.message_queue.push(...blocks);
 	logger.debug("queued message", { blockCount: blocks.length, context });
-}
-
-/**
- * note: this causes the Slack API to throw a 500
- */
-export function sendTable(context: SlackContext, rows: string[][]) {
-	const columnSettings = rows[0]!.map(
-		() =>
-			({
-				align: "left",
-				is_wrapped: true,
-			} as const)
-	);
-
-	const tableBlock: SlackTableBlock = {
-		type: "table",
-		column_settings: columnSettings,
-		rows: rows.map((row) =>
-			row.map((cell) => ({
-				type: "raw_text",
-				text: cell,
-			}))
-		),
-	};
-
-	console.log(JSON.stringify(tableBlock, null, 2));
-
-	queueMessage(context, [tableBlock]);
 }
 
 export function sendToolCallUpdate(
