@@ -11,7 +11,6 @@ import {
 	getToolCallsForThread,
 } from "@/lib/db/repository";
 import { createLogger } from "@/lib/logger";
-import { getOdesliTools } from "@/lib/odesli/tools";
 import { getQbittorrentTools } from "@/lib/qbittorrent/tools";
 import { getRadarrTools } from "@/lib/radarr/tools";
 import * as slackService from "@/lib/slack/service";
@@ -80,7 +79,6 @@ export async function streamMessage(
 		...getQbittorrentTools(context),
 		...getTMDBTools(context),
 		...getSlackTools(context),
-		...getOdesliTools(context),
 	};
 
 	const agent = new Agent({
