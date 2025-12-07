@@ -73,7 +73,7 @@ export async function handleSlackEvent(
 
 	// We first set a default status while we generate the actual status
 	// this is intentionally not awaited so that we can continue processing the message
-	setStatus(event, threadTs);
+	// setStatus(event, threadTs);
 
 	// await agent.processMessage(message, context);
 	await agent.streamMessage(message, context);
