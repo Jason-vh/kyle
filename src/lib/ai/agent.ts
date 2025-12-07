@@ -1,4 +1,3 @@
-import { createOpenAI } from "@ai-sdk/openai";
 import {
 	Experimental_Agent as Agent,
 	stepCountIs,
@@ -21,14 +20,15 @@ import { getSonarrTools } from "@/lib/sonarr/tools";
 import { getTMDBTools } from "@/lib/tmdb/tools";
 import { getUltraTools } from "@/lib/ultra/tools";
 import type { MessageWithContext, SlackContext } from "@/types";
+import { createAnthropic } from "@ai-sdk/anthropic";
 
 const logger = createLogger("ai/agent");
 
-const openai = createOpenAI({
-	apiKey: Bun.env.OPENAI_API_KEY,
+const anthropic = createAnthropic({
+	apiKey: Bun.env.ANTHROPIC_API_KEY,
 });
 
-const model = openai("gpt-5-nano");
+const model = anthropic("claude-3-5-haiku-latest");
 
 export async function streamMessage(
 	message: MessageWithContext,
