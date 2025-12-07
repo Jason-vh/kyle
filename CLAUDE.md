@@ -24,6 +24,7 @@ Kyle is an AI-powered bot for Slack that helps manage media libraries through Ra
 - **Webhook-based**: Slack sends updates via webhooks (no polling)
 - **Conversation memory**: Tool calls are persisted to SQLite, injected as context on subsequent messages
 - **AI-powered**: OpenAI processes natural language and decides which tools to use
+- **Media notifications**: Radarr/Sonarr send webhooks when media imports; Kyle notifies users in their original thread
 
 ## Development Commands
 
@@ -137,6 +138,10 @@ NODE_ENV=production
       /api.ts         - Ultra API client
       /tools.ts       - AI tools for Ultra
       /types.ts       - TypeScript types
+    /webhooks
+      /handler.ts     - Radarr/Sonarr webhook handlers
+      /notifications.ts - AI-powered notification message generator
+      /types.ts       - Webhook payload types
     /logger.ts        - Logging utility
   /types
     /index.ts         - Shared TypeScript types
@@ -204,6 +209,19 @@ Tool calls are persisted to SQLite for in-thread context:
 ```
 
 This allows Kyle to reference previous actions without re-querying APIs (e.g., "what quality profile is it using?" after adding a movie).
+
+### Media Availability Notifications
+
+When media finishes importing in Radarr/Sonarr, Kyle notifies users who requested it:
+
+1. **Webhook received**: Radarr/Sonarr sends "On Import" webhook to `/webhooks/radarr` or `/webhooks/sonarr`
+2. **Lookup requesters**: Query `media_refs` table for matching media IDs where `action = "add"`
+3. **Generate notification**: AI generates a contextual message (with fallback if AI fails)
+4. **Notify in thread**: Post notification in the original Slack thread where the user requested the media
+
+To enable, configure webhooks in Radarr/Sonarr:
+- **URL**: `https://your-server/webhooks/radarr` or `/webhooks/sonarr`
+- **Events**: On Import only (upgrades are ignored)
 
 ## Development Notes
 

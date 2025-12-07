@@ -10,6 +10,7 @@ An AI-powered Slack bot for managing your media library through Radarr, Sonarr, 
 - qBittorrent integration for download management
 - TMDB integration for media metadata
 - Conversation memory - remembers tool calls within a thread
+- **Media availability notifications** - Kyle notifies you when requested media finishes downloading
 - Self-hosted on your media server
 
 ## Prerequisites
