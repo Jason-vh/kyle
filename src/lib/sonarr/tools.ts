@@ -24,8 +24,9 @@ export function getSonarrTools(context: SlackContext) {
 				.number()
 				.describe("The ID of the series to get information about"),
 		}),
-		execute: async ({ seriesId }) => {
-			logger.info("calling getSeries tool", { seriesId, context });
+		execute: async (input) => {
+			const { seriesId } = input;
+			logger.info("calling getSeries tool", { ...input, context });
 			try {
 				slackService.sendToolCallUpdate(context, {
 					status: "is checking series details in Sonarr...",
@@ -35,7 +36,7 @@ export function getSonarrTools(context: SlackContext) {
 				const result = toPartialSeries(series);
 
 				await saveToolCall(context, "getSeriesBySonarrId", {
-					input: { seriesId },
+					input,
 					result,
 					mediaRef: {
 						mediaType: "series",
@@ -87,8 +88,9 @@ export function getSonarrTools(context: SlackContext) {
 		inputSchema: z.object({
 			title: z.string().describe("The title of the TV series to search for"),
 		}),
-		execute: async ({ title }) => {
-			logger.info("calling searchSeries tool", { title, context });
+		execute: async (input) => {
+			const { title } = input;
+			logger.info("calling searchSeries tool", { ...input, context });
 			try {
 				slackService.sendToolCallUpdate(context, {
 					status: `is searching for ${title} in Sonarr...`,
@@ -98,7 +100,7 @@ export function getSonarrTools(context: SlackContext) {
 				const results = series.map(toPartialSeries);
 
 				await saveToolCall(context, "searchSeries", {
-					input: { title },
+					input,
 					result: results,
 				});
 
@@ -118,20 +120,26 @@ export function getSonarrTools(context: SlackContext) {
 
 	const addSeries = tool({
 		description:
-			"Add a TV series to Sonarr for. Requires title, year, and TVDB ID. After being added, the series will start downloading (if available).",
+			"Add a TV series to Sonarr. Requires title, year, TVDB ID, and monitor option. The monitor option determines which episodes to download: 'all' for entire series, 'lastSeason' for only the latest season, 'future' for upcoming episodes only, 'missing' for missing episodes, 'existing' for existing episodes, or 'none' to add without downloading.",
 		inputSchema: z.object({
 			title: z.string().describe("The title of the series to add"),
 			year: z.number().describe("The year the series started"),
 			tvdbId: z.number().describe("The TVDB ID of the series to add"),
+			monitorOption: z
+				.enum(["all", "future", "missing", "existing", "lastSeason", "none"])
+				.describe(
+					"Which episodes to monitor and download: 'all' (entire series), 'lastSeason' (latest season only), 'future' (upcoming episodes), 'missing' (missing episodes), 'existing' (existing episodes), 'none' (don't download)"
+				),
 		}),
-		execute: async ({ title, year, tvdbId }) => {
-			logger.info("calling addSeries tool", { title, year, tvdbId, context });
+		execute: async (input) => {
+			const { title, year, tvdbId, monitorOption } = input;
+			logger.info("calling addSeries tool", { ...input, context });
 			try {
 				slackService.sendToolCallUpdate(context, {
 					status: `is adding ${title} (${year}) to Sonarr...`,
 				});
 
-				const series = await sonarr.addSeries(title, year, tvdbId);
+				const series = await sonarr.addSeries(title, year, tvdbId, monitorOption);
 
 				const seriesImage = series.images.find((i) => i.coverType === "poster");
 
@@ -145,11 +153,11 @@ export function getSonarrTools(context: SlackContext) {
 
 				const toolResult = {
 					series: result,
-					message: `Added "${title}" (${year}) to Sonarr for. The user has been notified of the addition.`,
+					message: `Added "${title}" (${year}) to Sonarr. The user has been notified of the addition.`,
 				};
 
 				await saveToolCall(context, "addSeries", {
-					input: { title, year, tvdbId },
+					input,
 					result: toolResult,
 					mediaRef: {
 						mediaType: "series",
@@ -186,11 +194,9 @@ export function getSonarrTools(context: SlackContext) {
 		inputSchema: z.object({
 			seriesId: z.number().describe("The ID of the series to remove"),
 		}),
-		execute: async ({ seriesId }) => {
-			logger.info("calling removeSeries tool", {
-				seriesId,
-				context,
-			});
+		execute: async (input) => {
+			const { seriesId } = input;
+			logger.info("calling removeSeries tool", { ...input, context });
 			try {
 				const series = await sonarr.getSeries(seriesId);
 
@@ -206,7 +212,7 @@ export function getSonarrTools(context: SlackContext) {
 				};
 
 				await saveToolCall(context, "removeSeries", {
-					input: { seriesId },
+					input,
 					result: toolResult,
 					mediaRef: {
 						mediaType: "series",
@@ -245,12 +251,9 @@ export function getSonarrTools(context: SlackContext) {
 					"The season number to remove (e.g., 1 for Season 1, 0 for Specials)"
 				),
 		}),
-		execute: async ({ seriesId, seasonNumber }) => {
-			logger.info("calling removeSeason tool", {
-				seriesId,
-				seasonNumber,
-				context,
-			});
+		execute: async (input) => {
+			const { seriesId, seasonNumber } = input;
+			logger.info("calling removeSeason tool", { ...input, context });
 			try {
 				const series = await sonarr.getSeries(seriesId);
 
@@ -334,8 +337,9 @@ export function getSonarrTools(context: SlackContext) {
 				)
 				.default(false),
 		}),
-		execute: async ({ seriesId, hasFile = false }) => {
-			logger.info("calling getEpisodes tool", { seriesId, hasFile, context });
+		execute: async (input) => {
+			const { seriesId, hasFile = false } = input;
+			logger.info("calling getEpisodes tool", { ...input, context });
 			try {
 				slackService.sendToolCallUpdate(context, {
 					status: `is checking episodes for series ${seriesId} in Sonarr...`,
@@ -422,13 +426,9 @@ export function getSonarrTools(context: SlackContext) {
 				.default(true)
 				.describe("Include series information with each episode"),
 		}),
-		execute: async ({ start, end, includeSeries = true }) => {
-			logger.info("calling getCalendar tool", {
-				start,
-				end,
-				includeSeries,
-				context,
-			});
+		execute: async (input) => {
+			const { start, end, includeSeries = true } = input;
+			logger.info("calling getCalendar tool", { ...input, context });
 			try {
 				slackService.sendToolCallUpdate(context, {
 					status: `is checking the Sonarr calendar...`,
@@ -461,12 +461,9 @@ export function getSonarrTools(context: SlackContext) {
 				.optional()
 				.describe("Array of specific episode IDs to search for"),
 		}),
-		execute: async ({ seriesId, episodeIds }) => {
-			logger.info("calling searchEpisodes tool", {
-				seriesId,
-				episodeIds,
-				context,
-			});
+		execute: async (input) => {
+			const { seriesId, episodeIds } = input;
+			logger.info("calling searchEpisodes tool", { ...input, context });
 			try {
 				slackService.sendToolCallUpdate(context, {
 					status: `is searching for episodes in Sonarr...`,
@@ -521,19 +518,14 @@ export function getSonarrTools(context: SlackContext) {
 				.default(true)
 				.describe("Include episode information"),
 		}),
-		execute: async ({
-			page = 1,
-			pageSize = 20,
-			includeSeries = true,
-			includeEpisode = true,
-		}) => {
-			logger.info("calling getHistory tool", {
-				page,
-				pageSize,
-				includeSeries,
-				includeEpisode,
-				context,
-			});
+		execute: async (input) => {
+			const {
+				page = 1,
+				pageSize = 20,
+				includeSeries = true,
+				includeEpisode = true,
+			} = input;
+			logger.info("calling getHistory tool", { ...input, context });
 			try {
 				slackService.sendToolCallUpdate(context, {
 					status: `is checking Sonarr history...`,
@@ -554,7 +546,7 @@ export function getSonarrTools(context: SlackContext) {
 				};
 
 				await saveToolCall(context, "getHistory", {
-					input: { page, pageSize, includeSeries, includeEpisode },
+					input,
 					result: toolResult,
 				});
 

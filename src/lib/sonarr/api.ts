@@ -78,13 +78,22 @@ export async function searchSeries(term: string): Promise<SonarrSeries[]> {
 	return results as SonarrSeries[];
 }
 
+export type MonitorOption =
+	| "all"
+	| "future"
+	| "missing"
+	| "existing"
+	| "lastSeason"
+	| "none";
+
 /**
  * Add a series to Sonarr for monitoring.
  */
 export async function addSeries(
 	title: string,
 	year: number,
-	tvdbId: number
+	tvdbId: number,
+	monitorOption: MonitorOption
 ): Promise<SonarrSeries> {
 	// Get quality profiles and root folders
 	const [qualityProfiles, rootFolders] = await Promise.all([
@@ -113,7 +122,7 @@ export async function addSeries(
 		monitored: true,
 		seasonFolder: true,
 		addOptions: {
-			monitor: "all",
+			monitor: monitorOption,
 			searchForMissingEpisodes: true,
 			searchForCutoffUnmetEpisodes: false,
 		},

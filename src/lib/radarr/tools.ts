@@ -22,9 +22,10 @@ export function getRadarrTools(context: SlackContext) {
 				.number()
 				.describe("The ID of the movie to get information about."),
 		}),
-		execute: async ({ radarrMovieId: movieId }) => {
+		execute: async (input) => {
+			const { radarrMovieId: movieId } = input;
 			try {
-				logger.info("calling getMovie tool", { movieId, context });
+				logger.info("calling getMovie tool", { ...input, context });
 
 				slackService.sendToolCallUpdate(context, {
 					status: "is checking movie details in Radarr...",
@@ -34,7 +35,7 @@ export function getRadarrTools(context: SlackContext) {
 				const result = toPartialMovie(movie);
 
 				await saveToolCall(context, "getMovie", {
-					input: { radarrMovieId: movieId },
+					input,
 					result,
 					mediaRef: {
 						mediaType: "movie",
@@ -79,9 +80,10 @@ export function getRadarrTools(context: SlackContext) {
 		inputSchema: z.object({
 			title: z.string().describe("The title of the movie to search for"),
 		}),
-		execute: async ({ title }) => {
+		execute: async (input) => {
+			const { title } = input;
 			try {
-				logger.info("calling searchMovies tool", { title, context });
+				logger.info("calling searchMovies tool", { ...input, context });
 
 				slackService.sendToolCallUpdate(context, {
 					status: `is searching for ${title} in Radarr...`,
@@ -91,7 +93,7 @@ export function getRadarrTools(context: SlackContext) {
 				const results = movies.map(toPartialMovie);
 
 				await saveToolCall(context, "searchMovies", {
-					input: { title },
+					input,
 					result: results,
 				});
 
@@ -118,9 +120,10 @@ export function getRadarrTools(context: SlackContext) {
 			title: z.string().describe("The title of the movie to add"),
 			year: z.string().describe("The year of the movie to add"),
 		}),
-		execute: async ({ tmdbId, title, year }) => {
+		execute: async (input) => {
+			const { tmdbId, title, year } = input;
 			try {
-				logger.info("calling addMovie tool", { tmdbId, context });
+				logger.info("calling addMovie tool", { ...input, context });
 
 				slackService.sendToolCallUpdate(context, {
 					status: `is adding ${title} (${year}) to Radarr...`,
@@ -143,7 +146,7 @@ export function getRadarrTools(context: SlackContext) {
 				};
 
 				await saveToolCall(context, "addMovie", {
-					input: { tmdbId, title, year },
+					input,
 					result: toolResult,
 					mediaRef: {
 						mediaType: "movie",
@@ -174,9 +177,10 @@ export function getRadarrTools(context: SlackContext) {
 		inputSchema: z.object({
 			movieId: z.number().describe("The ID of the movie to remove"),
 		}),
-		execute: async ({ movieId }) => {
+		execute: async (input) => {
+			const { movieId } = input;
 			try {
-				logger.info("calling removeMovie tool", { movieId, context });
+				logger.info("calling removeMovie tool", { ...input, context });
 
 				const movie = await radarr.getMovie(movieId);
 
@@ -192,7 +196,7 @@ export function getRadarrTools(context: SlackContext) {
 				};
 
 				await saveToolCall(context, "removeMovie", {
-					input: { movieId },
+					input,
 					result: toolResult,
 					mediaRef: {
 						mediaType: "movie",
@@ -249,8 +253,9 @@ export function getRadarrTools(context: SlackContext) {
 		inputSchema: z.object({
 			pageSize: z.number().describe("The number of items to return."),
 		}),
-		execute: async ({ pageSize }) => {
-			logger.info("calling getHistory tool", { pageSize });
+		execute: async (input) => {
+			const { pageSize } = input;
+			logger.info("calling getHistory tool", { ...input, context });
 
 			slackService.sendToolCallUpdate(context, {
 				status: "is checking the Radarr history...",
@@ -260,7 +265,7 @@ export function getRadarrTools(context: SlackContext) {
 			const toolResult = history.records.map(toPartialHistoryRecord);
 
 			await saveToolCall(context, "getHistory", {
-				input: { pageSize },
+				input,
 				result: toolResult,
 			});
 

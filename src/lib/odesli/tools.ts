@@ -26,13 +26,10 @@ export function getOdesliTools(context: SlackContext) {
 					"Optional country code (e.g., 'US', 'GB') for region-specific results"
 				),
 		}),
-		execute: async ({ url, userCountry }) => {
+		execute: async (input) => {
+			const { url, userCountry } = input;
 			try {
-				logger.info("calling convertMusicLink tool", {
-					context,
-					url,
-					userCountry,
-				});
+				logger.info("calling convertMusicLink tool", { ...input, context });
 
 				slack.setThreadStatus({
 					channel_id: context.slack_channel_id,
@@ -49,9 +46,9 @@ export function getOdesliTools(context: SlackContext) {
 				};
 			} catch (error) {
 				logger.error("Failed to convert music link", {
-					context,
 					url,
 					error,
+					context,
 				});
 
 				return {

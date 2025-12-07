@@ -30,14 +30,10 @@ export function getTMDBTools(context: SlackContext) {
 				.optional()
 				.describe("Optional: Page number for pagination (default: 1)"),
 		}),
-		execute: async ({ query, year, page }) => {
+		execute: async (input) => {
+			const { query, year, page } = input;
 			try {
-				logger.info("calling searchMovies tool", {
-					query,
-					year,
-					page,
-					context,
-				});
+				logger.info("calling searchMovies tool", { ...input, context });
 
 				slack.setThreadStatus({
 					channel_id: context.slack_channel_id,
@@ -78,9 +74,10 @@ export function getTMDBTools(context: SlackContext) {
 				.optional()
 				.describe("Optional: Page number for pagination (default: 1)"),
 		}),
-		execute: async ({ query, page }) => {
+		execute: async (input) => {
+			const { query, page } = input;
 			try {
-				logger.info("calling searchTV tool", { query, page, context });
+				logger.info("calling searchTV tool", { ...input, context });
 
 				slack.setThreadStatus({
 					channel_id: context.slack_channel_id,
@@ -120,9 +117,10 @@ export function getTMDBTools(context: SlackContext) {
 				.optional()
 				.describe("Optional: Page number for pagination (default: 1)"),
 		}),
-		execute: async ({ query, page }) => {
+		execute: async (input) => {
+			const { query, page } = input;
 			try {
-				logger.info("calling searchMulti tool", { query, page, context });
+				logger.info("calling searchMulti tool", { ...input, context });
 
 				slack.setThreadStatus({
 					channel_id: context.slack_channel_id,
@@ -158,12 +156,10 @@ export function getTMDBTools(context: SlackContext) {
 				.number()
 				.describe("The TMDB ID of the movie to get details for"),
 		}),
-		execute: async ({ tmdbMovieId }) => {
+		execute: async (input) => {
+			const { tmdbMovieId } = input;
 			try {
-				logger.info("calling getMovieDetails tool", {
-					tmdbMovieId,
-					context,
-				});
+				logger.info("calling getMovieDetails tool", { ...input, context });
 
 				slack.setThreadStatus({
 					channel_id: context.slack_channel_id,
@@ -194,9 +190,10 @@ export function getTMDBTools(context: SlackContext) {
 				.number()
 				.describe("The TMDB ID of the TV show to get details for"),
 		}),
-		execute: async ({ tmdbTVId }) => {
+		execute: async (input) => {
+			const { tmdbTVId } = input;
 			try {
-				logger.info("calling getTVShowDetails tool", { tmdbTVId, context });
+				logger.info("calling getTVShowDetails tool", { ...input, context });
 
 				slack.setThreadStatus({
 					channel_id: context.slack_channel_id,

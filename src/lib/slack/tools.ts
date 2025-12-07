@@ -21,12 +21,10 @@ export function getSlackTools(context: SlackContext) {
 				})
 			),
 		}),
-		execute: async ({ movies }) => {
+		execute: async (input) => {
+			const { movies } = input;
 			try {
-				logger.info("calling presentListOfMovies tool", {
-					context,
-					movies,
-				});
+				logger.info("calling presentListOfMovies tool", { ...input, context });
 
 				const results = await Promise.all(
 					movies.map(async (movie) => {
@@ -46,9 +44,9 @@ export function getSlackTools(context: SlackContext) {
 				await slackService.sendMediaItems(context, results);
 
 				logger.info("successfully presented list of movies", {
-					context,
 					movies,
 					results,
+					context,
 				});
 
 				return `List of movies presented to the user.`;
