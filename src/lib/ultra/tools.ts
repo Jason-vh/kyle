@@ -18,7 +18,6 @@ export function getUltraTools(context: SlackContext) {
 
 				slackService.sendToolCallUpdate(context, {
 					status: `is checking storage...`,
-					progressMessage: `Checking storage...`,
 				});
 
 				const stats = await ultra.getTotalStats();

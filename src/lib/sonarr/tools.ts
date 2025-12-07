@@ -29,7 +29,6 @@ export function getSonarrTools(context: SlackContext) {
 			try {
 				slackService.sendToolCallUpdate(context, {
 					status: "is checking series details in Sonarr...",
-					progressMessage: "Looking up series...",
 				});
 
 				const series = await sonarr.getSeries(seriesId);
@@ -67,7 +66,6 @@ export function getSonarrTools(context: SlackContext) {
 			try {
 				slackService.sendToolCallUpdate(context, {
 					status: "is fetching all series in Sonarr...",
-					progressMessage: "Looking up series...",
 				});
 
 				const series = await sonarr.getAllSeries();
@@ -94,7 +92,6 @@ export function getSonarrTools(context: SlackContext) {
 			try {
 				slackService.sendToolCallUpdate(context, {
 					status: `is searching for ${title} in Sonarr...`,
-					progressMessage: `Searching for ${title}...`,
 				});
 
 				const series = await sonarr.searchSeries(title);
@@ -132,7 +129,6 @@ export function getSonarrTools(context: SlackContext) {
 			try {
 				slackService.sendToolCallUpdate(context, {
 					status: `is adding ${title} (${year}) to Sonarr...`,
-					progressMessage: `Adding ${title} (${year})...`,
 				});
 
 				const series = await sonarr.addSeries(title, year, tvdbId);
@@ -163,7 +159,10 @@ export function getSonarrTools(context: SlackContext) {
 					},
 				});
 
-				logger.info("successfully added series", { response: toolResult, context });
+				logger.info("successfully added series", {
+					response: toolResult,
+					context,
+				});
 				return toolResult;
 			} catch (error) {
 				logger.error("Failed to add series", {
@@ -197,7 +196,6 @@ export function getSonarrTools(context: SlackContext) {
 
 				slackService.sendToolCallUpdate(context, {
 					status: `is removing ${series.title} (${series.year}) from Sonarr...`,
-					progressMessage: `Removing ${series.title} (${series.year})...`,
 				});
 
 				await sonarr.removeSeries(seriesId, true);
@@ -258,7 +256,6 @@ export function getSonarrTools(context: SlackContext) {
 
 				slackService.sendToolCallUpdate(context, {
 					status: `is removing season ${seasonNumber} of ${series.title} (${series.year})...`,
-					progressMessage: `Removing season ${seasonNumber} of ${series.title} (${series.year})...`,
 				});
 
 				// Get all episodes for the series
@@ -396,7 +393,10 @@ export function getSonarrTools(context: SlackContext) {
 					result: toolResult,
 				});
 
-				logger.info("retrieved download queue", { response: toolResult, context });
+				logger.info("retrieved download queue", {
+					response: toolResult,
+					context,
+				});
 				return toolResult;
 			} catch (error) {
 				logger.error("Failed to get queue", { error, context });
@@ -470,7 +470,6 @@ export function getSonarrTools(context: SlackContext) {
 			try {
 				slackService.sendToolCallUpdate(context, {
 					status: `is searching for episodes in Sonarr...`,
-					progressMessage: `Starting search for episodes in Sonarr...`,
 				});
 
 				const command = await sonarr.searchEpisodes(seriesId, episodeIds);

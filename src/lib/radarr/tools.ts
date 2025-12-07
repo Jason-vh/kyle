@@ -28,7 +28,6 @@ export function getRadarrTools(context: SlackContext) {
 
 				slackService.sendToolCallUpdate(context, {
 					status: "is checking movie details in Radarr...",
-					progressMessage: "Looking up movie details...",
 				});
 
 				const movie = await radarr.getMovie(movieId);
@@ -64,7 +63,6 @@ export function getRadarrTools(context: SlackContext) {
 
 				slackService.sendToolCallUpdate(context, {
 					status: "is fetching movies from Radarr...",
-					progressMessage: "Checking movie library...",
 				});
 
 				const movies = await radarr.getMovies();
@@ -87,7 +85,6 @@ export function getRadarrTools(context: SlackContext) {
 
 				slackService.sendToolCallUpdate(context, {
 					status: `is searching for ${title} in Radarr...`,
-					progressMessage: `Searching for ${title}...`,
 				});
 
 				const movies = await radarr.searchMovies(title);
@@ -127,7 +124,6 @@ export function getRadarrTools(context: SlackContext) {
 
 				slackService.sendToolCallUpdate(context, {
 					status: `is adding ${title} (${year}) to Radarr...`,
-					progressMessage: `Adding ${title}...`,
 				});
 
 				const result = await radarr.addMovie(title, year, tmdbId);
@@ -186,7 +182,6 @@ export function getRadarrTools(context: SlackContext) {
 
 				slackService.sendToolCallUpdate(context, {
 					status: `is removing ${movie.title} (${movie.year}) from Radarr...`,
-					progressMessage: `Removing ${movie.title}...`,
 				});
 
 				await radarr.removeMovie(movieId, true);

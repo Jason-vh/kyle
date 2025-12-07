@@ -1,10 +1,15 @@
-import { eq, and, asc } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 
 import { createLogger } from "@/lib/logger";
 import type { SlackContext } from "@/types";
 
-import { db, conversations, toolCalls, mediaRefs } from "./index";
-import type { NewConversation, NewToolCall, NewMediaRef, ToolCall } from "./schema";
+import { conversations, db, mediaRefs, toolCalls } from "./index";
+import type {
+	NewConversation,
+	NewMediaRef,
+	NewToolCall,
+	ToolCall,
+} from "./schema";
 
 const logger = createLogger("db/repository");
 
@@ -31,7 +36,11 @@ export type SaveToolCallOptions = {
  * Get or create a conversation record for a Slack thread
  */
 async function getOrCreateConversation(context: SlackContext): Promise<string> {
-	const { slack_thread_ts: threadTs, slack_channel_id: channelId, slack_user_id: userId } = context;
+	const {
+		slack_thread_ts: threadTs,
+		slack_channel_id: channelId,
+		slack_user_id: userId,
+	} = context;
 
 	if (!threadTs || !channelId) {
 		throw new Error("Missing thread_ts or channel_id in context");
@@ -78,6 +87,8 @@ export async function saveToolCall(
 		const conversationId = await getOrCreateConversation(context);
 		const now = new Date();
 		const toolCallId = crypto.randomUUID();
+
+		logger.debug("saving tool call", { toolName, options, context });
 
 		const newToolCall: NewToolCall = {
 			id: toolCallId,

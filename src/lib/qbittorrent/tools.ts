@@ -43,10 +43,7 @@ export function getQbittorrentTools(context: SlackContext) {
 					status: "is looking up torrents...",
 				});
 
-				slackService.appendToStream(
-					context,
-					"Fetching torrents...\n"
-				);
+				slackService.appendToStream(context, "Fetching torrents...\n");
 
 				const torrents = await qbittorrent.getTorrents(filter);
 				const results = torrents.map(toPartialTorrent);
@@ -84,10 +81,7 @@ export function getQbittorrentTools(context: SlackContext) {
 					context,
 				});
 
-				slackService.appendToStream(
-					context,
-					"Removing torrents...\n"
-				);
+				slackService.appendToStream(context, "Removing torrents...\n");
 
 				slack.setThreadStatus({
 					channel_id: context.slack_channel_id,
@@ -96,11 +90,6 @@ export function getQbittorrentTools(context: SlackContext) {
 				});
 
 				await qbittorrent.deleteTorrents(hashes);
-
-				await slackService.sendSystemMessage(
-					context,
-					`Deleted ${hashes.length} torrent(s)`
-				);
 
 				logger.info("successfully deleted torrents", {
 					hashes,

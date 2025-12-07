@@ -4,7 +4,6 @@ import * as slack from "@/lib/slack/api";
 import { setThreadStatus } from "@/lib/slack/api";
 import type {
 	SlackBlock,
-	SlackContextBlock,
 	SlackSectionBlock,
 	SlackTableBlock,
 } from "@/lib/slack/types";
@@ -122,24 +121,6 @@ export function sendMediaItems(
 			createMediaObjectBlock(item.title, item.description, item.image)
 		)
 	);
-}
-
-export function sendSystemMessage(context: SlackContext, text: string) {
-	const contextBlock: SlackContextBlock = {
-		type: "context",
-		elements: [
-			{
-				type: "mrkdwn",
-				text: `System: ${mrkdwnFormat(text)}`,
-			},
-		],
-	};
-
-	slack.sendMessage({
-		channel: context.slack_channel_id,
-		thread_ts: context.slack_thread_ts,
-		blocks: [contextBlock],
-	});
 }
 
 export function queueMessage(context: SlackContext, blocks: SlackBlock[]) {
