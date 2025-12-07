@@ -30,57 +30,50 @@ export async function handleSlackEvent(
 	context: SlackContext
 ): Promise<void> {
 	if (!event) {
-		logger.error("no event data", { context });
 		return;
 	}
 
 	if (event.type !== "message") {
-		logger.debug(`skipping unknown ${event.type} event`, { context });
 		return;
 	}
 
 	if (event.subtype === "message_changed" || event.subtype === "bot_message") {
-		logger.debug(`skipping ${event.subtype} event`, { context });
 		return;
 	}
 
 	if (event.streaming_state == "in_progress") {
-		logger.debug(`skipping in_progress stream event`, { context });
 		return;
 	}
 
 	if (event.bot_profile) {
-		logger.debug(`message is from bot ${event.bot_profile.name} - skipping`, {
-			context,
-		});
 		return;
 	}
 
 	const isDirectMessage = event.channel_type === "im";
 	if (!isDirectMessage && !event.text?.includes(`<@${BOT_USER_ID}>`)) {
-		logger.debug(
-			"message is not a direct message and does not mention the bot - skipping",
-			{ context }
-		);
 		return;
 	}
 
 	const threadTs = event.thread_ts || event.ts;
 
-	// intentionally not awaited so that we can continue processing the message
-	setStatus(event, threadTs);
+	try {
+		// intentionally not awaited so that we can continue processing the message
+		setStatus(event, threadTs);
 
-	const message = await buildMessageContext(threadTs, event);
+		const message = await buildMessageContext(threadTs, event);
 
-	logger.info("built message context", { message, context });
+		logger.info("built message context", { message, context });
 
-	// await agent.processMessage(message, context);
-	await agent.streamMessage(message, context);
-
-	// clear the thread status
-	await slack.setThreadStatus({
-		channel_id: event.channel,
-		thread_ts: threadTs,
-		status: "",
-	});
+		// await agent.processMessage(message, context);
+		await agent.streamMessage(message, context);
+	} catch (error) {
+		logger.error("error handling Slack event", { error, context });
+	} finally {
+		// clear the thread status
+		await slack.setThreadStatus({
+			channel_id: event.channel,
+			thread_ts: threadTs,
+			status: "",
+		});
+	}
 }

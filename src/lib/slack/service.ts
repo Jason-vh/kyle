@@ -1,4 +1,3 @@
-import { generateToolCallMessage } from "@/lib/ai/generators";
 import { createLogger } from "@/lib/logger";
 import * as slack from "@/lib/slack/api";
 import { setThreadStatus } from "@/lib/slack/api";
@@ -12,60 +11,36 @@ import type { SlackContext } from "@/types";
 
 const logger = createLogger("slack/service");
 
-export async function appendToolUsageMessage(
-	context: SlackContext,
-	tool: string,
-	description: string
-) {
-	const status = await generateToolCallMessage(tool, description);
-
-	await appendToStream(context, status + "\n");
+function createTextBlock(text: string): SlackSectionBlock {
+	return {
+		type: "section",
+		text: {
+			type: "mrkdwn",
+			text: mrkdwnFormat(text),
+		},
+	};
 }
 
-export async function startStream(context: SlackContext) {
-	const result = await slack.startStream({
+export function sendResponse(context: SlackContext, text?: string) {
+	const blocks: SlackBlock[] = [];
+
+	if (text) {
+		blocks.push(createTextBlock(text));
+	}
+
+	if (context.message_queue?.length) {
+		blocks.push(...context.message_queue);
+	}
+
+	if (blocks.length === 0) {
+		return;
+	}
+
+	return slack.sendMessage({
 		channel: context.slack_channel_id,
 		thread_ts: context.slack_thread_ts,
-		recipient_team_id: context.slack_team_id,
-		recipient_user_id: context.slack_user_id,
+		blocks,
 	});
-
-	context.slack_stream_ts = result.ts;
-
-	return result;
-}
-
-export async function appendToStream(context: SlackContext, text: string) {
-	if (!context.slack_stream_ts) {
-		const stream = await startStream(context);
-		context.slack_stream_ts = stream.ts;
-	}
-
-	return slack.appendStream({
-		channel: context.slack_channel_id,
-		ts: context.slack_stream_ts,
-		markdown_text: mrkdwnFormat(text),
-	});
-}
-
-export function stopStream(context: SlackContext, finalText?: string) {
-	if (context.slack_stream_ts) {
-		return slack.stopStream({
-			channel: context.slack_channel_id,
-			ts: context.slack_stream_ts,
-			markdown_text: finalText ? "\n" + mrkdwnFormat(finalText) : undefined,
-			blocks: context.message_queue,
-		});
-	}
-
-	if (finalText || context.message_queue?.length) {
-		return slack.sendMessage({
-			channel: context.slack_channel_id,
-			thread_ts: context.slack_thread_ts,
-			markdown_text: finalText ? mrkdwnFormat(finalText) : undefined,
-			blocks: context.message_queue,
-		});
-	}
 }
 
 function createMediaObjectBlock(
@@ -165,10 +140,8 @@ export function sendToolCallUpdate(
 	context: SlackContext,
 	{
 		status,
-		progressMessage,
 	}: {
 		status?: string;
-		progressMessage?: string;
 	} = {}
 ) {
 	if (status) {
@@ -177,9 +150,5 @@ export function sendToolCallUpdate(
 			thread_ts: context.slack_thread_ts,
 			status,
 		});
-	}
-
-	if (progressMessage) {
-		appendToStream(context, progressMessage + "\n");
 	}
 }

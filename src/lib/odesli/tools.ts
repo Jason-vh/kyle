@@ -4,7 +4,6 @@ import { z } from "zod";
 import { createLogger } from "@/lib/logger";
 import * as odesli from "@/lib/odesli/api";
 import * as slack from "@/lib/slack/api";
-import * as slackService from "@/lib/slack/service";
 import type { SlackContext } from "@/types";
 import { toPartialOdesliResponse } from "./utils";
 
@@ -34,11 +33,6 @@ export function getOdesliTools(context: SlackContext) {
 					url,
 					userCountry,
 				});
-
-				slackService.appendToStream(
-					context,
-					"Converting link...\n"
-				);
 
 				slack.setThreadStatus({
 					channel_id: context.slack_channel_id,

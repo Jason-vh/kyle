@@ -93,5 +93,5 @@ export async function streamMessage(
 		messages,
 	});
 
-	await slackService.stopStream(context, await text);
+	await slackService.sendResponse(context, await text);
 }

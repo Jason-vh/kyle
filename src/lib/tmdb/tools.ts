@@ -3,7 +3,6 @@ import { z } from "zod";
 
 import { createLogger } from "@/lib/logger";
 import * as slack from "@/lib/slack/api";
-import * as slackService from "@/lib/slack/service";
 import * as tmdb from "@/lib/tmdb/api";
 import {
 	toPartialMovie,
@@ -39,11 +38,6 @@ export function getTMDBTools(context: SlackContext) {
 					page,
 					context,
 				});
-
-				slackService.appendToStream(
-					context,
-					"Searching...\n"
-				);
 
 				slack.setThreadStatus({
 					channel_id: context.slack_channel_id,
@@ -88,11 +82,6 @@ export function getTMDBTools(context: SlackContext) {
 			try {
 				logger.info("calling searchTV tool", { query, page, context });
 
-				slackService.appendToStream(
-					context,
-					"Searching...\n"
-				);
-
 				slack.setThreadStatus({
 					channel_id: context.slack_channel_id,
 					thread_ts: context.slack_thread_ts,
@@ -135,11 +124,6 @@ export function getTMDBTools(context: SlackContext) {
 			try {
 				logger.info("calling searchMulti tool", { query, page, context });
 
-				slackService.appendToStream(
-					context,
-					"Searching...\n"
-				);
-
 				slack.setThreadStatus({
 					channel_id: context.slack_channel_id,
 					thread_ts: context.slack_thread_ts,
@@ -181,11 +165,6 @@ export function getTMDBTools(context: SlackContext) {
 					context,
 				});
 
-				slackService.appendToStream(
-					context,
-					"Looking up movie...\n"
-				);
-
 				slack.setThreadStatus({
 					channel_id: context.slack_channel_id,
 					thread_ts: context.slack_thread_ts,
@@ -218,11 +197,6 @@ export function getTMDBTools(context: SlackContext) {
 		execute: async ({ tmdbTVId }) => {
 			try {
 				logger.info("calling getTVShowDetails tool", { tmdbTVId, context });
-
-				slackService.appendToStream(
-					context,
-					"Looking up series...\n"
-				);
 
 				slack.setThreadStatus({
 					channel_id: context.slack_channel_id,

@@ -30,10 +30,7 @@ async function request({
 		| "chat.postEphemeral"
 		| "users.info"
 		| "conversations.info"
-		| "conversations.replies"
-		| "chat.startStream"
-		| "chat.appendStream"
-		| "chat.stopStream";
+		| "conversations.replies";
 	method: "POST" | "GET";
 	query?: Record<string, string>;
 	data?: Record<string, unknown>;
@@ -127,60 +124,4 @@ export async function fetchThreadReplies({
 	});
 
 	return result as SlackConversationsRepliesResponse;
-}
-
-/**
- * Start a text stream in a channel or thread.
- * Returns a timestamp (ts) that should be used for subsequent append and stop calls.
- */
-export async function startStream(params: {
-	channel: string;
-	thread_ts?: string;
-	markdown_text?: string;
-	recipient_team_id?: string;
-	recipient_user_id?: string;
-}): Promise<{ ok: boolean; ts: string; channel: string }> {
-	const result = await request({
-		operation: "chat.startStream",
-		method: "POST",
-		data: params,
-	});
-
-	return result as { ok: boolean; ts: string; channel: string };
-}
-
-/**
- * Append text to an active stream started with chat.startStream.
- */
-export async function appendStream(params: {
-	channel: string;
-	ts: string;
-	markdown_text: string;
-}): Promise<{ ok: boolean }> {
-	const result = await request({
-		operation: "chat.appendStream",
-		method: "POST",
-		data: params,
-	});
-
-	return result as { ok: boolean };
-}
-
-/**
- * Stop an active stream and optionally add final text or blocks.
- */
-export async function stopStream(params: {
-	channel: string;
-	ts: string;
-	markdown_text?: string;
-	blocks?: SlackBlock[];
-	metadata?: Record<string, unknown>;
-}): Promise<{ ok: boolean }> {
-	const result = await request({
-		operation: "chat.stopStream",
-		method: "POST",
-		data: params,
-	});
-
-	return result as { ok: boolean };
 }

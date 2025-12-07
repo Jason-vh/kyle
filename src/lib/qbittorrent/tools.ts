@@ -5,7 +5,6 @@ import { createLogger } from "@/lib/logger";
 import * as qbittorrent from "@/lib/qbittorrent/api";
 import { toPartialTorrent } from "@/lib/qbittorrent/utils";
 import * as slack from "@/lib/slack/api";
-import * as slackService from "@/lib/slack/service";
 import type { SlackContext } from "@/types";
 
 const logger = createLogger("qbittorrent/tools");
@@ -43,8 +42,6 @@ export function getQbittorrentTools(context: SlackContext) {
 					status: "is looking up torrents...",
 				});
 
-				slackService.appendToStream(context, "Fetching torrents...\n");
-
 				const torrents = await qbittorrent.getTorrents(filter);
 				const results = torrents.map(toPartialTorrent);
 
@@ -80,8 +77,6 @@ export function getQbittorrentTools(context: SlackContext) {
 					hashes,
 					context,
 				});
-
-				slackService.appendToStream(context, "Removing torrents...\n");
 
 				slack.setThreadStatus({
 					channel_id: context.slack_channel_id,
