@@ -1,46 +1,66 @@
 # Kyle - Media Management Bot
 
-A multi-platform bot for Slack powered by Claude AI for managing your media library through Radarr, Sonarr, and Ultra services. Built on Cloudflare Workers.
+An AI-powered Slack bot for managing your media library through Radarr, Sonarr, and other media services. Built with Bun and the AI SDK.
 
 ## Features
 
-- AI-powered natural language processing via Claude 3.5 Sonnet
+- Natural language media management via OpenAI GPT models
 - Radarr integration for movie management
 - Sonarr integration for TV show management
-- Ultra media service integration
-- Serverless deployment on Cloudflare Workers
-- Support for both Slack platforms
+- qBittorrent integration for download management
+- TMDB integration for media metadata
+- Conversation memory - remembers tool calls within a thread
+- Self-hosted on your media server
 
 ## Prerequisites
 
-- Node.js 18+
-- Cloudflare account
-- Anthropic API Key
+- [Bun](https://bun.sh) runtime
+- OpenAI API key
 - Slack App credentials
-- Radarr/Sonarr instances (optional)
+- Radarr/Sonarr instances
 
 ## Local Development
 
 1. Install dependencies:
 
 ```bash
-npm install
+bun install
 ```
 
-2. Copy `.dev.vars.example` to `.dev.vars` and fill in your credentials:
+2. Copy `.env.example` to `.env` and fill in your credentials:
 
 ```bash
-cp .dev.vars.example .dev.vars
+cp .env.example .env
 ```
 
-3. Run the development server:
+3. Initialize the database:
 
 ```bash
-npm run dev
+bun run db:push
+```
+
+4. Run the development server:
+
+```bash
+bun run dev
 ```
 
 ## Available Commands
 
-- `npm run dev` - Start local development server
-- `npm run deploy` - Deploy to Cloudflare Workers
-- `npm run cf-typegen` - Generate TypeScript types for Cloudflare bindings
+- `bun run dev` - Start local development server with hot reload
+- `bun run build` - Build for production
+- `bun run deploy` - Build and restart PM2 process
+- `bun run db:push` - Push schema changes to SQLite database
+- `bun run db:studio` - Open Drizzle Studio to inspect database
+- `bun run pm2:start` - Start with PM2 (first time)
+- `bun run pm2:restart` - Restart PM2 process
+- `bun run pm2:logs` - View PM2 logs
+
+## Database
+
+Kyle uses SQLite (via Drizzle ORM) to persist conversation context:
+
+- **Tool call history**: Remembers what tools were called in each thread
+- **Media references**: Indexes by TMDB/TVDB/Radarr/Sonarr IDs for future cross-thread lookups
+
+Data is stored in `./data/kyle.db` (gitignored).

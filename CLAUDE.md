@@ -22,7 +22,7 @@ Kyle is an AI-powered bot for Slack that helps manage media libraries through Ra
 
 - **Self-hosted**: Runs on your media server with PM2 process management
 - **Webhook-based**: Slack sends updates via webhooks (no polling)
-- **Stateless**: Each request is independent, context built from Slack conversation history
+- **Conversation memory**: Tool calls are persisted to SQLite, injected as context on subsequent messages
 - **AI-powered**: OpenAI processes natural language and decides which tools to use
 
 ## Development Commands
@@ -63,6 +63,22 @@ bun run pm2:logs
 bun run pm2:status
 ```
 
+### Database Commands
+
+```bash
+# Push schema changes to SQLite (creates tables if needed)
+bun run db:push
+
+# Open Drizzle Studio to inspect data
+bun run db:studio
+
+# Generate migrations (if using migration workflow)
+bun run db:generate
+
+# Run migrations
+bun run db:migrate
+```
+
 ### Environment Setup
 
 Set environment variables in `.env` file:
@@ -99,9 +115,13 @@ NODE_ENV=production
       /agent.ts       - OpenAI integration with tools
       /prompt.ts      - System prompt for AI
       /constants.ts   - AI configuration constants
-      /utils.ts       - AI utility functions
+    /db
+      /index.ts       - Database connection (bun:sqlite + Drizzle)
+      /schema.ts      - Database schema (conversations, tool_calls, media_refs)
+      /repository.ts  - Save/query functions for tool call persistence
+      /extractor.ts   - Extract media IDs from tool results
     /slack
-      /client.ts      - Slack API client
+      /api.ts         - Slack API client
       /handler.ts     - Slack event processing
       /types.ts       - Slack API types
       /utils.ts       - Slack utilities (username resolution, thread handling)
@@ -120,6 +140,8 @@ NODE_ENV=production
     /logger.ts        - Logging utility
   /types
     /index.ts         - Shared TypeScript types
+/data
+  /kyle.db            - SQLite database (gitignored)
 ```
 
 ## Key Architectural Patterns
@@ -166,6 +188,23 @@ Each service follows consistent patterns:
 - `types.ts` - TypeScript interfaces for API responses
 - Modular design allows easy addition of new services
 
+### Conversation Persistence
+
+Tool calls are persisted to SQLite for in-thread context:
+
+1. **On each request**: Previous tool calls for the thread are fetched and injected as a system message
+2. **After streaming**: Tool calls from `response.steps` are saved to the database
+3. **Media indexing**: Tool results are parsed to extract media IDs (TMDB, TVDB, Radarr, Sonarr) for future cross-thread lookups
+
+```typescript
+// Context injected to AI looks like:
+[Previous tool calls in this conversation]
+- addMovie({"tmdbId":27205,"title":"Inception"}) -> {"id":123,"title":"Inception"}
+- getQueue({}) -> [{"id":1,"status":"downloading"}, ... (3 items)]
+```
+
+This allows Kyle to reference previous actions without re-querying APIs (e.g., "what quality profile is it using?" after adding a movie).
+
 ## Development Notes
 
 ### Adding New Services
@@ -211,7 +250,7 @@ logger.error("error", { errorData });
 
 ## Important Limitations
 
-- **Stateless**: Bot doesn't remember conversation history beyond what's fetched from Slack
+- **In-thread memory only**: Tool call history is persisted per-thread, not across threads (cross-thread context is planned)
 - **Server dependency**: Requires your media server to be running and accessible
 - **Network access**: Bot must be reachable from Slack (requires public IP or tunneling)
 - **Slack API**: Limited to Bot API features (can't access full workspace chat history)
