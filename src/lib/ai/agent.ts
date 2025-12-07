@@ -47,6 +47,8 @@ export async function streamMessage(
 		context.slack_channel_id
 	);
 
+	logger.debug("previous tool calls", { previousToolCalls });
+
 	if (previousToolCalls.length > 0) {
 		const toolHistoryContext = formatToolCallsForContext(previousToolCalls);
 		messages.push({
