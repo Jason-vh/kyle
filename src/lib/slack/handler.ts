@@ -66,13 +66,13 @@ export async function handleSlackEvent(
 	}
 
 	const threadTs = event.thread_ts || event.ts;
+
+	// intentionally not awaited so that we can continue processing the message
+	setStatus(event, threadTs);
+
 	const message = await buildMessageContext(threadTs, event);
 
 	logger.info("built message context", { message, context });
-
-	// We first set a default status while we generate the actual status
-	// this is intentionally not awaited so that we can continue processing the message
-	setStatus(event, threadTs);
 
 	// await agent.processMessage(message, context);
 	await agent.streamMessage(message, context);
