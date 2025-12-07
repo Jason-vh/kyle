@@ -1,5 +1,4 @@
 import * as agent from "@/lib/ai/agent";
-import { generateInitialStatus } from "@/lib/ai/generators";
 import { createLogger } from "@/lib/logger";
 import * as slack from "@/lib/slack/api";
 import { BOT_USER_ID } from "@/lib/slack/constants";
@@ -18,12 +17,12 @@ async function setStatus(event: SlackMessageEvent, threadTs: string) {
 	});
 
 	// ... and then generate a more interesting status
-	const generatedStatus = await generateInitialStatus(event.text);
-	await slack.setThreadStatus({
-		channel_id: event.channel,
-		thread_ts: threadTs,
-		status: generatedStatus,
-	});
+	// const generatedStatus = await generateInitialStatus(event.text);
+	// await slack.setThreadStatus({
+	// 	channel_id: event.channel,
+	// 	thread_ts: threadTs,
+	// 	status: generatedStatus,
+	// });
 }
 
 export async function handleSlackEvent(
@@ -73,7 +72,7 @@ export async function handleSlackEvent(
 
 	// We first set a default status while we generate the actual status
 	// this is intentionally not awaited so that we can continue processing the message
-	// setStatus(event, threadTs);
+	setStatus(event, threadTs);
 
 	// await agent.processMessage(message, context);
 	await agent.streamMessage(message, context);
