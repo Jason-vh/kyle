@@ -4,6 +4,7 @@ import { z } from "zod";
 import { saveToolCall } from "@/lib/db/repository";
 import { createLogger } from "@/lib/logger";
 import * as radarr from "@/lib/radarr/api";
+import * as radarrService from "@/lib/radarr/service";
 import {
 	toPartialHistoryRecord,
 	toPartialMovie,
@@ -114,22 +115,21 @@ export function getRadarrTools(context: SlackContext) {
 
 	const addMovie = tool({
 		description:
-			"Add a movie to Radarr. Requires TMDB ID, title, and year. The movie will be monitored and downloaded (if available).",
+			"Add a movie to Radarr. Requires TMDB ID. The movie will be monitored and downloaded (if available).",
 		inputSchema: z.object({
 			tmdbId: z.number().describe("The TMDB ID of the movie to add"),
-			title: z.string().describe("The title of the movie to add"),
-			year: z.string().describe("The year of the movie to add"),
 		}),
 		execute: async (input) => {
-			const { tmdbId, title, year } = input;
+			const { tmdbId } = input;
 			try {
 				logger.info("calling addMovie tool", { ...input, context });
 
 				slackService.sendToolCallUpdate(context, {
-					status: `is adding ${title} (${year}) to Radarr...`,
+					status: "is adding movie to Radarr...",
 				});
 
-				const result = await radarr.addMovie(title, year, tmdbId);
+				const result = await radarrService.addMovieByTmdbId(tmdbId);
+				const { title, year } = result;
 
 				const movieImage = result.images.find((i) => i.coverType === "poster");
 				await slackService.sendMediaObject(context, {
@@ -159,13 +159,11 @@ export function getRadarrTools(context: SlackContext) {
 				return toolResult;
 			} catch (error) {
 				logger.error("Failed to add movie", {
-					title,
-					year,
 					tmdbId,
 					error,
 					context,
 				});
-				return `Failed to add movie with title "${title}", year "${year}", and TMDB ID "${tmdbId}": ${JSON.stringify(
+				return `Failed to add movie with TMDB ID "${tmdbId}": ${JSON.stringify(
 					error
 				)}`;
 			}

@@ -78,11 +78,20 @@ export async function searchMovies(title: string): Promise<RadarrMovie[]> {
 }
 
 /**
+ * Lookup a movie by TMDB ID to get canonical metadata.
+ */
+export async function lookupMovieByTmdbId(
+	tmdbId: number
+): Promise<RadarrMovie> {
+	return (await makeRequest(`/movie/lookup/tmdb?tmdbId=${tmdbId}`)) as RadarrMovie;
+}
+
+/**
  * Add a movie to Radarr.
  */
 export async function addMovie(
 	title: string,
-	year: string,
+	year: number,
 	tmdbId: number
 ): Promise<RadarrMovie> {
 	// Get quality profiles and root folders
