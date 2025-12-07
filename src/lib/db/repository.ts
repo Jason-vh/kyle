@@ -1,6 +1,7 @@
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, or, sql } from "drizzle-orm";
 
 import { createLogger } from "@/lib/logger";
+import type { MediaRequester } from "@/lib/webhooks/types";
 import type { SlackContext } from "@/types";
 
 import { conversations, db, mediaRefs, toolCalls } from "./index";
@@ -171,4 +172,74 @@ export function formatToolCallsForContext(calls: ToolCall[]): string {
 	});
 
 	return `[Previous tool calls in this conversation]\n${formatted.join("\n")}`;
+}
+
+/**
+ * Find users who requested a specific piece of media
+ * Used for notifications when media becomes available
+ */
+export async function findMediaRequesters(
+	mediaType: "movie" | "series",
+	ids: {
+		tmdbId?: number;
+		radarrId?: number;
+		tvdbId?: number;
+		sonarrId?: number;
+	}
+): Promise<MediaRequester[]> {
+	// Build conditions for matching any of the provided IDs
+	// The ids field is stored as JSON, so we use json_extract
+	const idConditions: ReturnType<typeof sql>[] = [];
+
+	if (ids.tmdbId) {
+		idConditions.push(
+			sql`json_extract(${mediaRefs.ids}, '$.tmdbId') = ${ids.tmdbId}`
+		);
+	}
+	if (ids.radarrId) {
+		idConditions.push(
+			sql`json_extract(${mediaRefs.ids}, '$.radarrId') = ${ids.radarrId}`
+		);
+	}
+	if (ids.tvdbId) {
+		idConditions.push(
+			sql`json_extract(${mediaRefs.ids}, '$.tvdbId') = ${ids.tvdbId}`
+		);
+	}
+	if (ids.sonarrId) {
+		idConditions.push(
+			sql`json_extract(${mediaRefs.ids}, '$.sonarrId') = ${ids.sonarrId}`
+		);
+	}
+
+	if (idConditions.length === 0) {
+		logger.warn("findMediaRequesters called with no IDs");
+		return [];
+	}
+
+	// Query media_refs with action="add" and matching IDs, joined with conversations
+	const results = await db
+		.select({
+			userId: conversations.userId,
+			threadTs: conversations.threadTs,
+			channelId: conversations.channelId,
+			title: mediaRefs.title,
+		})
+		.from(mediaRefs)
+		.innerJoin(conversations, eq(mediaRefs.conversationId, conversations.id))
+		.where(
+			and(
+				eq(mediaRefs.mediaType, mediaType),
+				eq(mediaRefs.action, "add"),
+				or(...idConditions)
+			)
+		);
+
+	logger.info("found media requesters", {
+		mediaType,
+		ids,
+		count: results.length,
+	});
+
+	return results;
 }

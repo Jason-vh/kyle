@@ -1,6 +1,10 @@
 import { createLogger } from "@/lib/logger";
 import { handleSlackEvent } from "@/lib/slack/handler";
 import type { SlackEventBody } from "@/lib/slack/types";
+import {
+	handleRadarrWebhook,
+	handleSonarrWebhook,
+} from "@/lib/webhooks/handler";
 import type { SlackContext } from "./types";
 
 const logger = createLogger("main");
@@ -17,6 +21,12 @@ const server = Bun.serve({
 	port,
 	hostname: "0.0.0.0",
 	routes: {
+		"/webhooks/radarr": {
+			POST: handleRadarrWebhook,
+		},
+		"/webhooks/sonarr": {
+			POST: handleSonarrWebhook,
+		},
 		"/kyle/slack/events": {
 			POST: async (req: Request) => {
 				try {
