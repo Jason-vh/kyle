@@ -1,0 +1,20 @@
+# Development compose - just the database, run app locally
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: kyle
+      POSTGRES_PASSWORD: kyle
+      POSTGRES_DB: kyle
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kyle -d kyle"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
