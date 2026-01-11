@@ -1,111 +1,52 @@
----
-description: Use Bun instead of Node.js, npm, pnpm, or vite.
-globs: "*.ts, *.tsx, *.html, *.css, *.js, *.jsx, package.json"
-alwaysApply: false
----
+# Kyle v2
+
+AI-powered media library assistant built with Bun, deployed on Railway.
+
+## Stack
+
+- **Runtime**: Bun
+- **Database**: PostgreSQL with Drizzle ORM
+- **Deployment**: Railway (Railpack builder)
+- **AI**: Vercel AI SDK with Anthropic Claude
+
+## Development
+
+```bash
+bun run db:up        # Start local Postgres (Docker)
+bun run dev          # Run with hot reload (needs DATABASE_URL)
+bun run db:generate  # Generate migrations after schema changes
+bun run db:push      # Push schema to DB (dev only)
+```
+
+## Bun Guidelines
 
 Default to using Bun instead of Node.js.
 
 - Use `bun <file>` instead of `node <file>` or `ts-node <file>`
 - Use `bun test` instead of `jest` or `vitest`
-- Use `bun build <file.html|file.ts|file.css>` instead of `webpack` or `esbuild`
-- Use `bun install` instead of `npm install` or `yarn install` or `pnpm install`
-- Use `bun run <script>` instead of `npm run <script>` or `yarn run <script>` or `pnpm run <script>`
-- Use `bunx <package> <command>` instead of `npx <package> <command>`
-- Bun automatically loads .env, so don't use dotenv.
+- Use `bun install` instead of `npm install`
+- Use `bun run <script>` instead of `npm run <script>`
+- Bun automatically loads .env, so don't use dotenv
 
-## APIs
+### APIs
 
-- `Bun.serve()` supports WebSockets, HTTPS, and routes. Don't use `express`.
-- `bun:sqlite` for SQLite. Don't use `better-sqlite3`.
-- `Bun.redis` for Redis. Don't use `ioredis`.
-- `Bun.sql` for Postgres. Don't use `pg` or `postgres.js`.
+- `Bun.serve()` for HTTP server. Don't use `express`.
+- `postgres` package with Drizzle for Postgres. Don't use `pg`.
 - `WebSocket` is built-in. Don't use `ws`.
-- Prefer `Bun.file` over `node:fs`'s readFile/writeFile
-- Bun.$`ls` instead of execa.
+- Prefer `Bun.file` over `node:fs` readFile/writeFile
 
-## Testing
+## Database
 
-Use `bun test` to run tests.
+Schema defined in `src/db/schema.ts`:
+- `conversations` - Chat sessions (interface-agnostic)
+- `tool_calls` - AI tool invocation logs
+- `media_refs` - Media ID cross-references for notifications
 
-```ts#index.test.ts
-import { test, expect } from "bun:test";
+Migrations are in `drizzle/` and run automatically on deploy via Railway's pre-deploy command.
 
-test("hello world", () => {
-  expect(1).toBe(1);
-});
-```
+## Deployment
 
-## Frontend
-
-Use HTML imports with `Bun.serve()`. Don't use `vite`. HTML imports fully support React, CSS, Tailwind.
-
-Server:
-
-```ts#index.ts
-import index from "./index.html"
-
-Bun.serve({
-  routes: {
-    "/": index,
-    "/api/users/:id": {
-      GET: (req) => {
-        return new Response(JSON.stringify({ id: req.params.id }));
-      },
-    },
-  },
-  // optional websocket support
-  websocket: {
-    open: (ws) => {
-      ws.send("Hello, world!");
-    },
-    message: (ws, message) => {
-      ws.send(message);
-    },
-    close: (ws) => {
-      // handle close
-    }
-  },
-  development: {
-    hmr: true,
-    console: true,
-  }
-})
-```
-
-HTML files can import .tsx, .jsx or .js files directly and Bun's bundler will transpile & bundle automatically. `<link>` tags can point to stylesheets and Bun's CSS bundler will bundle.
-
-```html#index.html
-<html>
-  <body>
-    <h1>Hello, world!</h1>
-    <script type="module" src="./frontend.tsx"></script>
-  </body>
-</html>
-```
-
-With the following `frontend.tsx`:
-
-```tsx#frontend.tsx
-import React from "react";
-import { createRoot } from "react-dom/client";
-
-// import .css files directly and it works
-import './index.css';
-
-const root = createRoot(document.body);
-
-export default function Frontend() {
-  return <h1>Hello, world!</h1>;
-}
-
-root.render(<Frontend />);
-```
-
-Then, run index.ts
-
-```sh
-bun --hot ./index.ts
-```
-
-For more information, read the Bun API docs in `node_modules/bun-types/docs/**.mdx`.
+Deploy with `railway up`. Configuration in `railway.json`:
+- Uses Railpack builder for Bun support
+- Pre-deploy command runs migrations
+- Health check at `/health`

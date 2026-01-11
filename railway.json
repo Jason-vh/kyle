@@ -5,6 +5,7 @@
   },
   "deploy": {
     "healthcheckPath": "/health",
-    "healthcheckTimeout": 300
+    "healthcheckTimeout": 300,
+    "preDeployCommand": "bun run src/db/migrate.ts"
   }
 }

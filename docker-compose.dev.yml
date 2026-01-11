@@ -1,4 +1,4 @@
-# Development compose - just the database, run app locally
+# Development compose - database only, run app locally with `bun run dev`
 services:
   db:
     image: postgres:16-alpine
