@@ -5,15 +5,11 @@ AI-powered media library assistant. Natural language interface for managing Rada
 ## Quick Start
 
 ```bash
-# Install dependencies
 bun install
-
-# Start local Postgres (Docker)
-bun run db:up
-
-# Copy env template and run
-cp .env.example .env
-bun run dev
+cp .env.example .env       # Edit with your API keys
+bun run db:up              # Start Postgres
+bun run db:push            # Create tables
+bun run dev                # Start server with hot reload
 ```
 
 ## Development

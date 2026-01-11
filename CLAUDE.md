@@ -12,11 +12,20 @@ AI-powered media library assistant built with Bun, deployed on Railway.
 ## Development
 
 ```bash
-bun run db:up        # Start local Postgres (Docker)
-bun run dev          # Run with hot reload (needs DATABASE_URL)
-bun run db:generate  # Generate migrations after schema changes
+bun run db:up        # Start Postgres (Docker)
 bun run db:push      # Push schema to DB (dev only)
+bun run dev          # Run with hot reload
+
+bun run db:down      # Stop Postgres
+bun run db:studio    # Open Drizzle Studio GUI
 ```
+
+### Schema Changes
+
+1. Edit `src/db/schema.ts`
+2. `bun run db:push` to apply locally
+3. `bun run db:generate` to create migration file
+4. Commit both schema.ts and the migration
 
 ## Bun Guidelines
 

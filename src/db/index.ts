@@ -8,11 +8,16 @@ if (!connectionString) {
   throw new Error("DATABASE_URL environment variable is required");
 }
 
-// Lazy connection - only connects when first query is made
+// SSL not needed for localhost or Railway internal network
+const isLocal =
+  connectionString.includes("localhost") ||
+  connectionString.includes("railway.internal");
+
 const client = postgres(connectionString, {
   max: 10,
   idle_timeout: 20,
   connect_timeout: 10,
+  ssl: isLocal ? false : "require",
 });
 
 export const db = drizzle(client, { schema });
