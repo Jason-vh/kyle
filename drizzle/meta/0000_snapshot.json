@@ -1,5 +1,5 @@
 {
-  "id": "ca25b6a9-17fa-438d-9253-0df1be69bc53",
+  "id": "3dd67dfc-7515-4c93-84ef-928a14519d1c",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -19,7 +19,7 @@
           "name": "external_id",
           "type": "text",
           "primaryKey": false,
-          "notNull": true
+          "notNull": false
         },
         "interface_type": {
           "name": "interface_type",
@@ -92,8 +92,8 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.media_refs": {
-      "name": "media_refs",
+    "public.messages": {
+      "name": "messages",
       "schema": "",
       "columns": {
         "id": {
@@ -109,20 +109,20 @@
           "primaryKey": false,
           "notNull": true
         },
-        "media_type": {
-          "name": "media_type",
+        "role": {
+          "name": "role",
           "type": "text",
           "primaryKey": false,
           "notNull": true
         },
-        "action": {
-          "name": "action",
-          "type": "text",
+        "sequence": {
+          "name": "sequence",
+          "type": "integer",
           "primaryKey": false,
           "notNull": true
         },
-        "ids": {
-          "name": "ids",
+        "data": {
+          "name": "data",
           "type": "jsonb",
           "primaryKey": false,
           "notNull": true
@@ -136,8 +136,8 @@
         }
       },
       "indexes": {
-        "media_refs_conversation_id_idx": {
-          "name": "media_refs_conversation_id_idx",
+        "messages_conversation_id_idx": {
+          "name": "messages_conversation_id_idx",
           "columns": [
             {
               "expression": "conversation_id",
@@ -151,107 +151,17 @@
           "method": "btree",
           "with": {}
         },
-        "media_refs_media_type_idx": {
-          "name": "media_refs_media_type_idx",
-          "columns": [
-            {
-              "expression": "media_type",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "media_refs_conversation_id_conversations_id_fk": {
-          "name": "media_refs_conversation_id_conversations_id_fk",
-          "tableFrom": "media_refs",
-          "tableTo": "conversations",
-          "columnsFrom": [
-            "conversation_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.tool_calls": {
-      "name": "tool_calls",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "conversation_id": {
-          "name": "conversation_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "tool_name": {
-          "name": "tool_name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "input": {
-          "name": "input",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "result": {
-          "name": "result",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "tool_calls_conversation_id_idx": {
-          "name": "tool_calls_conversation_id_idx",
+        "messages_conversation_sequence_idx": {
+          "name": "messages_conversation_sequence_idx",
           "columns": [
             {
               "expression": "conversation_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "tool_calls_tool_name_idx": {
-          "name": "tool_calls_tool_name_idx",
-          "columns": [
+            },
             {
-              "expression": "tool_name",
+              "expression": "sequence",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -264,9 +174,9 @@
         }
       },
       "foreignKeys": {
-        "tool_calls_conversation_id_conversations_id_fk": {
-          "name": "tool_calls_conversation_id_conversations_id_fk",
-          "tableFrom": "tool_calls",
+        "messages_conversation_id_conversations_id_fk": {
+          "name": "messages_conversation_id_conversations_id_fk",
+          "tableFrom": "messages",
           "tableTo": "conversations",
           "columnsFrom": [
             "conversation_id"

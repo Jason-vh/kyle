@@ -22,7 +22,6 @@ const client = postgres(connectionString, {
 
 export const db = drizzle(client, { schema });
 
-// Health check function
 export async function checkDatabaseHealth(): Promise<boolean> {
   try {
     await client`SELECT 1`;
