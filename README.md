@@ -1,66 +1,67 @@
-# Kyle v2
+# Kyle
 
-AI-powered media library assistant. Natural language interface for managing Radarr, Sonarr, and related services.
+AI-powered Plex media library assistant. Natural language interface for managing Radarr, Sonarr, and related services.
+
+Built with [pi-agent-core](https://github.com/badlogic/pi-mono) + Anthropic Claude, running on Bun.
 
 ## Quick Start
 
 ```bash
 bun install
-cp .env.example .env       # Edit with your API keys
+cp .env.example .env       # Add your ANTHROPIC_API_KEY
 bun run db:up              # Start Postgres
-bun run db:push            # Create tables
+bun run db:migrate         # Run migrations
 bun run dev                # Start server with hot reload
 ```
 
-## Development
+Then talk to Kyle:
 
-### Database
+```bash
+bun run cli
+```
+
+Or via HTTP:
+
+```bash
+curl -X POST http://localhost:3000/chat \
+  -H 'Content-Type: application/json' \
+  -d '{"message": "Hey Kyle, what can you help me with?"}'
+```
+
+## API
+
+| Endpoint | Description |
+|----------|-------------|
+| `GET /` | Service info |
+| `GET /health` | Health check (includes DB status) |
+| `POST /chat` | Send a message, get a response |
+
+### POST /chat
+
+```json
+// Request
+{ "message": "string", "conversationId?": "uuid", "userId?": "string" }
+
+// Response
+{ "conversationId": "uuid", "response": "string" }
+```
+
+Omit `conversationId` to start a new conversation. Include it to continue an existing one.
+
+## Database
 
 ```bash
 bun run db:up        # Start local Postgres (Docker)
 bun run db:down      # Stop local Postgres
-bun run db:generate  # Generate migrations from schema changes
-bun run db:push      # Push schema directly (dev only)
+bun run db:migrate   # Run migrations
+bun run db:generate  # Generate migration from schema changes
 bun run db:studio    # Open Drizzle Studio GUI
-```
-
-### Using Railway's Database
-
-```bash
-railway link                    # Link to Railway project
-railway run bun run dev         # Run with Railway env vars
-railway connect postgres        # Open psql to production DB
 ```
 
 ## Deployment
 
-Deployed on [Railway](https://railway.com).
+Deployed on [Railway](https://railway.com). Migrations run automatically before each deploy.
 
 ```bash
-railway up           # Deploy from local
-railway logs         # View production logs
-railway shell        # Shell into production
+railway up
 ```
-
-### Pre-deploy Migrations
-
-Migrations run automatically before each deploy via `preDeployCommand` in `railway.json`.
-
-## Project Structure
-
-```
-src/
-  index.ts           # HTTP server entrypoint
-  db/
-    index.ts         # Database connection
-    schema.ts        # Drizzle schema (conversations, tool_calls, media_refs)
-    migrate.ts       # Migration runner (pre-deploy)
-drizzle/             # Generated SQL migrations
-```
-
-## Endpoints
-
-| Path | Description |
-|------|-------------|
-| `GET /` | Service info |
-| `GET /health` | Health check (includes DB status) |

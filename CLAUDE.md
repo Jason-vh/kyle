@@ -1,52 +1,12 @@
-# Kyle v2
+# Kyle
 
-AI-powered media library assistant built with Bun, deployed on Railway.
-
-## Stack
-
-- **Runtime**: Bun
-- **Database**: PostgreSQL with Drizzle ORM
-- **AI**: pi-agent-core with Anthropic Claude
-- **Deployment**: Railway (Railpack builder)
-
-## Development
-
-```bash
-bun run db:up        # Start Postgres (Docker)
-bun run db:migrate   # Run migrations
-bun run dev          # Run with hot reload
-
-bun run db:down      # Stop Postgres
-bun run db:studio    # Open Drizzle Studio GUI
-```
-
-### Schema Changes
-
-1. Edit `src/db/schema.ts`
-2. `bun run db:generate` to create migration file
-3. `bun run db:migrate` to apply locally
-4. Commit both schema.ts and the migration
-
-## Bun Guidelines
-
-Default to using Bun instead of Node.js.
-
-- Use `bun <file>` instead of `node <file>` or `ts-node <file>`
-- Use `bun test` instead of `jest` or `vitest`
-- Use `bun install` instead of `npm install`
-- Use `bun run <script>` instead of `npm run <script>`
-- Bun automatically loads .env, so don't use dotenv
-
-### APIs
-
-- `Bun.serve()` for HTTP server. Don't use `express`.
-- `postgres` package with Drizzle for Postgres. Don't use `pg`.
-- Prefer `Bun.file` over `node:fs` readFile/writeFile
+AI-powered Plex media library assistant. Uses pi-agent-core with Anthropic Claude, persists conversations in Postgres via Drizzle ORM, deployed on Railway.
 
 ## Architecture
 
 ```
 index.ts                    → entry point (Bun.serve)
+cli.ts                      → interactive CLI client
 src/
   server.ts                 → HTTP routing
   agent/
@@ -63,17 +23,35 @@ drizzle/                    → Generated migration SQL
 drizzle.config.ts           → Drizzle Kit config
 ```
 
-## Database
+## Key Patterns
 
-Schema defined in `src/db/schema.ts`:
-- `conversations` - Chat sessions (interface-agnostic: http, slack, cli)
-- `messages` - Full AgentMessage objects stored as JSONB, with role/sequence for queryability
+- **Stateless agent**: Agent is created per-request. Previous messages are loaded from DB and restored via `agent.replaceMessages()`.
+- **JSONB messages**: Full `AgentMessage` objects stored as JSONB in the `messages` table. The `role` and `sequence` columns exist for querying and ordering.
+- **Interface-agnostic conversations**: The `conversations` table has an `interfaceType` field (http/slack/cli) so multiple frontends can share the same backend.
 
-Migrations are in `drizzle/` and run automatically on deploy via Railway's pre-deploy command.
+## Development
 
-## Deployment
+```bash
+bun run db:up        # Start Postgres (Docker)
+bun run db:migrate   # Run migrations
+bun run dev          # Run with hot reload
+bun run cli          # Interactive CLI client
 
-Deploy with `railway up`. Configuration in `railway.json`:
-- Uses Railpack builder for Bun support
-- Pre-deploy command runs migrations
-- Health check at `/health`
+bun run db:down      # Stop Postgres
+bun run db:studio    # Open Drizzle Studio GUI
+```
+
+### Schema Changes
+
+1. Edit `src/db/schema.ts`
+2. `bun run db:generate` to create migration file
+3. `bun run db:migrate` to apply locally
+4. Commit both schema.ts and the migration
+
+## Conventions
+
+- **Runtime**: Bun — use `bun run`, `bun test`, `bun install`. Bun auto-loads `.env`.
+- **HTTP**: `Bun.serve()` — no Express.
+- **Database**: `postgres` package with Drizzle ORM — no `pg`.
+- **File I/O**: Prefer `Bun.file` over `node:fs`.
+- **Deployment**: `railway up`. Migrations run via pre-deploy command. Health check at `/health`.
