@@ -8,7 +8,7 @@ Built with [pi-agent-core](https://github.com/badlogic/pi-mono) + Anthropic Clau
 
 ```bash
 bun install
-cp .env.example .env       # Add your ANTHROPIC_API_KEY
+cp .env.example .env       # Add your API keys
 bun run db:up              # Start Postgres
 bun run db:migrate         # Run migrations
 bun run dev                # Start server with hot reload
@@ -27,6 +27,12 @@ curl -X POST http://localhost:3000/chat \
   -H 'Content-Type: application/json' \
   -d '{"message": "Hey Kyle, what can you help me with?"}'
 ```
+
+## Integrations
+
+### Sonarr
+
+Kyle can query your Sonarr library to tell you what TV series you have. Set `SONARR_HOST` and `SONARR_API_KEY` in your `.env`.
 
 ## API
 

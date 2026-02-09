@@ -1,6 +1,7 @@
 import { Agent, type AgentMessage } from "@mariozechner/pi-agent-core";
 import { getModel, getEnvApiKey, type AssistantMessage, type TextContent } from "@mariozechner/pi-ai";
 import { SYSTEM_PROMPT } from "./system-prompt.ts";
+import { getAllSeriesTool } from "../sonarr/tools.ts";
 
 export function createAgent(): Agent {
   if (!getEnvApiKey("anthropic")) {
@@ -12,7 +13,7 @@ export function createAgent(): Agent {
       systemPrompt: SYSTEM_PROMPT,
       model: getModel("anthropic", "claude-sonnet-4-20250514"),
       thinkingLevel: "off",
-      tools: [],
+      tools: [getAllSeriesTool],
     },
   });
 }
