@@ -7,12 +7,13 @@ AI-powered Plex media library assistant. Uses pi-agent-core with Anthropic Claud
 ```
 index.ts                    → entry point (Bun.serve)
 cli.ts                      → interactive CLI client
-test-slack.ts               → Send test messages to /slack/events
+test-slack.ts               → Send test messages to /slack/events (sync response by default)
 src/
   server.ts                 → HTTP routing
+  logger.ts                 → Structured JSON logger
   agent/
-    index.ts                → Agent factory + runAgent()
-    system-prompt.ts        → Kyle's system prompt
+    index.ts                → Agent factory + runAgent(), tool registration
+    system-prompt.ts        → Kyle's system prompt (ported from v1)
   db/
     index.ts                → Drizzle + postgres connection
     schema.ts               → conversations + messages tables
@@ -20,13 +21,26 @@ src/
   routes/
     chat.ts                 → POST /chat handler
     health.ts               → GET /health handler
-    slack-events.ts         → POST /slack/events handler
+    slack-events.ts         → POST /slack/events handler (supports X-Sync-Response header)
   slack/
     client.ts               → WebClient singleton (lazy-init from SLACK_BOT_TOKEN)
     verify.ts               → HMAC-SHA256 signature verification
     events.ts               → Event types + helpers (shouldProcess, cleanMessageText, buildExternalId)
   sonarr/
-    tools.ts                → Sonarr agent tools
+    types.ts                → Sonarr API type definitions
+    api.ts                  → Sonarr API client (series, episodes, queue, calendar, history)
+    utils.ts                → Token optimization helpers (toPartialSeries, toPartialEpisode, etc.)
+    tools.ts                → 11 Sonarr agent tools
+  radarr/
+    types.ts                → Radarr API type definitions
+    api.ts                  → Radarr API client (movies, queue, history)
+    utils.ts                → Token optimization helpers (toPartialMovie, etc.)
+    tools.ts                → 7 Radarr agent tools
+  tmdb/
+    types.ts                → TMDB API type definitions
+    api.ts                  → TMDB API client (search, details)
+    utils.ts                → Token optimization helpers (toPartialMovie, toPartialTVShow, etc.)
+    tools.ts                → 5 TMDB agent tools
 drizzle/                    → Generated migration SQL
 drizzle.config.ts           → Drizzle Kit config
 ```
@@ -37,7 +51,10 @@ drizzle.config.ts           → Drizzle Kit config
 - **JSONB messages**: Full `AgentMessage` objects stored as JSONB in the `messages` table. The `role` and `sequence` columns exist for querying and ordering.
 - **Interface-agnostic conversations**: The `conversations` table has an `interfaceType` field (http/slack/cli) so multiple frontends can share the same backend. Slack conversations are keyed by `externalId` = `"{channel}:{thread_ts}"`.
 - **Slack immediate ack**: The `/slack/events` handler returns 200 immediately and processes the message async (fire-and-forget) to stay within Slack's 3-second timeout. Responses are always posted as thread replies.
+- **Slack sync mode**: Sending `X-Sync-Response: true` header makes `/slack/events` wait for the agent and return the response in the HTTP body (used by `test-slack.ts` for dev workflow).
 - **Slack dedup**: In-memory `Set<string>` on `event_id` (capped at 10k entries) + `X-Slack-Retry-Num` header skipping prevents duplicate processing.
+- **Structured logging**: `createLogger(module)` from `src/logger.ts` emits JSON lines with `level`, `module`, `msg`, `timestamp` + contextual fields. Use throughout — no raw `console.log`.
+- **Token optimization**: Each service has `utils.ts` with `toPartial*` helpers that strip large API responses down to essential fields before sending to the LLM.
 
 ## Development
 
@@ -66,7 +83,7 @@ bun run test-slack.ts "hello" --channel <channel_id>
 BASE_URL=https://kyle.vanhattum.xyz bun run test-slack.ts "hello"
 ```
 
-The test script signs requests using `SLACK_SIGNING_SECRET` from `.env`, matching Slack's signature format. Messages sent this way will trigger real agent processing and post responses to Slack.
+The test script signs requests using `SLACK_SIGNING_SECRET` from `.env`, matching Slack's signature format. Messages sent this way will trigger real agent processing and post responses to Slack. Kyle's response is returned synchronously in the terminal via `X-Sync-Response` header.
 
 ### Schema Changes
 
@@ -94,6 +111,9 @@ The test script signs requests using `SLACK_SIGNING_SECRET` from `.env`, matchin
 | `SLACK_SIGNING_SECRET` | Slack app signing secret for request verification |
 | `SONARR_HOST` | Sonarr instance URL |
 | `SONARR_API_KEY` | Sonarr API key |
+| `RADARR_HOST` | Radarr instance URL |
+| `RADARR_API_KEY` | Radarr API key |
+| `TMDB_API_TOKEN` | TMDB API bearer token |
 
 ## Task Tracking
 
@@ -109,6 +129,10 @@ bd sync               # Sync with git after changes
 ```
 
 Use `TODO(kyle-xxx)` comments in code to mark where work is needed, linking to the relevant bead. When identifying new work (bugs, enhancements, refactors), create a bead and add a TODO comment at the relevant location in code.
+
+## v1 Reference
+
+The v1 codebase lives on the `main` branch. To read v1 source files without switching branches: `git show main:src/lib/radarr/api.ts`. Useful when porting remaining features.
 
 ## Conventions
 
