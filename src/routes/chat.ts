@@ -1,8 +1,11 @@
 import { eq, asc } from "drizzle-orm";
 import type { AgentMessage } from "@mariozechner/pi-agent-core";
+import { createLogger } from "../logger.ts";
 import { db } from "../db/index.ts";
 import { conversations, messages } from "../db/schema.ts";
 import { runAgent } from "../agent/index.ts";
+
+const log = createLogger("chat");
 
 interface ChatRequest {
   message: string;
@@ -69,7 +72,11 @@ export async function handleChat(req: Request): Promise<Response> {
     allMessages = result.messages;
     responseText = result.responseText;
   } catch (error) {
-    console.error("Agent error:", error);
+    log.error("agent error", {
+      conversationId,
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
     return Response.json(
       { error: "Failed to process message" },
       { status: 500 }

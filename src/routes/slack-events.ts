@@ -1,5 +1,6 @@
 import { eq, and, asc } from "drizzle-orm";
 import type { AgentMessage } from "@mariozechner/pi-agent-core";
+import { createLogger } from "../logger.ts";
 import { db } from "../db/index.ts";
 import { conversations, messages } from "../db/schema.ts";
 import { runAgent } from "../agent/index.ts";
@@ -10,6 +11,8 @@ import {
   shouldProcess,
   cleanMessageText,
 } from "../slack/events.ts";
+
+const log = createLogger("slack");
 
 // Dedup: track recently seen event IDs
 const seenEvents = new Set<string>();
@@ -56,6 +59,11 @@ export async function handleSlackEvents(req: Request): Promise<Response> {
     (event.type === "message" || event.type === "app_mention") &&
     shouldProcess(event)
   ) {
+    log.info("processing slack message", {
+      channel: event.channel,
+      eventType: event.type,
+      threadTs: event.thread_ts,
+    });
     // Ack immediately, process async
     processSlackMessage(event.text!, event.channel, event.ts, event.thread_ts);
   }
@@ -108,7 +116,14 @@ async function processSlackMessage(
     }
 
     // Run the agent
+    log.info("running agent", { conversationId, externalId, message: messageText });
     const result = await runAgent(messageText, previousMessages);
+    log.info("agent completed", {
+      conversationId,
+      externalId,
+      newMessages: result.messages.length - previousMessages.length,
+      responseLength: result.responseText.length,
+    });
 
     // Persist new messages
     const newMessages = result.messages.slice(previousMessages.length);
@@ -130,8 +145,14 @@ async function processSlackMessage(
       thread_ts: replyThreadTs,
       text: result.responseText,
     });
+    log.info("slack reply sent", { channel, threadTs: replyThreadTs, conversationId });
   } catch (error) {
-    console.error("Slack message processing error:", error);
+    log.error("slack message processing failed", {
+      channel,
+      threadTs: replyThreadTs,
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
     try {
       await slack.chat.postMessage({
         channel,
@@ -139,7 +160,9 @@ async function processSlackMessage(
         text: "Sorry, something went wrong processing your message.",
       });
     } catch (postError) {
-      console.error("Failed to post error message to Slack:", postError);
+      log.error("failed to post error message to slack", {
+        error: postError instanceof Error ? postError.message : String(postError),
+      });
     }
   }
 }

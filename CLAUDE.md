@@ -95,6 +95,21 @@ The test script signs requests using `SLACK_SIGNING_SECRET` from `.env`, matchin
 | `SONARR_HOST` | Sonarr instance URL |
 | `SONARR_API_KEY` | Sonarr API key |
 
+## Task Tracking
+
+We use [beads](https://github.com/steveyegge/beads) (`bd`) for task tracking — both v1 feature parity work and future enhancements.
+
+```bash
+bd ready              # Show unblocked tasks ready to work on
+bd list --status=open # All open tasks
+bd show <id>          # Full details + dependencies
+bd update <id> --status=in_progress  # Claim a task
+bd close <id>         # Mark complete
+bd sync               # Sync with git after changes
+```
+
+Use `TODO(kyle-xxx)` comments in code to mark where work is needed, linking to the relevant bead. When identifying new work (bugs, enhancements, refactors), create a bead and add a TODO comment at the relevant location in code.
+
 ## Conventions
 
 - **Runtime**: Bun — use `bun run`, `bun test`, `bun install`. Bun auto-loads `.env`.
@@ -103,3 +118,4 @@ The test script signs requests using `SLACK_SIGNING_SECRET` from `.env`, matchin
 - **File I/O**: Prefer `Bun.file` over `node:fs`.
 - **Deployment**: `railway up`. Migrations run via pre-deploy command. Health check at `/health`. Live at https://kyle.vanhattum.xyz.
 - **Slack**: `@slack/web-api` only (no Bolt). Signature verification uses `crypto.subtle` (native in Bun).
+- **Git workflow**: Commit and push after every change. Railway deploys from uploaded files (`railway up`), not from git, but keeping the repo in sync is essential.

@@ -1,7 +1,78 @@
 import { Agent, type AgentMessage } from "@mariozechner/pi-agent-core";
 import { getModel, getEnvApiKey, type AssistantMessage, type TextContent } from "@mariozechner/pi-ai";
-import { SYSTEM_PROMPT } from "./system-prompt.ts";
-import { getAllSeriesTool } from "../sonarr/tools.ts";
+import { createLogger } from "../logger.ts";
+import { getSystemPrompt } from "./system-prompt.ts";
+
+// Sonarr tools
+import {
+  getAllSeriesTool,
+  getSeriesByIdTool,
+  searchSeriesTool,
+  addSeriesTool,
+  removeSeriesTool,
+  removeSeasonTool,
+  getEpisodesTool,
+  getSeriesQueueTool,
+  getCalendarTool,
+  searchEpisodesTool,
+  getSeriesHistoryTool,
+} from "../sonarr/tools.ts";
+
+// Radarr tools
+import {
+  getRadarrMovieTool,
+  getAllMoviesTool,
+  searchMoviesTool,
+  addMovieTool,
+  removeMovieTool,
+  getMovieQueueTool,
+  getMovieHistoryTool,
+} from "../radarr/tools.ts";
+
+// TMDB tools
+import {
+  searchTmdbMoviesTool,
+  searchTmdbSeriesTool,
+  searchTmdbTool,
+  getTmdbMovieDetailsTool,
+  getTmdbSeriesDetailsTool,
+} from "../tmdb/tools.ts";
+
+const log = createLogger("agent");
+
+const allTools = [
+  // Sonarr
+  getAllSeriesTool,
+  getSeriesByIdTool,
+  searchSeriesTool,
+  addSeriesTool,
+  removeSeriesTool,
+  removeSeasonTool,
+  getEpisodesTool,
+  getSeriesQueueTool,
+  getCalendarTool,
+  searchEpisodesTool,
+  getSeriesHistoryTool,
+  // Radarr
+  getRadarrMovieTool,
+  getAllMoviesTool,
+  searchMoviesTool,
+  addMovieTool,
+  removeMovieTool,
+  getMovieQueueTool,
+  getMovieHistoryTool,
+  // TMDB
+  searchTmdbMoviesTool,
+  searchTmdbSeriesTool,
+  searchTmdbTool,
+  getTmdbMovieDetailsTool,
+  getTmdbSeriesDetailsTool,
+];
+
+log.info("tools registered", {
+  count: allTools.length,
+  tools: allTools.map((t) => t.name),
+});
 
 export function createAgent(): Agent {
   if (!getEnvApiKey("anthropic")) {
@@ -10,10 +81,10 @@ export function createAgent(): Agent {
 
   return new Agent({
     initialState: {
-      systemPrompt: SYSTEM_PROMPT,
+      systemPrompt: getSystemPrompt(),
       model: getModel("anthropic", "claude-sonnet-4-20250514"),
       thinkingLevel: "off",
-      tools: [getAllSeriesTool],
+      tools: allTools,
     },
   });
 }

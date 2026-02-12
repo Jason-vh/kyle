@@ -1,6 +1,9 @@
+import { createLogger } from "./logger.ts";
 import { handleHealth } from "./routes/health.ts";
 import { handleChat } from "./routes/chat.ts";
 import { handleSlackEvents } from "./routes/slack-events.ts";
+
+const log = createLogger("server");
 
 export function startServer(port: number) {
   const server = Bun.serve({
@@ -29,9 +32,14 @@ export function startServer(port: number) {
           return await handleSlackEvents(req);
         }
 
+        log.warn("not found", { method: req.method, path: url.pathname });
         return Response.json({ error: "Not found" }, { status: 404 });
       } catch (error) {
-        console.error("Unhandled error:", error);
+        log.error("unhandled error", {
+          method: req.method,
+          path: url.pathname,
+          error: error instanceof Error ? error.message : String(error),
+        });
         return Response.json(
           { error: "Internal server error" },
           { status: 500 }
@@ -40,6 +48,6 @@ export function startServer(port: number) {
     },
   });
 
-  console.log(`Kyle is running on http://localhost:${server.port}`);
+  log.info("server started", { port: server.port });
   return server;
 }
