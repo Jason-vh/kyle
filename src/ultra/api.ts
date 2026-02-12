@@ -1,3 +1,7 @@
+import { createLogger } from "../logger.ts";
+
+const log = createLogger("ultra");
+
 const ULTRA_HOST = process.env.ULTRA_HOST;
 const ULTRA_API_TOKEN = process.env.ULTRA_API_TOKEN;
 
@@ -34,10 +38,12 @@ async function makeRequest(endpoint: string): Promise<unknown> {
 	});
 
 	if (!response.ok) {
+		const body = await response.text();
+		log.error("request failed", { url, status: response.status, body: body.slice(0, 200) });
 		throw {
 			status: response.status,
 			statusText: response.statusText,
-			body: await response.text(),
+			body,
 		};
 	}
 
