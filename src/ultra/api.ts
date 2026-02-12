@@ -45,6 +45,6 @@ async function makeRequest(endpoint: string): Promise<unknown> {
 }
 
 export async function getStats(): Promise<UltraStats> {
-	const data = (await makeRequest("/total_stats")) as UltraStatsResponse;
+	const data = (await makeRequest("/total-stats")) as UltraStatsResponse;
 	return data.service_stats_info;
 }
