@@ -8,6 +8,26 @@ import {
   index,
 } from "drizzle-orm/pg-core";
 
+export const mediaRefs = pgTable(
+  "media_refs",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    conversationId: uuid("conversation_id")
+      .notNull()
+      .references(() => conversations.id, { onDelete: "cascade" }),
+    toolCallId: text("tool_call_id").notNull(),
+    mediaType: text("media_type").notNull(),
+    title: text("title").notNull(),
+    action: text("action").notNull(),
+    ids: jsonb("ids").notNull(),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (table) => [
+    index("media_refs_conversation_id_idx").on(table.conversationId),
+    index("media_refs_action_idx").on(table.action),
+  ]
+);
+
 export const conversations = pgTable(
   "conversations",
   {
