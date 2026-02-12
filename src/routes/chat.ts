@@ -4,6 +4,7 @@ import { createLogger } from "../logger.ts";
 import { db } from "../db/index.ts";
 import { conversations, messages } from "../db/schema.ts";
 import { runAgent } from "../agent/index.ts";
+import { extractMediaRef, saveMediaRef } from "../db/media-refs.ts";
 
 const log = createLogger("chat");
 
@@ -64,11 +65,27 @@ export async function handleChat(req: Request): Promise<Response> {
     conversationId = conversation!.id;
   }
 
+  // Build event handler for media ref saving
+  const toolArgs = new Map<string, Record<string, unknown>>();
+  const onEvent = (event: { type: string; toolCallId?: string; toolName?: string; args?: unknown; result?: unknown; isError?: boolean }) => {
+    if (event.type === "tool_execution_start" && event.toolCallId && event.args) {
+      toolArgs.set(event.toolCallId, event.args as Record<string, unknown>);
+    }
+    if (event.type === "tool_execution_end" && event.toolName && event.toolCallId && !event.isError) {
+      const args = toolArgs.get(event.toolCallId) ?? {};
+      toolArgs.delete(event.toolCallId);
+      const ref = extractMediaRef(event.toolName, args, event.result as { content?: Array<{ type: string; text?: string }> });
+      if (ref) {
+        saveMediaRef(conversationId!, event.toolCallId, ref);
+      }
+    }
+  };
+
   // Run the agent
   let allMessages: AgentMessage[];
   let responseText: string;
   try {
-    const result = await runAgent(body.message, previousMessages);
+    const result = await runAgent(body.message, previousMessages, undefined, onEvent);
     allMessages = result.messages;
     responseText = result.responseText;
   } catch (error) {

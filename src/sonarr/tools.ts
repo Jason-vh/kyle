@@ -142,6 +142,11 @@ export const removeSeriesTool: AgentTool<typeof removeSeriesParams> = {
 					text: JSON.stringify({
 						success: true,
 						message: `Removed ${series.title} (${series.year}) from Sonarr and deleted files from disk.`,
+						title: series.title,
+						tvdbId: series.tvdbId,
+						tmdbId: series.tmdbId,
+						imdbId: series.imdbId,
+						sonarrId: params.seriesId,
 					}),
 				},
 			],
@@ -208,6 +213,11 @@ export const removeSeasonTool: AgentTool<typeof removeSeasonParams> = {
 								? `Removed season ${params.seasonNumber} from series ${params.seriesId}, deleted ${seasonEpisodes.length} episode file${seasonEpisodes.length === 1 ? "" : "s"} and unmonitored the season`
 								: `Unmonitored season ${params.seasonNumber} from series ${params.seriesId} (no files to delete)`,
 						filesDeleted: seasonEpisodes.length,
+						title: series.title,
+						tvdbId: series.tvdbId,
+						tmdbId: series.tmdbId,
+						sonarrId: params.seriesId,
+						seasonNumber: params.seasonNumber,
 					}),
 				},
 			],

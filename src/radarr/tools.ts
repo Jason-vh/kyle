@@ -121,6 +121,10 @@ export const removeMovieTool: AgentTool<typeof removeMovieParams> = {
 					text: JSON.stringify({
 						success: true,
 						message: `Removed ${movie.title} (${movie.year}) from Radarr and deleted files from disk.`,
+						title: movie.title,
+						tmdbId: movie.tmdbId,
+						imdbId: movie.imdbId,
+						radarrId: params.movieId,
 					}),
 				},
 			],

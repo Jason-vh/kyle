@@ -4,6 +4,7 @@ import { createLogger } from "../logger.ts";
 import { db } from "../db/index.ts";
 import { conversations, messages } from "../db/schema.ts";
 import { runAgent, toolLabels, type AgentContext } from "../agent/index.ts";
+import { extractMediaRef, saveMediaRef } from "../db/media-refs.ts";
 import { verifySlackSignature } from "../slack/verify.ts";
 import { getSlackClient, setThreadStatus } from "../slack/client.ts";
 import {
@@ -116,18 +117,31 @@ async function processSlackMessage(
   // Set initial thinking status
   setThreadStatus(channel, replyThreadTs, "is thinking...");
 
-  // Build event handler for tool status updates
-  const onEvent = (event: { type: string; toolName?: string }) => {
+  let conversationId: string;
+
+  // Build event handler for tool status updates + media ref saving
+  const toolArgs = new Map<string, Record<string, unknown>>();
+  const onEvent = (event: { type: string; toolCallId?: string; toolName?: string; args?: unknown; result?: unknown; isError?: boolean }) => {
     if (event.type === "tool_execution_start" && event.toolName) {
       const label = toolLabels.get(event.toolName);
       if (label) {
         setThreadStatus(channel, replyThreadTs, label);
       }
+      if (event.toolCallId && event.args) {
+        toolArgs.set(event.toolCallId, event.args as Record<string, unknown>);
+      }
+    }
+    if (event.type === "tool_execution_end" && event.toolName && event.toolCallId && !event.isError) {
+      const args = toolArgs.get(event.toolCallId) ?? {};
+      toolArgs.delete(event.toolCallId);
+      const ref = extractMediaRef(event.toolName, args, event.result as { content?: Array<{ type: string; text?: string }> });
+      if (ref) {
+        saveMediaRef(conversationId, event.toolCallId, ref);
+      }
     }
   };
 
   try {
-    let conversationId: string;
     let previousMessages: AgentMessage[] = [];
 
     // Look up existing conversation
