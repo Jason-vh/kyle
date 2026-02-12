@@ -119,3 +119,4 @@ Use `TODO(kyle-xxx)` comments in code to mark where work is needed, linking to t
 - **Deployment**: `railway up`. Migrations run via pre-deploy command. Health check at `/health`. Live at https://kyle.vanhattum.xyz.
 - **Slack**: `@slack/web-api` only (no Bolt). Signature verification uses `crypto.subtle` (native in Bun).
 - **Git workflow**: Commit and push after every change. Railway deploys from uploaded files (`railway up`), not from git, but keeping the repo in sync is essential.
+- **Beads**: Close relevant beads (`bd close <id>`) when work is completed, then `bd sync` and commit the updated `.beads/` directory.
