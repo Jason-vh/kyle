@@ -1,7 +1,9 @@
-import { Agent, type AgentMessage } from "@mariozechner/pi-agent-core";
+import { Agent, type AgentMessage, type AgentEvent } from "@mariozechner/pi-agent-core";
 import { getModel, getEnvApiKey, type AssistantMessage, type TextContent } from "@mariozechner/pi-ai";
 import { createLogger } from "../logger.ts";
-import { getSystemPrompt } from "./system-prompt.ts";
+import { getSystemPrompt, type AgentContext } from "./system-prompt.ts";
+
+export type { AgentContext };
 
 // Sonarr tools
 import {
@@ -69,19 +71,23 @@ const allTools = [
   getTmdbSeriesDetailsTool,
 ];
 
+export const toolLabels = new Map(
+  allTools.map((t) => [t.name, t.label])
+);
+
 log.info("tools registered", {
   count: allTools.length,
   tools: allTools.map((t) => t.name),
 });
 
-export function createAgent(): Agent {
+export function createAgent(context?: AgentContext): Agent {
   if (!getEnvApiKey("anthropic")) {
     throw new Error("ANTHROPIC_API_KEY environment variable is required");
   }
 
   return new Agent({
     initialState: {
-      systemPrompt: getSystemPrompt(),
+      systemPrompt: getSystemPrompt(context),
       model: getModel("anthropic", "claude-sonnet-4-20250514"),
       thinkingLevel: "off",
       tools: allTools,
@@ -91,12 +97,18 @@ export function createAgent(): Agent {
 
 export async function runAgent(
   message: string,
-  previousMessages: AgentMessage[] = []
+  previousMessages: AgentMessage[] = [],
+  context?: AgentContext,
+  onEvent?: (event: AgentEvent) => void,
 ): Promise<{ messages: AgentMessage[]; responseText: string }> {
-  const agent = createAgent();
+  const agent = createAgent(context);
 
   if (previousMessages.length > 0) {
     agent.replaceMessages(previousMessages);
+  }
+
+  if (onEvent) {
+    agent.subscribe(onEvent);
   }
 
   await agent.prompt(message);

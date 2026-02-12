@@ -38,6 +38,17 @@ export function shouldProcess(event: SlackEvent): boolean {
   return true;
 }
 
-export function cleanMessageText(text: string): string {
+export function cleanMessageText(
+  text: string,
+  usernameMap?: Map<string, string>
+): string {
+  if (usernameMap) {
+    return text
+      .replace(/<@([A-Z0-9]+)>/g, (_, id) => {
+        const name = usernameMap.get(id);
+        return name ? `@${name}` : "";
+      })
+      .trim();
+  }
   return text.replace(/<@[A-Z0-9]+>/g, "").trim();
 }

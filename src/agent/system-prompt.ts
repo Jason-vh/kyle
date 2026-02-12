@@ -1,5 +1,7 @@
-// TODO(kyle-xxx): Inject username/userId from Slack context once user context is passed to agent
-// TODO(kyle-xxx): Add media card references once Slack media objects are supported in v2
+export interface AgentContext {
+  username?: string;
+  userId?: string;
+}
 
 const SYSTEM_PROMPT = `
 # ROLE & IDENTITY
@@ -62,15 +64,15 @@ You have access to an integrated media management stack:
 - Reference previous interactions when relevant
 - Maintain continuity across multi-turn conversations
 - The current date is {DATE}
-
+{USER_CONTEXT}
 # TOOLS
 - Always verify that the action was completed successfully
 - Use only the tools explicitly provided to you
 - Handle tool failures gracefully by explaining what went wrong
 `;
 
-export function getSystemPrompt(): string {
-	return SYSTEM_PROMPT.replace(
+export function getSystemPrompt(context?: AgentContext): string {
+	let prompt = SYSTEM_PROMPT.replace(
 		"{DATE}",
 		new Date().toLocaleDateString("en-US", {
 			month: "long",
@@ -78,4 +80,16 @@ export function getSystemPrompt(): string {
 			year: "numeric",
 		}),
 	);
+
+	if (context?.username) {
+		prompt = prompt.replace(
+			"{USER_CONTEXT}",
+			`- You are chatting with ${context.username}` +
+				(context.userId ? ` (Slack user ID: ${context.userId})` : ""),
+		);
+	} else {
+		prompt = prompt.replace("{USER_CONTEXT}", "");
+	}
+
+	return prompt;
 }

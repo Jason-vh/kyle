@@ -3,7 +3,7 @@ import type { AgentMessage } from "@mariozechner/pi-agent-core";
 import { createLogger } from "../logger.ts";
 import { db } from "../db/index.ts";
 import { conversations, messages } from "../db/schema.ts";
-import { runAgent } from "../agent/index.ts";
+import { runAgent, type AgentContext } from "../agent/index.ts";
 import { verifySlackSignature } from "../slack/verify.ts";
 import { getSlackClient } from "../slack/client.ts";
 import {
@@ -11,6 +11,7 @@ import {
   shouldProcess,
   cleanMessageText,
 } from "../slack/events.ts";
+import { extractUserIds, resolveUsernames } from "../slack/users.ts";
 
 const log = createLogger("slack");
 
@@ -69,12 +70,12 @@ export async function handleSlackEvents(req: Request): Promise<Response> {
 
     if (syncResponse) {
       // Wait for processing and return response in body
-      const responseText = await processSlackMessage(event.text!, event.channel, event.ts, event.thread_ts);
+      const responseText = await processSlackMessage(event.text!, event.channel, event.ts, event.thread_ts, event.user);
       return Response.json({ ok: true, response: responseText });
     }
 
     // Ack immediately, process async
-    processSlackMessage(event.text!, event.channel, event.ts, event.thread_ts);
+    processSlackMessage(event.text!, event.channel, event.ts, event.thread_ts, event.user);
   }
 
   return new Response("ok", { status: 200 });
@@ -85,13 +86,32 @@ async function processSlackMessage(
   channel: string,
   ts: string,
   threadTs?: string,
+  userId?: string,
 ): Promise<string> {
   const slack = getSlackClient();
   const replyThreadTs = threadTs ?? ts;
   const externalId = `${channel}:${replyThreadTs}`;
-  const messageText = cleanMessageText(rawText);
+
+  // Resolve @mentions to display names
+  const mentionedIds = extractUserIds(rawText);
+  const usernameMap = mentionedIds.length > 0
+    ? await resolveUsernames(mentionedIds)
+    : undefined;
+  const messageText = cleanMessageText(rawText, usernameMap);
 
   if (!messageText) return "";
+
+  // Build agent context from the sending user
+  let agentContext: AgentContext | undefined;
+  if (userId) {
+    const senderMap = usernameMap?.has(userId)
+      ? usernameMap
+      : await resolveUsernames([userId]);
+    agentContext = {
+      username: senderMap.get(userId),
+      userId,
+    };
+  }
 
   try {
     let conversationId: string;
@@ -125,8 +145,8 @@ async function processSlackMessage(
     }
 
     // Run the agent
-    log.info("running agent", { conversationId, externalId, message: messageText });
-    const result = await runAgent(messageText, previousMessages);
+    log.info("running agent", { conversationId, externalId, message: messageText, username: agentContext?.username });
+    const result = await runAgent(messageText, previousMessages, agentContext);
     log.info("agent completed", {
       conversationId,
       externalId,
