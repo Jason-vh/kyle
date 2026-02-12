@@ -16,7 +16,8 @@ src/
     system-prompt.ts        → Kyle's system prompt (ported from v1)
   db/
     index.ts                → Drizzle + postgres connection
-    schema.ts               → conversations + messages tables
+    schema.ts               → conversations + messages + media_refs tables
+    media-refs.ts           → Media ref extraction from tool events + persistence
     migrate.ts              → Migration runner
   routes/
     chat.ts                 → POST /chat handler
@@ -85,6 +86,11 @@ BASE_URL=https://kyle.vanhattum.xyz bun run test-slack.ts "hello"
 
 The test script signs requests using `SLACK_SIGNING_SECRET` from `.env`, matching Slack's signature format. Messages sent this way will trigger real agent processing and post responses to Slack. Kyle's response is returned synchronously in the terminal via `X-Sync-Response` header.
 
+**Important**: The test payload doesn't set `channel_type`, so `shouldProcess` treats it as a channel message and requires a bot mention. Prefix messages with `<@U099N4BJT5Y>`:
+```bash
+BASE_URL=https://kyle.vanhattum.xyz bun run test-slack.ts "<@U099N4BJT5Y> add inception"
+```
+
 ### Schema Changes
 
 1. Edit `src/db/schema.ts`
@@ -140,7 +146,8 @@ The v1 codebase lives on the `main` branch. To read v1 source files without swit
 - **HTTP**: `Bun.serve()` — no Express.
 - **Database**: `postgres` package with Drizzle ORM — no `pg`.
 - **File I/O**: Prefer `Bun.file` over `node:fs`.
-- **Deployment**: `railway up`. Migrations run via pre-deploy command. Health check at `/health`. Live at https://kyle.vanhattum.xyz.
+- **Deployment**: `railway up`. Migrations run via pre-deploy command. Health check at `/health`. Live at https://kyle.vanhattum.xyz. Logs: `railway logs -n 80`.
+- **Production DB**: The Railway DATABASE_URL uses internal networking (not reachable locally). Use `echo "SELECT ..." | railway connect Postgres` to query production.
 - **Slack**: `@slack/web-api` only (no Bolt). Signature verification uses `crypto.subtle` (native in Bun).
 - **Git workflow**: Commit, push, and deploy (`railway up`) after every change. Railway deploys from uploaded files, not from git, but keeping the repo in sync is essential.
 - **Beads**: Close relevant beads (`bd close <id>`) when work is completed, then `bd sync` and commit the updated `.beads/` directory.
