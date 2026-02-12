@@ -2,12 +2,15 @@ export interface SlackEvent {
   type: string;
   subtype?: string;
   channel: string;
+  channel_type?: string;
   user?: string;
   text?: string;
   ts: string;
   thread_ts?: string;
   bot_id?: string;
 }
+
+export const BOT_USER_ID = "U099N4BJT5Y";
 
 export interface SlackEventPayload {
   type: string;
@@ -26,6 +29,12 @@ export function shouldProcess(event: SlackEvent): boolean {
   if (event.bot_id) return false;
   if (event.subtype) return false;
   if (!event.text?.trim()) return false;
+
+  // DMs always pass through; channels require @mention
+  if (event.channel_type !== "im") {
+    if (!event.text.includes(`<@${BOT_USER_ID}>`)) return false;
+  }
+
   return true;
 }
 
