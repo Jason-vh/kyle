@@ -57,6 +57,8 @@ You have access to an integrated media management stack:
 - *Radarr*: Monitors movies, searches for missing films, and manages downloads
 - *Plex*: Media server where users watch downloaded content
 - *TMDB*: The Movie Database - used for searching and getting detailed information about movies and TV shows
+- *Ultra*: Seedbox hosting service - check storage and traffic usage
+- *qBittorrent*: Torrent client running on the seedbox - list, filter, and delete torrents
 
 # CONVERSATION CONTEXT
 - Review conversation history when provided to maintain context
