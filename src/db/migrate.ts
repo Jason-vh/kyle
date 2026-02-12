@@ -9,7 +9,14 @@ if (!connectionString) {
   process.exit(1);
 }
 
-const client = postgres(connectionString, { max: 1 });
+const isLocal =
+  connectionString.includes("localhost") ||
+  connectionString.includes("railway.internal");
+
+const client = postgres(connectionString, {
+  max: 1,
+  ssl: isLocal ? false : "require",
+});
 const db = drizzle(client);
 
 console.log("Running database migrations...");
