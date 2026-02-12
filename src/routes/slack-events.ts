@@ -3,9 +3,9 @@ import type { AgentMessage } from "@mariozechner/pi-agent-core";
 import { createLogger } from "../logger.ts";
 import { db } from "../db/index.ts";
 import { conversations, messages } from "../db/schema.ts";
-import { runAgent, type AgentContext } from "../agent/index.ts";
+import { runAgent, toolLabels, type AgentContext } from "../agent/index.ts";
 import { verifySlackSignature } from "../slack/verify.ts";
-import { getSlackClient } from "../slack/client.ts";
+import { getSlackClient, setThreadStatus } from "../slack/client.ts";
 import {
   type SlackEventPayload,
   shouldProcess,
@@ -113,6 +113,19 @@ async function processSlackMessage(
     };
   }
 
+  // Set initial thinking status
+  setThreadStatus(channel, replyThreadTs, "is thinking...");
+
+  // Build event handler for tool status updates
+  const onEvent = (event: { type: string; toolName?: string }) => {
+    if (event.type === "tool_execution_start" && event.toolName) {
+      const label = toolLabels.get(event.toolName);
+      if (label) {
+        setThreadStatus(channel, replyThreadTs, label);
+      }
+    }
+  };
+
   try {
     let conversationId: string;
     let previousMessages: AgentMessage[] = [];
@@ -146,7 +159,7 @@ async function processSlackMessage(
 
     // Run the agent
     log.info("running agent", { conversationId, externalId, message: messageText, username: agentContext?.username });
-    const result = await runAgent(messageText, previousMessages, agentContext);
+    const result = await runAgent(messageText, previousMessages, agentContext, onEvent);
     log.info("agent completed", {
       conversationId,
       externalId,
@@ -195,5 +208,7 @@ async function processSlackMessage(
       });
     }
     return "";
+  } finally {
+    setThreadStatus(channel, replyThreadTs, "");
   }
 }
