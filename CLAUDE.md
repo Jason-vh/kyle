@@ -142,5 +142,5 @@ The v1 codebase lives on the `main` branch. To read v1 source files without swit
 - **File I/O**: Prefer `Bun.file` over `node:fs`.
 - **Deployment**: `railway up`. Migrations run via pre-deploy command. Health check at `/health`. Live at https://kyle.vanhattum.xyz.
 - **Slack**: `@slack/web-api` only (no Bolt). Signature verification uses `crypto.subtle` (native in Bun).
-- **Git workflow**: Commit and push after every change. Railway deploys from uploaded files (`railway up`), not from git, but keeping the repo in sync is essential.
+- **Git workflow**: Commit, push, and deploy (`railway up`) after every change. Railway deploys from uploaded files, not from git, but keeping the repo in sync is essential.
 - **Beads**: Close relevant beads (`bd close <id>`) when work is completed, then `bd sync` and commit the updated `.beads/` directory.
