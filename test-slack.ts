@@ -1,173 +1,80 @@
 /**
- * Test script for the /slack/events endpoint.
- * Signs requests with SLACK_SIGNING_SECRET just like Slack does.
+ * Send a message to Kyle's /slack/events endpoint as if it came from Slack.
  *
  * Usage:
- *   bun run dev          # in one terminal
- *   bun run test-slack.ts # in another
+ *   bun run test-slack.ts "hello kyle"
+ *   bun run test-slack.ts "follow up" --thread 1770916700.760769
+ *   bun run test-slack.ts "hello" --channel C09AF7W8DME
  */
 
 const BASE_URL = process.env.BASE_URL ?? "http://localhost:3000";
+const CHANNEL = getArg("--channel") ?? process.env.SLACK_TEST_CHANNEL ?? "C09AF7W8DME";
+const THREAD_TS = getArg("--thread");
 const signingSecret = process.env.SLACK_SIGNING_SECRET;
 
+const message = process.argv[2];
+if (!message || message.startsWith("--")) {
+  console.error("Usage: bun run test-slack.ts <message> [--thread <ts>] [--channel <id>]");
+  process.exit(1);
+}
 if (!signingSecret) {
-  console.error("SLACK_SIGNING_SECRET is required in .env");
+  console.error("SLACK_SIGNING_SECRET is required (set in .env or env var)");
   process.exit(1);
 }
 
-async function sign(body: string): Promise<{ timestamp: string; signature: string }> {
-  const timestamp = Math.floor(Date.now() / 1000).toString();
-  const baseString = `v0:${timestamp}:${body}`;
-
-  const key = await crypto.subtle.importKey(
-    "raw",
-    new TextEncoder().encode(signingSecret),
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign"]
-  );
-
-  const sig = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(baseString));
-  const signature = `v0=${Buffer.from(sig).toString("hex")}`;
-
-  return { timestamp, signature };
+function getArg(flag: string): string | undefined {
+  const idx = process.argv.indexOf(flag);
+  return idx !== -1 ? process.argv[idx + 1] : undefined;
 }
 
-async function send(name: string, payload: object) {
-  const body = JSON.stringify(payload);
-  const { timestamp, signature } = await sign(body);
+const ts = `${Math.floor(Date.now() / 1000)}.${String(Math.floor(Math.random() * 1_000_000)).padStart(6, "0")}`;
+const eventId = `Ev_test_${Date.now()}`;
 
-  console.log(`\n--- ${name} ---`);
-  console.log(`POST ${BASE_URL}/slack/events`);
+const payload = {
+  type: "event_callback",
+  event_id: eventId,
+  event: {
+    type: "message",
+    channel: CHANNEL,
+    user: "U_TEST_USER",
+    text: message,
+    ts,
+    ...(THREAD_TS ? { thread_ts: THREAD_TS } : {}),
+  },
+};
 
-  const res = await fetch(`${BASE_URL}/slack/events`, {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      "x-slack-request-timestamp": timestamp,
-      "x-slack-signature": signature,
-    },
-    body,
-  });
+const body = JSON.stringify(payload);
+const timestamp = Math.floor(Date.now() / 1000).toString();
+const baseString = `v0:${timestamp}:${body}`;
 
-  const text = await res.text();
-  console.log(`Status: ${res.status}`);
-  try {
-    console.log(`Body:`, JSON.parse(text));
-  } catch {
-    console.log(`Body:`, text);
-  }
-}
+const key = await crypto.subtle.importKey(
+  "raw",
+  new TextEncoder().encode(signingSecret),
+  { name: "HMAC", hash: "SHA-256" },
+  false,
+  ["sign"]
+);
+const sig = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(baseString));
+const signature = `v0=${Buffer.from(sig).toString("hex")}`;
 
-// --- Test cases ---
+console.log(`Sending to ${BASE_URL}/slack/events`);
+console.log(`Channel: ${CHANNEL}${THREAD_TS ? ` | Thread: ${THREAD_TS}` : " | New thread"}`);
+console.log(`Message: ${message}\n`);
 
-// 1. URL verification challenge
-await send("url_verification", {
-  type: "url_verification",
-  challenge: "test_challenge_abc123",
-  token: "test",
-});
-
-// 2. Invalid signature (should 401)
-console.log("\n--- Invalid signature ---");
-const badRes = await fetch(`${BASE_URL}/slack/events`, {
+const res = await fetch(`${BASE_URL}/slack/events`, {
   method: "POST",
   headers: {
     "content-type": "application/json",
-    "x-slack-request-timestamp": Math.floor(Date.now() / 1000).toString(),
-    "x-slack-signature": "v0=bad_signature",
+    "x-slack-request-timestamp": timestamp,
+    "x-slack-signature": signature,
   },
-  body: JSON.stringify({ type: "event_callback" }),
+  body,
 });
-console.log(`Status: ${badRes.status} (expected 401)`);
 
-// 3. Retry header (should 200 immediately, no processing)
-await send("Retry skip (x-slack-retry-num)", {
-  type: "event_callback",
-  event_id: "Ev_retry_test",
-  event: {
-    type: "message",
-    channel: "C_TEST",
-    user: "U_TEST",
-    text: "this should be skipped",
-    ts: "1234567890.000001",
-  },
-});
-// Re-send with retry header
-{
-  const body = JSON.stringify({
-    type: "event_callback",
-    event_id: "Ev_retry_test2",
-    event: { type: "message", channel: "C_TEST", user: "U_TEST", text: "retry", ts: "1234567890.000002" },
-  });
-  const { timestamp, signature } = await sign(body);
-  console.log("\n--- Retry header (should skip) ---");
-  const res = await fetch(`${BASE_URL}/slack/events`, {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      "x-slack-request-timestamp": timestamp,
-      "x-slack-signature": signature,
-      "x-slack-retry-num": "1",
-      "x-slack-retry-reason": "http_timeout",
-    },
-    body,
-  });
-  console.log(`Status: ${res.status} (expected 200, skipped)`);
+console.log(`Status: ${res.status}`);
+const text = await res.text();
+try {
+  console.log("Response:", JSON.parse(text));
+} catch {
+  console.log("Response:", text);
 }
-
-// 4. Bot message (should be ignored by shouldProcess)
-await send("Bot message (should ignore)", {
-  type: "event_callback",
-  event_id: "Ev_bot_test",
-  event: {
-    type: "message",
-    channel: "C_TEST",
-    bot_id: "B_BOT",
-    text: "I am a bot",
-    ts: "1234567890.000003",
-  },
-});
-
-// 5. Real message (will ack 200, then try to process async — agent will fail without DB but proves the flow)
-await send("Real user message", {
-  type: "event_callback",
-  event_id: "Ev_real_test",
-  event: {
-    type: "message",
-    channel: "C_TEST",
-    user: "U_TEST",
-    text: "<@U_KYLE_BOT> what movies do you recommend?",
-    ts: "1234567890.000004",
-  },
-});
-
-// 6. Dedup — same event_id again
-await send("Dedup (same event_id, should skip)", {
-  type: "event_callback",
-  event_id: "Ev_real_test",
-  event: {
-    type: "message",
-    channel: "C_TEST",
-    user: "U_TEST",
-    text: "duplicate",
-    ts: "1234567890.000005",
-  },
-});
-
-// 7. Thread reply (has thread_ts)
-await send("Thread reply", {
-  type: "event_callback",
-  event_id: "Ev_thread_test",
-  event: {
-    type: "message",
-    channel: "C_TEST",
-    user: "U_TEST",
-    text: "follow up question",
-    ts: "1234567890.000006",
-    thread_ts: "1234567890.000004",
-  },
-});
-
-console.log("\n--- Done ---");
-console.log("Check the dev server logs for async processing output.");
