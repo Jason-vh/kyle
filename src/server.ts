@@ -1,5 +1,6 @@
 import { handleHealth } from "./routes/health.ts";
 import { handleChat } from "./routes/chat.ts";
+import { handleSlackEvents } from "./routes/slack-events.ts";
 
 export function startServer(port: number) {
   const server = Bun.serve({
@@ -22,6 +23,10 @@ export function startServer(port: number) {
 
         if (req.method === "POST" && url.pathname === "/chat") {
           return await handleChat(req);
+        }
+
+        if (req.method === "POST" && url.pathname === "/slack/events") {
+          return await handleSlackEvents(req);
         }
 
         return Response.json({ error: "Not found" }, { status: 404 });

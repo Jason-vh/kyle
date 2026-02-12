@@ -15,6 +15,7 @@
   "dependencies": {
     "@mariozechner/pi-agent-core": "^0.52.8",
     "@mariozechner/pi-ai": "^0.52.8",
+    "@slack/web-api": "^7.14.0",
     "drizzle-orm": "^0.43.1",
     "postgres": "^3.4.7"
   },
