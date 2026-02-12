@@ -64,6 +64,15 @@ export async function handleSlackEvents(req: Request): Promise<Response> {
       eventType: event.type,
       threadTs: event.thread_ts,
     });
+
+    const syncResponse = req.headers.get("x-sync-response") === "true";
+
+    if (syncResponse) {
+      // Wait for processing and return response in body
+      const responseText = await processSlackMessage(event.text!, event.channel, event.ts, event.thread_ts);
+      return Response.json({ ok: true, response: responseText });
+    }
+
     // Ack immediately, process async
     processSlackMessage(event.text!, event.channel, event.ts, event.thread_ts);
   }
@@ -75,14 +84,14 @@ async function processSlackMessage(
   rawText: string,
   channel: string,
   ts: string,
-  threadTs?: string
-) {
+  threadTs?: string,
+): Promise<string> {
   const slack = getSlackClient();
   const replyThreadTs = threadTs ?? ts;
   const externalId = `${channel}:${replyThreadTs}`;
   const messageText = cleanMessageText(rawText);
 
-  if (!messageText) return;
+  if (!messageText) return "";
 
   try {
     let conversationId: string;
@@ -146,6 +155,7 @@ async function processSlackMessage(
       text: result.responseText,
     });
     log.info("slack reply sent", { channel, threadTs: replyThreadTs, conversationId });
+    return result.responseText;
   } catch (error) {
     log.error("slack message processing failed", {
       channel,
@@ -164,5 +174,6 @@ async function processSlackMessage(
         error: postError instanceof Error ? postError.message : String(postError),
       });
     }
+    return "";
   }
 }

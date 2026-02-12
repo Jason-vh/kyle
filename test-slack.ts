@@ -67,14 +67,20 @@ const res = await fetch(`${BASE_URL}/slack/events`, {
     "content-type": "application/json",
     "x-slack-request-timestamp": timestamp,
     "x-slack-signature": signature,
+    "x-sync-response": "true",
   },
   body,
 });
 
 console.log(`Status: ${res.status}`);
-const text = await res.text();
+const responseText = await res.text();
 try {
-  console.log("Response:", JSON.parse(text));
+  const json = JSON.parse(responseText);
+  if (json.response) {
+    console.log(`\nKyle:\n${json.response}`);
+  } else {
+    console.log("Response:", json);
+  }
 } catch {
-  console.log("Response:", text);
+  console.log("Response:", responseText);
 }
