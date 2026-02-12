@@ -49,6 +49,11 @@ src/
   qbittorrent/
     api.ts                  → qBittorrent API client (cookie auth, torrents)
     tools.ts                → 2 qBittorrent agent tools
+  webhooks/
+    types.ts                → Webhook payload types + MediaNotificationInfo
+    requester.ts            → Find who requested media (media_refs + conversations query)
+    notifications.ts        → AI notification generation via Haiku (fallback to template)
+    handler.ts              → POST /webhooks/sonarr + /webhooks/radarr handlers
 drizzle/                    → Generated migration SQL
 drizzle.config.ts           → Drizzle Kit config
 ```
@@ -136,18 +141,18 @@ BASE_URL=https://kyle.vanhattum.xyz bun run test-slack.ts "<@U099N4BJT5Y> add in
 
 ## Task Tracking
 
-We use [beads](https://github.com/steveyegge/beads) (`bd`) for task tracking — both v1 feature parity work and future enhancements.
+We use [Linear](https://linear.app) for task tracking. The Linear CLI (`linear`) is installed and authenticated.
 
 ```bash
-bd ready              # Show unblocked tasks ready to work on
-bd list --status=open # All open tasks
-bd show <id>          # Full details + dependencies
-bd update <id> --status=in_progress  # Claim a task
-bd close <id>         # Mark complete
-bd sync               # Sync with git after changes
+linear issue list --team KYL --sort priority --all-assignees                    # List open issues
+linear issue list --team KYL --sort priority --all-assignees --all-states       # All issues including completed
+linear issue view <id>                                                          # View issue details
+linear issue create --team KYL                                                  # Create new issue
+linear issue update <id> -s started                                             # Start working on an issue
+linear issue update <id> -s completed                                           # Mark complete
 ```
 
-Use `TODO(kyle-xxx)` comments in code to mark where work is needed, linking to the relevant bead. When identifying new work (bugs, enhancements, refactors), create a bead and add a TODO comment at the relevant location in code.
+Use `TODO(KYL-123)` comments in code to mark where work is needed, linking to the relevant Linear issue. When identifying new work (bugs, enhancements, refactors), create a Linear issue and add a TODO comment at the relevant location in code.
 
 ## v1 Reference
 
@@ -163,4 +168,4 @@ The v1 codebase lives on the `main` branch. To read v1 source files without swit
 - **Production DB**: The Railway DATABASE_URL uses internal networking (not reachable locally). Use `echo "SELECT ..." | railway connect Postgres` to query production.
 - **Slack**: `@slack/web-api` only (no Bolt). Signature verification uses `crypto.subtle` (native in Bun).
 - **Git workflow**: Commit, push, and deploy (`./deploy.sh`) after every change. Railway deploys from uploaded files, not from git, but keeping the repo in sync is essential. Railway's upload respects `.gitignore` — any files that need to be deployed (like `deploy-id.txt`) must not be gitignored.
-- **Beads**: Close relevant beads (`bd close <id>`) when work is completed, then `bd sync` and commit the updated `.beads/` directory.
+- **Linear**: Update issue status (`linear issue update <id> -s completed`) when work is completed.

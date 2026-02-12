@@ -2,6 +2,7 @@ import { createLogger } from "./logger.ts";
 import { handleHealth } from "./routes/health.ts";
 import { handleChat } from "./routes/chat.ts";
 import { handleSlackEvents } from "./routes/slack-events.ts";
+import { handleSonarrWebhook, handleRadarrWebhook } from "./webhooks/handler.ts";
 
 const log = createLogger("server");
 
@@ -30,6 +31,14 @@ export function startServer(port: number) {
 
         if (req.method === "POST" && url.pathname === "/slack/events") {
           return await handleSlackEvents(req);
+        }
+
+        if (req.method === "POST" && url.pathname === "/webhooks/sonarr") {
+          return await handleSonarrWebhook(req);
+        }
+
+        if (req.method === "POST" && url.pathname === "/webhooks/radarr") {
+          return await handleRadarrWebhook(req);
         }
 
         log.warn("not found", { method: req.method, path: url.pathname });
