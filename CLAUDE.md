@@ -42,6 +42,12 @@ src/
     api.ts                  → TMDB API client (search, details)
     utils.ts                → Token optimization helpers (toPartialMovie, toPartialTVShow, etc.)
     tools.ts                → 5 TMDB agent tools
+  ultra/
+    api.ts                  → Ultra seedbox API client (stats)
+    tools.ts                → 1 Ultra agent tool
+  qbittorrent/
+    api.ts                  → qBittorrent API client (cookie auth, torrents)
+    tools.ts                → 2 qBittorrent agent tools
 drizzle/                    → Generated migration SQL
 drizzle.config.ts           → Drizzle Kit config
 ```
@@ -120,6 +126,11 @@ BASE_URL=https://kyle.vanhattum.xyz bun run test-slack.ts "<@U099N4BJT5Y> add in
 | `RADARR_HOST` | Radarr instance URL |
 | `RADARR_API_KEY` | Radarr API key |
 | `TMDB_API_TOKEN` | TMDB API bearer token |
+| `ULTRA_HOST` | Ultra seedbox URL (e.g. `https://user.host.usbx.me`) |
+| `ULTRA_API_TOKEN` | Ultra API bearer token |
+| `QBITTORRENT_HOST` | qBittorrent Web UI URL |
+| `QBITTORRENT_USERNAME` | qBittorrent username |
+| `QBITTORRENT_PASSWORD` | qBittorrent password |
 
 ## Task Tracking
 

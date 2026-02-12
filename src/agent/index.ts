@@ -40,6 +40,15 @@ import {
   getTmdbSeriesDetailsTool,
 } from "../tmdb/tools.ts";
 
+// Ultra tools
+import { getUltraStatsTool } from "../ultra/tools.ts";
+
+// qBittorrent tools
+import {
+  getTorrentsTool,
+  deleteTorrentsTool,
+} from "../qbittorrent/tools.ts";
+
 const log = createLogger("agent");
 
 const allTools = [
@@ -69,6 +78,11 @@ const allTools = [
   searchTmdbTool,
   getTmdbMovieDetailsTool,
   getTmdbSeriesDetailsTool,
+  // Ultra
+  getUltraStatsTool,
+  // qBittorrent
+  getTorrentsTool,
+  deleteTorrentsTool,
 ];
 
 export const toolLabels = new Map(
