@@ -34,6 +34,18 @@ curl -X POST http://localhost:3000/chat \
 
 Kyle can query your Sonarr library to tell you what TV series you have. Set `SONARR_HOST` and `SONARR_API_KEY` in your `.env`.
 
+## Thread Viewer
+
+Kyle includes a web-based thread viewer for browsing past Slack conversations at `/threads/:thread_ts`. Protected by a shared token (`THREAD_VIEWER_TOKEN` env var) with cookie-based auth.
+
+Features:
+- Server-rendered HTML with dark theme
+- Tool calls paired with their results in collapsible sections
+- Error states shown with full error details
+- Slack usernames resolved via the Slack API
+
+Visit `https://kyle.vanhattum.xyz/threads/<thread_ts>` to view any Slack thread.
+
 ## API
 
 | Endpoint | Description |
@@ -41,6 +53,8 @@ Kyle can query your Sonarr library to tell you what TV series you have. Set `SON
 | `GET /` | Service info |
 | `GET /health` | Health check (includes DB status) |
 | `POST /chat` | Send a message, get a response |
+| `GET /threads/login` | Thread viewer login page |
+| `GET /threads/:thread_ts` | View a Slack conversation thread |
 
 ### POST /chat
 

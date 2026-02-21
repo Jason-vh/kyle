@@ -24,10 +24,14 @@ src/
     chat.ts                 → POST /chat handler
     health.ts               → GET /health handler (includes deployId for deploy verification)
     slack-events.ts         → POST /slack/events handler (supports X-Sync-Response header)
+    threads.ts              → GET /threads/:thread_ts handler (server-rendered thread viewer)
+    threads-auth.ts         → Cookie-based auth (HMAC-SHA256 signed cookies, login form)
+    threads-render.ts       → HTML rendering for thread messages (dark theme, tool call pairing)
   slack/
     client.ts               → WebClient singleton (lazy-init from SLACK_BOT_TOKEN)
     verify.ts               → HMAC-SHA256 signature verification
     events.ts               → Event types + helpers (shouldProcess, cleanMessageText, buildExternalId)
+    users.ts                → Slack user ID → display name resolution
   sonarr/
     types.ts                → Sonarr API type definitions
     api.ts                  → Sonarr API client (series, episodes, queue, calendar, history)
@@ -138,6 +142,7 @@ BASE_URL=https://kyle.vanhattum.xyz bun run test-slack.ts "<@U099N4BJT5Y> add in
 | `QBITTORRENT_HOST` | qBittorrent Web UI URL |
 | `QBITTORRENT_USERNAME` | qBittorrent username |
 | `QBITTORRENT_PASSWORD` | qBittorrent password |
+| `THREAD_VIEWER_TOKEN` | Shared secret for thread viewer auth (cookie-based login) |
 
 ## Task Tracking
 
