@@ -54,18 +54,12 @@ function renderToolCall(tc: ToolCall): string {
 function renderAssistantMessage(msg: AssistantMessage): string {
   // Show error state for failed responses
   if (msg.stopReason === "error") {
-    let errorText = "Error processing message";
-    if (msg.errorMessage) {
-      try {
-        const parsed = JSON.parse(msg.errorMessage);
-        errorText = parsed?.error?.message || parsed?.message || msg.errorMessage;
-      } catch {
-        errorText = msg.errorMessage;
-      }
-    }
+    const errorText = msg.errorMessage
+      ? prettyPrint(msg.errorMessage)
+      : "Error processing message";
     return `<div class="message assistant error">
   <div class="label">Kyle</div>
-  <div class="content error-text">${escapeHtml(errorText)}</div>
+  <pre class="error-text">${escapeHtml(errorText)}</pre>
 </div>`;
   }
 
