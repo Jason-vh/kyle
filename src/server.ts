@@ -3,6 +3,8 @@ import { handleHealth } from "./routes/health.ts";
 import { handleChat } from "./routes/chat.ts";
 import { handleSlackEvents } from "./routes/slack-events.ts";
 import { handleSonarrWebhook, handleRadarrWebhook } from "./webhooks/handler.ts";
+import { handleThread } from "./routes/threads.ts";
+import { handleLogin } from "./routes/threads-auth.ts";
 
 const log = createLogger("server");
 
@@ -39,6 +41,19 @@ export function startServer(port: number) {
 
         if (req.method === "POST" && url.pathname === "/webhooks/radarr") {
           return await handleRadarrWebhook(req);
+        }
+
+        // Thread viewer login
+        if (url.pathname === "/threads/login") {
+          return await handleLogin(req);
+        }
+
+        // Thread viewer
+        if (req.method === "GET" && url.pathname.startsWith("/threads/")) {
+          const segments = url.pathname.split("/");
+          if (segments.length === 3 && segments[2]) {
+            return await handleThread(req, segments[2]);
+          }
         }
 
         log.warn("not found", { method: req.method, path: url.pathname });
