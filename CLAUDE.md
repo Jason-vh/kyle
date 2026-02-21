@@ -165,8 +165,8 @@ Use `TODO(KYL-123)` comments in code to mark where work is needed, linking to th
 - **HTTP**: `Bun.serve()` — no Express.
 - **Database**: `postgres` package with Drizzle ORM — no `pg`.
 - **File I/O**: Prefer `Bun.file` over `node:fs`.
-- **Deployment**: `./deploy.sh` — writes git SHA to `deploy-id.txt`, runs `railway up`, polls `/health` until `deployId` matches, then cleans up. Migrations run via pre-deploy command. Health check at `/health` (includes `deployId`). Live at https://kyle.vanhattum.xyz. Logs: `railway logs -n 80`.
+- **Deployment**: Pushes to `main` auto-deploy via GitHub Actions (`.github/workflows/deploy.yml`). The workflow writes the git SHA to `deploy-id.txt`, runs `railway up`, and polls `/health` until `deployId` matches. `./deploy.sh` is available for manual/emergency deploys. Migrations run via pre-deploy command. Health check at `/health` (includes `deployId`). Live at https://kyle.vanhattum.xyz. Logs: `railway logs -n 80`.
 - **Production DB**: The Railway DATABASE_URL uses internal networking (not reachable locally). Use `echo "SELECT ..." | railway connect Postgres` to query production.
 - **Slack**: `@slack/web-api` only (no Bolt). Signature verification uses `crypto.subtle` (native in Bun).
-- **Git workflow**: Commit, push, and deploy (`./deploy.sh`) after every change. Railway deploys from uploaded files, not from git, but keeping the repo in sync is essential. Railway's upload respects `.gitignore` — any files that need to be deployed (like `deploy-id.txt`) must not be gitignored.
+- **Git workflow**: Commit and push to `main` — deploy happens automatically via GitHub Actions. For manual deploys, use `./deploy.sh`. Railway deploys from uploaded files, not from git, but keeping the repo in sync is essential. Railway's upload respects `.gitignore` — any files that need to be deployed (like `deploy-id.txt`) must not be gitignored.
 - **Linear**: Update issue status (`linear issue update <id> -s completed`) when work is completed.
