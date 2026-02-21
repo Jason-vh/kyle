@@ -14,7 +14,7 @@ src/
   logger.ts                 → Structured JSON logger
   agent/
     index.ts                → Agent factory + runAgent(), tool registration
-    system-prompt.ts        → Kyle's system prompt (ported from v1)
+    system-prompt.ts        → Kyle's system prompt
   db/
     index.ts                → Drizzle + postgres connection
     schema.ts               → conversations + messages + media_refs tables
@@ -158,10 +158,6 @@ linear issue update <id> -s completed                                           
 ```
 
 Use `TODO(KYL-123)` comments in code to mark where work is needed, linking to the relevant Linear issue. When identifying new work (bugs, enhancements, refactors), create a Linear issue and add a TODO comment at the relevant location in code.
-
-## v1 Reference
-
-The v1 codebase lives on the `main` branch. To read v1 source files without switching branches: `git show main:src/lib/radarr/api.ts`. Useful when porting remaining features.
 
 ## Conventions
 
