@@ -43,6 +43,33 @@ function renderUserMessage(msg: UserMessage, username: string): string {
 </div>`;
 }
 
+function renderToolCallInner(
+  tc: ToolCall,
+  result: ToolResultMessage | undefined
+): string {
+  const args = JSON.stringify(tc.arguments, null, 2);
+  let resultHtml = "";
+  if (result) {
+    const text = result.content
+      .filter((c): c is TextContent => c.type === "text")
+      .map((c) => c.text)
+      .join("\n");
+    const formatted = prettyPrint(text);
+    const errorClass = result.isError ? " tool-error" : "";
+    resultHtml = `\n  <div class="tool-section">
+    <div class="tool-section-label">Output${result.isError ? " (error)" : ""}</div>
+    <pre class="${errorClass}">${escapeHtml(formatted)}</pre>
+  </div>`;
+  }
+  return `<div class="tool-call-inner">
+  <div class="tool-call-name">${escapeHtml(tc.name)}</div>
+  <div class="tool-section">
+    <div class="tool-section-label">Input</div>
+    <pre>${escapeHtml(args)}</pre>
+  </div>${resultHtml}
+</div>`;
+}
+
 function renderToolCallWithResult(
   tc: ToolCall,
   result: ToolResultMessage | undefined
@@ -85,7 +112,30 @@ function renderAssistantMessage(
 </div>`;
   }
 
-  const isInternal = msg.stopReason === "toolUse";
+  // Internal tool-use steps: render as a single collapsible
+  if (msg.stopReason === "toolUse") {
+    const toolNames = msg.content
+      .filter((b): b is ToolCall => b.type === "toolCall")
+      .map((b) => b.name);
+    const summary = toolNames.length > 0
+      ? toolNames.map(escapeHtml).join(", ")
+      : "Tool Calls";
+
+    const parts: string[] = [];
+    for (const block of msg.content) {
+      if (block.type === "text") {
+        parts.push(`<div class="content">${escapeHtml(block.text)}</div>`);
+      } else if (block.type === "toolCall") {
+        parts.push(renderToolCallInner(block, resultMap.get(block.id)));
+      }
+    }
+    return `<div class="message tool-use">
+  <details>
+    <summary><span class="label">Tool Calls</span> ${summary}</summary>
+    ${parts.join("\n    ")}
+  </details>
+</div>`;
+  }
 
   const parts: string[] = [];
   for (const block of msg.content) {
@@ -96,8 +146,8 @@ function renderAssistantMessage(
     }
     // skip ThinkingContent
   }
-  return `<div class="message assistant${isInternal ? " internal" : ""}">
-  <div class="label">Kyle${isInternal ? " (internal)" : ""}</div>
+  return `<div class="message assistant">
+  <div class="label">Kyle</div>
   ${parts.join("\n  ")}
 </div>`;
 }
@@ -171,18 +221,21 @@ export function renderThreadPage(
   .message { margin-bottom: 1.25rem; padding: 1rem; border-radius: 8px; border: 1px solid #21262d; }
   .message.user { background: #161b22; border-left: 3px solid #58a6ff; }
   .message.assistant { background: #161b22; border-left: 3px solid #3fb950; }
-  .message.assistant.internal { opacity: 0.6; border-left-color: #8b949e; }
-  .message.assistant.internal:hover { opacity: 1; }
+  .message.tool-use { background: #13171e; border-left: 3px solid #d2a8ff; }
+  .message.tool-use summary { color: #c9d1d9; font-size: 0.875rem; }
+  .message.tool-use summary .label { display: inline; margin-bottom: 0; color: #d2a8ff; }
   .label { font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem; color: #8b949e; }
   .message.user .label { color: #58a6ff; }
   .message.assistant .label { color: #3fb950; }
-  .message.assistant.internal .label { color: #8b949e; }
   .content { white-space: pre-wrap; word-break: break-word; }
   details { margin-top: 0.5rem; }
   summary { cursor: pointer; font-size: 0.875rem; color: #8b949e; padding: 0.25rem 0; }
   summary:hover { color: #c9d1d9; }
   pre { background: #0d1117; padding: 0.75rem; border-radius: 6px; overflow-x: auto; font-size: 0.8125rem; margin-top: 0.5rem; border: 1px solid #21262d; }
   .tool-call summary { color: #d2a8ff; }
+  .tool-call-inner { margin-top: 1rem; padding-top: 0.75rem; border-top: 1px solid #21262d; }
+  .tool-call-inner:first-child { margin-top: 0.5rem; border-top: none; padding-top: 0; }
+  .tool-call-name { font-size: 0.875rem; font-weight: 600; color: #d2a8ff; margin-bottom: 0.25rem; }
   .tool-section { margin-top: 0.5rem; }
   .tool-section-label { font-size: 0.75rem; font-weight: 600; color: #8b949e; text-transform: uppercase; letter-spacing: 0.05em; }
   .tool-error { color: #f85149; }
