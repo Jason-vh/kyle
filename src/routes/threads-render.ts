@@ -43,15 +43,34 @@ function renderUserMessage(msg: UserMessage, username: string): string {
 </div>`;
 }
 
-function renderToolCall(tc: ToolCall): string {
+function renderToolCallWithResult(
+  tc: ToolCall,
+  result: ToolResultMessage | undefined
+): string {
   const args = JSON.stringify(tc.arguments, null, 2);
+  let resultHtml = "";
+  if (result) {
+    const text = result.content
+      .filter((c): c is TextContent => c.type === "text")
+      .map((c) => c.text)
+      .join("\n");
+    const formatted = prettyPrint(text);
+    const errorLabel = result.isError ? ' <span class="tool-error">error</span>' : "";
+    resultHtml = `\n  <details class="tool-result-inner">
+    <summary>Result${errorLabel}</summary>
+    <pre>${escapeHtml(formatted)}</pre>
+  </details>`;
+  }
   return `<details class="tool-call">
   <summary>${escapeHtml(tc.name)}</summary>
-  <pre>${escapeHtml(args)}</pre>
+  <pre>${escapeHtml(args)}</pre>${resultHtml}
 </details>`;
 }
 
-function renderAssistantMessage(msg: AssistantMessage): string {
+function renderAssistantMessage(
+  msg: AssistantMessage,
+  resultMap: Map<string, ToolResultMessage>
+): string {
   // Show error state for failed responses
   if (msg.stopReason === "error") {
     const errorText = msg.errorMessage
@@ -68,7 +87,7 @@ function renderAssistantMessage(msg: AssistantMessage): string {
     if (block.type === "text") {
       parts.push(`<div class="content">${escapeHtml(block.text)}</div>`);
     } else if (block.type === "toolCall") {
-      parts.push(renderToolCall(block));
+      parts.push(renderToolCallWithResult(block, resultMap.get(block.id)));
     }
     // skip ThinkingContent
   }
@@ -78,28 +97,18 @@ function renderAssistantMessage(msg: AssistantMessage): string {
 </div>`;
 }
 
-function renderToolResult(msg: ToolResultMessage): string {
-  const text = msg.content
-    .filter((c): c is TextContent => c.type === "text")
-    .map((c) => c.text)
-    .join("\n");
-  const formatted = prettyPrint(text);
-  return `<div class="message tool-result">
-  <details>
-    <summary>${escapeHtml(msg.toolName)}${msg.isError ? " (error)" : ""}</summary>
-    <pre>${escapeHtml(formatted)}</pre>
-  </details>
-</div>`;
-}
-
-function renderMessage(msg: Message, username: string): string {
+function renderMessage(
+  msg: Message,
+  username: string,
+  resultMap: Map<string, ToolResultMessage>
+): string {
   switch (msg.role) {
     case "user":
       return renderUserMessage(msg, username);
     case "assistant":
-      return renderAssistantMessage(msg);
+      return renderAssistantMessage(msg, resultMap);
     case "toolResult":
-      return renderToolResult(msg);
+      return ""; // rendered inline with tool calls
     default:
       return "";
   }
@@ -122,7 +131,18 @@ export function renderThreadPage(
   messages: Message[],
   username: string = "You"
 ): string {
-  const messagesHtml = messages.map((m) => renderMessage(m, username)).join("\n");
+  // Build a map of toolCallId → ToolResultMessage for pairing
+  const resultMap = new Map<string, ToolResultMessage>();
+  for (const msg of messages) {
+    if (msg.role === "toolResult") {
+      resultMap.set(msg.toolCallId, msg);
+    }
+  }
+
+  const messagesHtml = messages
+    .map((m) => renderMessage(m, username, resultMap))
+    .filter(Boolean)
+    .join("\n");
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -146,7 +166,6 @@ export function renderThreadPage(
   .message { margin-bottom: 1.25rem; padding: 1rem; border-radius: 8px; border: 1px solid #21262d; }
   .message.user { background: #161b22; border-left: 3px solid #58a6ff; }
   .message.assistant { background: #161b22; border-left: 3px solid #3fb950; }
-  .message.tool-result { background: #13171e; border-left: 3px solid #8b949e; }
   .label { font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem; color: #8b949e; }
   .message.user .label { color: #58a6ff; }
   .message.assistant .label { color: #3fb950; }
@@ -156,6 +175,8 @@ export function renderThreadPage(
   summary:hover { color: #c9d1d9; }
   pre { background: #0d1117; padding: 0.75rem; border-radius: 6px; overflow-x: auto; font-size: 0.8125rem; margin-top: 0.5rem; border: 1px solid #21262d; }
   .tool-call summary { color: #d2a8ff; }
+  .tool-result-inner summary { color: #8b949e; font-size: 0.8125rem; }
+  .tool-error { color: #f85149; }
   .message.assistant.error { border-left-color: #f85149; }
   .error-text { color: #f85149; font-style: italic; }
 </style>
