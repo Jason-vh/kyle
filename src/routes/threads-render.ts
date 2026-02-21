@@ -27,7 +27,7 @@ function prettyPrint(str: string): string {
   }
 }
 
-function renderUserMessage(msg: UserMessage): string {
+function renderUserMessage(msg: UserMessage, username: string): string {
   let text: string;
   if (typeof msg.content === "string") {
     text = msg.content;
@@ -38,7 +38,7 @@ function renderUserMessage(msg: UserMessage): string {
       .join("\n");
   }
   return `<div class="message user">
-  <div class="label">You</div>
+  <div class="label">${escapeHtml(username)}</div>
   <div class="content">${escapeHtml(text)}</div>
 </div>`;
 }
@@ -81,10 +81,10 @@ function renderToolResult(msg: ToolResultMessage): string {
 </div>`;
 }
 
-function renderMessage(msg: Message): string {
+function renderMessage(msg: Message, username: string): string {
   switch (msg.role) {
     case "user":
-      return renderUserMessage(msg);
+      return renderUserMessage(msg, username);
     case "assistant":
       return renderAssistantMessage(msg);
     case "toolResult":
@@ -108,9 +108,10 @@ function formatDate(date: Date): string {
 export function renderThreadPage(
   threadTs: string,
   createdAt: Date,
-  messages: Message[]
+  messages: Message[],
+  username: string = "You"
 ): string {
-  const messagesHtml = messages.map(renderMessage).join("\n");
+  const messagesHtml = messages.map((m) => renderMessage(m, username)).join("\n");
 
   return `<!DOCTYPE html>
 <html lang="en">

@@ -165,6 +165,7 @@ async function processSlackMessage(
         .values({
           externalId,
           interfaceType: "slack",
+          userId: userId ?? null,
           metadata: { channel, threadTs: replyThreadTs },
         })
         .returning();

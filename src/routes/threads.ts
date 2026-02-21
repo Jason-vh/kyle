@@ -3,6 +3,7 @@ import { db } from "../db/index.ts";
 import { conversations, messages } from "../db/schema.ts";
 import { checkAuth } from "./threads-auth.ts";
 import { renderThreadPage } from "./threads-render.ts";
+import { resolveUsernames } from "../slack/users.ts";
 import { createLogger } from "../logger.ts";
 
 const log = createLogger("threads");
@@ -41,13 +42,28 @@ export async function handleThread(
 
   const msgs = rows.map((r) => r.data as any);
 
+  // Resolve Slack username if we have a userId
+  let username = "You";
+  if (conv.userId) {
+    try {
+      const names = await resolveUsernames([conv.userId]);
+      username = names.get(conv.userId) ?? "You";
+    } catch (err) {
+      log.warn("failed to resolve username", {
+        userId: conv.userId,
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
+
   log.info("rendering thread", {
     threadTs,
     conversationId: conv.id,
     messageCount: msgs.length,
+    username,
   });
 
-  const html = renderThreadPage(threadTs, conv.createdAt, msgs);
+  const html = renderThreadPage(threadTs, conv.createdAt, msgs, username);
   return new Response(html, {
     headers: { "Content-Type": "text/html; charset=utf-8" },
   });
