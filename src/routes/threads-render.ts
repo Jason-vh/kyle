@@ -55,15 +55,18 @@ function renderToolCallWithResult(
       .map((c) => c.text)
       .join("\n");
     const formatted = prettyPrint(text);
-    const errorLabel = result.isError ? ' <span class="tool-error">error</span>' : "";
-    resultHtml = `\n  <details class="tool-result-inner">
-    <summary>Result${errorLabel}</summary>
-    <pre>${escapeHtml(formatted)}</pre>
-  </details>`;
+    const errorClass = result.isError ? " tool-error" : "";
+    resultHtml = `\n  <div class="tool-section">
+    <div class="tool-section-label">Output${result.isError ? " (error)" : ""}</div>
+    <pre class="${errorClass}">${escapeHtml(formatted)}</pre>
+  </div>`;
   }
   return `<details class="tool-call">
   <summary>${escapeHtml(tc.name)}</summary>
-  <pre>${escapeHtml(args)}</pre>${resultHtml}
+  <div class="tool-section">
+    <div class="tool-section-label">Input</div>
+    <pre>${escapeHtml(args)}</pre>
+  </div>${resultHtml}
 </details>`;
 }
 
@@ -82,6 +85,8 @@ function renderAssistantMessage(
 </div>`;
   }
 
+  const isInternal = msg.stopReason === "toolUse";
+
   const parts: string[] = [];
   for (const block of msg.content) {
     if (block.type === "text") {
@@ -91,8 +96,8 @@ function renderAssistantMessage(
     }
     // skip ThinkingContent
   }
-  return `<div class="message assistant">
-  <div class="label">Kyle</div>
+  return `<div class="message assistant${isInternal ? " internal" : ""}">
+  <div class="label">Kyle${isInternal ? " (internal)" : ""}</div>
   ${parts.join("\n  ")}
 </div>`;
 }
@@ -166,19 +171,23 @@ export function renderThreadPage(
   .message { margin-bottom: 1.25rem; padding: 1rem; border-radius: 8px; border: 1px solid #21262d; }
   .message.user { background: #161b22; border-left: 3px solid #58a6ff; }
   .message.assistant { background: #161b22; border-left: 3px solid #3fb950; }
+  .message.assistant.internal { opacity: 0.6; border-left-color: #8b949e; }
+  .message.assistant.internal:hover { opacity: 1; }
   .label { font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem; color: #8b949e; }
   .message.user .label { color: #58a6ff; }
   .message.assistant .label { color: #3fb950; }
+  .message.assistant.internal .label { color: #8b949e; }
   .content { white-space: pre-wrap; word-break: break-word; }
   details { margin-top: 0.5rem; }
   summary { cursor: pointer; font-size: 0.875rem; color: #8b949e; padding: 0.25rem 0; }
   summary:hover { color: #c9d1d9; }
   pre { background: #0d1117; padding: 0.75rem; border-radius: 6px; overflow-x: auto; font-size: 0.8125rem; margin-top: 0.5rem; border: 1px solid #21262d; }
   .tool-call summary { color: #d2a8ff; }
-  .tool-result-inner summary { color: #8b949e; font-size: 0.8125rem; }
+  .tool-section { margin-top: 0.5rem; }
+  .tool-section-label { font-size: 0.75rem; font-weight: 600; color: #8b949e; text-transform: uppercase; letter-spacing: 0.05em; }
   .tool-error { color: #f85149; }
   .message.assistant.error { border-left-color: #f85149; }
-  .error-text { color: #f85149; font-style: italic; }
+  .error-text { color: #f85149; }
 </style>
 </head>
 <body>
