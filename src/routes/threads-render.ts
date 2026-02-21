@@ -112,27 +112,29 @@ function renderAssistantMessage(
 </div>`;
   }
 
-  // Internal tool-use steps: render as a single collapsible
+  // Internal tool-use steps: text visible, tool details collapsible
   if (msg.stopReason === "toolUse") {
-    const toolNames = msg.content
-      .filter((b): b is ToolCall => b.type === "toolCall")
-      .map((b) => b.name);
+    const toolCalls = msg.content.filter((b): b is ToolCall => b.type === "toolCall");
+    const toolNames = toolCalls.map((b) => b.name);
     const summary = toolNames.length > 0
       ? toolNames.map(escapeHtml).join(", ")
-      : "Tool Calls";
+      : "tool call";
+    const label = toolCalls.length === 1 ? "Tool Call" : "Tool Calls";
 
-    const parts: string[] = [];
+    const textParts: string[] = [];
+    const toolParts: string[] = [];
     for (const block of msg.content) {
       if (block.type === "text") {
-        parts.push(`<div class="content">${escapeHtml(block.text)}</div>`);
+        textParts.push(`<div class="content">${escapeHtml(block.text)}</div>`);
       } else if (block.type === "toolCall") {
-        parts.push(renderToolCallInner(block, resultMap.get(block.id)));
+        toolParts.push(renderToolCallInner(block, resultMap.get(block.id)));
       }
     }
     return `<div class="message tool-use">
+  ${textParts.join("\n  ")}
   <details>
-    <summary><span class="label">Tool Calls</span> ${summary}</summary>
-    ${parts.join("\n    ")}
+    <summary><span class="label">${label}</span> ${summary}</summary>
+    ${toolParts.join("\n    ")}
   </details>
 </div>`;
   }
