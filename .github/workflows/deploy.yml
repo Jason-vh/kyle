@@ -17,7 +17,7 @@ jobs:
           DEPLOY_ID=$(git rev-parse --short HEAD)
           echo "$DEPLOY_ID" > deploy-id.txt
           echo "Deploying $DEPLOY_ID..."
-          railway up
+          railway up --service kyle-api
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
 
