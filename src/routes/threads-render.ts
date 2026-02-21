@@ -18,9 +18,13 @@ function escapeHtml(str: string): string {
     .replace(/'/g, "&#39;");
 }
 
-function truncate(str: string, max: number): string {
-  if (str.length <= max) return str;
-  return str.slice(0, max) + `\n… (truncated ${str.length - max} chars)`;
+function prettyPrint(str: string): string {
+  try {
+    const parsed = JSON.parse(str);
+    return JSON.stringify(parsed, null, 2);
+  } catch {
+    return str;
+  }
 }
 
 function renderUserMessage(msg: UserMessage): string {
@@ -68,11 +72,11 @@ function renderToolResult(msg: ToolResultMessage): string {
     .filter((c): c is TextContent => c.type === "text")
     .map((c) => c.text)
     .join("\n");
-  const truncated = truncate(text, 2000);
+  const formatted = prettyPrint(text);
   return `<div class="message tool-result">
   <details>
     <summary>${escapeHtml(msg.toolName)}${msg.isError ? " (error)" : ""}</summary>
-    <pre>${escapeHtml(truncated)}</pre>
+    <pre>${escapeHtml(formatted)}</pre>
   </details>
 </div>`;
 }
