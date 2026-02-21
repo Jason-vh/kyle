@@ -226,6 +226,7 @@ export function renderThreadPage(
   .message.tool-use { background: #13171e; border-left: 3px solid #d2a8ff; }
   .message.tool-use summary { color: #c9d1d9; font-size: 0.875rem; }
   .message.tool-use summary .label { display: inline; margin-bottom: 0; color: #d2a8ff; }
+  .message.tool-use > .content { font-style: italic; color: #8b949e; }
   .label { font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem; color: #8b949e; }
   .message.user .label { color: #58a6ff; }
   .message.assistant .label { color: #3fb950; }
