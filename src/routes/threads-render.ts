@@ -52,6 +52,23 @@ function renderToolCall(tc: ToolCall): string {
 }
 
 function renderAssistantMessage(msg: AssistantMessage): string {
+  // Show error state for failed responses
+  if (msg.stopReason === "error") {
+    let errorText = "Error processing message";
+    if (msg.errorMessage) {
+      try {
+        const parsed = JSON.parse(msg.errorMessage);
+        errorText = parsed?.error?.message || parsed?.message || msg.errorMessage;
+      } catch {
+        errorText = msg.errorMessage;
+      }
+    }
+    return `<div class="message assistant error">
+  <div class="label">Kyle</div>
+  <div class="content error-text">${escapeHtml(errorText)}</div>
+</div>`;
+  }
+
   const parts: string[] = [];
   for (const block of msg.content) {
     if (block.type === "text") {
@@ -145,6 +162,8 @@ export function renderThreadPage(
   summary:hover { color: #c9d1d9; }
   pre { background: #0d1117; padding: 0.75rem; border-radius: 6px; overflow-x: auto; font-size: 0.8125rem; margin-top: 0.5rem; border: 1px solid #21262d; }
   .tool-call summary { color: #d2a8ff; }
+  .message.assistant.error { border-left-color: #f85149; }
+  .error-text { color: #f85149; font-style: italic; }
 </style>
 </head>
 <body>
