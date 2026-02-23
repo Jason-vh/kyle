@@ -3,6 +3,19 @@ import { getModel, getEnvApiKey, type AssistantMessage, type TextContent } from 
 import { createLogger } from "../logger.ts";
 import { getSystemPrompt, type AgentContext } from "./system-prompt.ts";
 
+export class ApiOverloadedError extends Error {
+  constructor(message = "API is overloaded after retries") {
+    super(message);
+    this.name = "ApiOverloadedError";
+  }
+}
+
+function isOverloadedError(error?: string): boolean {
+  if (!error) return false;
+  const lower = error.toLowerCase();
+  return lower.includes("overloaded") || lower.includes("529");
+}
+
 export type { AgentContext };
 
 // Sonarr tools
@@ -109,12 +122,15 @@ export function createAgent(context?: AgentContext): Agent {
   });
 }
 
+const RETRY_DELAYS = [5_000, 15_000];
+
 export async function runAgent(
   message: string,
   previousMessages: AgentMessage[] = [],
   context?: AgentContext,
   onEvent?: (event: AgentEvent) => void,
-): Promise<{ messages: AgentMessage[]; responseText: string }> {
+  onRetry?: (attempt: number, maxAttempts: number) => void,
+): Promise<{ messages: AgentMessage[]; responseText: string; errorMessages: AgentMessage[] }> {
   const agent = createAgent(context);
 
   if (previousMessages.length > 0) {
@@ -126,6 +142,46 @@ export async function runAgent(
   }
 
   await agent.prompt(message);
+
+  const errorMessages: AgentMessage[] = [];
+
+  // Retry loop for overloaded errors
+  for (let attempt = 0; attempt < RETRY_DELAYS.length; attempt++) {
+    if (!isOverloadedError(agent.state.error)) break;
+
+    const errorMsg = agent.state.messages[agent.state.messages.length - 1];
+    if (errorMsg) {
+      errorMessages.push(errorMsg);
+    }
+
+    log.warn("API overloaded, retrying", {
+      attempt: attempt + 1,
+      maxAttempts: RETRY_DELAYS.length,
+      delayMs: RETRY_DELAYS[attempt],
+      error: agent.state.error,
+    });
+
+    onRetry?.(attempt + 1, RETRY_DELAYS.length);
+
+    // Remove the error message from agent state
+    agent.replaceMessages(agent.state.messages.slice(0, -1));
+
+    await new Promise((resolve) => setTimeout(resolve, RETRY_DELAYS[attempt]));
+    await agent.continue();
+  }
+
+  // If still overloaded after all retries, save the final error and throw
+  if (isOverloadedError(agent.state.error)) {
+    const errorMsg = agent.state.messages[agent.state.messages.length - 1];
+    if (errorMsg) {
+      errorMessages.push(errorMsg);
+    }
+    log.error("API overloaded after all retries", {
+      attempts: RETRY_DELAYS.length,
+      error: agent.state.error,
+    });
+    throw new ApiOverloadedError();
+  }
 
   const messages = agent.state.messages;
 
@@ -141,5 +197,5 @@ export async function runAgent(
         .join("")
     : "";
 
-  return { messages, responseText };
+  return { messages, responseText, errorMessages };
 }

@@ -3,7 +3,8 @@ import type { AgentMessage } from "@mariozechner/pi-agent-core";
 import { createLogger } from "../logger.ts";
 import { db } from "../db/index.ts";
 import { conversations, messages } from "../db/schema.ts";
-import { runAgent } from "../agent/index.ts";
+import { runAgent, ApiOverloadedError } from "../agent/index.ts";
+import type { AssistantMessage } from "@mariozechner/pi-ai";
 import { extractMediaRef, saveMediaRef } from "../db/media-refs.ts";
 
 const log = createLogger("chat");
@@ -51,7 +52,9 @@ export async function handleChat(req: Request): Promise<Response> {
       orderBy: [asc(messages.sequence)],
     });
 
-    previousMessages = rows.map((r) => r.data as AgentMessage);
+    previousMessages = rows
+      .map((r) => r.data as AgentMessage)
+      .filter((m) => !(m.role === "assistant" && (m as AssistantMessage).stopReason === "error"));
   } else {
     // Create new conversation
     const [conversation] = await db
@@ -84,28 +87,36 @@ export async function handleChat(req: Request): Promise<Response> {
   // Run the agent
   let allMessages: AgentMessage[];
   let responseText: string;
+  let errorMessages: AgentMessage[];
   try {
     const result = await runAgent(body.message, previousMessages, undefined, onEvent);
     allMessages = result.messages;
     responseText = result.responseText;
+    errorMessages = result.errorMessages;
   } catch (error) {
     log.error("agent error", {
       conversationId,
       error: error instanceof Error ? error.message : String(error),
       stack: error instanceof Error ? error.stack : undefined,
     });
+    if (error instanceof ApiOverloadedError) {
+      return Response.json(
+        { error: "The AI service is currently overloaded. Please try again in a moment." },
+        { status: 503 }
+      );
+    }
     return Response.json(
       { error: "Failed to process message" },
       { status: 500 }
     );
   }
 
-  // Persist only the new messages
-  const newMessages = allMessages.slice(previousMessages.length);
-  if (newMessages.length > 0) {
+  // Persist error messages (for thread viewer visibility) then new messages
+  const allNewMessages = [...errorMessages, ...allMessages.slice(previousMessages.length)];
+  if (allNewMessages.length > 0) {
     const startSequence = previousMessages.length;
     await db.insert(messages).values(
-      newMessages.map((m, i) => ({
+      allNewMessages.map((m, i) => ({
         conversationId: conversationId!,
         role: m.role,
         sequence: startSequence + i,

@@ -3,7 +3,8 @@ import type { AgentMessage } from "@mariozechner/pi-agent-core";
 import { createLogger } from "../logger.ts";
 import { db } from "../db/index.ts";
 import { conversations, messages } from "../db/schema.ts";
-import { runAgent, toolLabels, type AgentContext } from "../agent/index.ts";
+import { runAgent, toolLabels, ApiOverloadedError, type AgentContext } from "../agent/index.ts";
+import type { AssistantMessage } from "@mariozechner/pi-ai";
 import { extractMediaRef, saveMediaRef } from "../db/media-refs.ts";
 import { verifySlackSignature } from "../slack/verify.ts";
 import { getSlackClient, setThreadStatus } from "../slack/client.ts";
@@ -158,7 +159,9 @@ async function processSlackMessage(
         where: eq(messages.conversationId, conversationId),
         orderBy: [asc(messages.sequence)],
       });
-      previousMessages = rows.map((r) => r.data as AgentMessage);
+      previousMessages = rows
+        .map((r) => r.data as AgentMessage)
+        .filter((m) => !(m.role === "assistant" && (m as AssistantMessage).stopReason === "error"));
     } else {
       const [conversation] = await db
         .insert(conversations)
@@ -174,20 +177,29 @@ async function processSlackMessage(
 
     // Run the agent
     log.info("running agent", { conversationId, externalId, message: messageText, username: agentContext?.username });
-    const result = await runAgent(messageText, previousMessages, agentContext, onEvent);
+    const result = await runAgent(
+      messageText,
+      previousMessages,
+      agentContext,
+      onEvent,
+      (attempt, maxAttempts) => {
+        setThreadStatus(channel, replyThreadTs, `is retrying... (${attempt}/${maxAttempts})`);
+      },
+    );
     log.info("agent completed", {
       conversationId,
       externalId,
       newMessages: result.messages.length - previousMessages.length,
+      errorMessages: result.errorMessages.length,
       responseLength: result.responseText.length,
     });
 
-    // Persist new messages
-    const newMessages = result.messages.slice(previousMessages.length);
-    if (newMessages.length > 0) {
+    // Persist error messages (for thread viewer visibility) then new messages
+    const allNewMessages = [...result.errorMessages, ...result.messages.slice(previousMessages.length)];
+    if (allNewMessages.length > 0) {
       const startSequence = previousMessages.length;
       await db.insert(messages).values(
-        newMessages.map((m, i) => ({
+        allNewMessages.map((m, i) => ({
           conversationId,
           role: m.role,
           sequence: startSequence + i,
@@ -205,9 +217,11 @@ async function processSlackMessage(
     log.info("slack reply sent", { channel, threadTs: replyThreadTs, conversationId });
     return result.responseText;
   } catch (error) {
+    const isOverloaded = error instanceof ApiOverloadedError;
     log.error("slack message processing failed", {
       channel,
       threadTs: replyThreadTs,
+      isOverloaded,
       error: error instanceof Error ? error.message : String(error),
       stack: error instanceof Error ? error.stack : undefined,
     });
@@ -215,7 +229,9 @@ async function processSlackMessage(
       await slack.chat.postMessage({
         channel,
         thread_ts: replyThreadTs,
-        text: "Sorry, something went wrong processing your message.",
+        text: isOverloaded
+          ? "Sorry, I'm having trouble reaching my brain right now. Give me a minute and try again?"
+          : "Sorry, something went wrong processing your message.",
       });
     } catch (postError) {
       log.error("failed to post error message to slack", {
