@@ -55,7 +55,7 @@ export const messages = pgTable(
       .notNull()
       .references(() => conversations.id, { onDelete: "cascade" }),
     role: text("role").notNull(),
-    sequence: integer("sequence").notNull(),
+    sequence: integer("sequence").notNull().generatedAlwaysAsIdentity(),
     data: jsonb("data").notNull(),
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },

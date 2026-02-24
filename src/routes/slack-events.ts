@@ -197,12 +197,10 @@ async function processSlackMessage(
     // Persist error messages (for thread viewer visibility) then new messages
     const allNewMessages = [...result.errorMessages, ...result.messages.slice(previousMessages.length)];
     if (allNewMessages.length > 0) {
-      const startSequence = previousMessages.length;
       await db.insert(messages).values(
-        allNewMessages.map((m, i) => ({
+        allNewMessages.map((m) => ({
           conversationId,
           role: m.role,
-          sequence: startSequence + i,
           data: m,
         }))
       );

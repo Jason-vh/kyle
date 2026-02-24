@@ -114,12 +114,10 @@ export async function handleChat(req: Request): Promise<Response> {
   // Persist error messages (for thread viewer visibility) then new messages
   const allNewMessages = [...errorMessages, ...allMessages.slice(previousMessages.length)];
   if (allNewMessages.length > 0) {
-    const startSequence = previousMessages.length;
     await db.insert(messages).values(
-      allNewMessages.map((m, i) => ({
+      allNewMessages.map((m) => ({
         conversationId: conversationId!,
         role: m.role,
-        sequence: startSequence + i,
         data: m,
       }))
     );
