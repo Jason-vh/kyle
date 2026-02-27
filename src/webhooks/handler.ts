@@ -11,6 +11,28 @@ import type {
 
 const log = createLogger("webhooks");
 
+const BATCH_DELAY_MS = 30_000;
+
+interface PendingBatch {
+  media: MediaNotificationInfo;
+  requesters: MediaRequester[];
+  timer: ReturnType<typeof setTimeout>;
+}
+
+const pendingBatches = new Map<string, PendingBatch>();
+
+function flushBatch(key: string): void {
+  const batch = pendingBatches.get(key);
+  if (!batch) return;
+  pendingBatches.delete(key);
+  notifyRequesters(batch.requesters, batch.media).catch((error) => {
+    log.error("batched notification failed", {
+      title: batch.media.title,
+      error: error instanceof Error ? error.message : String(error),
+    });
+  });
+}
+
 async function notifyRequesters(
   requesters: MediaRequester[],
   media: MediaNotificationInfo,
@@ -120,10 +142,40 @@ export async function handleSonarrWebhook(req: Request): Promise<Response> {
     return Response.json({ ok: true, skipped: true });
   }
 
+  const key = `series:${payload.series.id}`;
+  const newEpisodes = payload.episodes?.map((e) => ({
+    seasonNumber: e.seasonNumber,
+    episodeNumber: e.episodeNumber,
+    title: e.title,
+  })) ?? [];
+
+  // If a batch is already pending for this series, accumulate into it
+  const existing = pendingBatches.get(key);
+  if (existing) {
+    for (const ep of newEpisodes) {
+      const dup = existing.media.episodes?.some(
+        (e) => e.seasonNumber === ep.seasonNumber && e.episodeNumber === ep.episodeNumber,
+      );
+      if (!dup) existing.media.episodes?.push(ep);
+    }
+    log.info("batching episode", {
+      title: payload.series.title,
+      episode: newEpisodes.map((e) => `S${e.seasonNumber}E${e.episodeNumber}`).join(", "),
+      batchSize: existing.media.episodes?.length,
+    });
+    return Response.json({ ok: true, batched: true });
+  }
+
+  // No pending batch — look up requesters
   const requesters = await findMediaRequesters("series", {
     sonarr: payload.series.id,
     tvdb: payload.series.tvdbId,
   });
+
+  if (requesters.length === 0) {
+    log.info("no requesters to notify", { title: payload.series.title });
+    return Response.json({ ok: true, requesters: 0 });
+  }
 
   const media: MediaNotificationInfo = {
     mediaType: "series",
@@ -131,20 +183,17 @@ export async function handleSonarrWebhook(req: Request): Promise<Response> {
     year: payload.series.year,
     quality: payload.release?.quality,
     releaseGroup: payload.release?.releaseGroup,
-    episodes: payload.episodes?.map((e) => ({
-      seasonNumber: e.seasonNumber,
-      episodeNumber: e.episodeNumber,
-      title: e.title,
-    })),
+    episodes: newEpisodes,
   };
 
-  // Fire-and-forget: don't block the webhook response
-  notifyRequesters(requesters, media).catch((error) => {
-    log.error("sonarr notification failed", {
-      title: payload.series.title,
-      error: error instanceof Error ? error.message : String(error),
-    });
+  const timer = setTimeout(() => flushBatch(key), BATCH_DELAY_MS);
+  pendingBatches.set(key, { media, requesters, timer });
+  log.info("batch started", {
+    title: payload.series.title,
+    episode: newEpisodes.map((e) => `S${e.seasonNumber}E${e.episodeNumber}`).join(", "),
+    requesters: requesters.length,
+    delayMs: BATCH_DELAY_MS,
   });
 
-  return Response.json({ ok: true, requesters: requesters.length });
+  return Response.json({ ok: true, batched: true, requesters: requesters.length });
 }
