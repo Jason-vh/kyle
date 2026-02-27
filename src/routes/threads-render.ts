@@ -48,6 +48,7 @@ function renderToolCallInner(
   result: ToolResultMessage | undefined
 ): string {
   const args = JSON.stringify(tc.arguments, null, 2);
+  const isError = result?.isError ?? false;
   let resultHtml = "";
   if (result) {
     const text = result.content
@@ -55,14 +56,15 @@ function renderToolCallInner(
       .map((c) => c.text)
       .join("\n");
     const formatted = prettyPrint(text);
-    const errorClass = result.isError ? " tool-error" : "";
+    const errorClass = isError ? " tool-error" : "";
     resultHtml = `\n  <div class="tool-section">
-    <div class="tool-section-label">Output${result.isError ? " (error)" : ""}</div>
+    <div class="tool-section-label">Output${isError ? " (error)" : ""}</div>
     <pre class="${errorClass}">${escapeHtml(formatted)}</pre>
   </div>`;
   }
-  return `<div class="tool-call-inner">
-  <div class="tool-call-name">${escapeHtml(tc.name)}</div>
+  const nameClass = isError ? "tool-call-name tool-call-name-error" : "tool-call-name";
+  return `<div class="tool-call-inner${isError ? " tool-call-inner-error" : ""}">
+  <div class="${nameClass}">${escapeHtml(tc.name)}</div>
   <div class="tool-section">
     <div class="tool-section-label">Input</div>
     <pre>${escapeHtml(args)}</pre>
@@ -75,6 +77,7 @@ function renderToolCallWithResult(
   result: ToolResultMessage | undefined
 ): string {
   const args = JSON.stringify(tc.arguments, null, 2);
+  const isError = result?.isError ?? false;
   let resultHtml = "";
   if (result) {
     const text = result.content
@@ -82,14 +85,16 @@ function renderToolCallWithResult(
       .map((c) => c.text)
       .join("\n");
     const formatted = prettyPrint(text);
-    const errorClass = result.isError ? " tool-error" : "";
+    const errorClass = isError ? " tool-error" : "";
     resultHtml = `\n  <div class="tool-section">
-    <div class="tool-section-label">Output${result.isError ? " (error)" : ""}</div>
+    <div class="tool-section-label">Output${isError ? " (error)" : ""}</div>
     <pre class="${errorClass}">${escapeHtml(formatted)}</pre>
   </div>`;
   }
-  return `<details class="tool-call">
-  <summary>${escapeHtml(tc.name)}</summary>
+  const detailsClass = isError ? "tool-call tool-call-error" : "tool-call";
+  const openAttr = isError ? " open" : "";
+  return `<details class="${detailsClass}"${openAttr}>
+  <summary>${escapeHtml(tc.name)}${isError ? ' <span class="tool-error-badge">error</span>' : ""}</summary>
   <div class="tool-section">
     <div class="tool-section-label">Input</div>
     <pre>${escapeHtml(args)}</pre>
@@ -115,6 +120,7 @@ function renderAssistantMessage(
   // Internal tool-use steps: text visible, tool details collapsible
   if (msg.stopReason === "toolUse") {
     const toolCalls = msg.content.filter((b): b is ToolCall => b.type === "toolCall");
+    const hasErrors = toolCalls.some((tc) => resultMap.get(tc.id)?.isError);
     const toolNames = toolCalls.map((b) => b.name);
     const summary = toolNames.length > 0
       ? toolNames.map(escapeHtml).join(", ")
@@ -130,10 +136,11 @@ function renderAssistantMessage(
         toolParts.push(renderToolCallInner(block, resultMap.get(block.id)));
       }
     }
-    return `<div class="message tool-use">
+    const wrapperClass = hasErrors ? "message tool-use has-errors" : "message tool-use";
+    return `<div class="${wrapperClass}">
   ${textParts.join("\n  ")}
-  <details>
-    <summary><span class="label">${label}</span> ${summary}</summary>
+  <details${hasErrors ? " open" : ""}>
+    <summary><span class="label">${label}</span> ${summary}${hasErrors ? ' <span class="tool-error-badge">error</span>' : ""}</summary>
     ${toolParts.join("\n    ")}
   </details>
 </div>`;
@@ -244,6 +251,11 @@ export function renderThreadPage(
   .tool-error { color: #f85149; }
   .message.assistant.error { border-left-color: #f85149; }
   .error-text { color: #f85149; }
+  .message.tool-use.has-errors { border-left-color: #f85149; }
+  .tool-call.tool-call-error > summary { color: #f85149; }
+  .tool-call-name-error { color: #f85149; }
+  .tool-call-inner-error { border-top-color: #30191a; }
+  .tool-error-badge { display: inline-block; font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; background: #30191a; color: #f85149; border: 1px solid #f8514940; border-radius: 4px; padding: 0 4px; vertical-align: middle; margin-left: 6px; }
 </style>
 </head>
 <body>
