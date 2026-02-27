@@ -1,7 +1,7 @@
 import { eq, like, asc } from "drizzle-orm";
 import { db } from "../db/index.ts";
 import { conversations, messages } from "../db/schema.ts";
-import { checkAuth } from "./threads-auth.ts";
+import { checkAuth, signThreadSig, verifyThreadSig } from "./threads-auth.ts";
 import { renderThreadPage } from "./threads-render.ts";
 import { resolveUsernames } from "../slack/users.ts";
 import { createLogger } from "../logger.ts";
@@ -16,8 +16,18 @@ export async function handleThread(
 ): Promise<Response> {
   const url = new URL(req.url);
 
-  const authResponse = await checkAuth(req, url);
-  if (authResponse) return authResponse;
+  // Signed URL: anyone with ?sig= can view this specific thread
+  const sig = url.searchParams.get("sig");
+  if (sig) {
+    const valid = await verifyThreadSig(threadTs, sig);
+    if (!valid) {
+      return new Response("Invalid or expired link", { status: 403 });
+    }
+  } else {
+    // Fall back to cookie auth
+    const authResponse = await checkAuth(req, url);
+    if (authResponse) return authResponse;
+  }
 
   if (!THREAD_TS_RE.test(threadTs)) {
     log.warn("invalid thread_ts format", { threadTs });
@@ -63,7 +73,18 @@ export async function handleThread(
     username,
   });
 
-  const html = renderThreadPage(threadTs, conv.createdAt, msgs, username);
+  // Provide share URL only to cookie-authenticated users (not sig-authenticated)
+  let shareUrl: string | undefined;
+  if (!sig) {
+    try {
+      const threadSig = await signThreadSig(threadTs);
+      shareUrl = `${url.origin}/threads/${threadTs}?sig=${threadSig}`;
+    } catch {
+      // non-fatal
+    }
+  }
+
+  const html = renderThreadPage(threadTs, conv.createdAt, msgs, username, shareUrl);
   return new Response(html, {
     headers: { "Content-Type": "text/html; charset=utf-8" },
   });

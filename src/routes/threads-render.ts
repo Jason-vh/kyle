@@ -203,7 +203,8 @@ export function renderThreadPage(
   threadTs: string,
   createdAt: Date,
   messages: Message[],
-  username: string = "You"
+  username: string = "You",
+  shareUrl?: string
 ): string {
   // Build a map of toolCallId → ToolResultMessage for pairing
   const resultMap = new Map<string, ToolResultMessage>();
@@ -234,9 +235,11 @@ export function renderThreadPage(
     padding: 2rem 1rem;
   }
   .container { max-width: 800px; margin: 0 auto; }
-  header { margin-bottom: 2rem; border-bottom: 1px solid #21262d; padding-bottom: 1rem; }
-  header h1 { font-size: 1.25rem; font-weight: 600; }
-  header .meta { font-size: 0.875rem; color: #8b949e; margin-top: 0.25rem; }
+  header { margin-bottom: 2rem; border-bottom: 1px solid #21262d; padding-bottom: 1rem; display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; }
+  header .header-text h1 { font-size: 1.25rem; font-weight: 600; }
+  header .header-text .meta { font-size: 0.875rem; color: #8b949e; margin-top: 0.25rem; }
+  .share-btn { flex-shrink: 0; padding: 0.375rem 0.75rem; background: #161b22; border: 1px solid #30363d; border-radius: 6px; color: #8b949e; font-size: 0.8125rem; cursor: pointer; white-space: nowrap; transition: border-color 0.1s, color 0.1s; }
+  .share-btn:hover { border-color: #8b949e; color: #c9d1d9; }
   .message { margin-bottom: 1.25rem; padding: 1rem; border-radius: 8px; border: 1px solid #21262d; position: relative; scroll-margin-top: 1rem; }
   .message.user { background: #161b22; border-left: 3px solid #58a6ff; }
   .message.assistant { background: #161b22; border-left: 3px solid #3fb950; }
@@ -274,8 +277,11 @@ export function renderThreadPage(
 <body>
 <div class="container">
   <header>
-    <h1>Thread ${escapeHtml(threadTs)}</h1>
-    <div class="meta">${escapeHtml(formatDate(createdAt))}</div>
+    <div class="header-text">
+      <h1>Thread ${escapeHtml(threadTs)}</h1>
+      <div class="meta">${escapeHtml(formatDate(createdAt))}</div>
+    </div>
+    ${shareUrl ? `<button class="share-btn" onclick="copyShareUrl()" id="share-btn">Copy share link</button>` : ""}
   </header>
   ${messagesHtml}
 </div>
@@ -286,6 +292,13 @@ export function renderThreadPage(
     const el = document.getElementById(id)?.querySelector('.permalink');
     if (el) { el.textContent = '✓'; setTimeout(() => { el.textContent = '#'; }, 1500); }
   }
+  ${shareUrl ? `
+  const SHARE_URL = ${JSON.stringify(shareUrl)};
+  function copyShareUrl() {
+    navigator.clipboard.writeText(SHARE_URL).catch(() => {});
+    const btn = document.getElementById('share-btn');
+    if (btn) { btn.textContent = 'Copied!'; setTimeout(() => { btn.textContent = 'Copy share link'; }, 2000); }
+  }` : ""}
 </script>
 </body>
 </html>`;

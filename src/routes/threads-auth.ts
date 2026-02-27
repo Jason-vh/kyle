@@ -82,6 +82,35 @@ function buildCookieHeader(value: string, isLocal: boolean): string {
   return parts.join("; ");
 }
 
+export async function signThreadSig(threadTs: string): Promise<string> {
+  const token = process.env.THREAD_VIEWER_TOKEN;
+  if (!token) throw new Error("THREAD_VIEWER_TOKEN not set");
+  const key = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(token),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"]
+  );
+  const sig = await crypto.subtle.sign(
+    "HMAC",
+    key,
+    new TextEncoder().encode(threadTs)
+  );
+  return Buffer.from(sig).toString("hex").slice(0, 32);
+}
+
+export async function verifyThreadSig(
+  threadTs: string,
+  sig: string
+): Promise<boolean> {
+  if (!sig || sig.length !== 32) return false;
+  const expected = await signThreadSig(threadTs).catch(() => null);
+  if (!expected) return false;
+  const { timingSafeEqual } = await import("crypto");
+  return timingSafeEqual(Buffer.from(expected), Buffer.from(sig));
+}
+
 export async function checkAuth(
   req: Request,
   url: URL
