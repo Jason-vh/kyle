@@ -4,6 +4,7 @@ import { handleChat } from "./routes/chat.ts";
 import { handleSlackEvents } from "./routes/slack-events.ts";
 import { handleSonarrWebhook, handleRadarrWebhook } from "./webhooks/handler.ts";
 import { handleThread } from "./routes/threads.ts";
+import { handleThreadList } from "./routes/threads-list.ts";
 import { handleLogin } from "./routes/threads-auth.ts";
 
 const log = createLogger("server");
@@ -46,6 +47,11 @@ export function startServer(port: number) {
         // Thread viewer login
         if (url.pathname === "/threads/login") {
           return await handleLogin(req);
+        }
+
+        // Thread list
+        if (req.method === "GET" && (url.pathname === "/threads" || url.pathname === "/threads/")) {
+          return await handleThreadList(req);
         }
 
         // Thread viewer

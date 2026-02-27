@@ -238,6 +238,9 @@ export function renderThreadPage(
   header { margin-bottom: 2rem; border-bottom: 1px solid #21262d; padding-bottom: 1rem; display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; }
   header .header-text h1 { font-size: 1.25rem; font-weight: 600; }
   header .header-text .meta { font-size: 0.875rem; color: #8b949e; margin-top: 0.25rem; }
+  header .header-text .breadcrumb { font-size: 0.8125rem; color: #8b949e; margin-bottom: 0.25rem; }
+  header .header-text .breadcrumb a { color: #58a6ff; text-decoration: none; }
+  header .header-text .breadcrumb a:hover { text-decoration: underline; }
   .share-btn { flex-shrink: 0; padding: 0.375rem 0.75rem; background: #161b22; border: 1px solid #30363d; border-radius: 6px; color: #8b949e; font-size: 0.8125rem; cursor: pointer; white-space: nowrap; transition: border-color 0.1s, color 0.1s; }
   .share-btn:hover { border-color: #8b949e; color: #c9d1d9; }
   .message { margin-bottom: 1.25rem; padding: 1rem; border-radius: 8px; border: 1px solid #21262d; position: relative; scroll-margin-top: 1rem; }
@@ -278,6 +281,7 @@ export function renderThreadPage(
 <div class="container">
   <header>
     <div class="header-text">
+      ${shareUrl ? `<div class="breadcrumb"><a href="/threads/">← All threads</a></div>` : ""}
       <h1>Thread ${escapeHtml(threadTs)}</h1>
       <div class="meta">${escapeHtml(formatDate(createdAt))}</div>
     </div>
