@@ -34,11 +34,15 @@ async function makeRequest(
 	});
 
 	if (!response.ok) {
-		throw {
-			status: response.status,
-			statusText: response.statusText,
-			body: await response.json(),
-		};
+		let body: unknown;
+		try {
+			body = await response.json();
+		} catch {
+			body = await response.text().catch(() => "(unreadable)");
+		}
+		throw new Error(
+			`Sonarr API error ${response.status} ${response.statusText}: ${JSON.stringify(body)}`,
+		);
 	}
 
 	return response.json();

@@ -40,11 +40,9 @@ async function makeRequest(endpoint: string): Promise<unknown> {
 	if (!response.ok) {
 		const body = await response.text();
 		log.error("request failed", { url, status: response.status, body: body.slice(0, 200) });
-		throw {
-			status: response.status,
-			statusText: response.statusText,
-			body,
-		};
+		throw new Error(
+			`Ultra API error ${response.status} ${response.statusText}: ${body}`,
+		);
 	}
 
 	return response.json();

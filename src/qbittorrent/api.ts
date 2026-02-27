@@ -105,11 +105,10 @@ async function makeRequest(
 	}
 
 	if (!response.ok) {
-		throw {
-			status: response.status,
-			statusText: response.statusText,
-			body: await response.text(),
-		};
+		const body = await response.text().catch(() => "(unreadable)");
+		throw new Error(
+			`qBittorrent API error ${response.status} ${response.statusText}: ${body}`,
+		);
 	}
 
 	const text = await response.text();

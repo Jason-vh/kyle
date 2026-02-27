@@ -36,11 +36,9 @@ async function makeRequest(
 		} catch {
 			parsed = body;
 		}
-		throw {
-			status: response.status,
-			statusText: response.statusText,
-			body: parsed,
-		};
+		throw new Error(
+			`Radarr API error ${response.status} ${response.statusText}: ${JSON.stringify(parsed)}`,
+		);
 	}
 
 	return response.json();
