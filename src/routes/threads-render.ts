@@ -27,7 +27,11 @@ function prettyPrint(str: string): string {
   }
 }
 
-function renderUserMessage(msg: UserMessage, username: string): string {
+function permalink(id: string): string {
+  return `<a href="#${id}" class="permalink" onclick="copyPermalink('${id}')" title="Copy link">#</a>`;
+}
+
+function renderUserMessage(msg: UserMessage, username: string, id: string): string {
   let text: string;
   if (typeof msg.content === "string") {
     text = msg.content;
@@ -37,8 +41,9 @@ function renderUserMessage(msg: UserMessage, username: string): string {
       .map((c) => c.text)
       .join("\n");
   }
-  return `<div class="message user">
+  return `<div class="message user" id="${id}">
   <div class="label">${escapeHtml(username)}</div>
+  ${permalink(id)}
   <div class="content">${escapeHtml(text)}</div>
 </div>`;
 }
@@ -104,15 +109,17 @@ function renderToolCallWithResult(
 
 function renderAssistantMessage(
   msg: AssistantMessage,
-  resultMap: Map<string, ToolResultMessage>
+  resultMap: Map<string, ToolResultMessage>,
+  id: string
 ): string {
   // Show error state for failed responses
   if (msg.stopReason === "error") {
     const errorText = msg.errorMessage
       ? prettyPrint(msg.errorMessage)
       : "Error processing message";
-    return `<div class="message assistant error">
+    return `<div class="message assistant error" id="${id}">
   <div class="label">Kyle</div>
+  ${permalink(id)}
   <pre class="error-text">${escapeHtml(errorText)}</pre>
 </div>`;
   }
@@ -137,8 +144,9 @@ function renderAssistantMessage(
       }
     }
     const wrapperClass = hasErrors ? "message tool-use has-errors" : "message tool-use";
-    return `<div class="${wrapperClass}">
+    return `<div class="${wrapperClass}" id="${id}">
   ${textParts.join("\n  ")}
+  ${permalink(id)}
   <details${hasErrors ? " open" : ""}>
     <summary><span class="label">${label}</span> ${summary}${hasErrors ? ' <span class="tool-error-badge">error</span>' : ""}</summary>
     ${toolParts.join("\n    ")}
@@ -155,8 +163,9 @@ function renderAssistantMessage(
     }
     // skip ThinkingContent
   }
-  return `<div class="message assistant">
+  return `<div class="message assistant" id="${id}">
   <div class="label">Kyle</div>
+  ${permalink(id)}
   ${parts.join("\n  ")}
 </div>`;
 }
@@ -164,13 +173,14 @@ function renderAssistantMessage(
 function renderMessage(
   msg: Message,
   username: string,
-  resultMap: Map<string, ToolResultMessage>
+  resultMap: Map<string, ToolResultMessage>,
+  id: string
 ): string {
   switch (msg.role) {
     case "user":
-      return renderUserMessage(msg, username);
+      return renderUserMessage(msg, username, id);
     case "assistant":
-      return renderAssistantMessage(msg, resultMap);
+      return renderAssistantMessage(msg, resultMap, id);
     case "toolResult":
       return ""; // rendered inline with tool calls
     default:
@@ -204,7 +214,7 @@ export function renderThreadPage(
   }
 
   const messagesHtml = messages
-    .map((m) => renderMessage(m, username, resultMap))
+    .map((m, i) => renderMessage(m, username, resultMap, `msg-${i}`))
     .filter(Boolean)
     .join("\n");
 
@@ -227,7 +237,7 @@ export function renderThreadPage(
   header { margin-bottom: 2rem; border-bottom: 1px solid #21262d; padding-bottom: 1rem; }
   header h1 { font-size: 1.25rem; font-weight: 600; }
   header .meta { font-size: 0.875rem; color: #8b949e; margin-top: 0.25rem; }
-  .message { margin-bottom: 1.25rem; padding: 1rem; border-radius: 8px; border: 1px solid #21262d; }
+  .message { margin-bottom: 1.25rem; padding: 1rem; border-radius: 8px; border: 1px solid #21262d; position: relative; scroll-margin-top: 1rem; }
   .message.user { background: #161b22; border-left: 3px solid #58a6ff; }
   .message.assistant { background: #161b22; border-left: 3px solid #3fb950; }
   .message.tool-use { background: #13171e; border-left: 3px solid #d2a8ff; }
@@ -256,6 +266,9 @@ export function renderThreadPage(
   .tool-call-name-error { color: #f85149; }
   .tool-call-inner-error { border-top-color: #30191a; }
   .tool-error-badge { display: inline-block; font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; background: #30191a; color: #f85149; border: 1px solid #f8514940; border-radius: 4px; padding: 0 4px; vertical-align: middle; margin-left: 6px; }
+  .permalink { position: absolute; top: 0.75rem; right: 0.75rem; opacity: 0; color: #8b949e; text-decoration: none; font-size: 0.875rem; line-height: 1; transition: opacity 0.1s; user-select: none; }
+  .message:hover .permalink { opacity: 1; }
+  .permalink:hover { color: #c9d1d9; }
 </style>
 </head>
 <body>
@@ -266,6 +279,14 @@ export function renderThreadPage(
   </header>
   ${messagesHtml}
 </div>
+<script>
+  function copyPermalink(id) {
+    const url = location.href.split('#')[0] + '#' + id;
+    navigator.clipboard.writeText(url).catch(() => {});
+    const el = document.getElementById(id)?.querySelector('.permalink');
+    if (el) { el.textContent = '✓'; setTimeout(() => { el.textContent = '#'; }, 1500); }
+  }
+</script>
 </body>
 </html>`;
 }
