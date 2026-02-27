@@ -1,12 +1,11 @@
-import { eq, asc } from "drizzle-orm";
 import type { AgentMessage } from "@mariozechner/pi-agent-core";
-import type { AssistantMessage } from "@mariozechner/pi-ai";
 import { createLogger } from "../logger.ts";
 import { getSlackClient } from "../slack/client.ts";
 import { db } from "../db/index.ts";
-import { conversations, messages } from "../db/schema.ts";
+import { messages } from "../db/schema.ts";
 import { findMediaRequesters } from "./requester.ts";
-import { saveWebhookNotification, getWebhookNotifications } from "../db/webhook-notifications.ts";
+import { saveWebhookNotification } from "../db/webhook-notifications.ts";
+import { loadConversationHistory } from "../db/conversation-history.ts";
 import { runAgent } from "../agent/index.ts";
 import type {
   RadarrWebhookPayload,
@@ -57,15 +56,6 @@ function formatWebhookPrompt(media: MediaNotificationInfo, source: "sonarr" | "r
   return `[Webhook — ${service}] ${desc} has finished downloading. Let the user know it's ready.`;
 }
 
-function formatWebhookForContext(n: { source: string; message: string; receivedAt: Date }): string {
-  const service = n.source === "sonarr" ? "Sonarr" : "Radarr";
-  const ts = n.receivedAt.toLocaleString("en-US", {
-    month: "short", day: "numeric", year: "numeric",
-    hour: "2-digit", minute: "2-digit",
-  });
-  return `[Webhook — ${service}] ${n.message} (received ${ts})`;
-}
-
 async function notifyRequester(
   requester: MediaRequester,
   media: MediaNotificationInfo,
@@ -85,25 +75,7 @@ async function notifyRequester(
 
   if (conv) {
     conversationId = conv.id;
-    const rows = await db.query.messages.findMany({
-      where: eq(messages.conversationId, conv.id),
-      orderBy: [asc(messages.sequence)],
-    });
-
-    const baseMessages = rows
-      .filter((r) => !((r.data as AgentMessage).role === "assistant" && ((r.data as AgentMessage) as AssistantMessage).stopReason === "error"))
-      .map((r) => ({ msg: r.data as AgentMessage, createdAt: r.createdAt }));
-
-    // Interleave existing webhook notifications by time
-    const existingNotifications = await getWebhookNotifications(conv.id);
-    const webhookMessages = existingNotifications.map((n) => ({
-      msg: { role: "user", content: formatWebhookForContext(n) } as AgentMessage,
-      createdAt: n.receivedAt,
-    }));
-
-    previousMessages = [...baseMessages, ...webhookMessages]
-      .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())
-      .map((x) => x.msg);
+    previousMessages = await loadConversationHistory(conv.id);
   }
 
   const prompt = formatWebhookPrompt(media, source);
