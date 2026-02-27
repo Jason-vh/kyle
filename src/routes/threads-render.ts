@@ -6,6 +6,7 @@ import type {
   ThinkingContent,
   ToolCall,
 } from "@mariozechner/pi-ai";
+import type { WebhookNotification } from "../db/webhook-notifications.ts";
 
 type Message = UserMessage | AssistantMessage | ToolResultMessage;
 
@@ -199,12 +200,46 @@ function formatDate(date: Date): string {
   });
 }
 
+function formatWebhookDate(date: Date): string {
+  return date.toLocaleDateString("en-US", {
+    month: "short", day: "numeric", year: "numeric",
+    hour: "2-digit", minute: "2-digit",
+  });
+}
+
+function renderWebhookNotification(n: WebhookNotification, id: string): string {
+  const source = n.source === "sonarr" ? "Sonarr" : "Radarr";
+  const p = n.payload;
+
+  let detail = "";
+  if (p.episodes && p.episodes.length > 0) {
+    const epList = p.episodes
+      .map((e) => `S${String(e.seasonNumber).padStart(2, "0")}E${String(e.episodeNumber).padStart(2, "0")} "${escapeHtml(e.title)}"`)
+      .join(", ");
+    detail = `\n${epList}`;
+  }
+  if (p.quality) {
+    detail += `\n${escapeHtml(p.quality)}${p.releaseGroup ? ` · ${escapeHtml(p.releaseGroup)}` : ""}`;
+  }
+
+  return `<div class="message webhook" id="${id}">
+  <div class="webhook-header">
+    <span class="webhook-badge">${escapeHtml(source)} webhook</span>
+    <span class="webhook-time">${escapeHtml(formatWebhookDate(n.receivedAt))}</span>
+  </div>
+  ${permalink(id)}
+  <div class="webhook-title">${escapeHtml(p.title)}${p.year ? ` (${p.year})` : ""}</div>
+  ${detail ? `<div class="webhook-detail">${escapeHtml(detail.trim())}</div>` : ""}
+</div>`;
+}
+
 export function renderThreadPage(
   threadTs: string,
   createdAt: Date,
   messages: Message[],
   username: string = "You",
-  shareUrl?: string
+  shareUrl?: string,
+  webhookNotifications: WebhookNotification[] = [],
 ): string {
   // Build a map of toolCallId → ToolResultMessage for pairing
   const resultMap = new Map<string, ToolResultMessage>();
@@ -214,8 +249,38 @@ export function renderThreadPage(
     }
   }
 
-  const messagesHtml = messages
-    .map((m, i) => renderMessage(m, username, resultMap, `msg-${i}`))
+  // Interleave messages and webhook notifications by timestamp
+  type RenderItem =
+    | { kind: "message"; msg: Message; ts: number; idx: number }
+    | { kind: "webhook"; notification: WebhookNotification; ts: number; idx: number };
+
+  const msgItems: RenderItem[] = messages.map((msg, idx) => ({
+    kind: "message",
+    msg,
+    ts: (msg as any).timestamp ?? createdAt.getTime() + idx,
+    idx,
+  }));
+  const webhookItems: RenderItem[] = webhookNotifications.map((n, idx) => ({
+    kind: "webhook",
+    notification: n,
+    ts: n.receivedAt.getTime(),
+    idx,
+  }));
+
+  const allItems = [...msgItems, ...webhookItems].sort((a, b) => a.ts - b.ts);
+
+  let msgCounter = 0;
+  let webhookCounter = 0;
+  const messagesHtml = allItems
+    .map((item) => {
+      if (item.kind === "message") {
+        const id = `msg-${msgCounter++}`;
+        return renderMessage(item.msg, username, resultMap, id);
+      } else {
+        const id = `webhook-${webhookCounter++}`;
+        return renderWebhookNotification(item.notification, id);
+      }
+    })
     .filter(Boolean)
     .join("\n");
 
@@ -275,6 +340,12 @@ export function renderThreadPage(
   .permalink { position: absolute; top: 0.75rem; right: 0.75rem; opacity: 0; color: #8b949e; text-decoration: none; font-size: 0.875rem; line-height: 1; transition: opacity 0.1s; user-select: none; }
   .message:hover .permalink { opacity: 1; }
   .permalink:hover { color: #c9d1d9; }
+  .message.webhook { background: #111b2b; border-left: 3px solid #388bfd; }
+  .webhook-header { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.375rem; }
+  .webhook-badge { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; background: #1c2d4a; color: #388bfd; border: 1px solid #1f408080; border-radius: 4px; padding: 0.1rem 0.4rem; }
+  .webhook-time { font-size: 0.8125rem; color: #8b949e; }
+  .webhook-title { font-weight: 600; color: #c9d1d9; }
+  .webhook-detail { margin-top: 0.25rem; font-size: 0.8125rem; color: #8b949e; white-space: pre-wrap; }
 </style>
 </head>
 <body>

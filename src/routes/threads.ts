@@ -4,6 +4,7 @@ import { conversations, messages } from "../db/schema.ts";
 import { checkAuth, signThreadSig, verifyThreadSig } from "./threads-auth.ts";
 import { renderThreadPage } from "./threads-render.ts";
 import { resolveUsernames } from "../slack/users.ts";
+import { getWebhookNotifications } from "../db/webhook-notifications.ts";
 import { createLogger } from "../logger.ts";
 
 const log = createLogger("threads");
@@ -66,10 +67,13 @@ export async function handleThread(
     }
   }
 
+  const webhookNotifications = await getWebhookNotifications(conv.id);
+
   log.info("rendering thread", {
     threadTs,
     conversationId: conv.id,
     messageCount: msgs.length,
+    webhookCount: webhookNotifications.length,
     username,
   });
 
@@ -84,7 +88,7 @@ export async function handleThread(
     }
   }
 
-  const html = renderThreadPage(threadTs, conv.createdAt, msgs, username, shareUrl);
+  const html = renderThreadPage(threadTs, conv.createdAt, msgs, username, shareUrl, webhookNotifications);
   return new Response(html, {
     headers: { "Content-Type": "text/html; charset=utf-8" },
   });

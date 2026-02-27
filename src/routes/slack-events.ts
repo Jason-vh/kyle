@@ -3,6 +3,7 @@ import type { AgentMessage } from "@mariozechner/pi-agent-core";
 import { createLogger } from "../logger.ts";
 import { db } from "../db/index.ts";
 import { conversations, messages } from "../db/schema.ts";
+import { getWebhookNotifications } from "../db/webhook-notifications.ts";
 import { runAgent, toolLabels, ApiOverloadedError, type AgentContext } from "../agent/index.ts";
 import type { AssistantMessage } from "@mariozechner/pi-ai";
 import { extractMediaRef, saveMediaRef } from "../db/media-refs.ts";
@@ -15,7 +16,18 @@ import {
 } from "../slack/events.ts";
 import { extractUserIds, resolveUsernames } from "../slack/users.ts";
 
+import type { WebhookNotification } from "../db/webhook-notifications.ts";
+
 const log = createLogger("slack");
+
+function formatWebhookForAgent(n: WebhookNotification): string {
+  const source = n.source === "sonarr" ? "Sonarr" : "Radarr";
+  const ts = n.receivedAt.toLocaleString("en-US", {
+    month: "short", day: "numeric", year: "numeric",
+    hour: "2-digit", minute: "2-digit",
+  });
+  return `[Webhook — ${source}] ${n.message} (received ${ts})`;
+}
 
 // Dedup: track recently seen event IDs
 const seenEvents = new Set<string>();
@@ -159,9 +171,25 @@ async function processSlackMessage(
         where: eq(messages.conversationId, conversationId),
         orderBy: [asc(messages.sequence)],
       });
-      previousMessages = rows
-        .map((r) => r.data as AgentMessage)
-        .filter((m) => !(m.role === "assistant" && (m as AssistantMessage).stopReason === "error"));
+
+      // Build base message list (exclude error messages)
+      const baseMessages: { msg: AgentMessage; createdAt: Date }[] = rows
+        .filter((r) => !((r.data as AgentMessage).role === "assistant" && ((r.data as AgentMessage) as AssistantMessage).stopReason === "error"))
+        .map((r) => ({ msg: r.data as AgentMessage, createdAt: r.createdAt }));
+
+      // Interleave webhook notifications by time
+      const notifications = await getWebhookNotifications(conversationId);
+      const webhookMessages: { msg: AgentMessage; createdAt: Date }[] = notifications.map((n) => ({
+        msg: {
+          role: "user",
+          content: formatWebhookForAgent(n),
+        } as AgentMessage,
+        createdAt: n.receivedAt,
+      }));
+
+      previousMessages = [...baseMessages, ...webhookMessages]
+        .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())
+        .map((x) => x.msg);
     } else {
       const [conversation] = await db
         .insert(conversations)

@@ -2,6 +2,7 @@ import { createLogger } from "../logger.ts";
 import { getSlackClient } from "../slack/client.ts";
 import { findMediaRequesters } from "./requester.ts";
 import { generateNotificationMessage } from "./notifications.ts";
+import { saveWebhookNotification } from "../db/webhook-notifications.ts";
 import type {
   RadarrWebhookPayload,
   SonarrWebhookPayload,
@@ -54,6 +55,8 @@ async function notifyRequesters(
   const message = await generateNotificationMessage(media);
   const slack = getSlackClient();
 
+  const source = media.mediaType === "movie" ? "radarr" : "sonarr";
+
   const results = await Promise.allSettled(
     unique.map((r) =>
       slack.chat.postMessage({
@@ -79,6 +82,7 @@ async function notifyRequesters(
         threadTs: requester.threadTs,
         title: media.title,
       });
+      saveWebhookNotification(requester.channel, requester.threadTs, source, message, media);
     }
   }
 }

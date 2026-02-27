@@ -8,6 +8,15 @@ import {
   index,
 } from "drizzle-orm/pg-core";
 
+export type WebhookNotificationPayload = {
+  mediaType: "movie" | "series";
+  title: string;
+  year: number;
+  quality?: string;
+  releaseGroup?: string;
+  episodes?: Array<{ seasonNumber: number; episodeNumber: number; title: string }>;
+};
+
 export const mediaRefs = pgTable(
   "media_refs",
   {
@@ -44,6 +53,23 @@ export const conversations = pgTable(
       table.interfaceType
     ),
     index("conversations_user_id_idx").on(table.userId),
+  ]
+);
+
+export const webhookNotifications = pgTable(
+  "webhook_notifications",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    conversationId: uuid("conversation_id")
+      .notNull()
+      .references(() => conversations.id, { onDelete: "cascade" }),
+    source: text("source").notNull(), // 'sonarr' | 'radarr'
+    message: text("message").notNull(),
+    payload: jsonb("payload").$type<WebhookNotificationPayload>().notNull(),
+    receivedAt: timestamp("received_at").notNull().defaultNow(),
+  },
+  (table) => [
+    index("webhook_notifications_conversation_id_idx").on(table.conversationId),
   ]
 );
 
