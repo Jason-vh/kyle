@@ -4,4 +4,4 @@
 -- The webhookNotifications table is the single source of truth for these events.
 DELETE FROM messages
 WHERE role = 'user'
-AND data->>'content' LIKE '[Webhook — %';
+AND data->'content'->0->>'text' LIKE '[Webhook — %';
