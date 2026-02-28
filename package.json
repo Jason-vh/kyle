@@ -14,8 +14,7 @@
     "fmt": "oxfmt .",
     "fmt:check": "oxfmt --check .",
     "lint": "oxlint .",
-    "check": "bun run fmt:check && oxlint . && bunx tsc --noEmit",
-    "postinstall": "lefthook install || true"
+    "check": "bun run fmt:check && oxlint . && bunx tsc --noEmit"
   },
   "dependencies": {
     "@mariozechner/pi-agent-core": "^0.52.8",
