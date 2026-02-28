@@ -1,4 +1,4 @@
-import { desc, eq, sql } from "drizzle-orm";
+import { desc, eq, sql, count, ne } from "drizzle-orm";
 import { db } from "../db/index.ts";
 import { conversations, messages } from "../db/schema.ts";
 import { checkAuth, signThreadSig } from "./threads-auth.ts";
@@ -40,6 +40,17 @@ export async function handleThreadList(req: Request): Promise<Response> {
   const authResponse = await checkAuth(req, url);
   if (authResponse) return authResponse;
 
+  // Subquery: message counts per conversation (excluding toolResult)
+  const msgCounts = db
+    .select({
+      conversationId: messages.conversationId,
+      msgCount: count().as("msg_count"),
+    })
+    .from(messages)
+    .where(ne(messages.role, "toolResult"))
+    .groupBy(messages.conversationId)
+    .as("msg_counts");
+
   // Get all Slack conversations with message count and first user message preview
   const rows = await db
     .select({
@@ -47,10 +58,7 @@ export async function handleThreadList(req: Request): Promise<Response> {
       externalId: conversations.externalId,
       userId: conversations.userId,
       createdAt: conversations.createdAt,
-      messageCount: sql<number>`(
-        SELECT COUNT(*) FROM ${messages}
-        WHERE ${messages.conversationId} = ${conversations.id}
-      )`.as("message_count"),
+      messageCount: msgCounts.msgCount,
       preview: sql<string | null>`(
         SELECT CASE
           WHEN jsonb_typeof(data->'content') = 'string' THEN data->>'content'
@@ -69,6 +77,7 @@ export async function handleThreadList(req: Request): Promise<Response> {
       )`.as("preview"),
     })
     .from(conversations)
+    .leftJoin(msgCounts, eq(conversations.id, msgCounts.conversationId))
     .where(eq(conversations.interfaceType, "slack"))
     .orderBy(desc(conversations.createdAt))
     .limit(200);
@@ -92,9 +101,9 @@ export async function handleThreadList(req: Request): Promise<Response> {
       <td class="ts-cell">
         <a href="/threads/${escapeHtml(row.threadTs)}">${escapeHtml(row.threadTs)}</a>
       </td>
-      <td class="date-cell">${escapeHtml(formatDate(row.createdAt))}</td>
+      <td class="date-cell"><time datetime="${row.createdAt.toISOString()}">${escapeHtml(formatDate(row.createdAt))}</time></td>
       <td class="preview-cell">${row.preview ? escapeHtml(truncate(row.preview, 120)) : '<span class="empty">—</span>'}</td>
-      <td class="count-cell">${row.messageCount}</td>
+      <td class="count-cell">${row.messageCount ?? 0}</td>
       <td class="share-cell">${row.shareUrl ? `<button class="share-btn" onclick="copyUrl(this, ${JSON.stringify(row.shareUrl)})">Copy</button>` : ""}</td>
     </tr>`,
     )
@@ -182,6 +191,13 @@ export async function handleThreadList(req: Request): Promise<Response> {
     btn.textContent = 'Copied!';
     setTimeout(() => { btn.textContent = orig; }, 2000);
   }
+  document.querySelectorAll('time[datetime]').forEach(el => {
+    const d = new Date(el.getAttribute('datetime'));
+    el.textContent = d.toLocaleDateString('en-US', {
+      year: 'numeric', month: 'short', day: 'numeric',
+      hour: '2-digit', minute: '2-digit'
+    });
+  });
 </script>
 </body>
 </html>`;

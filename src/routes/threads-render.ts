@@ -229,7 +229,7 @@ function renderWebhookNotification(n: WebhookNotification, id: string): string {
   return `<div class="message webhook" id="${id}">
   <div class="webhook-header">
     <span class="webhook-badge">${escapeHtml(source)} webhook</span>
-    <span class="webhook-time">${escapeHtml(formatWebhookDate(n.receivedAt))}</span>
+    <span class="webhook-time"><time datetime="${n.receivedAt.toISOString()}">${escapeHtml(formatWebhookDate(n.receivedAt))}</time></span>
   </div>
   ${permalink(id)}
   <div class="webhook-title">${escapeHtml(p.title)}${p.year ? ` (${p.year})` : ""}</div>
@@ -360,7 +360,7 @@ export function renderThreadPage(
     <div class="header-text">
       ${shareUrl ? `<div class="breadcrumb"><a href="/threads/">← All threads</a></div>` : ""}
       <h1>Thread ${escapeHtml(threadTs)}</h1>
-      <div class="meta">${escapeHtml(formatDate(createdAt))}</div>
+      <div class="meta"><time datetime="${createdAt.toISOString()}">${escapeHtml(formatDate(createdAt))}</time></div>
     </div>
     ${shareUrl ? `<button class="share-btn" onclick="copyShareUrl()" id="share-btn">Copy share link</button>` : ""}
   </header>
@@ -373,6 +373,13 @@ export function renderThreadPage(
     const el = document.getElementById(id)?.querySelector('.permalink');
     if (el) { el.textContent = '✓'; setTimeout(() => { el.textContent = '#'; }, 1500); }
   }
+  document.querySelectorAll('time[datetime]').forEach(el => {
+    const d = new Date(el.getAttribute('datetime'));
+    const opts = el.closest('.webhook-time')
+      ? { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }
+      : { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' };
+    el.textContent = d.toLocaleDateString('en-US', opts);
+  });
   ${
     shareUrl
       ? `
