@@ -16,6 +16,7 @@ export function toPartialSeries(series: SonarrSeries) {
     monitored: series.monitored,
     seasonCount: series.seasons.length,
     tvdbId: series.tvdbId,
+    imdbId: series.imdbId,
   };
 }
 

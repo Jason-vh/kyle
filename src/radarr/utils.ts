@@ -9,6 +9,7 @@ export const toPartialMovie = (movie: RadarrMovie) => {
     hasFile: movie.hasFile,
     monitored: movie.monitored,
     tmdbId: movie.tmdbId,
+    imdbId: movie.imdbId,
     quality: movie.movieFile?.quality?.quality?.name || "no file",
   };
 };

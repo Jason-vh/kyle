@@ -53,6 +53,11 @@ src/
   qbittorrent/
     api.ts                  → qBittorrent API client (cookie auth, torrents)
     tools.ts                → 2 qBittorrent agent tools
+  brave/
+    types.ts                → Brave Web Search API type definitions
+    api.ts                  → Brave Search API client (web search)
+    utils.ts                → Token optimization helpers (toPartialWebResult)
+    tools.ts                → 1 Brave Search agent tool
   webhooks/
     types.ts                → Webhook payload types + MediaNotificationInfo
     requester.ts            → Find who requested media (media_refs + conversations query)
@@ -143,6 +148,7 @@ BASE_URL=https://kyle.vanhattum.xyz bun run test-slack.ts "<@U099N4BJT5Y> add in
 | `QBITTORRENT_HOST`     | qBittorrent Web UI URL                                              |
 | `QBITTORRENT_USERNAME` | qBittorrent username                                                |
 | `QBITTORRENT_PASSWORD` | qBittorrent password                                                |
+| `BRAVE_API_KEY`        | Brave Search API key for web search                                 |
 | `THREAD_VIEWER_TOKEN`  | Shared secret for thread viewer auth (cookie-based login)           |
 
 ## Task Tracking

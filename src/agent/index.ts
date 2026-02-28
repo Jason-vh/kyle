@@ -64,6 +64,9 @@ import { getUltraStatsTool } from "../ultra/tools.ts";
 // qBittorrent tools
 import { getTorrentsTool, deleteTorrentsTool } from "../qbittorrent/tools.ts";
 
+// Brave Search tools
+import { webSearchTool } from "../brave/tools.ts";
+
 const log = createLogger("agent");
 
 const allTools = [
@@ -98,6 +101,8 @@ const allTools = [
   // qBittorrent
   getTorrentsTool,
   deleteTorrentsTool,
+  // Brave Search
+  webSearchTool,
 ];
 
 export const toolLabels = new Map(allTools.map((t) => [t.name, t.label]));
