@@ -29,6 +29,13 @@
       "when": 1772201613129,
       "tag": "0003_small_prima",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1740700800000,
+      "tag": "0004_delete_webhook_user_messages",
+      "breakpoints": true
     }
   ]
 }

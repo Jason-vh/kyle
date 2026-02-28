@@ -93,7 +93,7 @@ async function notifyRequester(
 
   // Save new agent messages to DB
   if (conversationId) {
-    const newMsgs = result.messages.slice(previousMessages.length);
+    const newMsgs = result.messages.slice(previousMessages.length).filter((m) => m.role !== "user");
     if (newMsgs.length > 0) {
       await db
         .insert(messages)
