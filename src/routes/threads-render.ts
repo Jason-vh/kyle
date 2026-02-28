@@ -18,6 +18,15 @@ function escapeHtml(str: string): string {
     .replace(/'/g, "&#39;");
 }
 
+function formatSlackLinks(escaped: string): string {
+  // Convert Slack mrkdwn links (already HTML-escaped) to <a> tags
+  // <url|text> becomes &lt;url|text&gt; after escapeHtml
+  return escaped.replace(/&lt;(https?:\/\/[^|]+)\|(.+?)&gt;/g, (_, url, label) => {
+    const href = url.replace(/&amp;/g, "&");
+    return `<a href="${href}" target="_blank" rel="noopener">${label}</a>`;
+  });
+}
+
 function prettyPrint(str: string): string {
   try {
     const parsed = JSON.parse(str);
@@ -128,7 +137,7 @@ function renderAssistantMessage(
     const toolParts: string[] = [];
     for (const block of msg.content) {
       if (block.type === "text") {
-        textParts.push(`<div class="content">${escapeHtml(block.text)}</div>`);
+        textParts.push(`<div class="content">${formatSlackLinks(escapeHtml(block.text))}</div>`);
       } else if (block.type === "toolCall") {
         toolParts.push(renderToolCallInner(block, resultMap.get(block.id)));
       }
@@ -147,7 +156,7 @@ function renderAssistantMessage(
   const parts: string[] = [];
   for (const block of msg.content) {
     if (block.type === "text") {
-      parts.push(`<div class="content">${escapeHtml(block.text)}</div>`);
+      parts.push(`<div class="content">${formatSlackLinks(escapeHtml(block.text))}</div>`);
     } else if (block.type === "toolCall") {
       parts.push(renderToolCallWithResult(block, resultMap.get(block.id)));
     }
@@ -314,6 +323,8 @@ export function renderThreadPage(
   .message.user .label { color: #58a6ff; }
   .message.assistant .label { color: #3fb950; }
   .content { white-space: pre-wrap; word-break: break-word; }
+  .content a { color: #58a6ff; text-decoration: none; }
+  .content a:hover { text-decoration: underline; }
   details { margin-top: 0.5rem; }
   summary { cursor: pointer; font-size: 0.875rem; color: #8b949e; padding: 0.25rem 0; }
   summary:hover { color: #c9d1d9; }
