@@ -44,7 +44,10 @@ function formatWebhookPrompt(media: MediaNotificationInfo, source: "sonarr" | "r
 
   if (media.mediaType === "series" && media.episodes?.length) {
     const eps = media.episodes
-      .map((e) => `S${String(e.seasonNumber).padStart(2, "0")}E${String(e.episodeNumber).padStart(2, "0")} "${e.title}"`)
+      .map(
+        (e) =>
+          `S${String(e.seasonNumber).padStart(2, "0")}E${String(e.episodeNumber).padStart(2, "0")} "${e.title}"`,
+      )
       .join(", ");
     desc += ` — ${eps}`;
   }
@@ -66,8 +69,7 @@ async function notifyRequester(
 
   // Load conversation history
   const conv = await db.query.conversations.findFirst({
-    where: (c, { and, eq: e }) =>
-      and(e(c.externalId, externalId), e(c.interfaceType, "slack")),
+    where: (c, { and, eq: e }) => and(e(c.externalId, externalId), e(c.interfaceType, "slack")),
   });
 
   let previousMessages: AgentMessage[] = [];
@@ -93,9 +95,9 @@ async function notifyRequester(
   if (conversationId) {
     const newMsgs = result.messages.slice(previousMessages.length);
     if (newMsgs.length > 0) {
-      await db.insert(messages).values(
-        newMsgs.map((m) => ({ conversationId: conversationId!, role: m.role, data: m })),
-      );
+      await db
+        .insert(messages)
+        .values(newMsgs.map((m) => ({ conversationId: conversationId!, role: m.role, data: m })));
     }
   }
 
@@ -107,7 +109,13 @@ async function notifyRequester(
   });
 
   // Save webhook notification with the actual response text
-  saveWebhookNotification(requester.channel, requester.threadTs, source, result.responseText, media);
+  saveWebhookNotification(
+    requester.channel,
+    requester.threadTs,
+    source,
+    result.responseText,
+    media,
+  );
 
   log.info("notified requester", {
     channel: requester.channel,
@@ -136,9 +144,7 @@ async function notifyRequesters(
 
   const source: "sonarr" | "radarr" = media.mediaType === "movie" ? "radarr" : "sonarr";
 
-  const results = await Promise.allSettled(
-    unique.map((r) => notifyRequester(r, media, source)),
-  );
+  const results = await Promise.allSettled(unique.map((r) => notifyRequester(r, media, source)));
 
   for (let i = 0; i < results.length; i++) {
     if (results[i]!.status === "rejected") {
@@ -146,11 +152,12 @@ async function notifyRequesters(
       log.error("failed to notify requester", {
         channel: requester.channel,
         threadTs: requester.threadTs,
-        error: results[i]!.status === "rejected"
-          ? (results[i] as PromiseRejectedResult).reason instanceof Error
-            ? (results[i] as PromiseRejectedResult).reason.message
-            : String((results[i] as PromiseRejectedResult).reason)
-          : "unknown",
+        error:
+          results[i]!.status === "rejected"
+            ? (results[i] as PromiseRejectedResult).reason instanceof Error
+              ? (results[i] as PromiseRejectedResult).reason.message
+              : String((results[i] as PromiseRejectedResult).reason)
+            : "unknown",
       });
     }
   }
@@ -159,7 +166,7 @@ async function notifyRequesters(
 export async function handleRadarrWebhook(req: Request): Promise<Response> {
   let payload: RadarrWebhookPayload;
   try {
-    payload = await req.json();
+    payload = (await req.json()) as RadarrWebhookPayload;
   } catch {
     return Response.json({ error: "Invalid JSON" }, { status: 400 });
   }
@@ -200,7 +207,7 @@ export async function handleRadarrWebhook(req: Request): Promise<Response> {
 export async function handleSonarrWebhook(req: Request): Promise<Response> {
   let payload: SonarrWebhookPayload;
   try {
-    payload = await req.json();
+    payload = (await req.json()) as SonarrWebhookPayload;
   } catch {
     return Response.json({ error: "Invalid JSON" }, { status: 400 });
   }
@@ -216,11 +223,12 @@ export async function handleSonarrWebhook(req: Request): Promise<Response> {
   }
 
   const key = `series:${payload.series.id}`;
-  const newEpisodes = payload.episodes?.map((e) => ({
-    seasonNumber: e.seasonNumber,
-    episodeNumber: e.episodeNumber,
-    title: e.title,
-  })) ?? [];
+  const newEpisodes =
+    payload.episodes?.map((e) => ({
+      seasonNumber: e.seasonNumber,
+      episodeNumber: e.episodeNumber,
+      title: e.title,
+    })) ?? [];
 
   // If a batch is already pending for this series, accumulate into it
   const existing = pendingBatches.get(key);

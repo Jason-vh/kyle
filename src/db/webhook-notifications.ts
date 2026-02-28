@@ -1,6 +1,6 @@
 import { eq, asc } from "drizzle-orm";
 import { db } from "./index.ts";
-import { conversations, webhookNotifications } from "./schema.ts";
+import { webhookNotifications } from "./schema.ts";
 import type { WebhookNotificationPayload } from "./schema.ts";
 import { createLogger } from "../logger.ts";
 
@@ -30,8 +30,7 @@ export async function saveWebhookNotification(
   try {
     const externalId = `${channel}:${threadTs}`;
     const conv = await db.query.conversations.findFirst({
-      where: (c, { and, eq: e }) =>
-        and(e(c.externalId, externalId), e(c.interfaceType, "slack")),
+      where: (c, { and, eq: e }) => and(e(c.externalId, externalId), e(c.interfaceType, "slack")),
     });
 
     if (!conv) {

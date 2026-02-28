@@ -1,6 +1,6 @@
-import { eq, like, asc } from "drizzle-orm";
+import { eq, asc } from "drizzle-orm";
 import { db } from "../db/index.ts";
-import { conversations, messages } from "../db/schema.ts";
+import { messages } from "../db/schema.ts";
 import { checkAuth, signThreadSig, verifyThreadSig } from "./threads-auth.ts";
 import { renderThreadPage } from "./threads-render.ts";
 import { resolveUsernames } from "../slack/users.ts";
@@ -11,10 +11,7 @@ const log = createLogger("threads");
 
 const THREAD_TS_RE = /^\d+\.\d+$/;
 
-export async function handleThread(
-  req: Request,
-  threadTs: string
-): Promise<Response> {
+export async function handleThread(req: Request, threadTs: string): Promise<Response> {
   const url = new URL(req.url);
 
   // Signed URL: anyone with ?sig= can view this specific thread
@@ -88,7 +85,14 @@ export async function handleThread(
     }
   }
 
-  const html = renderThreadPage(threadTs, conv.createdAt, msgs, username, shareUrl, webhookNotifications);
+  const html = renderThreadPage(
+    threadTs,
+    conv.createdAt,
+    msgs,
+    username,
+    shareUrl,
+    webhookNotifications,
+  );
   return new Response(html, {
     headers: { "Content-Type": "text/html; charset=utf-8" },
   });

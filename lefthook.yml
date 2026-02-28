@@ -1,0 +1,9 @@
+pre-commit:
+  parallel: true
+  commands:
+    fmt:
+      run: bunx oxfmt --check .
+    lint:
+      run: bunx oxlint .
+    typecheck:
+      run: bunx tsc --noEmit

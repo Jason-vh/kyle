@@ -3,7 +3,6 @@ import type {
   AssistantMessage,
   ToolResultMessage,
   TextContent,
-  ThinkingContent,
   ToolCall,
 } from "@mariozechner/pi-ai";
 import type { WebhookNotification } from "../db/webhook-notifications.ts";
@@ -49,10 +48,7 @@ function renderUserMessage(msg: UserMessage, username: string, id: string): stri
 </div>`;
 }
 
-function renderToolCallInner(
-  tc: ToolCall,
-  result: ToolResultMessage | undefined
-): string {
+function renderToolCallInner(tc: ToolCall, result: ToolResultMessage | undefined): string {
   const args = JSON.stringify(tc.arguments, null, 2);
   const isError = result?.isError ?? false;
   let resultHtml = "";
@@ -78,10 +74,7 @@ function renderToolCallInner(
 </div>`;
 }
 
-function renderToolCallWithResult(
-  tc: ToolCall,
-  result: ToolResultMessage | undefined
-): string {
+function renderToolCallWithResult(tc: ToolCall, result: ToolResultMessage | undefined): string {
   const args = JSON.stringify(tc.arguments, null, 2);
   const isError = result?.isError ?? false;
   let resultHtml = "";
@@ -111,13 +104,11 @@ function renderToolCallWithResult(
 function renderAssistantMessage(
   msg: AssistantMessage,
   resultMap: Map<string, ToolResultMessage>,
-  id: string
+  id: string,
 ): string {
   // Show error state for failed responses
   if (msg.stopReason === "error") {
-    const errorText = msg.errorMessage
-      ? prettyPrint(msg.errorMessage)
-      : "Error processing message";
+    const errorText = msg.errorMessage ? prettyPrint(msg.errorMessage) : "Error processing message";
     return `<div class="message assistant error" id="${id}">
   <div class="label">Kyle</div>
   ${permalink(id)}
@@ -130,9 +121,7 @@ function renderAssistantMessage(
     const toolCalls = msg.content.filter((b): b is ToolCall => b.type === "toolCall");
     const hasErrors = toolCalls.some((tc) => resultMap.get(tc.id)?.isError);
     const toolNames = toolCalls.map((b) => b.name);
-    const summary = toolNames.length > 0
-      ? toolNames.map(escapeHtml).join(", ")
-      : "tool call";
+    const summary = toolNames.length > 0 ? toolNames.map(escapeHtml).join(", ") : "tool call";
     const label = toolCalls.length === 1 ? "Tool Call" : "Tool Calls";
 
     const textParts: string[] = [];
@@ -175,7 +164,7 @@ function renderMessage(
   msg: Message,
   username: string,
   resultMap: Map<string, ToolResultMessage>,
-  id: string
+  id: string,
 ): string {
   switch (msg.role) {
     case "user":
@@ -202,8 +191,11 @@ function formatDate(date: Date): string {
 
 function formatWebhookDate(date: Date): string {
   return date.toLocaleDateString("en-US", {
-    month: "short", day: "numeric", year: "numeric",
-    hour: "2-digit", minute: "2-digit",
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
   });
 }
 
@@ -214,7 +206,10 @@ function renderWebhookNotification(n: WebhookNotification, id: string): string {
   let detail = "";
   if (p.episodes && p.episodes.length > 0) {
     const epList = p.episodes
-      .map((e) => `S${String(e.seasonNumber).padStart(2, "0")}E${String(e.episodeNumber).padStart(2, "0")} "${escapeHtml(e.title)}"`)
+      .map(
+        (e) =>
+          `S${String(e.seasonNumber).padStart(2, "0")}E${String(e.episodeNumber).padStart(2, "0")} "${escapeHtml(e.title)}"`,
+      )
       .join(", ");
     detail = `\n${epList}`;
   }
@@ -367,13 +362,17 @@ export function renderThreadPage(
     const el = document.getElementById(id)?.querySelector('.permalink');
     if (el) { el.textContent = '✓'; setTimeout(() => { el.textContent = '#'; }, 1500); }
   }
-  ${shareUrl ? `
+  ${
+    shareUrl
+      ? `
   const SHARE_URL = ${JSON.stringify(shareUrl)};
   function copyShareUrl() {
     navigator.clipboard.writeText(SHARE_URL).catch(() => {});
     const btn = document.getElementById('share-btn');
     if (btn) { btn.textContent = 'Copied!'; setTimeout(() => { btn.textContent = 'Copy share link'; }, 2000); }
-  }` : ""}
+  }`
+      : ""
+  }
 </script>
 </body>
 </html>`;
