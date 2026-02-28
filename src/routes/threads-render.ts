@@ -237,17 +237,19 @@ function renderWebhookNotification(n: WebhookNotification, id: string): string {
 </div>`;
 }
 
+export type TimestampedMessage = { msg: Message; createdAt: Date };
+
 export function renderThreadPage(
   threadTs: string,
   createdAt: Date,
-  messages: Message[],
+  messages: TimestampedMessage[],
   username: string = "You",
   shareUrl?: string,
   webhookNotifications: WebhookNotification[] = [],
 ): string {
   // Build a map of toolCallId → ToolResultMessage for pairing
   const resultMap = new Map<string, ToolResultMessage>();
-  for (const msg of messages) {
+  for (const { msg } of messages) {
     if (msg.role === "toolResult") {
       resultMap.set(msg.toolCallId, msg);
     }
@@ -258,10 +260,10 @@ export function renderThreadPage(
     | { kind: "message"; msg: Message; ts: number; idx: number }
     | { kind: "webhook"; notification: WebhookNotification; ts: number; idx: number };
 
-  const msgItems: RenderItem[] = messages.map((msg, idx) => ({
+  const msgItems: RenderItem[] = messages.map((m, idx) => ({
     kind: "message",
-    msg,
-    ts: (msg as any).timestamp ?? createdAt.getTime() + idx,
+    msg: m.msg,
+    ts: m.createdAt.getTime(),
     idx,
   }));
   const webhookItems: RenderItem[] = webhookNotifications.map((n, idx) => ({

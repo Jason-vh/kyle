@@ -43,12 +43,12 @@ export async function handleThread(req: Request, threadTs: string): Promise<Resp
   }
 
   const rows = await db
-    .select({ data: messages.data })
+    .select({ data: messages.data, createdAt: messages.createdAt })
     .from(messages)
     .where(eq(messages.conversationId, conv.id))
     .orderBy(asc(messages.sequence));
 
-  const msgs = rows.map((r) => r.data as any);
+  const msgs = rows.map((r) => ({ msg: r.data as any, createdAt: r.createdAt }));
 
   // Resolve Slack username if we have a userId
   let username = "You";

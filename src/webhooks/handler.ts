@@ -107,6 +107,21 @@ async function notifyRequester(
 
   const prompt = formatWebhookPrompt(media, source);
 
+  // Save webhook notification before running agent so its receivedAt timestamp
+  // is earlier than the assistant response messages' createdAt.
+  // Store description (not full prompt) since formatWebhookMessage adds its own prefix.
+  let desc = `${media.title} (${media.year}) has finished downloading.`;
+  if (media.mediaType === "series" && media.episodes?.length) {
+    const eps = media.episodes
+      .map(
+        (e) =>
+          `S${String(e.seasonNumber).padStart(2, "0")}E${String(e.episodeNumber).padStart(2, "0")} "${e.title}"`,
+      )
+      .join(", ");
+    desc = `${media.title} (${media.year}) — ${eps} finished downloading.`;
+  }
+  saveWebhookNotification(requester.channel, requester.threadTs, source, desc, media);
+
   log.info("running agent for webhook notification", {
     channel: requester.channel,
     threadTs: requester.threadTs,
@@ -134,15 +149,6 @@ async function notifyRequester(
     unfurl_links: false,
     unfurl_media: false,
   });
-
-  // Save webhook notification with the actual response text
-  saveWebhookNotification(
-    requester.channel,
-    requester.threadTs,
-    source,
-    result.responseText,
-    media,
-  );
 
   log.info("notified requester", {
     channel: requester.channel,
