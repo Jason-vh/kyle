@@ -22,7 +22,10 @@ function prompt() {
     try {
       const res = await fetch(`${BASE_URL}/chat`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(process.env.CHAT_API_KEY && { Authorization: `Bearer ${process.env.CHAT_API_KEY}` }),
+        },
         body: JSON.stringify({ message, conversationId }),
       });
 
