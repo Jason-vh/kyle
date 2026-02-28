@@ -55,6 +55,7 @@ async function login(): Promise<void> {
 
   const response = await fetch(`${host}/api/v2/auth/login`, {
     method: "POST",
+    signal: AbortSignal.timeout(15_000),
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({ username, password }).toString(),
   });
@@ -91,6 +92,7 @@ async function makeRequest(
 
   const response = await fetch(url, {
     ...options,
+    signal: AbortSignal.timeout(15_000),
     headers: {
       Cookie: `SID=${sessionCookie}`,
       ...options.headers,

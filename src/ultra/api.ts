@@ -30,6 +30,7 @@ async function makeRequest(endpoint: string): Promise<unknown> {
   const url = `${ULTRA_HOST}/ultra-api${endpoint}`;
 
   const response = await fetch(url, {
+    signal: AbortSignal.timeout(15_000),
     headers: {
       Authorization: `Bearer ${ULTRA_API_TOKEN}`,
     },

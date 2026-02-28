@@ -9,6 +9,13 @@ import { handleLogin } from "./routes/threads-auth.ts";
 
 const log = createLogger("server");
 
+const MAX_BODY_SIZE = 1_000_000; // 1 MB
+
+function isBodyTooLarge(req: Request): boolean {
+  const contentLength = req.headers.get("content-length");
+  return !!contentLength && parseInt(contentLength, 10) > MAX_BODY_SIZE;
+}
+
 export function startServer(port: number) {
   const server = Bun.serve({
     port,
@@ -29,18 +36,30 @@ export function startServer(port: number) {
         }
 
         if (req.method === "POST" && url.pathname === "/chat") {
+          if (isBodyTooLarge(req)) {
+            return Response.json({ error: "Payload too large" }, { status: 413 });
+          }
           return await handleChat(req);
         }
 
         if (req.method === "POST" && url.pathname === "/slack/events") {
+          if (isBodyTooLarge(req)) {
+            return Response.json({ error: "Payload too large" }, { status: 413 });
+          }
           return await handleSlackEvents(req);
         }
 
         if (req.method === "POST" && url.pathname === "/webhooks/sonarr") {
+          if (isBodyTooLarge(req)) {
+            return Response.json({ error: "Payload too large" }, { status: 413 });
+          }
           return await handleSonarrWebhook(req);
         }
 
         if (req.method === "POST" && url.pathname === "/webhooks/radarr") {
+          if (isBodyTooLarge(req)) {
+            return Response.json({ error: "Payload too large" }, { status: 413 });
+          }
           return await handleRadarrWebhook(req);
         }
 

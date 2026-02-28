@@ -6,6 +6,7 @@ import { conversations, messages } from "../db/schema.ts";
 import { runAgent, ApiOverloadedError } from "../agent/index.ts";
 import type { AssistantMessage } from "@mariozechner/pi-ai";
 import { extractMediaRef, saveMediaRef } from "../db/media-refs.ts";
+import { timingSafeEqual } from "crypto";
 
 const log = createLogger("chat");
 
@@ -16,6 +17,23 @@ interface ChatRequest {
 }
 
 export async function handleChat(req: Request): Promise<Response> {
+  // Bearer token auth (optional — only enforced when CHAT_API_KEY is set)
+  const apiKey = process.env.CHAT_API_KEY;
+  if (apiKey) {
+    const authHeader = req.headers.get("authorization");
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      log.warn("missing or malformed Authorization header");
+      return Response.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    const token = authHeader.slice("Bearer ".length);
+    const tokenBuf = Buffer.from(token);
+    const keyBuf = Buffer.from(apiKey);
+    if (tokenBuf.length !== keyBuf.length || !timingSafeEqual(tokenBuf, keyBuf)) {
+      log.warn("invalid bearer token");
+      return Response.json({ error: "Unauthorized" }, { status: 401 });
+    }
+  }
+
   let body: ChatRequest;
   try {
     body = (await req.json()) as ChatRequest;

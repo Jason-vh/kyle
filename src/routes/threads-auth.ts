@@ -49,7 +49,13 @@ async function verifyToken(cookie: string, token: string): Promise<boolean> {
 
   if (computed.length !== hex.length) return false;
   const { timingSafeEqual } = await import("crypto");
-  return timingSafeEqual(Buffer.from(computed), Buffer.from(hex));
+  if (!timingSafeEqual(Buffer.from(computed), Buffer.from(hex))) return false;
+
+  // After confirming the signature is valid, check the age
+  const age = Math.floor(Date.now() / 1000) - parseInt(timestamp, 10);
+  if (isNaN(age) || age < 0 || age > COOKIE_MAX_AGE) return false;
+
+  return true;
 }
 
 function isLocalhost(req: Request): boolean {
@@ -148,7 +154,9 @@ const LOGIN_HTML = `<!DOCTYPE html>
 
 export async function handleLogin(req: Request): Promise<Response> {
   const url = new URL(req.url);
-  const redirect = url.searchParams.get("redirect") || "/threads/";
+  const rawRedirect = url.searchParams.get("redirect") || "/threads/";
+  const redirect =
+    rawRedirect.startsWith("/") && !rawRedirect.startsWith("//") ? rawRedirect : "/threads/";
 
   if (req.method === "GET") {
     const html = LOGIN_HTML.replace("{{ERROR}}", "");
@@ -166,7 +174,14 @@ export async function handleLogin(req: Request): Promise<Response> {
   const formData = await req.formData();
   const submitted = formData.get("token");
 
-  if (!submitted || submitted !== token) {
+  const { timingSafeEqual } = await import("crypto");
+  const submittedBuf = Buffer.from(String(submitted));
+  const tokenBuf = Buffer.from(token);
+  if (
+    !submitted ||
+    submittedBuf.length !== tokenBuf.length ||
+    !timingSafeEqual(submittedBuf, tokenBuf)
+  ) {
     log.warn("invalid login attempt");
     const html = LOGIN_HTML.replace("{{ERROR}}", '<p class="error">Invalid token</p>');
     return new Response(html, {

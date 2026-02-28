@@ -223,6 +223,8 @@ async function processSlackMessage(
       channel,
       thread_ts: replyThreadTs,
       text: result.responseText,
+      unfurl_links: false,
+      unfurl_media: false,
     });
     log.info("slack reply sent", { channel, threadTs: replyThreadTs, conversationId });
     return result.responseText;

@@ -20,6 +20,7 @@ async function makeRequest(endpoint: string, options: RequestInit = {}): Promise
 
   const response = await fetch(url, {
     ...options,
+    signal: AbortSignal.timeout(15_000),
     headers: {
       Authorization: `Bearer ${TMDB_API_TOKEN}`,
       "Content-Type": "application/json",

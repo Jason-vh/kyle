@@ -16,6 +16,7 @@ export async function searchWeb(
   if (options.freshness) params.set("freshness", options.freshness);
 
   const response = await fetch(`https://api.search.brave.com/res/v1/web/search?${params}`, {
+    signal: AbortSignal.timeout(15_000),
     headers: {
       Accept: "application/json",
       "Accept-Encoding": "gzip",

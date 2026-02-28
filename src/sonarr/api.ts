@@ -21,6 +21,7 @@ async function makeRequest(endpoint: string, options: RequestInit = {}): Promise
 
   const response = await fetch(url, {
     ...options,
+    signal: AbortSignal.timeout(15_000),
     headers: {
       "X-Api-Key": SONARR_API_KEY,
       "Content-Type": "application/json",

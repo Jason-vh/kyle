@@ -149,6 +149,8 @@ BASE_URL=https://kyle.vanhattum.xyz bun run test-slack.ts "<@U099N4BJT5Y> add in
 | `QBITTORRENT_USERNAME` | qBittorrent username                                                |
 | `QBITTORRENT_PASSWORD` | qBittorrent password                                                |
 | `BRAVE_API_KEY`        | Brave Search API key for web search                                 |
+| `WEBHOOK_AUTH`         | Basic auth credentials for webhook endpoints (`username:password`)  |
+| `CHAT_API_KEY`         | Bearer token for `/chat` endpoint auth (optional, skipped if unset) |
 | `THREAD_VIEWER_TOKEN`  | Shared secret for thread viewer auth (cookie-based login)           |
 
 ## Task Tracking

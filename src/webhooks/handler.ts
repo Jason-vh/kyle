@@ -1,4 +1,5 @@
 import type { AgentMessage } from "@mariozechner/pi-agent-core";
+import { timingSafeEqual } from "crypto";
 import { createLogger } from "../logger.ts";
 import { getSlackClient } from "../slack/client.ts";
 import { db } from "../db/index.ts";
@@ -15,6 +16,30 @@ import type {
 } from "./types.ts";
 
 const log = createLogger("webhooks");
+
+function checkWebhookAuth(req: Request): Response | null {
+  const webhookAuth = process.env.WEBHOOK_AUTH;
+  if (!webhookAuth) {
+    return null; // No auth configured, allow through for backwards compat
+  }
+
+  const authHeader = req.headers.get("authorization");
+  if (!authHeader || !authHeader.startsWith("Basic ")) {
+    log.warn("webhook request missing basic auth");
+    return Response.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const decoded = Buffer.from(authHeader.slice(6), "base64").toString("utf-8");
+  const expected = Buffer.from(webhookAuth);
+  const actual = Buffer.from(decoded);
+
+  if (expected.length !== actual.length || !timingSafeEqual(expected, actual)) {
+    log.warn("webhook request invalid credentials");
+    return Response.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  return null; // Auth valid
+}
 
 const BATCH_DELAY_MS = 30_000;
 
@@ -106,6 +131,8 @@ async function notifyRequester(
     channel: requester.channel,
     thread_ts: requester.threadTs,
     text: result.responseText,
+    unfurl_links: false,
+    unfurl_media: false,
   });
 
   // Save webhook notification with the actual response text
@@ -164,6 +191,9 @@ async function notifyRequesters(
 }
 
 export async function handleRadarrWebhook(req: Request): Promise<Response> {
+  const authError = checkWebhookAuth(req);
+  if (authError) return authError;
+
   let payload: RadarrWebhookPayload;
   try {
     payload = (await req.json()) as RadarrWebhookPayload;
@@ -205,6 +235,9 @@ export async function handleRadarrWebhook(req: Request): Promise<Response> {
 }
 
 export async function handleSonarrWebhook(req: Request): Promise<Response> {
+  const authError = checkWebhookAuth(req);
+  if (authError) return authError;
+
   let payload: SonarrWebhookPayload;
   try {
     payload = (await req.json()) as SonarrWebhookPayload;
