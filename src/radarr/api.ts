@@ -87,7 +87,7 @@ export async function removeMovie(movieId: number, deleteFiles: boolean = true):
 }
 
 export async function getQueue(): Promise<RadarrQueueResponse> {
-  return (await makeRequest("/queue")) as RadarrQueueResponse;
+  return (await makeRequest("/queue?includeMovie=true")) as RadarrQueueResponse;
 }
 
 export async function getHistory(pageSize: number = 20): Promise<RadarrHistoryResponse> {

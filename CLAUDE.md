@@ -175,7 +175,7 @@ Use `TODO(KYL-123)` comments in code to mark where work is needed, linking to th
 - **Database**: `postgres` package with Drizzle ORM — no `pg`.
 - **File I/O**: Prefer `Bun.file` over `node:fs`.
 - **Deployment**: Pushes to `main` auto-deploy via Railway's built-in GitHub integration. Migrations run via pre-deploy command. Health check at `/health`. Live at https://kyle.vanhattum.xyz. Logs: `railway logs -n 80`.
-- **Production DB**: The Railway DATABASE_URL uses internal networking (not reachable locally). Use `echo "SELECT ..." | railway connect Postgres` to query production.
+- **Production DB**: The Railway DATABASE_URL uses internal networking (not reachable locally). Use `echo "SELECT ..." | railway connect kyle-db` to query production. The messages table stores agent messages as JSONB in a `data` column.
 - **Slack**: `@slack/web-api` only (no Bolt). Signature verification uses `crypto.subtle` (native in Bun).
 - **Git workflow**: Commit and push to `main` — Railway deploys automatically via GitHub integration.
 - **Linear**: Update issue status (`linear issue update <id> -s completed`) when work is completed.
