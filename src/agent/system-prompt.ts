@@ -1,6 +1,7 @@
 export interface AgentContext {
   username?: string;
   userId?: string;
+  threadTs?: string;
 }
 
 const SYSTEM_PROMPT = `

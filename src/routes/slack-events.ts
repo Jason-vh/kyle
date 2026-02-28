@@ -106,6 +106,7 @@ async function processSlackMessage(
     agentContext = {
       username: senderMap.get(userId),
       userId,
+      threadTs: replyThreadTs,
     };
   }
 

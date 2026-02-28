@@ -67,6 +67,9 @@ import { getTorrentsTool, deleteTorrentsTool } from "../qbittorrent/tools.ts";
 // Brave Search tools
 import { webSearchTool } from "../brave/tools.ts";
 
+// Conversation tools
+import { createShareConversationTool } from "./share-tool.ts";
+
 const log = createLogger("agent");
 
 const allTools = [
@@ -117,12 +120,19 @@ export function createAgent(context?: AgentContext): Agent {
     throw new Error("ANTHROPIC_API_KEY environment variable is required");
   }
 
+  const tools = [...allTools];
+  if (context?.threadTs) {
+    const shareTool = createShareConversationTool(context.threadTs);
+    tools.push(shareTool);
+    toolLabels.set(shareTool.name, shareTool.label);
+  }
+
   return new Agent({
     initialState: {
       systemPrompt: getSystemPrompt(context),
       model: getModel("anthropic", "claude-sonnet-4-20250514"),
       thinkingLevel: "off",
-      tools: allTools,
+      tools,
     },
   });
 }
