@@ -1,12 +1,4 @@
-import {
-  pgTable,
-  text,
-  timestamp,
-  uuid,
-  jsonb,
-  integer,
-  index,
-} from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, uuid, jsonb, integer, index } from "drizzle-orm/pg-core";
 
 export type WebhookNotificationPayload = {
   mediaType: "movie" | "series";
@@ -34,7 +26,7 @@ export const mediaRefs = pgTable(
   (table) => [
     index("media_refs_conversation_id_idx").on(table.conversationId),
     index("media_refs_action_idx").on(table.action),
-  ]
+  ],
 );
 
 export const conversations = pgTable(
@@ -48,12 +40,9 @@ export const conversations = pgTable(
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
   (table) => [
-    index("conversations_external_id_idx").on(
-      table.externalId,
-      table.interfaceType
-    ),
+    index("conversations_external_id_idx").on(table.externalId, table.interfaceType),
     index("conversations_user_id_idx").on(table.userId),
-  ]
+  ],
 );
 
 export const webhookNotifications = pgTable(
@@ -68,9 +57,7 @@ export const webhookNotifications = pgTable(
     payload: jsonb("payload").$type<WebhookNotificationPayload>().notNull(),
     receivedAt: timestamp("received_at").notNull().defaultNow(),
   },
-  (table) => [
-    index("webhook_notifications_conversation_id_idx").on(table.conversationId),
-  ]
+  (table) => [index("webhook_notifications_conversation_id_idx").on(table.conversationId)],
 );
 
 export const messages = pgTable(
@@ -87,9 +74,6 @@ export const messages = pgTable(
   },
   (table) => [
     index("messages_conversation_id_idx").on(table.conversationId),
-    index("messages_conversation_sequence_idx").on(
-      table.conversationId,
-      table.sequence
-    ),
-  ]
+    index("messages_conversation_sequence_idx").on(table.conversationId, table.sequence),
+  ],
 );

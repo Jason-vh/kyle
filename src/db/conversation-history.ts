@@ -8,8 +8,11 @@ import { getWebhookNotifications, type WebhookNotification } from "./webhook-not
 export function formatWebhookMessage(n: WebhookNotification): string {
   const service = n.source === "sonarr" ? "Sonarr" : "Radarr";
   const ts = n.receivedAt.toLocaleString("en-US", {
-    month: "short", day: "numeric", year: "numeric",
-    hour: "2-digit", minute: "2-digit",
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
   });
   return `[Webhook — ${service}] ${n.message} (received ${ts})`;
 }
@@ -25,7 +28,13 @@ export async function loadConversationHistory(conversationId: string): Promise<A
   });
 
   const baseMessages = rows
-    .filter((r) => !((r.data as AgentMessage).role === "assistant" && ((r.data as AgentMessage) as AssistantMessage).stopReason === "error"))
+    .filter(
+      (r) =>
+        !(
+          (r.data as AgentMessage).role === "assistant" &&
+          (r.data as AgentMessage as AssistantMessage).stopReason === "error"
+        ),
+    )
     .map((r) => ({ msg: r.data as AgentMessage, createdAt: r.createdAt }));
 
   const notifications = await getWebhookNotifications(conversationId);

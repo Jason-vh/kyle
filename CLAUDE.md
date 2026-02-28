@@ -104,6 +104,7 @@ BASE_URL=https://kyle.vanhattum.xyz bun run test-slack.ts "hello"
 The test script signs requests using `SLACK_SIGNING_SECRET` from `.env`, matching Slack's signature format. Messages sent this way will trigger real agent processing and post responses to Slack. Kyle's response is returned synchronously in the terminal via `X-Sync-Response` header.
 
 **Important**: The test payload doesn't set `channel_type`, so `shouldProcess` treats it as a channel message and requires a bot mention. Prefix messages with `<@U099N4BJT5Y>`:
+
 ```bash
 BASE_URL=https://kyle.vanhattum.xyz bun run test-slack.ts "<@U099N4BJT5Y> add inception"
 ```
@@ -125,24 +126,24 @@ BASE_URL=https://kyle.vanhattum.xyz bun run test-slack.ts "<@U099N4BJT5Y> add in
 
 ## Environment Variables
 
-| Variable | Description |
-|---|---|
-| `DATABASE_URL` | Postgres connection string (auto-injected by Railway in production) |
-| `PORT` | Server port (default: 3000) |
-| `ANTHROPIC_API_KEY` | Anthropic API key for Claude |
-| `SLACK_BOT_TOKEN` | Slack bot token (`xoxb-...`) |
-| `SLACK_SIGNING_SECRET` | Slack app signing secret for request verification |
-| `SONARR_HOST` | Sonarr instance URL |
-| `SONARR_API_KEY` | Sonarr API key |
-| `RADARR_HOST` | Radarr instance URL |
-| `RADARR_API_KEY` | Radarr API key |
-| `TMDB_API_TOKEN` | TMDB API bearer token |
-| `ULTRA_HOST` | Ultra seedbox URL (e.g. `https://user.host.usbx.me`) |
-| `ULTRA_API_TOKEN` | Ultra API bearer token |
-| `QBITTORRENT_HOST` | qBittorrent Web UI URL |
-| `QBITTORRENT_USERNAME` | qBittorrent username |
-| `QBITTORRENT_PASSWORD` | qBittorrent password |
-| `THREAD_VIEWER_TOKEN` | Shared secret for thread viewer auth (cookie-based login) |
+| Variable               | Description                                                         |
+| ---------------------- | ------------------------------------------------------------------- |
+| `DATABASE_URL`         | Postgres connection string (auto-injected by Railway in production) |
+| `PORT`                 | Server port (default: 3000)                                         |
+| `ANTHROPIC_API_KEY`    | Anthropic API key for Claude                                        |
+| `SLACK_BOT_TOKEN`      | Slack bot token (`xoxb-...`)                                        |
+| `SLACK_SIGNING_SECRET` | Slack app signing secret for request verification                   |
+| `SONARR_HOST`          | Sonarr instance URL                                                 |
+| `SONARR_API_KEY`       | Sonarr API key                                                      |
+| `RADARR_HOST`          | Radarr instance URL                                                 |
+| `RADARR_API_KEY`       | Radarr API key                                                      |
+| `TMDB_API_TOKEN`       | TMDB API bearer token                                               |
+| `ULTRA_HOST`           | Ultra seedbox URL (e.g. `https://user.host.usbx.me`)                |
+| `ULTRA_API_TOKEN`      | Ultra API bearer token                                              |
+| `QBITTORRENT_HOST`     | qBittorrent Web UI URL                                              |
+| `QBITTORRENT_USERNAME` | qBittorrent username                                                |
+| `QBITTORRENT_PASSWORD` | qBittorrent password                                                |
+| `THREAD_VIEWER_TOKEN`  | Shared secret for thread viewer auth (cookie-based login)           |
 
 ## Task Tracking
 

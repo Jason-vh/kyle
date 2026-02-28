@@ -8,11 +8,7 @@ import { runAgent, toolLabels, ApiOverloadedError, type AgentContext } from "../
 import { extractMediaRef, saveMediaRef } from "../db/media-refs.ts";
 import { verifySlackSignature } from "../slack/verify.ts";
 import { getSlackClient, setThreadStatus } from "../slack/client.ts";
-import {
-  type SlackEventPayload,
-  shouldProcess,
-  cleanMessageText,
-} from "../slack/events.ts";
+import { type SlackEventPayload, shouldProcess, cleanMessageText } from "../slack/events.ts";
 import { extractUserIds, resolveUsernames } from "../slack/users.ts";
 
 const log = createLogger("slack");
@@ -57,11 +53,7 @@ export async function handleSlackEvents(req: Request): Promise<Response> {
   }
 
   const event = payload.event;
-  if (
-    event &&
-    (event.type === "message" || event.type === "app_mention") &&
-    shouldProcess(event)
-  ) {
+  if (event && (event.type === "message" || event.type === "app_mention") && shouldProcess(event)) {
     log.info("processing slack message", {
       channel: event.channel,
       eventType: event.type,
@@ -72,7 +64,13 @@ export async function handleSlackEvents(req: Request): Promise<Response> {
 
     if (syncResponse) {
       // Wait for processing and return response in body
-      const responseText = await processSlackMessage(event.text!, event.channel, event.ts, event.thread_ts, event.user);
+      const responseText = await processSlackMessage(
+        event.text!,
+        event.channel,
+        event.ts,
+        event.thread_ts,
+        event.user,
+      );
       return Response.json({ ok: true, response: responseText });
     }
 
@@ -96,9 +94,7 @@ async function processSlackMessage(
 
   // Resolve @mentions to display names
   const mentionedIds = extractUserIds(rawText);
-  const usernameMap = mentionedIds.length > 0
-    ? await resolveUsernames(mentionedIds)
-    : undefined;
+  const usernameMap = mentionedIds.length > 0 ? await resolveUsernames(mentionedIds) : undefined;
   const messageText = cleanMessageText(rawText, usernameMap);
 
   if (!messageText) return "";
@@ -106,9 +102,7 @@ async function processSlackMessage(
   // Build agent context from the sending user
   let agentContext: AgentContext | undefined;
   if (userId) {
-    const senderMap = usernameMap?.has(userId)
-      ? usernameMap
-      : await resolveUsernames([userId]);
+    const senderMap = usernameMap?.has(userId) ? usernameMap : await resolveUsernames([userId]);
     agentContext = {
       username: senderMap.get(userId),
       userId,
@@ -122,7 +116,14 @@ async function processSlackMessage(
 
   // Build event handler for tool status updates + media ref saving
   const toolArgs = new Map<string, Record<string, unknown>>();
-  const onEvent = (event: { type: string; toolCallId?: string; toolName?: string; args?: unknown; result?: unknown; isError?: boolean }) => {
+  const onEvent = (event: {
+    type: string;
+    toolCallId?: string;
+    toolName?: string;
+    args?: unknown;
+    result?: unknown;
+    isError?: boolean;
+  }) => {
     if (event.type === "tool_execution_start" && event.toolName) {
       const label = toolLabels.get(event.toolName);
       if (label) {
@@ -132,10 +133,19 @@ async function processSlackMessage(
         toolArgs.set(event.toolCallId, event.args as Record<string, unknown>);
       }
     }
-    if (event.type === "tool_execution_end" && event.toolName && event.toolCallId && !event.isError) {
+    if (
+      event.type === "tool_execution_end" &&
+      event.toolName &&
+      event.toolCallId &&
+      !event.isError
+    ) {
       const args = toolArgs.get(event.toolCallId) ?? {};
       toolArgs.delete(event.toolCallId);
-      const ref = extractMediaRef(event.toolName, args, event.result as { content?: Array<{ type: string; text?: string }> });
+      const ref = extractMediaRef(
+        event.toolName,
+        args,
+        event.result as { content?: Array<{ type: string; text?: string }> },
+      );
       if (ref) {
         saveMediaRef(conversationId, event.toolCallId, ref);
       }
@@ -149,7 +159,7 @@ async function processSlackMessage(
     const existing = await db.query.conversations.findFirst({
       where: and(
         eq(conversations.externalId, externalId),
-        eq(conversations.interfaceType, "slack")
+        eq(conversations.interfaceType, "slack"),
       ),
     });
 
@@ -170,7 +180,12 @@ async function processSlackMessage(
     }
 
     // Run the agent
-    log.info("running agent", { conversationId, externalId, message: messageText, username: agentContext?.username });
+    log.info("running agent", {
+      conversationId,
+      externalId,
+      message: messageText,
+      username: agentContext?.username,
+    });
     const result = await runAgent(
       messageText,
       previousMessages,
@@ -189,14 +204,17 @@ async function processSlackMessage(
     });
 
     // Persist error messages (for thread viewer visibility) then new messages
-    const allNewMessages = [...result.errorMessages, ...result.messages.slice(previousMessages.length)];
+    const allNewMessages = [
+      ...result.errorMessages,
+      ...result.messages.slice(previousMessages.length),
+    ];
     if (allNewMessages.length > 0) {
       await db.insert(messages).values(
         allNewMessages.map((m) => ({
           conversationId,
           role: m.role,
           data: m,
-        }))
+        })),
       );
     }
 

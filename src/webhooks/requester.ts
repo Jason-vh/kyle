@@ -34,9 +34,7 @@ export async function findMediaRequesters(
     return [];
   }
 
-  const idFilter = conditions.reduce(
-    (acc, cond, i) => (i === 0 ? cond : sql`${acc} OR ${cond}`),
-  );
+  const idFilter = conditions.reduce((acc, cond, i) => (i === 0 ? cond : sql`${acc} OR ${cond}`));
 
   const rows = await db.execute<{
     channel: string;

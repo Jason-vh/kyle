@@ -24,10 +24,7 @@ export async function handleChat(req: Request): Promise<Response> {
   }
 
   if (!body.message || typeof body.message !== "string") {
-    return Response.json(
-      { error: "message is required and must be a string" },
-      { status: 400 }
-    );
+    return Response.json({ error: "message is required and must be a string" }, { status: 400 });
   }
 
   let conversationId = body.conversationId;
@@ -40,10 +37,7 @@ export async function handleChat(req: Request): Promise<Response> {
     });
 
     if (!conversation) {
-      return Response.json(
-        { error: "Conversation not found" },
-        { status: 404 }
-      );
+      return Response.json({ error: "Conversation not found" }, { status: 404 });
     }
 
     // Load previous messages ordered by sequence
@@ -70,14 +64,30 @@ export async function handleChat(req: Request): Promise<Response> {
 
   // Build event handler for media ref saving
   const toolArgs = new Map<string, Record<string, unknown>>();
-  const onEvent = (event: { type: string; toolCallId?: string; toolName?: string; args?: unknown; result?: unknown; isError?: boolean }) => {
+  const onEvent = (event: {
+    type: string;
+    toolCallId?: string;
+    toolName?: string;
+    args?: unknown;
+    result?: unknown;
+    isError?: boolean;
+  }) => {
     if (event.type === "tool_execution_start" && event.toolCallId && event.args) {
       toolArgs.set(event.toolCallId, event.args as Record<string, unknown>);
     }
-    if (event.type === "tool_execution_end" && event.toolName && event.toolCallId && !event.isError) {
+    if (
+      event.type === "tool_execution_end" &&
+      event.toolName &&
+      event.toolCallId &&
+      !event.isError
+    ) {
       const args = toolArgs.get(event.toolCallId) ?? {};
       toolArgs.delete(event.toolCallId);
-      const ref = extractMediaRef(event.toolName, args, event.result as { content?: Array<{ type: string; text?: string }> });
+      const ref = extractMediaRef(
+        event.toolName,
+        args,
+        event.result as { content?: Array<{ type: string; text?: string }> },
+      );
       if (ref) {
         saveMediaRef(conversationId!, event.toolCallId, ref);
       }
@@ -102,13 +112,10 @@ export async function handleChat(req: Request): Promise<Response> {
     if (error instanceof ApiOverloadedError) {
       return Response.json(
         { error: "The AI service is currently overloaded. Please try again in a moment." },
-        { status: 503 }
+        { status: 503 },
       );
     }
-    return Response.json(
-      { error: "Failed to process message" },
-      { status: 500 }
-    );
+    return Response.json({ error: "Failed to process message" }, { status: 500 });
   }
 
   // Persist error messages (for thread viewer visibility) then new messages
@@ -119,7 +126,7 @@ export async function handleChat(req: Request): Promise<Response> {
         conversationId: conversationId!,
         role: m.role,
         data: m,
-      }))
+      })),
     );
   }
 

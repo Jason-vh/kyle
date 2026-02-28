@@ -9,9 +9,7 @@ export function extractUserIds(text: string): string[] {
   return [...new Set([...matches].map((m) => m[1]!))];
 }
 
-export async function resolveUsernames(
-  userIds: string[]
-): Promise<Map<string, string>> {
+export async function resolveUsernames(userIds: string[]): Promise<Map<string, string>> {
   const map = new Map<string, string>();
   const slack = getSlackClient();
 
@@ -23,11 +21,7 @@ export async function resolveUsernames(
     try {
       const result = await slack.users.info({ user: id });
       const profile = result.user?.profile;
-      const name =
-        profile?.display_name ||
-        result.user?.real_name ||
-        result.user?.name ||
-        id;
+      const name = profile?.display_name || result.user?.real_name || result.user?.name || id;
       map.set(id, name);
     } catch (error) {
       log.warn("failed to resolve user", {

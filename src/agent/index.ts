@@ -1,5 +1,10 @@
 import { Agent, type AgentMessage, type AgentEvent } from "@mariozechner/pi-agent-core";
-import { getModel, getEnvApiKey, type AssistantMessage, type TextContent } from "@mariozechner/pi-ai";
+import {
+  getModel,
+  getEnvApiKey,
+  type AssistantMessage,
+  type TextContent,
+} from "@mariozechner/pi-ai";
 import { createLogger } from "../logger.ts";
 import { getSystemPrompt, type AgentContext } from "./system-prompt.ts";
 
@@ -57,10 +62,7 @@ import {
 import { getUltraStatsTool } from "../ultra/tools.ts";
 
 // qBittorrent tools
-import {
-  getTorrentsTool,
-  deleteTorrentsTool,
-} from "../qbittorrent/tools.ts";
+import { getTorrentsTool, deleteTorrentsTool } from "../qbittorrent/tools.ts";
 
 const log = createLogger("agent");
 
@@ -98,9 +100,7 @@ const allTools = [
   deleteTorrentsTool,
 ];
 
-export const toolLabels = new Map(
-  allTools.map((t) => [t.name, t.label])
-);
+export const toolLabels = new Map(allTools.map((t) => [t.name, t.label]));
 
 log.info("tools registered", {
   count: allTools.length,

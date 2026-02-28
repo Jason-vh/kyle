@@ -70,10 +70,7 @@ export function startServer(port: number) {
           path: url.pathname,
           error: error instanceof Error ? error.message : String(error),
         });
-        return Response.json(
-          { error: "Internal server error" },
-          { status: 500 }
-        );
+        return Response.json({ error: "Internal server error" }, { status: 500 });
       }
     },
   });

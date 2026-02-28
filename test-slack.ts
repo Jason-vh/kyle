@@ -52,7 +52,7 @@ const key = await crypto.subtle.importKey(
   new TextEncoder().encode(signingSecret),
   { name: "HMAC", hash: "SHA-256" },
   false,
-  ["sign"]
+  ["sign"],
 );
 const sig = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(baseString));
 const signature = `v0=${Buffer.from(sig).toString("hex")}`;

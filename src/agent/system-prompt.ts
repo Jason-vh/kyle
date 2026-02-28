@@ -75,24 +75,24 @@ You have access to an integrated media management stack:
 `;
 
 export function getSystemPrompt(context?: AgentContext): string {
-	let prompt = SYSTEM_PROMPT.replace(
-		"{DATE}",
-		new Date().toLocaleDateString("en-US", {
-			month: "long",
-			day: "numeric",
-			year: "numeric",
-		}),
-	);
+  let prompt = SYSTEM_PROMPT.replace(
+    "{DATE}",
+    new Date().toLocaleDateString("en-US", {
+      month: "long",
+      day: "numeric",
+      year: "numeric",
+    }),
+  );
 
-	if (context?.username) {
-		prompt = prompt.replace(
-			"{USER_CONTEXT}",
-			`- You are chatting with ${context.username}` +
-				(context.userId ? ` (Slack user ID: ${context.userId})` : ""),
-		);
-	} else {
-		prompt = prompt.replace("{USER_CONTEXT}", "");
-	}
+  if (context?.username) {
+    prompt = prompt.replace(
+      "{USER_CONTEXT}",
+      `- You are chatting with ${context.username}` +
+        (context.userId ? ` (Slack user ID: ${context.userId})` : ""),
+    );
+  } else {
+    prompt = prompt.replace("{USER_CONTEXT}", "");
+  }
 
-	return prompt;
+  return prompt;
 }

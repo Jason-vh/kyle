@@ -3,7 +3,7 @@ const FIVE_MINUTES = 5 * 60;
 export async function verifySlackSignature(
   rawBody: string,
   timestamp: string | null,
-  signature: string | null
+  signature: string | null,
 ): Promise<boolean> {
   const signingSecret = process.env.SLACK_SIGNING_SECRET;
   if (!signingSecret || !timestamp || !signature) return false;
@@ -18,14 +18,10 @@ export async function verifySlackSignature(
     new TextEncoder().encode(signingSecret),
     { name: "HMAC", hash: "SHA-256" },
     false,
-    ["sign"]
+    ["sign"],
   );
 
-  const sig = await crypto.subtle.sign(
-    "HMAC",
-    key,
-    new TextEncoder().encode(baseString)
-  );
+  const sig = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(baseString));
 
   const computed = `v0=${Buffer.from(sig).toString("hex")}`;
 

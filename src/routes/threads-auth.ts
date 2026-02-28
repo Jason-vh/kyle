@@ -23,21 +23,14 @@ async function signToken(token: string): Promise<string> {
     new TextEncoder().encode(token),
     { name: "HMAC", hash: "SHA-256" },
     false,
-    ["sign"]
+    ["sign"],
   );
-  const sig = await crypto.subtle.sign(
-    "HMAC",
-    key,
-    new TextEncoder().encode(timestamp)
-  );
+  const sig = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(timestamp));
   const hex = Buffer.from(sig).toString("hex");
   return `${hex}.${timestamp}`;
 }
 
-async function verifyToken(
-  cookie: string,
-  token: string
-): Promise<boolean> {
+async function verifyToken(cookie: string, token: string): Promise<boolean> {
   const dot = cookie.lastIndexOf(".");
   if (dot < 0) return false;
   const hex = cookie.slice(0, dot);
@@ -49,13 +42,9 @@ async function verifyToken(
     new TextEncoder().encode(token),
     { name: "HMAC", hash: "SHA-256" },
     false,
-    ["sign"]
+    ["sign"],
   );
-  const sig = await crypto.subtle.sign(
-    "HMAC",
-    key,
-    new TextEncoder().encode(timestamp)
-  );
+  const sig = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(timestamp));
   const computed = Buffer.from(sig).toString("hex");
 
   if (computed.length !== hex.length) return false;
@@ -65,9 +54,7 @@ async function verifyToken(
 
 function isLocalhost(req: Request): boolean {
   const url = new URL(req.url);
-  return (
-    url.hostname === "localhost" || url.hostname === "127.0.0.1"
-  );
+  return url.hostname === "localhost" || url.hostname === "127.0.0.1";
 }
 
 function buildCookieHeader(value: string, isLocal: boolean): string {
@@ -90,20 +77,13 @@ export async function signThreadSig(threadTs: string): Promise<string> {
     new TextEncoder().encode(token),
     { name: "HMAC", hash: "SHA-256" },
     false,
-    ["sign"]
+    ["sign"],
   );
-  const sig = await crypto.subtle.sign(
-    "HMAC",
-    key,
-    new TextEncoder().encode(threadTs)
-  );
+  const sig = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(threadTs));
   return Buffer.from(sig).toString("hex").slice(0, 32);
 }
 
-export async function verifyThreadSig(
-  threadTs: string,
-  sig: string
-): Promise<boolean> {
+export async function verifyThreadSig(threadTs: string, sig: string): Promise<boolean> {
   if (!sig || sig.length !== 32) return false;
   const expected = await signThreadSig(threadTs).catch(() => null);
   if (!expected) return false;
@@ -111,10 +91,7 @@ export async function verifyThreadSig(
   return timingSafeEqual(Buffer.from(expected), Buffer.from(sig));
 }
 
-export async function checkAuth(
-  req: Request,
-  url: URL
-): Promise<Response | null> {
+export async function checkAuth(req: Request, url: URL): Promise<Response | null> {
   const token = process.env.THREAD_VIEWER_TOKEN;
   if (!token) {
     log.warn("THREAD_VIEWER_TOKEN not set");
@@ -133,7 +110,7 @@ export async function checkAuth(
   const redirect = encodeURIComponent(url.pathname);
   return Response.redirect(
     new URL(`/threads/login?redirect=${redirect}`, url.origin).toString(),
-    302
+    302,
   );
 }
 
@@ -191,10 +168,7 @@ export async function handleLogin(req: Request): Promise<Response> {
 
   if (!submitted || submitted !== token) {
     log.warn("invalid login attempt");
-    const html = LOGIN_HTML.replace(
-      "{{ERROR}}",
-      '<p class="error">Invalid token</p>'
-    );
+    const html = LOGIN_HTML.replace("{{ERROR}}", '<p class="error">Invalid token</p>');
     return new Response(html, {
       status: 401,
       headers: { "Content-Type": "text/html; charset=utf-8" },

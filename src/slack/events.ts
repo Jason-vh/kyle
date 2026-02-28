@@ -39,16 +39,10 @@ export function shouldProcess(event: SlackEvent): boolean {
 }
 
 function decodeSlackEntities(text: string): string {
-  return text
-    .replace(/&gt;/g, ">")
-    .replace(/&lt;/g, "<")
-    .replace(/&amp;/g, "&");
+  return text.replace(/&gt;/g, ">").replace(/&lt;/g, "<").replace(/&amp;/g, "&");
 }
 
-export function cleanMessageText(
-  text: string,
-  usernameMap?: Map<string, string>
-): string {
+export function cleanMessageText(text: string, usernameMap?: Map<string, string>): string {
   if (usernameMap) {
     return decodeSlackEntities(
       text
@@ -56,7 +50,7 @@ export function cleanMessageText(
           const name = usernameMap.get(id);
           return name ? `@${name}` : "";
         })
-        .trim()
+        .trim(),
     );
   }
   return decodeSlackEntities(text.replace(/<@[A-Z0-9]+>/g, "").trim());

@@ -10,8 +10,7 @@ if (!connectionString) {
 }
 
 const isLocal =
-  connectionString.includes("localhost") ||
-  connectionString.includes("railway.internal");
+  connectionString.includes("localhost") || connectionString.includes("railway.internal");
 
 const client = postgres(connectionString, {
   max: 1,

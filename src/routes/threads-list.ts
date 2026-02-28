@@ -80,11 +80,9 @@ export async function handleThreadList(req: Request): Promise<Response> {
     rows.map(async (row) => {
       const threadTs = extractThreadTs(row.externalId ?? "");
       const sig = await signThreadSig(threadTs).catch(() => null);
-      const shareUrl = sig
-        ? `${url.origin}/threads/${threadTs}?sig=${sig}`
-        : null;
+      const shareUrl = sig ? `${url.origin}/threads/${threadTs}?sig=${sig}` : null;
       return { ...row, threadTs, shareUrl };
-    })
+    }),
   );
 
   const rowsHtml = threadRows
@@ -98,7 +96,7 @@ export async function handleThreadList(req: Request): Promise<Response> {
       <td class="preview-cell">${row.preview ? escapeHtml(truncate(row.preview, 120)) : '<span class="empty">—</span>'}</td>
       <td class="count-cell">${row.messageCount}</td>
       <td class="share-cell">${row.shareUrl ? `<button class="share-btn" onclick="copyUrl(this, ${JSON.stringify(row.shareUrl)})">Copy</button>` : ""}</td>
-    </tr>`
+    </tr>`,
     )
     .join("\n");
 
