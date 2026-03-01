@@ -252,10 +252,10 @@ function renderMediaRefsSummary(refs: MediaRefRow[], usernameMap: Map<string, st
       const ids = ref.ids as Record<string, unknown>;
 
       let titleHtml: string;
-      if (ref.mediaType === "movie" && RADARR_HOST && ids.radarr) {
-        titleHtml = `<a href="${escapeHtml(RADARR_HOST)}/movie/${ids.radarr}" target="_blank" rel="noopener">${escapeHtml(ref.title)}</a>`;
-      } else if (ref.mediaType === "series" && SONARR_HOST && ids.sonarr) {
-        titleHtml = `<a href="${escapeHtml(SONARR_HOST)}/series/${ids.sonarr}" target="_blank" rel="noopener">${escapeHtml(ref.title)}</a>`;
+      if (ref.mediaType === "movie" && RADARR_HOST && ids.titleSlug) {
+        titleHtml = `<a href="${escapeHtml(RADARR_HOST)}/movie/${escapeHtml(ids.titleSlug as string)}" target="_blank" rel="noopener">${escapeHtml(ref.title)}</a>`;
+      } else if (ref.mediaType === "series" && SONARR_HOST && ids.titleSlug) {
+        titleHtml = `<a href="${escapeHtml(SONARR_HOST)}/series/${escapeHtml(ids.titleSlug as string)}" target="_blank" rel="noopener">${escapeHtml(ref.title)}</a>`;
       } else {
         titleHtml = escapeHtml(ref.title);
       }

@@ -25,6 +25,7 @@ export function toPartialSeries(series: SonarrSeries) {
       })),
     tvdbId: series.tvdbId,
     imdbId: series.imdbId,
+    titleSlug: series.titleSlug,
   };
 }
 

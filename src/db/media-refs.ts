@@ -11,6 +11,7 @@ interface MediaRefIds {
   tvdb?: number;
   radarr?: number;
   sonarr?: number;
+  titleSlug?: string;
 }
 
 export interface MediaRefData {
@@ -49,6 +50,7 @@ export function extractMediaRef(
         ids: {
           tmdb: args.tmdbId as number,
           radarr: parsed.id as number,
+          titleSlug: parsed.titleSlug as string | undefined,
         },
       };
 
@@ -61,6 +63,7 @@ export function extractMediaRef(
           radarr: parsed.radarrId as number,
           tmdb: parsed.tmdbId as number,
           imdb: parsed.imdbId as string | undefined,
+          titleSlug: parsed.titleSlug as string | undefined,
         },
       };
 
@@ -69,10 +72,11 @@ export function extractMediaRef(
       return {
         action: "add",
         mediaType: "series",
-        title: args.title as string,
+        title: (series?.title as string) ?? (args.title as string),
         ids: {
           tvdb: args.tvdbId as number,
           sonarr: series?.id as number,
+          titleSlug: series?.titleSlug as string | undefined,
         },
       };
     }
@@ -87,6 +91,7 @@ export function extractMediaRef(
           tvdb: parsed.tvdbId as number,
           tmdb: parsed.tmdbId as number | undefined,
           imdb: parsed.imdbId as string | undefined,
+          titleSlug: parsed.titleSlug as string | undefined,
         },
       };
 
@@ -99,6 +104,7 @@ export function extractMediaRef(
           sonarr: parsed.sonarrId as number,
           tvdb: parsed.tvdbId as number,
           tmdb: parsed.tmdbId as number | undefined,
+          titleSlug: parsed.titleSlug as string | undefined,
         },
       };
 
