@@ -162,6 +162,7 @@ export async function runAgent(
   const time = new Date().toLocaleTimeString("en-US", {
     hour: "numeric",
     minute: "2-digit",
+    timeZoneName: "short",
   });
   await agent.prompt(`[${time}] ${message}`);
 
