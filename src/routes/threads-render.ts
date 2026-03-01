@@ -679,7 +679,7 @@ export function renderThreadPage(
   .container { max-width: 800px; margin: 0 auto; }
 
   /* Header */
-  header { margin-bottom: 2rem; border-bottom: 1px solid var(--border-subtle); padding-bottom: 1rem; display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; }
+  header { margin-bottom: 1.25rem; border-bottom: 1px solid var(--border-subtle); padding-bottom: 1rem; display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; }
   .header-text h1 { font-size: 1.25rem; font-weight: 600; line-height: 1.3; }
   .header-meta { display: flex; align-items: center; gap: 0.5rem; font-size: 0.8125rem; color: var(--text-secondary); margin-top: 0.25rem; }
   .breadcrumb { font-size: 0.8125rem; color: var(--text-secondary); margin-bottom: 0.25rem; }
@@ -761,6 +761,7 @@ export function renderThreadPage(
 
   /* Date separator */
   .date-separator { display: flex; align-items: center; gap: 1rem; margin: 1.25rem 0; }
+  .date-separator:first-child { margin-top: 0; }
   .date-separator::before, .date-separator::after { content: ''; flex: 1; height: 1px; background: var(--border-subtle); }
   .date-separator span { font-size: 0.75rem; color: var(--text-muted); white-space: nowrap; }
 
