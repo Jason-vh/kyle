@@ -32,6 +32,10 @@ src/
     verify.ts               → HMAC-SHA256 signature verification
     events.ts               → Event types + helpers (shouldProcess, cleanMessageText, buildExternalId)
     users.ts                → Slack user ID → display name resolution
+  discord/
+    client.ts               → Discord.js Client singleton (Gateway connection, lazy-init from DISCORD_BOT_TOKEN)
+    events.ts               → messageCreate handler (DM, thread, @mention → thread creation)
+    users.ts                → Discord display name resolution
   sonarr/
     types.ts                → Sonarr API type definitions
     api.ts                  → Sonarr API client (series, episodes, queue, calendar, history)
@@ -71,7 +75,7 @@ drizzle.config.ts           → Drizzle Kit config
 
 - **Stateless agent**: Agent is created per-request. Previous messages are loaded from DB and restored via `agent.replaceMessages()`.
 - **JSONB messages**: Full `AgentMessage` objects stored as JSONB in the `messages` table. The `role` and `sequence` columns exist for querying and ordering.
-- **Interface-agnostic conversations**: The `conversations` table has an `interfaceType` field (http/slack/cli) so multiple frontends can share the same backend. Slack conversations are keyed by `externalId` = `"{channel}:{thread_ts}"`.
+- **Interface-agnostic conversations**: The `conversations` table has an `interfaceType` field (http/slack/discord/cli) so multiple frontends can share the same backend. Slack conversations are keyed by `externalId` = `"{channel}:{thread_ts}"`. Discord conversations use `"dm:{channelId}"` or `"thread:{threadId}"`.
 - **Slack immediate ack**: The `/slack/events` handler returns 200 immediately and processes the message async (fire-and-forget) to stay within Slack's 3-second timeout. Responses are always posted as thread replies.
 - **Slack sync mode**: Sending `X-Sync-Response: true` header makes `/slack/events` wait for the agent and return the response in the HTTP body (used by `test-slack.ts` for dev workflow).
 - **Slack dedup**: In-memory `Set<string>` on `event_id` (capped at 10k entries) + `X-Slack-Retry-Num` header skipping prevents duplicate processing.
@@ -151,6 +155,7 @@ BASE_URL=https://kyle.vhtm.eu bun run test-slack.ts "<@U099N4BJT5Y> add inceptio
 | `BRAVE_API_KEY`        | Brave Search API key for web search                                 |
 | `WEBHOOK_AUTH`         | Basic auth credentials for webhook endpoints (`username:password`)  |
 | `CHAT_API_KEY`         | Bearer token for `/chat` endpoint auth (optional, skipped if unset) |
+| `DISCORD_BOT_TOKEN`    | Discord bot token (optional, from Discord Developer Portal)         |
 | `THREAD_VIEWER_TOKEN`  | Shared secret for thread viewer auth (cookie-based login)           |
 
 ## Task Tracking
@@ -177,5 +182,6 @@ Use `TODO(KYL-123)` comments in code to mark where work is needed, linking to th
 - **Deployment**: Pushes to `main` auto-deploy via Railway's built-in GitHub integration. Migrations run via pre-deploy command. Health check at `/health`. Live at https://kyle.vhtm.eu. Logs: `railway logs -n 80`.
 - **Production DB**: The Railway DATABASE_URL uses internal networking (not reachable locally). Use `echo "SELECT ..." | railway connect kyle-db` to query production. The messages table stores agent messages as JSONB in a `data` column.
 - **Slack**: `@slack/web-api` only (no Bolt). Signature verification uses `crypto.subtle` (native in Bun).
+- **Discord**: `discord.js` with Gateway WebSocket. Runs in-process alongside the HTTP server. Optional — skips gracefully if `DISCORD_BOT_TOKEN` is unset.
 - **Git workflow**: Commit and push to `main` — Railway deploys automatically via GitHub integration.
 - **Linear**: Update issue status (`linear issue update <id> -s completed`) when work is completed.

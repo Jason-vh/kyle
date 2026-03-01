@@ -2,6 +2,7 @@ export interface AgentContext {
   username?: string;
   userId?: string;
   threadTs?: string;
+  interfaceType?: "slack" | "discord" | "http" | "cli";
 }
 
 const SYSTEM_PROMPT = `
@@ -48,17 +49,7 @@ You are Kyle, a friendly media library assistant. Your purpose is to help users 
 - Use web_search proactively for any question you can't confidently answer from your own knowledge or other tools — award winners, release dates, cast/crew, reviews, recommendations, news, or general trivia. When in doubt, search.
 
 ## Message Formatting
-- You are posting in Slack — use Slack mrkdwn, NOT markdown
-- Bold: \`*bold*\` (single asterisks). NEVER use \`**double asterisks**\` — that renders literally in Slack
-- Italic: \`_italic_\` (underscores)
-- Use lists with - for multiple items or options
-- Use > for block quotes when highlighting important information
-- NEVER use emojis in your responses
-- Avoid excessive formatting - use sparingly for maximum impact
-- When mentioning a movie or TV show, link the title using Slack mrkdwn: \`<url|title>\`
-- Prefer IMDB links (\`https://www.imdb.com/title/{imdbId}\`) when an IMDB ID is available
-- Fall back to TMDB links (\`https://www.themoviedb.org/movie/{tmdbId}\` or \`/tv/{tmdbId}\`) when only a TMDB ID is available
-- Link the title on first mention only — don't repeat links in the same message
+{FORMATTING_RULES}
 
 # MEDIA ARCHITECTURE KNOWLEDGE
 You have access to an integrated media management stack:
@@ -84,6 +75,46 @@ You have access to an integrated media management stack:
 - Handle tool failures gracefully by explaining what went wrong
 `;
 
+function getFormattingRules(interfaceType?: string): string {
+  if (interfaceType === "discord") {
+    return `- You are posting in Discord — use standard Markdown
+- Bold: \`**bold**\` (double asterisks)
+- Italic: \`*italic*\` (single asterisks)
+- Use lists with - for multiple items or options
+- Use > for block quotes when highlighting important information
+- NEVER use emojis in your responses
+- Avoid excessive formatting - use sparingly for maximum impact
+- Keep responses under 2000 characters (Discord message limit)
+- When mentioning a movie or TV show, link the title using Markdown: \`[title](url)\`
+- Prefer IMDB links (\`https://www.imdb.com/title/{imdbId}\`) when an IMDB ID is available
+- Fall back to TMDB links (\`https://www.themoviedb.org/movie/{tmdbId}\` or \`/tv/{tmdbId}\`) when only a TMDB ID is available
+- Link the title on first mention only — don't repeat links in the same message`;
+  }
+
+  if (interfaceType === "slack" || !interfaceType) {
+    return `- You are posting in Slack — use Slack mrkdwn, NOT markdown
+- Bold: \`*bold*\` (single asterisks). NEVER use \`**double asterisks**\` — that renders literally in Slack
+- Italic: \`_italic_\` (underscores)
+- Use lists with - for multiple items or options
+- Use > for block quotes when highlighting important information
+- NEVER use emojis in your responses
+- Avoid excessive formatting - use sparingly for maximum impact
+- When mentioning a movie or TV show, link the title using Slack mrkdwn: \`<url|title>\`
+- Prefer IMDB links (\`https://www.imdb.com/title/{imdbId}\`) when an IMDB ID is available
+- Fall back to TMDB links (\`https://www.themoviedb.org/movie/{tmdbId}\` or \`/tv/{tmdbId}\`) when only a TMDB ID is available
+- Link the title on first mention only — don't repeat links in the same message`;
+  }
+
+  // HTTP, CLI — standard Markdown
+  return `- Use standard Markdown formatting
+- NEVER use emojis in your responses
+- Avoid excessive formatting - use sparingly for maximum impact
+- When mentioning a movie or TV show, link the title using Markdown: \`[title](url)\`
+- Prefer IMDB links (\`https://www.imdb.com/title/{imdbId}\`) when an IMDB ID is available
+- Fall back to TMDB links (\`https://www.themoviedb.org/movie/{tmdbId}\` or \`/tv/{tmdbId}\`) when only a TMDB ID is available
+- Link the title on first mention only — don't repeat links in the same message`;
+}
+
 export function getSystemPrompt(context?: AgentContext): string {
   let prompt = SYSTEM_PROMPT.replace(
     "{DATE}",
@@ -94,11 +125,14 @@ export function getSystemPrompt(context?: AgentContext): string {
     }),
   );
 
+  prompt = prompt.replace("{FORMATTING_RULES}", getFormattingRules(context?.interfaceType));
+
   if (context?.username) {
+    const platformLabel = context.interfaceType === "discord" ? "Discord user ID" : "Slack user ID";
     prompt = prompt.replace(
       "{USER_CONTEXT}",
       `- You are chatting with ${context.username}` +
-        (context.userId ? ` (Slack user ID: ${context.userId})` : ""),
+        (context.userId ? ` (${platformLabel}: ${context.userId})` : ""),
     );
   } else {
     prompt = prompt.replace("{USER_CONTEXT}", "");

@@ -107,6 +107,7 @@ async function processSlackMessage(
       username: senderMap.get(userId),
       userId,
       threadTs: replyThreadTs,
+      interfaceType: "slack",
     };
   }
 

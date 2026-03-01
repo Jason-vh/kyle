@@ -17,43 +17,31 @@ export interface WebhookNotification {
 }
 
 /**
- * Save a webhook notification linked to the conversation for the given channel:threadTs.
+ * Save a webhook notification linked to the given conversation.
  * Non-fatal — logs errors but doesn't throw.
  */
 export async function saveWebhookNotification(
-  channel: string,
-  threadTs: string,
+  conversationId: string,
   source: "sonarr" | "radarr",
   message: string,
   payload: WebhookNotificationPayload,
 ): Promise<void> {
   try {
-    const externalId = `${channel}:${threadTs}`;
-    const conv = await db.query.conversations.findFirst({
-      where: (c, { and, eq: e }) => and(e(c.externalId, externalId), e(c.interfaceType, "slack")),
-    });
-
-    if (!conv) {
-      log.warn("conversation not found for webhook notification", { externalId });
-      return;
-    }
-
     await db.insert(webhookNotifications).values({
-      conversationId: conv.id,
+      conversationId,
       source,
       message,
       payload,
     });
 
     log.info("saved webhook notification", {
-      conversationId: conv.id,
+      conversationId,
       source,
       title: payload.title,
     });
   } catch (error) {
     log.error("failed to save webhook notification", {
-      channel,
-      threadTs,
+      conversationId,
       error: error instanceof Error ? error.message : String(error),
     });
   }

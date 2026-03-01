@@ -45,8 +45,17 @@ export interface MediaNotificationInfo {
   }>;
 }
 
-export interface MediaRequester {
-  channel: string;
-  threadTs: string;
-  title: string;
-}
+export type MediaRequester =
+  | {
+      interfaceType: "slack";
+      channel: string;
+      threadTs: string;
+      conversationId: string;
+      title: string;
+    }
+  | {
+      interfaceType: "discord";
+      channelId: string;
+      conversationId: string;
+      title: string;
+    };

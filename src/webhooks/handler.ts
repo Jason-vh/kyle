@@ -1,13 +1,13 @@
-import type { AgentMessage } from "@mariozechner/pi-agent-core";
 import { timingSafeEqual } from "crypto";
 import { createLogger } from "../logger.ts";
 import { getSlackClient } from "../slack/client.ts";
+import { getDiscordClient } from "../discord/client.ts";
 import { db } from "../db/index.ts";
 import { messages } from "../db/schema.ts";
 import { findMediaRequesters } from "./requester.ts";
 import { saveWebhookNotification } from "../db/webhook-notifications.ts";
 import { loadConversationHistory } from "../db/conversation-history.ts";
-import { runAgent } from "../agent/index.ts";
+import { runAgent, type AgentContext } from "../agent/index.ts";
 import type {
   RadarrWebhookPayload,
   SonarrWebhookPayload,
@@ -89,27 +89,15 @@ async function notifyRequester(
   media: MediaNotificationInfo,
   source: "sonarr" | "radarr",
 ): Promise<void> {
-  const slack = getSlackClient();
-  const externalId = `${requester.channel}:${requester.threadTs}`;
+  const { conversationId } = requester;
 
   // Load conversation history
-  const conv = await db.query.conversations.findFirst({
-    where: (c, { and, eq: e }) => and(e(c.externalId, externalId), e(c.interfaceType, "slack")),
-  });
-
-  let previousMessages: AgentMessage[] = [];
-  let conversationId: string | undefined;
-
-  if (conv) {
-    conversationId = conv.id;
-    previousMessages = await loadConversationHistory(conv.id);
-  }
+  const previousMessages = await loadConversationHistory(conversationId);
 
   const prompt = formatWebhookPrompt(media, source);
 
   // Save webhook notification before running agent so its receivedAt timestamp
   // is earlier than the assistant response messages' createdAt.
-  // Store description (not full prompt) since formatWebhookMessage adds its own prefix.
   let desc = `${media.title} (${media.year}) has finished downloading.`;
   if (media.mediaType === "series" && media.episodes?.length) {
     const eps = media.episodes
@@ -120,41 +108,63 @@ async function notifyRequester(
       .join(", ");
     desc = `${media.title} (${media.year}) — ${eps} finished downloading.`;
   }
-  saveWebhookNotification(requester.channel, requester.threadTs, source, desc, media);
+  saveWebhookNotification(conversationId, source, desc, media);
+
+  const agentContext: AgentContext = { interfaceType: requester.interfaceType };
 
   log.info("running agent for webhook notification", {
-    channel: requester.channel,
-    threadTs: requester.threadTs,
+    conversationId,
+    interfaceType: requester.interfaceType,
     title: media.title,
     historyLength: previousMessages.length,
   });
 
-  const result = await runAgent(prompt, previousMessages);
+  const result = await runAgent(prompt, previousMessages, agentContext);
 
   // Save new agent messages to DB
-  if (conversationId) {
-    const newMsgs = result.messages.slice(previousMessages.length).filter((m) => m.role !== "user");
-    if (newMsgs.length > 0) {
-      await db
-        .insert(messages)
-        .values(newMsgs.map((m) => ({ conversationId: conversationId!, role: m.role, data: m })));
-    }
+  const newMsgs = result.messages.slice(previousMessages.length).filter((m) => m.role !== "user");
+  if (newMsgs.length > 0) {
+    await db
+      .insert(messages)
+      .values(newMsgs.map((m) => ({ conversationId, role: m.role, data: m })));
   }
 
-  // Post to Slack
-  await slack.chat.postMessage({
-    channel: requester.channel,
-    thread_ts: requester.threadTs,
-    text: result.responseText,
-    unfurl_links: false,
-    unfurl_media: false,
-  });
-
-  log.info("notified requester", {
-    channel: requester.channel,
-    threadTs: requester.threadTs,
-    title: media.title,
-  });
+  // Post to the correct platform
+  if (requester.interfaceType === "slack") {
+    const slack = getSlackClient();
+    await slack.chat.postMessage({
+      channel: requester.channel,
+      thread_ts: requester.threadTs,
+      text: result.responseText,
+      unfurl_links: false,
+      unfurl_media: false,
+    });
+    log.info("notified requester via slack", {
+      channel: requester.channel,
+      threadTs: requester.threadTs,
+      title: media.title,
+    });
+  } else if (requester.interfaceType === "discord") {
+    const discord = getDiscordClient();
+    if (!discord) {
+      log.warn("discord client not available for webhook notification", {
+        channelId: requester.channelId,
+      });
+      return;
+    }
+    const channel = await discord.channels.fetch(requester.channelId);
+    if (channel && "send" in channel) {
+      let responseText = result.responseText;
+      if (responseText.length > 2000) {
+        responseText = responseText.slice(0, 1997) + "...";
+      }
+      await channel.send(responseText);
+    }
+    log.info("notified requester via discord", {
+      channelId: requester.channelId,
+      title: media.title,
+    });
+  }
 }
 
 async function notifyRequesters(
@@ -166,12 +176,11 @@ async function notifyRequesters(
     return;
   }
 
-  // Deduplicate by channel:threadTs
+  // Deduplicate by conversationId
   const seen = new Set<string>();
   const unique = requesters.filter((r) => {
-    const key = `${r.channel}:${r.threadTs}`;
-    if (seen.has(key)) return false;
-    seen.add(key);
+    if (seen.has(r.conversationId)) return false;
+    seen.add(r.conversationId);
     return true;
   });
 
@@ -183,8 +192,8 @@ async function notifyRequesters(
     if (results[i]!.status === "rejected") {
       const requester = unique[i]!;
       log.error("failed to notify requester", {
-        channel: requester.channel,
-        threadTs: requester.threadTs,
+        conversationId: requester.conversationId,
+        interfaceType: requester.interfaceType,
         error:
           results[i]!.status === "rejected"
             ? (results[i] as PromiseRejectedResult).reason instanceof Error
