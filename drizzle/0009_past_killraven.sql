@@ -1,0 +1,1 @@
+CREATE INDEX "messages_conversation_role_sequence_idx" ON "messages" USING btree ("conversation_id","role","sequence");

@@ -1,4 +1,5 @@
 import { router } from "../router";
+import { resetAuthCache } from "./auth";
 
 export async function apiFetch<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(url, {
@@ -10,6 +11,7 @@ export async function apiFetch<T>(url: string, init?: RequestInit): Promise<T> {
   });
 
   if (res.status === 401) {
+    resetAuthCache();
     await router.push({ name: "login" });
     throw new Error("Unauthorized");
   }

@@ -80,6 +80,11 @@ export const messages = pgTable(
   (table) => [
     index("messages_conversation_id_idx").on(table.conversationId),
     index("messages_conversation_sequence_idx").on(table.conversationId, table.sequence),
+    index("messages_conversation_role_sequence_idx").on(
+      table.conversationId,
+      table.role,
+      table.sequence,
+    ),
     index("messages_user_id_idx").on(table.userId),
   ],
 );

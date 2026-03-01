@@ -1,8 +1,16 @@
+let authCached: boolean | null = null;
+
+export function resetAuthCache(): void {
+  authCached = null;
+}
+
 export async function checkAuth(): Promise<boolean> {
+  if (authCached !== null) return authCached;
   try {
     const res = await fetch("/api/auth/status");
     const data = (await res.json()) as { authenticated: boolean };
-    return data.authenticated;
+    authCached = data.authenticated;
+    return authCached;
   } catch {
     return false;
   }
@@ -14,5 +22,6 @@ export async function login(token: string): Promise<boolean> {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ token }),
   });
+  if (res.ok) authCached = true;
   return res.ok;
 }

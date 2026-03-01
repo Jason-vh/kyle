@@ -1,6 +1,23 @@
 const COOKIE_NAME = "kyle_thread_auth";
 const COOKIE_MAX_AGE = 31536000; // 1 year
 
+let cachedKey: CryptoKey | null = null;
+let cachedToken: string | null = null;
+
+async function getHmacKey(token: string): Promise<CryptoKey> {
+  if (cachedKey && cachedToken === token) return cachedKey;
+  const key = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(token),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  cachedKey = key;
+  cachedToken = token;
+  return key;
+}
+
 export function parseCookies(header: string): Record<string, string> {
   const cookies: Record<string, string> = {};
   for (const part of header.split("; ")) {
@@ -14,13 +31,7 @@ export function parseCookies(header: string): Record<string, string> {
 
 export async function signToken(token: string): Promise<string> {
   const timestamp = Math.floor(Date.now() / 1000).toString();
-  const key = await crypto.subtle.importKey(
-    "raw",
-    new TextEncoder().encode(token),
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign"],
-  );
+  const key = await getHmacKey(token);
   const sig = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(timestamp));
   const hex = Buffer.from(sig).toString("hex");
   return `${hex}.${timestamp}`;
@@ -33,13 +44,7 @@ export async function verifyToken(cookie: string, token: string): Promise<boolea
   const timestamp = cookie.slice(dot + 1);
   if (!hex || !timestamp) return false;
 
-  const key = await crypto.subtle.importKey(
-    "raw",
-    new TextEncoder().encode(token),
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign"],
-  );
+  const key = await getHmacKey(token);
   const sig = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(timestamp));
   const computed = Buffer.from(sig).toString("hex");
 
@@ -74,13 +79,7 @@ export function buildCookieHeader(value: string, isLocal: boolean): string {
 export async function signThreadSig(threadTs: string): Promise<string> {
   const token = process.env.THREAD_VIEWER_TOKEN;
   if (!token) throw new Error("THREAD_VIEWER_TOKEN not set");
-  const key = await crypto.subtle.importKey(
-    "raw",
-    new TextEncoder().encode(token),
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign"],
-  );
+  const key = await getHmacKey(token);
   const sig = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(threadTs));
   return Buffer.from(sig).toString("hex").slice(0, 32);
 }
