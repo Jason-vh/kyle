@@ -217,8 +217,8 @@ const getEpisodesParams = Type.Object({
   }),
   hasFile: Type.Optional(
     Type.Boolean({
-      description: "Whether to filter for episodes with files (ie those that have been downloaded)",
-      default: false,
+      description:
+        "Filter by file status: true = only episodes with files downloaded, false = only episodes without files. Omit to return all episodes.",
     }),
   ),
 });
@@ -230,8 +230,9 @@ export const getEpisodesTool: AgentTool<typeof getEpisodesParams> = {
   label: "Fetching episodes from Sonarr",
   async execute(_toolCallId, params) {
     const episodes = await sonarr.getEpisodes(params.seriesId);
-    const hasFile = params.hasFile ?? false;
-    const results = episodes.map(toPartialEpisode).filter((episode) => episode.hasFile === hasFile);
+    const mapped = episodes.map(toPartialEpisode);
+    const results =
+      params.hasFile !== undefined ? mapped.filter((ep) => ep.hasFile === params.hasFile) : mapped;
     return {
       content: [{ type: "text", text: JSON.stringify(results) }],
       details: undefined,

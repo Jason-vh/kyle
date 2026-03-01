@@ -16,11 +16,13 @@ export function toPartialSeries(series: SonarrSeries) {
     monitored: series.monitored,
     seasonCount: series.seasons.length,
     sizeOnDisk: series.statistics?.sizeOnDisk ?? 0,
-    seasons: series.seasons.map((s) => ({
-      seasonNumber: s.seasonNumber,
-      monitored: s.monitored,
-      sizeOnDisk: s.statistics?.sizeOnDisk ?? 0,
-    })),
+    seasons: series.seasons
+      .filter((s) => (s.statistics?.sizeOnDisk ?? 0) > 0)
+      .map((s) => ({
+        seasonNumber: s.seasonNumber,
+        monitored: s.monitored,
+        sizeOnDisk: s.statistics!.sizeOnDisk,
+      })),
     tvdbId: series.tvdbId,
     imdbId: series.imdbId,
   };
