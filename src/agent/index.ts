@@ -124,8 +124,8 @@ export function createAgent(context?: AgentContext): Agent {
   }
 
   const tools = [...allTools];
-  if (context?.threadTs) {
-    const shareTool = createShareConversationTool(context.threadTs);
+  if (context?.conversationId) {
+    const shareTool = createShareConversationTool(context.conversationId);
     tools.push(shareTool);
     toolLabels.set(shareTool.name, shareTool.label);
   }

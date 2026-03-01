@@ -106,7 +106,6 @@ async function processSlackMessage(
     agentContext = {
       username: senderMap.get(userId),
       userId,
-      threadTs: replyThreadTs,
       interfaceType: "slack",
     };
   }
@@ -179,6 +178,11 @@ async function processSlackMessage(
         })
         .returning();
       conversationId = conversation!.id;
+    }
+
+    // Attach conversationId to agent context for share tool
+    if (agentContext) {
+      agentContext.conversationId = conversationId;
     }
 
     // Run the agent

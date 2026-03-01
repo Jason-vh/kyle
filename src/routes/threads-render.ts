@@ -282,7 +282,7 @@ function renderMediaRefsSummary(refs: MediaRefRow[], usernameMap: Map<string, st
 export type TimestampedMessage = { msg: Message; createdAt: Date; userId?: string | null };
 
 export function renderThreadPage(
-  threadTs: string,
+  threadLabel: string,
   createdAt: Date,
   messages: TimestampedMessage[],
   usernameMap: Map<string, string> = new Map(),
@@ -339,7 +339,7 @@ export function renderThreadPage(
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Thread ${escapeHtml(threadTs)} — Kyle</title>
+<title>Thread ${escapeHtml(threadLabel)} — Kyle</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -414,7 +414,7 @@ export function renderThreadPage(
   <header>
     <div class="header-text">
       ${shareUrl ? `<div class="breadcrumb"><a href="/threads/">← All threads</a></div>` : ""}
-      <h1>Thread ${escapeHtml(threadTs)}</h1>
+      <h1>Thread ${escapeHtml(threadLabel)}</h1>
       <div class="meta"><time datetime="${createdAt.toISOString()}">${escapeHtml(formatDate(createdAt))}</time></div>
     </div>
     ${shareUrl ? `<button class="share-btn" onclick="copyShareUrl()" id="share-btn">Copy share link</button>` : ""}

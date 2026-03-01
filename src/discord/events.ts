@@ -185,6 +185,9 @@ export async function handleDiscordMessage(message: Message): Promise<void> {
       conversationId = conversation!.id;
     }
 
+    // Attach conversationId to agent context for share tool
+    agentContext.conversationId = conversationId;
+
     // Run the agent
     log.info("running agent", {
       conversationId,

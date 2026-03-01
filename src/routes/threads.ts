@@ -4,21 +4,22 @@ import { messages } from "../db/schema.ts";
 import { checkAuth, signThreadSig, verifyThreadSig } from "./threads-auth.ts";
 import { renderThreadPage } from "./threads-render.ts";
 import { resolveUsernames } from "../slack/users.ts";
+import { resolveDiscordUsernames } from "../discord/users.ts";
 import { getWebhookNotifications } from "../db/webhook-notifications.ts";
 import { getMediaRefsForConversation } from "../db/media-refs.ts";
 import { createLogger } from "../logger.ts";
 
 const log = createLogger("threads");
 
-const THREAD_TS_RE = /^\d+\.\d+$/;
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
-export async function handleThread(req: Request, threadTs: string): Promise<Response> {
+export async function handleThread(req: Request, id: string): Promise<Response> {
   const url = new URL(req.url);
 
   // Signed URL: anyone with ?sig= can view this specific thread
   const sig = url.searchParams.get("sig");
   if (sig) {
-    const valid = await verifyThreadSig(threadTs, sig);
+    const valid = await verifyThreadSig(id, sig);
     if (!valid) {
       return new Response("Invalid or expired link", { status: 403 });
     }
@@ -28,18 +29,17 @@ export async function handleThread(req: Request, threadTs: string): Promise<Resp
     if (authResponse) return authResponse;
   }
 
-  if (!THREAD_TS_RE.test(threadTs)) {
-    log.warn("invalid thread_ts format", { threadTs });
+  if (!UUID_RE.test(id)) {
+    log.warn("invalid thread ID format", { id });
     return new Response("Invalid thread ID", { status: 400 });
   }
 
   const conv = await db.query.conversations.findFirst({
-    where: (c, { and, eq: e, like: l }) =>
-      and(e(c.interfaceType, "slack"), l(c.externalId, `%:${threadTs}`)),
+    where: (c, { eq: e }) => e(c.id, id),
   });
 
   if (!conv) {
-    log.warn("conversation not found", { threadTs });
+    log.warn("conversation not found", { id });
     return new Response("Thread not found", { status: 404 });
   }
 
@@ -66,17 +66,32 @@ export async function handleThread(req: Request, threadTs: string): Promise<Resp
   let usernameMap = new Map<string, string>();
   if (userIds.length > 0) {
     try {
-      usernameMap = await resolveUsernames(userIds);
+      usernameMap =
+        conv.interfaceType === "discord"
+          ? await resolveDiscordUsernames(userIds)
+          : await resolveUsernames(userIds);
     } catch (err) {
       log.warn("failed to resolve usernames", {
         userIds,
+        interfaceType: conv.interfaceType,
         error: err instanceof Error ? err.message : String(err),
       });
     }
   }
 
+  // Generate thread label from interface type + metadata
+  let threadLabel: string;
+  if (conv.interfaceType === "discord") {
+    const meta = conv.metadata as Record<string, unknown> | null;
+    threadLabel = meta?.isDM ? "Discord DM" : "Discord Thread";
+  } else {
+    const meta = conv.metadata as Record<string, unknown> | null;
+    threadLabel = (meta?.threadTs as string) ?? conv.externalId ?? id;
+  }
+
   log.info("rendering thread", {
-    threadTs,
+    id,
+    interfaceType: conv.interfaceType,
     conversationId: conv.id,
     messageCount: msgs.length,
     webhookCount: webhookNotifications.length,
@@ -88,15 +103,15 @@ export async function handleThread(req: Request, threadTs: string): Promise<Resp
   let shareUrl: string | undefined;
   if (!sig) {
     try {
-      const threadSig = await signThreadSig(threadTs);
-      shareUrl = `${url.origin}/threads/${threadTs}?sig=${threadSig}`;
+      const threadSig = await signThreadSig(id);
+      shareUrl = `${url.origin}/threads/${id}?sig=${threadSig}`;
     } catch {
       // non-fatal
     }
   }
 
   const html = renderThreadPage(
-    threadTs,
+    threadLabel,
     conv.createdAt,
     msgs,
     usernameMap,

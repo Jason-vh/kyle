@@ -1,7 +1,7 @@
 export interface AgentContext {
   username?: string;
   userId?: string;
-  threadTs?: string;
+  conversationId?: string;
   interfaceType?: "slack" | "discord" | "http" | "cli";
 }
 

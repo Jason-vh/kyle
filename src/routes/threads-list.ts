@@ -1,4 +1,4 @@
-import { desc, eq, sql, count, ne } from "drizzle-orm";
+import { desc, sql, count, ne, inArray } from "drizzle-orm";
 import { db } from "../db/index.ts";
 import { conversations, messages } from "../db/schema.ts";
 import { checkAuth, signThreadSig } from "./threads-auth.ts";
@@ -25,13 +25,15 @@ function formatDate(date: Date): string {
   });
 }
 
-function extractThreadTs(externalId: string): string {
-  const colon = externalId.lastIndexOf(":");
-  return colon >= 0 ? externalId.slice(colon + 1) : externalId;
-}
-
 function truncate(text: string, max: number): string {
   return text.length > max ? text.slice(0, max) + "…" : text;
+}
+
+function threadLabel(interfaceType: string, metadata: Record<string, unknown> | null): string {
+  if (interfaceType === "discord") {
+    return metadata?.isDM ? "Discord DM" : "Discord Thread";
+  }
+  return (metadata?.threadTs as string) ?? "Slack";
 }
 
 export async function handleThreadList(req: Request): Promise<Response> {
@@ -51,11 +53,13 @@ export async function handleThreadList(req: Request): Promise<Response> {
     .groupBy(messages.conversationId)
     .as("msg_counts");
 
-  // Get all Slack conversations with message count and first user message preview
+  // Get all Slack + Discord conversations with message count and first user message preview
   const rows = await db
     .select({
       id: conversations.id,
       externalId: conversations.externalId,
+      interfaceType: conversations.interfaceType,
+      metadata: conversations.metadata,
       createdAt: conversations.createdAt,
       messageCount: msgCounts.msgCount,
       preview: sql<string | null>`(
@@ -76,36 +80,39 @@ export async function handleThreadList(req: Request): Promise<Response> {
       )`.as("preview"),
     })
     .from(conversations)
-    .leftJoin(msgCounts, eq(conversations.id, msgCounts.conversationId))
-    .where(eq(conversations.interfaceType, "slack"))
+    .leftJoin(msgCounts, sql`${conversations.id} = ${msgCounts.conversationId}`)
+    .where(inArray(conversations.interfaceType, ["slack", "discord"]))
     .orderBy(desc(conversations.createdAt))
     .limit(200);
 
   log.info("listing threads", { count: rows.length });
 
-  // Pre-sign all thread URLs
+  // Pre-sign all thread URLs (using conversation UUID)
   const threadRows = await Promise.all(
     rows.map(async (row) => {
-      const threadTs = extractThreadTs(row.externalId ?? "");
-      const sig = await signThreadSig(threadTs).catch(() => null);
-      const shareUrl = sig ? `${url.origin}/threads/${threadTs}?sig=${sig}` : null;
-      return { ...row, threadTs, shareUrl };
+      const sig = await signThreadSig(row.id).catch(() => null);
+      const shareUrl = sig ? `${url.origin}/threads/${row.id}?sig=${sig}` : null;
+      const label = threadLabel(row.interfaceType, row.metadata as Record<string, unknown> | null);
+      return { ...row, label, shareUrl };
     }),
   );
 
   const rowsHtml = threadRows
-    .map(
-      (row) => `
+    .map((row) => {
+      const badgeClass = row.interfaceType === "discord" ? "badge-discord" : "badge-slack";
+      const badgeText = row.interfaceType === "discord" ? "Discord" : "Slack";
+      return `
     <tr>
       <td class="ts-cell">
-        <a href="/threads/${escapeHtml(row.threadTs)}">${escapeHtml(row.threadTs)}</a>
+        <a href="/threads/${escapeHtml(row.id)}">${escapeHtml(row.label)}</a>
       </td>
+      <td class="badge-cell"><span class="badge ${badgeClass}">${badgeText}</span></td>
       <td class="date-cell"><time datetime="${row.createdAt.toISOString()}">${escapeHtml(formatDate(row.createdAt))}</time></td>
       <td class="preview-cell">${row.preview ? escapeHtml(truncate(row.preview, 120)) : '<span class="empty">—</span>'}</td>
       <td class="count-cell">${row.messageCount ?? 0}</td>
       <td class="share-cell">${row.shareUrl ? `<button class="share-btn" onclick="copyUrl(this, ${JSON.stringify(row.shareUrl)})">Copy</button>` : ""}</td>
-    </tr>`,
-    )
+    </tr>`;
+    })
     .join("\n");
 
   const html = `<!DOCTYPE html>
@@ -143,7 +150,11 @@ export async function handleThreadList(req: Request): Promise<Response> {
   tr:hover td { background: #161b22; }
   a { color: #58a6ff; text-decoration: none; }
   a:hover { text-decoration: underline; }
-  .ts-cell { font-family: monospace; font-size: 0.8125rem; white-space: nowrap; }
+  .ts-cell { font-size: 0.8125rem; white-space: nowrap; }
+  .badge-cell { white-space: nowrap; }
+  .badge { display: inline-block; font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; border-radius: 4px; padding: 0.1rem 0.4rem; }
+  .badge-slack { background: #1c2d4a; color: #58a6ff; border: 1px solid #1f408080; }
+  .badge-discord { background: #2b1c4a; color: #b39ddb; border: 1px solid #40208080; }
   .date-cell { white-space: nowrap; font-size: 0.8125rem; color: #8b949e; }
   .preview-cell { color: #c9d1d9; max-width: 400px; }
   .count-cell { text-align: right; font-size: 0.8125rem; color: #8b949e; white-space: nowrap; }
@@ -172,6 +183,7 @@ export async function handleThreadList(req: Request): Promise<Response> {
     <thead>
       <tr>
         <th>Thread</th>
+        <th>Source</th>
         <th>Date</th>
         <th>Preview</th>
         <th style="text-align:right">Messages</th>
