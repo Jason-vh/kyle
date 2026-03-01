@@ -12,25 +12,21 @@
         <span>&middot;</span>
         <span>{{ thread.messageCount }} messages</span>
       </div>
-    </div>
-    <!-- Media ref pills -->
-    <div
-      v-if="thread.mediaRefs.length > 0"
-      class="hidden shrink-0 flex-wrap gap-1 md:flex"
-      style="max-width: 260px"
-    >
-      <span
-        v-for="(ref, i) in thread.mediaRefs"
-        :key="i"
-        class="inline-block max-w-40 truncate rounded-full px-2 py-0.5 text-xs font-medium"
-        :class="
-          ref.action === 'add'
-            ? 'bg-accent-green-light text-accent-green'
-            : 'bg-accent-red-light text-accent-red'
-        "
-      >
-        {{ ref.action === "add" ? "+" : "\u2212" }} {{ ref.title }}
-      </span>
+      <!-- Media ref pills -->
+      <div v-if="thread.mediaRefs.length > 0" class="mt-1.5 hidden flex-wrap gap-1 md:flex">
+        <span
+          v-for="(ref, i) in thread.mediaRefs"
+          :key="i"
+          class="inline-block max-w-48 truncate rounded-full px-2 py-0.5 text-xs font-medium"
+          :class="
+            ref.action === 'add'
+              ? 'bg-accent-green-light text-accent-green'
+              : 'bg-accent-red-light text-accent-red'
+          "
+        >
+          {{ ref.action === "add" ? "+" : "\u2212" }} {{ ref.title }}
+        </span>
+      </div>
     </div>
     <!-- Share button -->
     <button
@@ -74,5 +70,5 @@ function copyShareUrl() {
   }
 }
 
-const shareIcon = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>`;
+const shareIcon = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>`;
 </script>

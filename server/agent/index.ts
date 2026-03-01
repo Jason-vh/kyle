@@ -67,6 +67,9 @@ import { getTorrentsTool, deleteTorrentsTool } from "../qbittorrent/tools.ts";
 // Brave Search tools
 import { webSearchTool } from "../brave/tools.ts";
 
+// Time tools
+import { convertTimeTool } from "../time/tools.ts";
+
 // Conversation tools
 import { createShareConversationTool } from "./share-tool.ts";
 import { getRequestsForUserTool } from "./requests-tool.ts";
@@ -107,6 +110,8 @@ const allTools = [
   deleteTorrentsTool,
   // Brave Search
   webSearchTool,
+  // Time
+  convertTimeTool,
   // Requests
   getRequestsForUserTool,
 ];
