@@ -13,13 +13,13 @@
       <input
         v-model="search"
         type="text"
-        placeholder="Search conversations\u2026"
+        placeholder="Search conversations…"
         autocomplete="off"
         class="w-full rounded-lg border border-border-primary bg-bg-input px-3 py-2 text-sm text-text-primary placeholder-text-muted focus:border-accent-purple focus:outline-none focus:ring-2 focus:ring-accent-purple/20"
       />
     </div>
 
-    <div v-if="loading" class="py-12 text-center text-text-muted">Loading\u2026</div>
+    <div v-if="loading" class="py-12 text-center text-text-muted">Loading…</div>
     <div v-else-if="error" class="py-12 text-center text-accent-red">{{ error }}</div>
     <div v-else-if="filteredThreads.length === 0" class="py-12 text-center text-sm text-text-muted">
       No conversations found
