@@ -113,6 +113,7 @@ export async function handleThread(req: Request, id: string): Promise<Response> 
   const html = renderThreadPage(
     threadLabel,
     conv.createdAt,
+    conv.interfaceType,
     msgs,
     usernameMap,
     shareUrl,
