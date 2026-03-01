@@ -5,7 +5,7 @@ const log = createLogger("threads-auth");
 const COOKIE_NAME = "kyle_thread_auth";
 const COOKIE_MAX_AGE = 31536000; // 1 year
 
-function parseCookies(header: string): Record<string, string> {
+export function parseCookies(header: string): Record<string, string> {
   const cookies: Record<string, string> = {};
   for (const part of header.split("; ")) {
     const eq = part.indexOf("=");
@@ -16,7 +16,7 @@ function parseCookies(header: string): Record<string, string> {
   return cookies;
 }
 
-async function signToken(token: string): Promise<string> {
+export async function signToken(token: string): Promise<string> {
   const timestamp = Math.floor(Date.now() / 1000).toString();
   const key = await crypto.subtle.importKey(
     "raw",
@@ -30,7 +30,7 @@ async function signToken(token: string): Promise<string> {
   return `${hex}.${timestamp}`;
 }
 
-async function verifyToken(cookie: string, token: string): Promise<boolean> {
+export async function verifyToken(cookie: string, token: string): Promise<boolean> {
   const dot = cookie.lastIndexOf(".");
   if (dot < 0) return false;
   const hex = cookie.slice(0, dot);
@@ -58,15 +58,15 @@ async function verifyToken(cookie: string, token: string): Promise<boolean> {
   return true;
 }
 
-function isLocalhost(req: Request): boolean {
+export function isLocalhost(req: Request): boolean {
   const url = new URL(req.url);
   return url.hostname === "localhost" || url.hostname === "127.0.0.1";
 }
 
-function buildCookieHeader(value: string, isLocal: boolean): string {
+export function buildCookieHeader(value: string, isLocal: boolean): string {
   const parts = [
     `${COOKIE_NAME}=${value}`,
-    `Path=/threads`,
+    `Path=/`,
     `Max-Age=${COOKIE_MAX_AGE}`,
     `HttpOnly`,
     `SameSite=Strict`,

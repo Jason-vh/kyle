@@ -5,5 +5,7 @@ pre-commit:
       run: bunx oxfmt --check .
     lint:
       run: bunx oxlint .
-    typecheck:
-      run: bunx tsc --noEmit
+    typecheck-server:
+      run: bunx tsc --noEmit -p tsconfig.server.json
+    typecheck-web:
+      run: cd web && bunx vue-tsc --noEmit

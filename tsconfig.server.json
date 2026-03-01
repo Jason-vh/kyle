@@ -25,5 +25,13 @@
     "noUnusedLocals": false,
     "noUnusedParameters": false,
     "noPropertyAccessFromIndexSignature": false
-  }
+  },
+  "include": [
+    "index.ts",
+    "cli.ts",
+    "test-slack.ts",
+    "server/**/*",
+    "shared/**/*",
+    "drizzle.config.ts"
+  ]
 }
