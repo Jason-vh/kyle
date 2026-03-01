@@ -29,6 +29,7 @@ const rendered = computed(() => renderMarkdown(props.text));
   text-decoration: underline;
 }
 .content :deep(ul) {
+  list-style-type: disc;
   margin: 0.5em 0;
   padding-left: 1.5em;
 }
