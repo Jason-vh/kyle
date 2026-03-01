@@ -55,7 +55,6 @@
     <summary class="group/msg flex gap-3 list-none">
       <div class="min-w-0 flex-1">
         <div class="mb-1 flex items-center gap-2">
-          <span class="text-xs font-medium text-text-muted">Tool call</span>
           <time :datetime="msg.createdAt" class="ml-auto whitespace-nowrap text-xs text-text-muted">
             {{ time }}
           </time>

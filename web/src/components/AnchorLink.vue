@@ -10,14 +10,18 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from "vue";
+import { ref, inject, type Ref } from "vue";
 
 const props = defineProps<{ anchor: string }>();
 
+const shareUrl = inject<Ref<string | null>>("shareUrl", ref(null));
 const copied = ref(false);
 
 function copyLink() {
-  const url = `${window.location.origin}${window.location.pathname}${window.location.search}#${props.anchor}`;
+  const base =
+    shareUrl.value ??
+    `${window.location.origin}${window.location.pathname}${window.location.search}`;
+  const url = `${base}#${props.anchor}`;
   navigator.clipboard.writeText(url).catch(() => {});
   history.replaceState(
     null,

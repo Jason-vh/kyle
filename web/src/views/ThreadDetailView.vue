@@ -54,7 +54,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, nextTick } from "vue";
+import { ref, computed, provide, onMounted, nextTick } from "vue";
 import { useRoute } from "vue-router";
 import { getThread } from "../api/threads";
 import { relativeTime } from "../composables/useRelativeTime";
@@ -69,6 +69,9 @@ const thread = ref<ThreadDetail | null>(null);
 const loading = ref(true);
 const error = ref("");
 const copied = ref(false);
+
+const shareUrl = computed(() => thread.value?.shareUrl ?? null);
+provide("shareUrl", shareUrl);
 
 const formattedDate = computed(() => (thread.value ? relativeTime(thread.value.createdAt) : ""));
 
