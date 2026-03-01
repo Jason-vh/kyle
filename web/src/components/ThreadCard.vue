@@ -4,7 +4,7 @@
     class="group flex items-center gap-3 border-b border-border-subtle px-1 py-3 no-underline transition-colors hover:bg-bg-elevated"
   >
     <div class="min-w-0 flex-1">
-      <span class="truncate font-serif text-lg font-semibold text-text-primary">{{
+      <span class="block truncate text-[0.9375rem] font-medium text-text-primary">{{
         thread.preview
       }}</span>
       <div class="font-ui mt-0.5 flex items-center gap-2 text-xs text-text-muted">
