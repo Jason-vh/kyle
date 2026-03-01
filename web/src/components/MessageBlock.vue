@@ -50,7 +50,7 @@
     v-else-if="msg.stopReason === 'toolUse'"
     :id="msg.id"
     :open="msg.hasErrors"
-    class="tool-use-block message-block fade-in relative mb-4 cursor-pointer rounded-lg border border-border-primary p-3 opacity-60 scroll-mt-4"
+    class="tool-use-block message-block fade-in relative mb-4 cursor-pointer border-l-2 border-border-secondary pl-3 opacity-60 scroll-mt-4"
   >
     <summary class="group/msg flex gap-3 list-none">
       <div class="min-w-0 flex-1">
@@ -79,7 +79,7 @@
         </div>
       </div>
     </summary>
-    <div class="mt-2 space-y-4 border-t border-border-primary pt-2">
+    <div class="mt-2 space-y-4 pt-1">
       <ToolCallBlock v-for="tc in msg.toolCalls" :key="tc.id" :tc="tc" />
     </div>
   </details>
