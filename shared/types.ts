@@ -1,3 +1,13 @@
+// Auth
+export interface AuthStatusResponse {
+  authenticated: boolean;
+  user?: {
+    id: string;
+    name: string;
+    admin: boolean;
+  };
+}
+
 // Thread list
 export interface ThreadListItem {
   id: string;

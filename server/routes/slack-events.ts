@@ -10,6 +10,7 @@ import { verifySlackSignature } from "../slack/verify.ts";
 import { getSlackClient, setThreadStatus } from "../slack/client.ts";
 import { type SlackEventPayload, shouldProcess, cleanMessageText } from "../slack/events.ts";
 import { extractUserIds, resolveUsernames } from "../slack/users.ts";
+import { resolveAppUserId } from "../db/users.ts";
 
 const log = createLogger("slack");
 
@@ -99,13 +100,16 @@ async function processSlackMessage(
 
   if (!messageText) return "";
 
+  // Resolve platform user to app user
+  const appUserId = userId ? await resolveAppUserId("slack", userId) : null;
+
   // Build agent context from the sending user
   let agentContext: AgentContext | undefined;
   if (userId) {
     const senderMap = usernameMap?.has(userId) ? usernameMap : await resolveUsernames([userId]);
     agentContext = {
       username: senderMap.get(userId),
-      userId,
+      userId: appUserId ?? undefined,
       interfaceType: "slack",
     };
   }
@@ -177,6 +181,8 @@ async function processSlackMessage(
         .values({
           externalId,
           interfaceType: "slack",
+          platformUserId: userId ?? null,
+          userId: appUserId,
           metadata: { channel, threadTs: replyThreadTs },
         })
         .returning();
@@ -226,7 +232,8 @@ async function processSlackMessage(
           allNewMessages.map((m) => ({
             conversationId,
             role: m.role,
-            userId: m.role === "user" ? (userId ?? null) : null,
+            platformUserId: m.role === "user" ? (userId ?? null) : null,
+            userId: m.role === "user" ? appUserId : null,
             data: m,
           })),
         )
@@ -251,7 +258,7 @@ async function processSlackMessage(
         log.error("no messageId found for pending media ref", { toolCallId, title: ref.title });
         continue;
       }
-      saveMediaRef(conversationId, toolCallId, ref, userId!, messageId);
+      saveMediaRef(conversationId, toolCallId, ref, userId!, messageId, appUserId);
     }
 
     // Reply in thread

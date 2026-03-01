@@ -10,6 +10,7 @@ import { extractMediaRef, saveMediaRef, type MediaRefData } from "../db/media-re
 import { BOT_USER_ID } from "./client.ts";
 import { resolveDiscordUsername } from "./users.ts";
 import { sendDiscordMessage } from "./messages.ts";
+import { resolveAppUserId } from "../db/users.ts";
 
 const log = createLogger("discord");
 
@@ -67,6 +68,7 @@ export async function handleDiscordMessage(message: Message): Promise<void> {
 
   const username = resolveDiscordUsername(message);
   const userId = message.author.id;
+  const appUserId = await resolveAppUserId("discord", userId);
 
   log.info("processing discord message", {
     externalId,
@@ -80,7 +82,7 @@ export async function handleDiscordMessage(message: Message): Promise<void> {
 
   const agentContext: AgentContext = {
     username,
-    userId,
+    userId: appUserId ?? undefined,
     interfaceType: "discord",
   };
 
@@ -153,6 +155,8 @@ export async function handleDiscordMessage(message: Message): Promise<void> {
         .values({
           externalId,
           interfaceType: "discord",
+          platformUserId: userId,
+          userId: appUserId,
           metadata,
         })
         .returning();
@@ -198,7 +202,8 @@ export async function handleDiscordMessage(message: Message): Promise<void> {
           allNewMessages.map((m) => ({
             conversationId,
             role: m.role,
-            userId: m.role === "user" ? userId : null,
+            platformUserId: m.role === "user" ? userId : null,
+            userId: m.role === "user" ? appUserId : null,
             data: m,
           })),
         )
@@ -223,7 +228,7 @@ export async function handleDiscordMessage(message: Message): Promise<void> {
         log.error("no messageId found for pending media ref", { toolCallId, title: ref.title });
         continue;
       }
-      saveMediaRef(conversationId, toolCallId, ref, userId, messageId);
+      saveMediaRef(conversationId, toolCallId, ref, userId, messageId, appUserId);
     }
 
     // Reply (split into multiple messages if needed)

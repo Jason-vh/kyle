@@ -71,6 +71,20 @@
       "when": 1772397768045,
       "tag": "0009_past_killraven",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1772531300000,
+      "tag": "0010_rename_user_id_to_platform_user_id",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1772400095800,
+      "tag": "0011_third_nico_minoru",
+      "breakpoints": true
     }
   ]
 }

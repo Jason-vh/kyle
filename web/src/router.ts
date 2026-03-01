@@ -10,6 +10,11 @@ export const router = createRouter({
       component: () => import("./views/LoginView.vue"),
     },
     {
+      path: "/invite/:code",
+      name: "invite",
+      component: () => import("./views/InviteView.vue"),
+    },
+    {
       path: "/",
       redirect: "/threads",
     },

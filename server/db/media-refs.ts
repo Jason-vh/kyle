@@ -147,7 +147,7 @@ export interface MediaRefRow {
   mediaType: string;
   title: string;
   ids: MediaRefIds;
-  userId: string | null;
+  platformUserId: string | null;
   createdAt: Date;
 }
 
@@ -167,7 +167,7 @@ export async function getMediaRefsForConversation(conversationId: string): Promi
     mediaType: r.mediaType,
     title: r.title,
     ids: r.ids as MediaRefIds,
-    userId: r.userId,
+    platformUserId: r.platformUserId,
     createdAt: r.createdAt,
   }));
 }
@@ -179,15 +179,17 @@ export async function saveMediaRef(
   conversationId: string,
   toolCallId: string,
   ref: MediaRefData,
-  userId: string,
+  platformUserId: string,
   messageId: string,
+  appUserId?: string | null,
 ): Promise<void> {
   try {
     await db.insert(mediaRefs).values({
       conversationId,
       toolCallId,
       messageId,
-      userId,
+      platformUserId,
+      userId: appUserId ?? null,
       action: ref.action,
       mediaType: ref.mediaType,
       title: ref.title,

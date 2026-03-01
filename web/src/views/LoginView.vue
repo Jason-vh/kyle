@@ -17,26 +17,13 @@
         >
           {{ error }}
         </div>
-        <form @submit.prevent="onSubmit">
-          <label for="token" class="mb-2 block text-sm font-medium text-text-secondary">
-            Token
-          </label>
-          <input
-            id="token"
-            v-model="token"
-            type="password"
-            autofocus
-            required
-            class="w-full rounded-lg border border-border-primary bg-bg-input px-3 py-2 text-text-primary focus:border-accent-purple focus:outline-none focus:ring-2 focus:ring-accent-purple/20"
-          />
-          <button
-            type="submit"
-            :disabled="loading"
-            class="mt-4 w-full rounded-lg bg-accent-purple px-4 py-2.5 text-sm font-semibold text-text-inverse transition-colors hover:bg-accent-purple/90 disabled:opacity-50"
-          >
-            {{ loading ? "Signing in\u2026" : "Sign in" }}
-          </button>
-        </form>
+        <button
+          :disabled="loading"
+          class="w-full rounded-lg bg-accent-purple px-4 py-2.5 text-sm font-semibold text-text-inverse transition-colors hover:bg-accent-purple/90 disabled:opacity-50"
+          @click="onPasskeyLogin"
+        >
+          {{ loading ? "Authenticating\u2026" : "Sign in with passkey" }}
+        </button>
       </div>
     </div>
   </div>
@@ -45,25 +32,22 @@
 <script setup lang="ts">
 import { ref } from "vue";
 import { useRouter } from "vue-router";
-import { login } from "../api/auth";
+import { resetAuthCache } from "../api/auth";
+import { passkeyLogin } from "../api/passkey";
 
 const router = useRouter();
-const token = ref("");
 const error = ref("");
 const loading = ref(false);
 
-async function onSubmit() {
+async function onPasskeyLogin() {
   error.value = "";
   loading.value = true;
   try {
-    const success = await login(token.value);
-    if (success) {
-      await router.push("/threads");
-    } else {
-      error.value = "Invalid token";
-    }
-  } catch {
-    error.value = "Login failed";
+    resetAuthCache();
+    await passkeyLogin();
+    await router.push("/threads");
+  } catch (e) {
+    error.value = e instanceof Error ? e.message : "Login failed";
   } finally {
     loading.value = false;
   }

@@ -1,7 +1,8 @@
 import { eq, asc, desc, sql, count, ne, inArray } from "drizzle-orm";
 import { db } from "../../db/index.ts";
 import { conversations, messages } from "../../db/schema.ts";
-import { signThreadSig, verifyThreadSig, parseCookies, verifyToken } from "../threads-auth.ts";
+import { signThreadSig, verifyThreadSig } from "../threads-auth.ts";
+import { requireAuth } from "../../auth/middleware.ts";
 import { resolveUsernames } from "../../slack/users.ts";
 import { resolveDiscordUsernames } from "../../discord/users.ts";
 import { getWebhookNotifications } from "../../db/webhook-notifications.ts";
@@ -141,22 +142,12 @@ function stripMentions(text: string): string {
 // Auth helper — returns 401 JSON instead of HTML redirect
 // ---------------------------------------------------------------------------
 
-async function checkApiAuth(req: Request): Promise<Response | null> {
-  const token = process.env.THREAD_VIEWER_TOKEN;
-  if (!token) {
-    return Response.json({ error: "Thread viewer not configured" }, { status: 503 });
-  }
-
-  const cookieHeader = req.headers.get("cookie");
-  if (cookieHeader) {
-    const cookies = parseCookies(cookieHeader);
-    const value = cookies["kyle_thread_auth"];
-    if (value && (await verifyToken(value, token))) {
-      return null; // authorized
-    }
-  }
-
-  return Response.json({ error: "Unauthorized" }, { status: 401 });
+async function checkApiAuth(
+  req: Request,
+): Promise<{ error: Response } | { refreshHeaders?: Record<string, string> }> {
+  const result = await requireAuth(req);
+  if ("error" in result) return { error: result.error };
+  return { refreshHeaders: result.refreshHeaders };
 }
 
 // ---------------------------------------------------------------------------
@@ -166,8 +157,8 @@ async function checkApiAuth(req: Request): Promise<Response | null> {
 export async function handleApiThreadList(req: Request): Promise<Response> {
   const url = new URL(req.url);
 
-  const authResponse = await checkApiAuth(req);
-  if (authResponse) return authResponse;
+  const authResult = await checkApiAuth(req);
+  if ("error" in authResult) return authResult.error;
 
   const msgCounts = db
     .select({
@@ -273,8 +264,8 @@ export async function handleApiThreadDetail(req: Request, id: string): Promise<R
       return Response.json({ error: "Invalid or expired link" }, { status: 403 });
     }
   } else {
-    const authResponse = await checkApiAuth(req);
-    if (authResponse) return authResponse;
+    const authResult = await checkApiAuth(req);
+    if ("error" in authResult) return authResult.error;
   }
 
   const conv = await db.query.conversations.findFirst({
@@ -286,7 +277,11 @@ export async function handleApiThreadDetail(req: Request, id: string): Promise<R
   }
 
   const rows = await db
-    .select({ data: messages.data, createdAt: messages.createdAt, userId: messages.userId })
+    .select({
+      data: messages.data,
+      createdAt: messages.createdAt,
+      platformUserId: messages.platformUserId,
+    })
     .from(messages)
     .where(eq(messages.conversationId, conv.id))
     .orderBy(asc(messages.sequence));
@@ -294,7 +289,7 @@ export async function handleApiThreadDetail(req: Request, id: string): Promise<R
   const msgs = rows.map((r) => ({
     msg: r.data as UserMessage | AssistantMessage | ToolResultMessage,
     createdAt: r.createdAt,
-    userId: r.userId,
+    platformUserId: r.platformUserId,
   }));
 
   const [webhookNotifications, mediaRefRows] = await Promise.all([
@@ -302,23 +297,23 @@ export async function handleApiThreadDetail(req: Request, id: string): Promise<R
     getMediaRefsForConversation(conv.id),
   ]);
 
-  // Resolve usernames
-  const userIds = [
+  // Resolve usernames from platform user IDs
+  const platformUserIds = [
     ...new Set([
-      ...rows.filter((r) => r.userId).map((r) => r.userId!),
-      ...mediaRefRows.filter((r) => r.userId).map((r) => r.userId!),
+      ...rows.filter((r) => r.platformUserId).map((r) => r.platformUserId!),
+      ...mediaRefRows.filter((r) => r.platformUserId).map((r) => r.platformUserId!),
     ]),
   ];
   let usernameMap = new Map<string, string>();
-  if (userIds.length > 0) {
+  if (platformUserIds.length > 0) {
     try {
       usernameMap =
         conv.interfaceType === "discord"
-          ? await resolveDiscordUsernames(userIds)
-          : await resolveUsernames(userIds);
+          ? await resolveDiscordUsernames(platformUserIds)
+          : await resolveUsernames(platformUserIds);
     } catch (err) {
       log.warn("failed to resolve usernames", {
-        userIds,
+        platformUserIds,
         error: err instanceof Error ? err.message : String(err),
       });
     }
@@ -368,7 +363,7 @@ export async function handleApiThreadDetail(req: Request, id: string): Promise<R
       mediaType: ref.mediaType,
       title: ref.title,
       href,
-      username: ref.userId ? (usernameMap.get(ref.userId) ?? null) : null,
+      username: ref.platformUserId ? (usernameMap.get(ref.platformUserId) ?? null) : null,
     };
   });
 
@@ -408,13 +403,13 @@ export async function handleApiThreadDetail(req: Request, id: string): Promise<R
 
   for (const item of allItems) {
     if (item.kind === "message") {
-      const { msg, createdAt, userId } = msgs[item.idx]!;
+      const { msg, createdAt, platformUserId } = msgs[item.idx]!;
 
       // Skip toolResult — they're folded into tool calls
       if (msg.role === "toolResult") continue;
 
       const itemId = `msg-${msgCounter++}`;
-      const username = (userId && usernameMap.get(userId)) ?? "You";
+      const username = (platformUserId && usernameMap.get(platformUserId)) ?? "You";
 
       if (msg.role === "user") {
         const text = extractTextContent(msg);

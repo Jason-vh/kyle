@@ -1,6 +1,6 @@
 export interface AgentContext {
   username?: string;
-  userId?: string;
+  userId?: string; // App user UUID (from users table)
   conversationId?: string;
   interfaceType?: "slack" | "discord" | "http" | "cli";
 }
@@ -130,11 +130,10 @@ export function getSystemPrompt(context?: AgentContext): string {
   prompt = prompt.replace("{FORMATTING_RULES}", getFormattingRules(context?.interfaceType));
 
   if (context?.username) {
-    const platformLabel = context.interfaceType === "discord" ? "Discord user ID" : "Slack user ID";
     prompt = prompt.replace(
       "{USER_CONTEXT}",
       `- You are chatting with ${context.username}` +
-        (context.userId ? ` (${platformLabel}: ${context.userId})` : ""),
+        (context.userId ? ` (user ID: ${context.userId})` : ""),
     );
   } else {
     prompt = prompt.replace("{USER_CONTEXT}", "");

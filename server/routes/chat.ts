@@ -160,7 +160,7 @@ export async function handleChat(req: Request): Promise<Response> {
         allNewMessages.map((m) => ({
           conversationId: conversationId!,
           role: m.role,
-          userId: m.role === "user" ? (body.userId ?? null) : null,
+          platformUserId: m.role === "user" ? (body.userId ?? null) : null,
           data: m,
         })),
       )
