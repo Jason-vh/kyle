@@ -16,6 +16,7 @@
         <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
         <path d="M13.73 21a2 2 0 0 1-3.46 0" />
       </svg>
+      <span class="text-text-muted">{{ sourceName }}</span>
       <span class="font-medium text-text-secondary">
         {{ notification.payload.title }}
       </span>
@@ -29,15 +30,15 @@
         {{ formattedTime }}
       </time>
     </div>
-    <div v-if="episodes.length > 0" class="mt-1 flex flex-wrap gap-x-1.5 gap-y-1 pl-5.5">
-      <span
+    <div v-if="episodes.length > 0" class="mt-0.5 space-y-px pl-5.5">
+      <div
         v-for="(ep, i) in episodes"
         :key="i"
-        class="inline-flex items-baseline gap-1.5 text-xs text-text-muted"
+        class="flex items-baseline gap-2 text-xs text-text-muted"
       >
-        <code class="font-mono text-text-secondary">{{ ep.code }}</code>
-        <span>{{ ep.title }}</span>
-      </span>
+        <code class="shrink-0 font-mono text-text-secondary">{{ ep.code }}</code>
+        <span class="truncate">{{ ep.title }}</span>
+      </div>
     </div>
   </div>
 </template>
@@ -48,6 +49,8 @@ import { relativeTime } from "../composables/useRelativeTime";
 import type { ThreadWebhook } from "@shared/types";
 
 const props = defineProps<{ notification: ThreadWebhook }>();
+
+const sourceName = computed(() => (props.notification.source === "sonarr" ? "Sonarr" : "Radarr"));
 
 const formattedTime = computed(() => relativeTime(props.notification.receivedAt));
 
