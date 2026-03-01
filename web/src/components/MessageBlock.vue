@@ -77,13 +77,8 @@
         </div>
       </div>
     </summary>
-    <div class="mt-2 ml-[calc(32px+0.75rem)] space-y-3 border-t border-border-subtle pt-2">
-      <ToolCallBlock
-        v-for="tc in msg.toolCalls"
-        :key="tc.id"
-        :tc="tc"
-        :auto-open="tc.result?.isError"
-      />
+    <div class="mt-2 ml-[calc(32px+0.75rem)] space-y-4 border-t border-border-subtle pt-2">
+      <ToolCallBlock v-for="tc in msg.toolCalls" :key="tc.id" :tc="tc" />
     </div>
   </details>
 
