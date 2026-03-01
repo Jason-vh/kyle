@@ -23,11 +23,31 @@ function cleanDiscordMessage(text: string): string {
 }
 
 /**
- * Truncate a response to fit within Discord's 2000-character limit.
+ * Split a response into chunks that fit within Discord's 2000-character limit.
+ * Splits on newlines to avoid breaking mid-line.
  */
-function truncateResponse(text: string): string {
-  if (text.length <= DISCORD_MAX_LENGTH) return text;
-  return text.slice(0, DISCORD_MAX_LENGTH - 3) + "...";
+function splitResponse(text: string): string[] {
+  if (text.length <= DISCORD_MAX_LENGTH) return [text];
+
+  const chunks: string[] = [];
+  let remaining = text;
+
+  while (remaining.length > 0) {
+    if (remaining.length <= DISCORD_MAX_LENGTH) {
+      chunks.push(remaining);
+      break;
+    }
+
+    let splitAt = remaining.lastIndexOf("\n", DISCORD_MAX_LENGTH);
+    if (splitAt <= 0) {
+      splitAt = DISCORD_MAX_LENGTH;
+    }
+
+    chunks.push(remaining.slice(0, splitAt));
+    remaining = remaining.slice(splitAt).replace(/^\n/, "");
+  }
+
+  return chunks;
 }
 
 /**
@@ -222,9 +242,10 @@ export async function handleDiscordMessage(message: Message): Promise<void> {
       saveMediaRef(conversationId, toolCallId, ref, userId, messageId);
     }
 
-    // Reply
-    const responseText = truncateResponse(result.responseText);
-    await replyChannel.send({ content: responseText, flags: MessageFlags.SuppressEmbeds });
+    // Reply (split into multiple messages if needed)
+    for (const chunk of splitResponse(result.responseText)) {
+      await replyChannel.send({ content: chunk, flags: MessageFlags.SuppressEmbeds });
+    }
     log.info("discord reply sent", { externalId, conversationId });
   } catch (error) {
     const isOverloaded = error instanceof ApiOverloadedError;

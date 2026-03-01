@@ -155,11 +155,10 @@ async function notifyRequester(
     }
     const channel = await discord.channels.fetch(requester.channelId);
     if (channel && "send" in channel) {
-      let responseText = result.responseText;
-      if (responseText.length > 2000) {
-        responseText = responseText.slice(0, 1997) + "...";
-      }
-      await channel.send({ content: responseText, flags: MessageFlags.SuppressEmbeds });
+      await channel.send({
+        content: result.responseText.slice(0, 2000),
+        flags: MessageFlags.SuppressEmbeds,
+      });
     }
     log.info("notified requester via discord", {
       channelId: requester.channelId,
