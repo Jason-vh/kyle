@@ -54,27 +54,28 @@
   >
     <summary class="group/msg flex gap-3 list-none">
       <div class="min-w-0 flex-1">
-        <div class="mb-1 flex items-center gap-2">
-          <time :datetime="msg.createdAt" class="ml-auto whitespace-nowrap text-xs text-text-muted">
-            {{ time }}
-          </time>
-          <AnchorLink :anchor="msg.id" class="opacity-0 group-hover/msg:opacity-100" />
-        </div>
         <div v-if="msg.textContent" class="mb-2 text-sm italic text-text-muted">
           {{ msg.textContent }}
         </div>
         <div
-          v-for="tc in msg.toolCalls"
+          v-for="(tc, i) in msg.toolCalls"
           :key="tc.id"
-          :id="tc.id"
-          class="group/tc flex items-center gap-2 py-0.5 text-sm text-text-muted scroll-mt-4"
+          class="flex items-center gap-2 py-0.5 text-sm text-text-muted"
         >
           <span
             class="inline-block size-2 shrink-0 rounded-full"
             :class="tc.result?.isError ? 'bg-accent-red' : 'bg-accent-green'"
           ></span>
           <span class="min-w-0 truncate">{{ tc.summaryText }}</span>
-          <AnchorLink :anchor="tc.id" class="shrink-0 opacity-0 group-hover/tc:opacity-100" />
+          <template v-if="i === 0">
+            <time
+              :datetime="msg.createdAt"
+              class="ml-auto shrink-0 whitespace-nowrap text-xs text-text-muted"
+            >
+              {{ time }}
+            </time>
+            <AnchorLink :anchor="msg.id" class="shrink-0 opacity-0 group-hover/msg:opacity-100" />
+          </template>
         </div>
       </div>
     </summary>
@@ -102,15 +103,13 @@
       <div
         v-for="tc in msg.toolCalls"
         :key="tc.id"
-        :id="tc.id"
-        class="group/tc flex items-center gap-2 py-0.5 text-sm text-text-muted scroll-mt-4"
+        class="flex items-center gap-2 py-0.5 text-sm text-text-muted"
       >
         <span
           class="inline-block size-1.5 shrink-0 rounded-full"
           :class="tc.result?.isError ? 'bg-accent-red' : 'bg-accent-green'"
         ></span>
-        <span class="min-w-0 truncate">{{ tc.summaryText }}</span>
-        <AnchorLink :anchor="tc.id" class="shrink-0 opacity-0 group-hover/tc:opacity-100" />
+        <span class="truncate">{{ tc.summaryText }}</span>
       </div>
     </div>
   </div>
