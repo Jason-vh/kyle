@@ -1,6 +1,6 @@
 import { eq, asc, desc, sql, count, ne, inArray } from "drizzle-orm";
 import { db } from "../../db/index.ts";
-import { conversations, messages } from "../../db/schema.ts";
+import { conversations, messages, users } from "../../db/schema.ts";
 import { signThreadSig, verifyThreadSig } from "../threads-auth.ts";
 import { requireAuth } from "../../auth/middleware.ts";
 import { resolveUsernames } from "../../slack/users.ts";
@@ -281,6 +281,7 @@ export async function handleApiThreadDetail(req: Request, id: string): Promise<R
       data: messages.data,
       createdAt: messages.createdAt,
       platformUserId: messages.platformUserId,
+      userId: messages.userId,
     })
     .from(messages)
     .where(eq(messages.conversationId, conv.id))
@@ -290,6 +291,7 @@ export async function handleApiThreadDetail(req: Request, id: string): Promise<R
     msg: r.data as UserMessage | AssistantMessage | ToolResultMessage,
     createdAt: r.createdAt,
     platformUserId: r.platformUserId,
+    userId: r.userId,
   }));
 
   const [webhookNotifications, mediaRefRows] = await Promise.all([
@@ -297,23 +299,41 @@ export async function handleApiThreadDetail(req: Request, id: string): Promise<R
     getMediaRefsForConversation(conv.id),
   ]);
 
-  // Resolve usernames from platform user IDs
-  const platformUserIds = [
+  // Resolve usernames — prefer app user display names, fall back to platform API
+  const appUserIds = [
     ...new Set([
-      ...rows.filter((r) => r.platformUserId).map((r) => r.platformUserId!),
-      ...mediaRefRows.filter((r) => r.platformUserId).map((r) => r.platformUserId!),
+      ...rows.filter((r) => r.userId).map((r) => r.userId!),
+      ...mediaRefRows.filter((r) => r.userId).map((r) => r.userId!),
     ]),
   ];
-  let usernameMap = new Map<string, string>();
-  if (platformUserIds.length > 0) {
+  const appUserNameMap = new Map<string, string>();
+  if (appUserIds.length > 0) {
+    const appUsers = await db
+      .select({ id: users.id, displayName: users.displayName })
+      .from(users)
+      .where(inArray(users.id, appUserIds));
+    for (const u of appUsers) {
+      appUserNameMap.set(u.id, u.displayName);
+    }
+  }
+
+  // For messages/media refs without an app user, fall back to platform API
+  const unresolvedPlatformIds = [
+    ...new Set([
+      ...rows.filter((r) => !r.userId && r.platformUserId).map((r) => r.platformUserId!),
+      ...mediaRefRows.filter((r) => !r.userId && r.platformUserId).map((r) => r.platformUserId!),
+    ]),
+  ];
+  let platformUsernameMap = new Map<string, string>();
+  if (unresolvedPlatformIds.length > 0) {
     try {
-      usernameMap =
+      platformUsernameMap =
         conv.interfaceType === "discord"
-          ? await resolveDiscordUsernames(platformUserIds)
-          : await resolveUsernames(platformUserIds);
+          ? await resolveDiscordUsernames(unresolvedPlatformIds)
+          : await resolveUsernames(unresolvedPlatformIds);
     } catch (err) {
       log.warn("failed to resolve usernames", {
-        platformUserIds,
+        platformUserIds: unresolvedPlatformIds,
         error: err instanceof Error ? err.message : String(err),
       });
     }
@@ -363,7 +383,10 @@ export async function handleApiThreadDetail(req: Request, id: string): Promise<R
       mediaType: ref.mediaType,
       title: ref.title,
       href,
-      username: ref.platformUserId ? (usernameMap.get(ref.platformUserId) ?? null) : null,
+      username:
+        (ref.userId && appUserNameMap.get(ref.userId)) ??
+        (ref.platformUserId && platformUsernameMap.get(ref.platformUserId)) ??
+        null,
     };
   });
 
@@ -403,13 +426,16 @@ export async function handleApiThreadDetail(req: Request, id: string): Promise<R
 
   for (const item of allItems) {
     if (item.kind === "message") {
-      const { msg, createdAt, platformUserId } = msgs[item.idx]!;
+      const { msg, createdAt, platformUserId, userId: msgUserId } = msgs[item.idx]!;
 
       // Skip toolResult — they're folded into tool calls
       if (msg.role === "toolResult") continue;
 
       const itemId = `msg-${msgCounter++}`;
-      const username = (platformUserId && usernameMap.get(platformUserId)) ?? "You";
+      const username =
+        (msgUserId && appUserNameMap.get(msgUserId)) ??
+        (platformUserId && platformUsernameMap.get(platformUserId)) ??
+        "You";
 
       if (msg.role === "user") {
         const text = extractTextContent(msg);

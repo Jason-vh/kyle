@@ -148,6 +148,7 @@ export interface MediaRefRow {
   title: string;
   ids: MediaRefIds;
   platformUserId: string | null;
+  userId: string | null;
   createdAt: Date;
 }
 
@@ -168,6 +169,7 @@ export async function getMediaRefsForConversation(conversationId: string): Promi
     title: r.title,
     ids: r.ids as MediaRefIds,
     platformUserId: r.platformUserId,
+    userId: r.userId,
     createdAt: r.createdAt,
   }));
 }
