@@ -57,7 +57,7 @@
     v-else-if="msg.stopReason === 'toolUse'"
     :id="msg.id"
     :open="msg.hasErrors"
-    class="message-block fade-in relative mb-4 cursor-pointer bg-bg-elevated/50 p-3 opacity-70 scroll-mt-4"
+    class="message-block fade-in relative mb-4 cursor-pointer p-3 opacity-60 scroll-mt-4"
   >
     <summary class="flex gap-3 list-none">
       <div class="min-w-0 flex-1">
@@ -74,8 +74,8 @@
             {{ time }}
           </time>
         </div>
-        <div v-if="msg.textContent" class="mb-2 text-sm italic text-text-secondary">
-          <MarkdownContent :text="msg.textContent" />
+        <div v-if="msg.textContent" class="font-ui mb-2 text-[0.8125rem] italic text-text-muted">
+          {{ msg.textContent }}
         </div>
         <div
           v-for="tc in msg.toolCalls"
@@ -83,7 +83,7 @@
           class="font-ui flex items-center gap-2 py-0.5 text-[0.8125rem] text-text-muted"
         >
           <span
-            class="inline-block size-1.5 shrink-0"
+            class="inline-block size-2 shrink-0 rounded-full"
             :class="tc.result?.isError ? 'bg-accent-red' : 'bg-accent-green'"
           ></span>
           <span class="truncate">{{ tc.summaryText }}</span>
