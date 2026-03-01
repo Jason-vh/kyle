@@ -8,6 +8,7 @@ export const toPartialMovie = (movie: RadarrMovie) => {
     status: movie.status,
     hasFile: movie.hasFile,
     monitored: movie.monitored,
+    sizeOnDisk: movie.sizeOnDisk ?? 0,
     tmdbId: movie.tmdbId,
     imdbId: movie.imdbId,
     quality: movie.movieFile?.quality?.quality?.name || "no file",
