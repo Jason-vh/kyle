@@ -7,6 +7,8 @@ AI-powered Plex media library assistant. Uses pi-agent-core with Anthropic Claud
 ```
 index.ts                    → entry point (Bun.serve)
 cli.ts                      → interactive CLI client
+create-admin.ts             → CLI: bootstrap first admin user + invite link
+invite.ts                   → CLI: create invite link for existing admin
 test-slack.ts               → Send test messages to /slack/events (sync response by default)
 deploy.sh                   → Deploy to Railway with deploy ID verification
 tsconfig.server.json        → Server TypeScript config (scoped to server/ + shared/)
@@ -17,22 +19,31 @@ shared/
 server/
   server.ts                 → HTTP routing (/api/*, /slack, /webhooks, SPA serving)
   logger.ts                 → Structured JSON logger
+  auth/
+    jwt.ts                  → JWT sign/verify (jose), httpOnly cookie, sliding window refresh
+    middleware.ts            → requireAuth, requireAdmin, optionalAuth helpers
+    webauthn.ts             → WebAuthn registration/authentication (simplewebauthn)
   agent/
     index.ts                → Agent factory + runAgent(), tool registration
-    system-prompt.ts        → Kyle's system prompt
+    system-prompt.ts        → Kyle's system prompt + AgentContext
+    requests-tool.ts        → get_requests_for_user tool (queries by app user UUID)
   db/
     index.ts                → Drizzle + postgres connection
-    schema.ts               → conversations + messages + media_refs tables
+    schema.ts               → All tables: users, platform_identities, user_credentials, user_invites, conversations, messages, media_refs
+    users.ts                → Platform identity resolution (cached), backfill, user CRUD
     media-refs.ts           → Media ref extraction from tool events + persistence
     migrate.ts              → Migration runner
   routes/
     chat.ts                 → POST /chat handler
     health.ts               → GET /health handler (includes deployId for deploy verification)
     slack-events.ts         → POST /slack/events handler (supports X-Sync-Response header)
-    threads-auth.ts         → Cookie-based auth (HMAC-SHA256 signed cookies, token signing)
+    threads-auth.ts         → HMAC-SHA256 thread sharing signatures (?sig= URLs)
     api/
       threads.ts            → GET /api/threads, GET /api/threads/:uuid
-      auth.ts               → POST /api/auth/login, GET /api/auth/status
+      auth.ts               → GET /api/auth/status, POST /api/auth/logout
+      auth-passkey.ts       → Passkey login/register endpoints
+      invites.ts            → Invite validation, redemption, creation (admin)
+      users.ts              → User listing, platform link management (admin)
   slack/
     client.ts               → WebClient singleton (lazy-init from SLACK_BOT_TOKEN)
     verify.ts               → HMAC-SHA256 signature verification
@@ -75,7 +86,7 @@ server/
     handler.ts              → POST /webhooks/sonarr + /webhooks/radarr handlers
 
 web/                        → Vue 3 + Vite + Tailwind CSS 4 SPA
-  package.json              → Vue, vue-router, vite, tailwindcss
+  package.json              → Vue, vue-router, vite, tailwindcss, @simplewebauthn/browser
   tsconfig.json             → Vue TS config with @shared alias
   vite.config.ts            → Proxy /api → localhost:3000
   index.html                → SPA shell
@@ -83,11 +94,13 @@ web/                        → Vue 3 + Vite + Tailwind CSS 4 SPA
     main.ts                 → App bootstrap
     main.css                → Tailwind v4 @import + @theme palette
     App.vue                 → <RouterView>
-    router.ts               → /threads, /threads/:id, /login + auth guard
+    router.ts               → /threads, /threads/:id, /login, /invite/:code + auth guard
     api/
       client.ts             → Fetch wrapper, 401 → redirect to /login
       threads.ts            → getThreads(), getThread(id, sig?)
-      auth.ts               → login(), checkAuth()
+      auth.ts               → getAuthStatus(), getCachedUser(), logout()
+      passkey.ts            → passkeyLogin(), passkeyRegisterExisting()
+      invites.ts            → validateInvite(), redeemInvite()
     composables/
       useRelativeTime.ts    → Reactive relative timestamps
     components/
@@ -102,7 +115,8 @@ web/                        → Vue 3 + Vite + Tailwind CSS 4 SPA
     views/
       ThreadListView.vue    → Search + thread card list
       ThreadDetailView.vue  → Messages + webhooks + media refs
-      LoginView.vue         → Token login form
+      LoginView.vue         → Passkey login
+      InviteView.vue        → Invite redemption + passkey registration
     utils/
       markdown.ts           → Port of renderMarkdown (escape-first security model)
       toolSummary.ts        → Fallback tool summary (server provides summaryText)
@@ -116,13 +130,16 @@ drizzle.config.ts           → Drizzle Kit config
 - **Stateless agent**: Agent is created per-request. Previous messages are loaded from DB and restored via `agent.replaceMessages()`.
 - **JSONB messages**: Full `AgentMessage` objects stored as JSONB in the `messages` table. The `role` and `sequence` columns exist for querying and ordering.
 - **Interface-agnostic conversations**: The `conversations` table has an `interfaceType` field (http/slack/discord/cli) so multiple frontends can share the same backend. Slack conversations are keyed by `externalId` = `"{channel}:{thread_ts}"`. Discord conversations use `"dm:{channelId}"` or `"thread:{threadId}"`.
+- **User identity**: First-class `users` table with UUIDs, linked to platform identities (Slack/Discord) via `platform_identities`. Each conversation, message, and media ref has both a `platformUserId` (text, the raw Slack/Discord ID) and a `userId` (uuid FK → users). Slack/Discord handlers resolve the app user via `resolveAppUserId()` (cached in-memory Map). The thread viewer prefers app user `displayName` over platform API names.
+- **Agent decoupling**: The agent only sees app user UUIDs and display names — never platform-specific IDs. `AgentContext.userId` is the app user UUID. The `get_requests_for_user` tool queries by `user_id` FK, not platform ID.
+- **Auth: Passkeys + JWT**: Users authenticate via WebAuthn passkeys. JWT sessions (`jose`, HS256) stored in httpOnly `kyle_auth` cookie with 30-day expiry and sliding window refresh at 15 days. Admin-generated invite links for onboarding new users. Thread sharing uses separate `?sig=` HMAC signatures (unchanged, uses `THREAD_VIEWER_TOKEN`).
 - **Slack immediate ack**: The `/slack/events` handler returns 200 immediately and processes the message async (fire-and-forget) to stay within Slack's 3-second timeout. Responses are always posted as thread replies.
 - **Slack sync mode**: Sending `X-Sync-Response: true` header makes `/slack/events` wait for the agent and return the response in the HTTP body (used by `test-slack.ts` for dev workflow).
 - **Slack dedup**: In-memory `Set<string>` on `event_id` (capped at 10k entries) + `X-Slack-Retry-Num` header skipping prevents duplicate processing.
 - **Structured logging**: `createLogger(module)` from `server/logger.ts` emits JSON lines with `level`, `module`, `msg`, `timestamp` + contextual fields. Use throughout — no raw `console.log`.
 - **Token optimization**: Each service has `utils.ts` with `toPartial*` helpers that strip large API responses down to essential fields before sending to the LLM.
 - **Adding new tools**: Create `api.ts` and `tools.ts` under `server/<service>/`. Register tools in `server/agent/index.ts` (add to imports + `allTools` array). Also add the service to the media architecture list in `server/agent/system-prompt.ts` — the agent won't use tools it doesn't know about. Add a human-readable summary case in the `toolSummary` switch in both `server/routes/api/threads.ts` and `web/src/utils/toolSummary.ts` — without this, the web UI falls back to the raw tool name.
-- **SPA serving**: In production, `server/server.ts` serves `web/dist/` static files. Hashed `/assets/*` get immutable caching; `index.html` gets `no-cache`. SPA routes (`/`, `/threads/*`, `/login`) fall through to `index.html`.
+- **SPA serving**: In production, `server/server.ts` serves `web/dist/` static files. Hashed `/assets/*` get immutable caching; `index.html` gets `no-cache`. SPA routes (`/`, `/threads/*`, `/login`, `/invite/*`) fall through to `index.html`.
 - **Shared types**: `shared/types.ts` defines API response types used by both the server API routes and the Vue frontend. Imported as `@shared/types` in web code.
 
 ## Development
@@ -186,6 +203,25 @@ BASE_URL=https://kyle.vhtm.eu bun run test-slack.ts "<@U099N4BJT5Y> add inceptio
 3. `bun run db:migrate` to apply locally
 4. Commit both schema.ts and the migration
 
+**Migration ordering**: Drizzle's migrator sorts migrations by the `when` timestamp in `drizzle/meta/_journal.json` and skips any with a timestamp <= the max already applied. When adding manual migrations alongside generated ones, ensure `when` values are strictly increasing. If a manual migration gets a higher timestamp than a later generated one, the generated one will be silently skipped in production.
+
+### User Management
+
+```bash
+# Bootstrap first admin (creates user + prints invite link)
+bun run create-admin.ts "Admin Name"
+
+# Create invite for new user (requires existing admin user ID)
+bun run invite.ts "Display Name"
+```
+
+Admin API endpoints (require JWT with `admin: true`):
+
+- `POST /api/invites` — create invite `{ displayName, isAdmin?, expiresInDays? }`
+- `GET /api/users` — list all users with platform identities
+- `POST /api/users/:id/links` — link platform identity `{ platform, platformUserId, platformUsername? }` + run retroactive backfill
+- `DELETE /api/users/:id/links/:linkId` — unlink platform identity
+
 ## Slack App Configuration
 
 - **App settings**: Managed via manifest at [api.slack.com/apps](https://api.slack.com/apps)
@@ -196,28 +232,31 @@ BASE_URL=https://kyle.vhtm.eu bun run test-slack.ts "<@U099N4BJT5Y> add inceptio
 
 ## Environment Variables
 
-| Variable               | Description                                                         |
-| ---------------------- | ------------------------------------------------------------------- |
-| `DATABASE_URL`         | Postgres connection string (auto-injected by Railway in production) |
-| `PORT`                 | Server port (default: 3000)                                         |
-| `ANTHROPIC_API_KEY`    | Anthropic API key for Claude                                        |
-| `SLACK_BOT_TOKEN`      | Slack bot token (`xoxb-...`)                                        |
-| `SLACK_SIGNING_SECRET` | Slack app signing secret for request verification                   |
-| `SONARR_HOST`          | Sonarr instance URL                                                 |
-| `SONARR_API_KEY`       | Sonarr API key                                                      |
-| `RADARR_HOST`          | Radarr instance URL                                                 |
-| `RADARR_API_KEY`       | Radarr API key                                                      |
-| `TMDB_API_TOKEN`       | TMDB API bearer token                                               |
-| `ULTRA_HOST`           | Ultra seedbox URL (e.g. `https://user.host.usbx.me`)                |
-| `ULTRA_API_TOKEN`      | Ultra API bearer token                                              |
-| `QBITTORRENT_HOST`     | qBittorrent Web UI URL                                              |
-| `QBITTORRENT_USERNAME` | qBittorrent username                                                |
-| `QBITTORRENT_PASSWORD` | qBittorrent password                                                |
-| `BRAVE_API_KEY`        | Brave Search API key for web search                                 |
-| `WEBHOOK_AUTH`         | Basic auth credentials for webhook endpoints (`username:password`)  |
-| `CHAT_API_KEY`         | Bearer token for `/chat` endpoint auth (optional, skipped if unset) |
-| `DISCORD_BOT_TOKEN`    | Discord bot token (optional, from Discord Developer Portal)         |
-| `THREAD_VIEWER_TOKEN`  | Shared secret for thread viewer auth (cookie-based login)           |
+| Variable               | Description                                                                              |
+| ---------------------- | ---------------------------------------------------------------------------------------- |
+| `DATABASE_URL`         | Postgres connection string (auto-injected by Railway in production)                      |
+| `PORT`                 | Server port (default: 3000)                                                              |
+| `ANTHROPIC_API_KEY`    | Anthropic API key for Claude                                                             |
+| `JWT_SECRET`           | High-entropy secret for JWT signing (required, server refuses to start without it)       |
+| `WEBAUTHN_RP_ID`       | WebAuthn relying party ID (default: `localhost` dev / `kyle.vhtm.eu` prod)               |
+| `WEBAUTHN_ORIGIN`      | WebAuthn origin URL (default: `http://localhost:5173` dev / `https://kyle.vhtm.eu` prod) |
+| `SLACK_BOT_TOKEN`      | Slack bot token (`xoxb-...`)                                                             |
+| `SLACK_SIGNING_SECRET` | Slack app signing secret for request verification                                        |
+| `SONARR_HOST`          | Sonarr instance URL                                                                      |
+| `SONARR_API_KEY`       | Sonarr API key                                                                           |
+| `RADARR_HOST`          | Radarr instance URL                                                                      |
+| `RADARR_API_KEY`       | Radarr API key                                                                           |
+| `TMDB_API_TOKEN`       | TMDB API bearer token                                                                    |
+| `ULTRA_HOST`           | Ultra seedbox URL (e.g. `https://user.host.usbx.me`)                                     |
+| `ULTRA_API_TOKEN`      | Ultra API bearer token                                                                   |
+| `QBITTORRENT_HOST`     | qBittorrent Web UI URL                                                                   |
+| `QBITTORRENT_USERNAME` | qBittorrent username                                                                     |
+| `QBITTORRENT_PASSWORD` | qBittorrent password                                                                     |
+| `BRAVE_API_KEY`        | Brave Search API key for web search                                                      |
+| `WEBHOOK_AUTH`         | Basic auth credentials for webhook endpoints (`username:password`)                       |
+| `CHAT_API_KEY`         | Bearer token for `/chat` endpoint auth (optional, skipped if unset)                      |
+| `DISCORD_BOT_TOKEN`    | Discord bot token (optional, from Discord Developer Portal)                              |
+| `THREAD_VIEWER_TOKEN`  | Shared secret for `?sig=` thread share links (HMAC-SHA256)                               |
 
 ## Task Tracking
 
