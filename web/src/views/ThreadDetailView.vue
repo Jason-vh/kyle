@@ -55,6 +55,7 @@
 
 <script setup lang="ts">
 import { ref, computed, provide, onMounted, nextTick } from "vue";
+import { useTitle } from "@vueuse/core";
 import { useRoute } from "vue-router";
 import { getThread } from "../api/threads";
 import { relativeTime } from "../composables/useRelativeTime";
@@ -68,6 +69,8 @@ const route = useRoute();
 const thread = ref<ThreadDetail | null>(null);
 const loading = ref(true);
 const error = ref("");
+
+useTitle(computed(() => (thread.value ? `${thread.value.pageTitle} — Kyle` : "Kyle")));
 const copied = ref(false);
 
 const shareUrl = computed(() => thread.value?.shareUrl ?? null);

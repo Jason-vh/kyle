@@ -54,9 +54,12 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from "vue";
+import { useTitle } from "@vueuse/core";
 import { useRoute, useRouter } from "vue-router";
 import { resetAuthCache } from "../api/auth";
 import { validateInvite, redeemInvite } from "../api/invites";
+
+useTitle("Invite — Kyle");
 
 const route = useRoute();
 const router = useRouter();

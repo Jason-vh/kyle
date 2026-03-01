@@ -32,9 +32,12 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from "vue";
+import { useTitle } from "@vueuse/core";
 import { getThreads } from "../api/threads";
 import type { ThreadListItem } from "@shared/types";
 import ThreadCard from "../components/ThreadCard.vue";
+
+useTitle("Conversations — Kyle");
 
 const threads = ref<ThreadListItem[]>([]);
 const loading = ref(true);

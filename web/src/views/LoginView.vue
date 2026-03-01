@@ -31,9 +31,12 @@
 
 <script setup lang="ts">
 import { ref } from "vue";
+import { useTitle } from "@vueuse/core";
 import { useRouter } from "vue-router";
 import { resetAuthCache } from "../api/auth";
 import { passkeyLogin } from "../api/passkey";
+
+useTitle("Sign in — Kyle");
 
 const router = useRouter();
 const error = ref("");

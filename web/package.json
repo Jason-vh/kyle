@@ -8,6 +8,7 @@
   },
   "dependencies": {
     "@simplewebauthn/browser": "^13.2.2",
+    "@vueuse/core": "^14.2.1",
     "vue": "^3.5.13",
     "vue-router": "^4.5.0"
   },
