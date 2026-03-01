@@ -307,25 +307,34 @@ function renderToolUseMessage(
   createdAt: Date,
 ): string {
   const toolCalls = msg.content.filter((b): b is ToolCall => b.type === "toolCall");
+  const hasErrors = toolCalls.some((tc) => resultMap.get(tc.id)?.isError);
 
-  const parts: string[] = [];
-
-  // Any text content (thinking-out-loud before tool calls)
+  // Summary lines (visible in collapsed state)
+  const thinkingParts: string[] = [];
   for (const block of msg.content) {
     if (block.type === "text" && block.text.trim()) {
-      parts.push(`<div class="tool-thinking">${renderMarkdown(block.text)}</div>`);
+      thinkingParts.push(`<div class="tool-thinking">${renderMarkdown(block.text)}</div>`);
     }
   }
 
-  // Individual tool call summaries
+  const summaryLines: string[] = [];
   for (const tc of toolCalls) {
-    const result = resultMap.get(tc.id);
-    const isError = result?.isError ?? false;
+    const isError = resultMap.get(tc.id)?.isError ?? false;
     const summary = toolSummary(tc);
     const statusIcon = isError
       ? '<span class="tool-status tool-status-error" title="Error"></span>'
       : '<span class="tool-status tool-status-ok" title="Success"></span>';
+    summaryLines.push(`<div class="tool-summary-row">
+      ${statusIcon}
+      <span class="tool-summary-text">${escapeHtml(summary.text)}</span>
+    </div>`);
+  }
 
+  // Detail sections (shown when expanded)
+  const detailParts: string[] = [];
+  for (const tc of toolCalls) {
+    const result = resultMap.get(tc.id);
+    const isError = result?.isError ?? false;
     const args = JSON.stringify(tc.arguments, null, 2);
     let resultHtml = "";
     if (result) {
@@ -339,31 +348,32 @@ function renderToolUseMessage(
           <pre class="${isError ? "tool-error" : ""}">${escapeHtml(formatted)}</pre>
         </div>`;
     }
-
-    parts.push(`<details class="tool-block"${isError ? " open" : ""}>
-      <summary class="tool-summary-row">
-        ${statusIcon}
-        <span class="tool-summary-text">${escapeHtml(summary.text)}</span>
-      </summary>
+    detailParts.push(`<div class="tool-detail-group">
       <div class="tool-detail-section">
         <div class="tool-detail-label">${escapeHtml(tc.name)} — Input</div>
         <pre>${escapeHtml(args)}</pre>
       </div>
       ${resultHtml}
-    </details>`);
+    </div>`);
   }
 
-  return `<div class="message tool-use" id="${id}">
-  ${KYLE_AVATAR}
-  <div class="message-body">
-    <div class="message-header">
-      <span class="username">Kyle</span>
-      ${timeTag(createdAt)}
+  return `<details class="message tool-use" id="${id}"${hasErrors ? " open" : ""}>
+  <summary class="tool-use-summary">
+    ${KYLE_AVATAR}
+    <div class="message-body">
+      <div class="message-header">
+        <span class="username">Kyle</span>
+        ${timeTag(createdAt)}
+      </div>
+      ${thinkingParts.join("\n")}
+      ${summaryLines.join("\n")}
     </div>
-    ${parts.join("\n")}
+    ${permalink(id)}
+  </summary>
+  <div class="tool-details-content">
+    ${detailParts.join("\n")}
   </div>
-  ${permalink(id)}
-</div>`;
+</details>`;
 }
 
 function renderErrorMessage(msg: AssistantMessage, id: string, createdAt: Date): string {
@@ -698,8 +708,13 @@ export function renderThreadPage(
   .message.assistant { background: var(--bg-surface); border-left-color: var(--accent-green); }
   .message.assistant .username { color: var(--accent-green); }
 
-  .message.tool-use { background: var(--bg-surface); border-left: 2px solid var(--accent-purple); opacity: 0.85; }
+  .message.tool-use { background: var(--bg-surface); border-left: 2px solid var(--accent-purple); opacity: 0.85; cursor: pointer; }
   .message.tool-use .username { color: var(--accent-purple); }
+  .tool-use-summary { display: flex; gap: 0.75rem; list-style: none; }
+  .tool-use-summary::-webkit-details-marker { display: none; }
+  .tool-details-content { margin-left: calc(32px + 0.75rem); padding-top: 0.5rem; border-top: 1px solid var(--border-subtle); margin-top: 0.5rem; }
+  .tool-detail-group { margin-bottom: 0.75rem; }
+  .tool-detail-group:last-child { margin-bottom: 0; }
 
   /* Content */
   .content { word-break: break-word; }
@@ -717,18 +732,14 @@ export function renderThreadPage(
   /* Tool summaries */
   .tool-thinking { font-style: italic; color: var(--text-secondary); margin-bottom: 0.5rem; font-size: 0.875rem; }
   .tool-thinking p { margin-bottom: 0.25em; }
-  .tool-block { margin: 0.125rem 0; }
-  .tool-block > summary { list-style: none; }
-  .tool-block > summary::-webkit-details-marker { display: none; }
-  .tool-summary-row { display: flex; align-items: center; gap: 0.5rem; font-size: 0.8125rem; color: var(--text-secondary); padding: 0.25rem 0.5rem; margin: 0 -0.5rem; border-radius: 6px; cursor: pointer; transition: background 0.1s; }
-  .tool-summary-row:hover { background: var(--bg-elevated); }
+  .tool-summary-row { display: flex; align-items: center; gap: 0.5rem; font-size: 0.8125rem; color: var(--text-secondary); padding: 0.125rem 0; }
   .tool-status { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
   .tool-status-ok { background: var(--accent-green); }
   .tool-status-error { background: var(--accent-red); }
   .tool-summary-text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .tool-detail-section { margin-top: 0.375rem; }
   .tool-detail-label { font-size: 0.6875rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 0.125rem; }
-  .tool-block pre { background: var(--bg-base); padding: 0.5rem; border-radius: 6px; overflow-x: auto; font-size: 0.75rem; margin-top: 0.25rem; border: 1px solid var(--border-subtle); max-height: 300px; overflow-y: auto; }
+  .tool-details-content pre { background: var(--bg-base); padding: 0.5rem; border-radius: 6px; overflow-x: auto; font-size: 0.75rem; margin-top: 0.25rem; border: 1px solid var(--border-subtle); max-height: 300px; overflow-y: auto; }
   .tool-error { color: var(--accent-red); }
 
   /* Error card */
@@ -791,7 +802,7 @@ export function renderThreadPage(
     .message { padding: 0.625rem 0.5rem; gap: 0.5rem; }
     .avatar { width: 28px; height: 28px; font-size: 0.75rem; }
     .avatar-kyle { border-radius: 6px; }
-    .tool-block pre, .error-raw pre, .content pre { max-height: 300px; overflow-y: auto; }
+    .tool-details-content pre, .error-raw pre, .content pre { max-height: 300px; overflow-y: auto; }
     .media-ref-item { flex-wrap: wrap; }
     .media-ref-meta { margin-left: 0; }
   }
