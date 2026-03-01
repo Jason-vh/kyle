@@ -69,6 +69,7 @@ import { webSearchTool } from "../brave/tools.ts";
 
 // Conversation tools
 import { createShareConversationTool } from "./share-tool.ts";
+import { getRequestsForUserTool } from "./requests-tool.ts";
 
 const log = createLogger("agent");
 
@@ -106,6 +107,8 @@ const allTools = [
   deleteTorrentsTool,
   // Brave Search
   webSearchTool,
+  // Requests
+  getRequestsForUserTool,
 ];
 
 export const toolLabels = new Map(allTools.map((t) => [t.name, t.label]));

@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 import { createLogger } from "../logger.ts";
 import { db } from "./index.ts";
 import { mediaRefs } from "./schema.ts";
@@ -104,6 +105,35 @@ export function extractMediaRef(
     default:
       return null;
   }
+}
+
+/**
+ * Get all media requests for a given user, ordered by most recent first.
+ */
+export async function getRequestsForUser(
+  userId: string,
+): Promise<(MediaRefData & { date: string })[]> {
+  const rows = await db.execute<{
+    action: string;
+    media_type: string;
+    title: string;
+    ids: MediaRefIds;
+    created_at: string;
+  }>(sql`
+    SELECT mr.action, mr.media_type, mr.title, mr.ids, mr.created_at
+    FROM media_refs mr
+    JOIN conversations c ON c.id = mr.conversation_id
+    WHERE c.user_id = ${userId}
+    ORDER BY mr.created_at DESC
+  `);
+
+  return rows.map((r) => ({
+    action: r.action,
+    mediaType: r.media_type,
+    title: r.title,
+    ids: r.ids as MediaRefIds,
+    date: r.created_at,
+  }));
 }
 
 /**
