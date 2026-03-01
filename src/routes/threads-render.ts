@@ -90,13 +90,22 @@ function renderMarkdown(raw: string): string {
   // 4. Italic
   text = text.replace(/\*([^*\n]+)\*/g, "<em>$1</em>");
 
-  // 5. Bare URLs
-  text = text.replace(/(?<!")https?:\/\/[^\s<&]+(?:&amp;[^\s<&]+)*/g, (url) => {
+  // 5. Slack mrkdwn links — must run before bare URL linkification
+  text = formatSlackLinks(text);
+
+  // 6. Markdown links [text](url)
+  text = text.replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g, (_, label, url) => {
+    const href = url.replace(/&amp;/g, "&");
+    return `<a href="${href}" target="_blank" rel="noopener">${label}</a>`;
+  });
+
+  // 7. Bare URLs (not already inside an href="...")
+  text = text.replace(/(?<!")https?:\/\/[^\s<&)]+(?:&amp;[^\s<&)]+)*/g, (url) => {
     const href = url.replace(/&amp;/g, "&");
     return `<a href="${href}" target="_blank" rel="noopener">${url}</a>`;
   });
 
-  // 6. Unordered lists: lines starting with "- "
+  // 8. Unordered lists: lines starting with "- "
   text = text.replace(/(^|\n)(- .+(?:\n- .+)*)/g, (_, prefix, block) => {
     const items = block
       .split("\n")
@@ -105,7 +114,7 @@ function renderMarkdown(raw: string): string {
     return `${prefix}<ul>${items}</ul>`;
   });
 
-  // 7. Paragraphs — split on double newlines
+  // 9. Paragraphs — split on double newlines
   text = text
     .split(/\n{2,}/)
     .map((p: string) => {
@@ -122,12 +131,9 @@ function renderMarkdown(raw: string): string {
     })
     .join("");
 
-  // 8. Restore code blocks and inline code
+  // 10. Restore code blocks and inline code
   text = text.replace(/@@CODE_(\d+)@@/g, (_, idx) => codeBlocks[parseInt(idx)]!);
   text = text.replace(/@@INLINE_(\d+)@@/g, (_, idx) => inlineCode[parseInt(idx)]!);
-
-  // 9. Slack mrkdwn links
-  text = formatSlackLinks(text);
 
   return text;
 }
