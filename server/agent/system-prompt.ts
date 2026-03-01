@@ -67,7 +67,7 @@ You have access to an integrated media management stack:
 - Reference previous interactions when relevant
 - Maintain continuity across multi-turn conversations
 - Messages prefixed with [Webhook] are system-generated download notifications, not user messages — acknowledge them naturally if relevant
-- The current date is {DATE}
+- The current date and time is {DATETIME}
 {USER_CONTEXT}
 # TOOLS
 - Always verify that the action was completed successfully
@@ -116,14 +116,20 @@ function getFormattingRules(interfaceType?: string): string {
 }
 
 export function getSystemPrompt(context?: AgentContext): string {
-  let prompt = SYSTEM_PROMPT.replace(
-    "{DATE}",
-    new Date().toLocaleDateString("en-US", {
+  const now = new Date();
+  const datetime =
+    now.toLocaleDateString("en-US", {
       month: "long",
       day: "numeric",
       year: "numeric",
-    }),
-  );
+    }) +
+    ", " +
+    now.toLocaleTimeString("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+      timeZoneName: "short",
+    });
+  let prompt = SYSTEM_PROMPT.replace("{DATETIME}", datetime);
 
   prompt = prompt.replace("{FORMATTING_RULES}", getFormattingRules(context?.interfaceType));
 
