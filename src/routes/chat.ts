@@ -5,7 +5,7 @@ import { db } from "../db/index.ts";
 import { conversations, messages } from "../db/schema.ts";
 import { runAgent, ApiOverloadedError } from "../agent/index.ts";
 import type { AssistantMessage } from "@mariozechner/pi-ai";
-import { extractMediaRef, saveMediaRef } from "../db/media-refs.ts";
+import { extractMediaRef, saveMediaRef, type MediaRefData } from "../db/media-refs.ts";
 import { timingSafeEqual } from "crypto";
 
 const log = createLogger("chat");
@@ -73,15 +73,15 @@ export async function handleChat(req: Request): Promise<Response> {
       .insert(conversations)
       .values({
         interfaceType: "http",
-        userId: body.userId ?? null,
       })
       .returning();
 
     conversationId = conversation!.id;
   }
 
-  // Build event handler for media ref saving
+  // Build event handler for deferred media ref collection
   const toolArgs = new Map<string, Record<string, unknown>>();
+  const pendingRefs: Array<{ toolCallId: string; ref: MediaRefData }> = [];
   const onEvent = (event: {
     type: string;
     toolCallId?: string;
@@ -107,7 +107,7 @@ export async function handleChat(req: Request): Promise<Response> {
         event.result as { content?: Array<{ type: string; text?: string }> },
       );
       if (ref) {
-        saveMediaRef(conversationId!, event.toolCallId, ref, body.userId);
+        pendingRefs.push({ toolCallId: event.toolCallId, ref });
       }
     }
   };
@@ -138,14 +138,45 @@ export async function handleChat(req: Request): Promise<Response> {
 
   // Persist error messages (for thread viewer visibility) then new messages
   const allNewMessages = [...errorMessages, ...allMessages.slice(previousMessages.length)];
+  const toolCallToMsg = new Map<string, string>();
   if (allNewMessages.length > 0) {
-    await db.insert(messages).values(
-      allNewMessages.map((m) => ({
-        conversationId: conversationId!,
-        role: m.role,
-        data: m,
-      })),
-    );
+    const insertedRows = await db
+      .insert(messages)
+      .values(
+        allNewMessages.map((m) => ({
+          conversationId: conversationId!,
+          role: m.role,
+          userId: m.role === "user" ? (body.userId ?? null) : null,
+          data: m,
+        })),
+      )
+      .returning({ id: messages.id, role: messages.role, data: messages.data });
+
+    for (const row of insertedRows) {
+      if (row.role === "assistant") {
+        const data = row.data as { content?: Array<{ type: string; id?: string }> };
+        for (const block of data.content ?? []) {
+          if (block.type === "toolCall" && block.id) {
+            toolCallToMsg.set(block.id, row.id);
+          }
+        }
+      }
+    }
+  }
+
+  // Save deferred media refs with messageId
+  for (const { toolCallId, ref } of pendingRefs) {
+    const messageId = toolCallToMsg.get(toolCallId);
+    if (!messageId || !body.userId) {
+      log.error("missing messageId or userId for pending media ref", {
+        toolCallId,
+        title: ref.title,
+        hasMessageId: !!messageId,
+        hasUserId: !!body.userId,
+      });
+      continue;
+    }
+    saveMediaRef(conversationId!, toolCallId, ref, body.userId, messageId);
   }
 
   return Response.json({

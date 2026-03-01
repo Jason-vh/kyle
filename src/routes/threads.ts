@@ -5,6 +5,7 @@ import { checkAuth, signThreadSig, verifyThreadSig } from "./threads-auth.ts";
 import { renderThreadPage } from "./threads-render.ts";
 import { resolveUsernames } from "../slack/users.ts";
 import { getWebhookNotifications } from "../db/webhook-notifications.ts";
+import { getMediaRefsForConversation } from "../db/media-refs.ts";
 import { createLogger } from "../logger.ts";
 
 const log = createLogger("threads");
@@ -43,35 +44,44 @@ export async function handleThread(req: Request, threadTs: string): Promise<Resp
   }
 
   const rows = await db
-    .select({ data: messages.data, createdAt: messages.createdAt })
+    .select({ data: messages.data, createdAt: messages.createdAt, userId: messages.userId })
     .from(messages)
     .where(eq(messages.conversationId, conv.id))
     .orderBy(asc(messages.sequence));
 
-  const msgs = rows.map((r) => ({ msg: r.data as any, createdAt: r.createdAt }));
+  const msgs = rows.map((r) => ({ msg: r.data as any, createdAt: r.createdAt, userId: r.userId }));
 
-  // Resolve Slack username if we have a userId
-  let username = "You";
-  if (conv.userId) {
+  const [webhookNotifications, mediaRefs] = await Promise.all([
+    getWebhookNotifications(conv.id),
+    getMediaRefsForConversation(conv.id),
+  ]);
+
+  // Collect distinct userIds from user-role messages + media refs and batch-resolve
+  const userIds = [
+    ...new Set([
+      ...rows.filter((r) => r.userId).map((r) => r.userId!),
+      ...mediaRefs.filter((r) => r.userId).map((r) => r.userId!),
+    ]),
+  ];
+  let usernameMap = new Map<string, string>();
+  if (userIds.length > 0) {
     try {
-      const names = await resolveUsernames([conv.userId]);
-      username = names.get(conv.userId) ?? "You";
+      usernameMap = await resolveUsernames(userIds);
     } catch (err) {
-      log.warn("failed to resolve username", {
-        userId: conv.userId,
+      log.warn("failed to resolve usernames", {
+        userIds,
         error: err instanceof Error ? err.message : String(err),
       });
     }
   }
-
-  const webhookNotifications = await getWebhookNotifications(conv.id);
 
   log.info("rendering thread", {
     threadTs,
     conversationId: conv.id,
     messageCount: msgs.length,
     webhookCount: webhookNotifications.length,
-    username,
+    mediaRefCount: mediaRefs.length,
+    userCount: userIds.length,
   });
 
   // Provide share URL only to cookie-authenticated users (not sig-authenticated)
@@ -89,9 +99,10 @@ export async function handleThread(req: Request, threadTs: string): Promise<Resp
     threadTs,
     conv.createdAt,
     msgs,
-    username,
+    usernameMap,
     shareUrl,
     webhookNotifications,
+    mediaRefs,
   );
   return new Response(html, {
     headers: { "Content-Type": "text/html; charset=utf-8" },

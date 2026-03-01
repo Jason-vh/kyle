@@ -5,7 +5,7 @@ import { db } from "../db/index.ts";
 import { conversations, messages } from "../db/schema.ts";
 import { loadConversationHistory } from "../db/conversation-history.ts";
 import { runAgent, toolLabels, ApiOverloadedError, type AgentContext } from "../agent/index.ts";
-import { extractMediaRef, saveMediaRef } from "../db/media-refs.ts";
+import { extractMediaRef, saveMediaRef, type MediaRefData } from "../db/media-refs.ts";
 import { verifySlackSignature } from "../slack/verify.ts";
 import { getSlackClient, setThreadStatus } from "../slack/client.ts";
 import { type SlackEventPayload, shouldProcess, cleanMessageText } from "../slack/events.ts";
@@ -115,8 +115,9 @@ async function processSlackMessage(
 
   let conversationId: string;
 
-  // Build event handler for tool status updates + media ref saving
+  // Build event handler for tool status updates + deferred media ref collection
   const toolArgs = new Map<string, Record<string, unknown>>();
+  const pendingRefs: Array<{ toolCallId: string; ref: MediaRefData }> = [];
   const onEvent = (event: {
     type: string;
     toolCallId?: string;
@@ -148,7 +149,7 @@ async function processSlackMessage(
         event.result as { content?: Array<{ type: string; text?: string }> },
       );
       if (ref) {
-        saveMediaRef(conversationId, event.toolCallId, ref, userId);
+        pendingRefs.push({ toolCallId: event.toolCallId, ref });
       }
     }
   };
@@ -173,7 +174,6 @@ async function processSlackMessage(
         .values({
           externalId,
           interfaceType: "slack",
-          userId: userId ?? null,
           metadata: { channel, threadTs: replyThreadTs },
         })
         .returning();
@@ -209,14 +209,40 @@ async function processSlackMessage(
       ...result.errorMessages,
       ...result.messages.slice(previousMessages.length),
     ];
+    const toolCallToMsg = new Map<string, string>();
     if (allNewMessages.length > 0) {
-      await db.insert(messages).values(
-        allNewMessages.map((m) => ({
-          conversationId,
-          role: m.role,
-          data: m,
-        })),
-      );
+      const insertedRows = await db
+        .insert(messages)
+        .values(
+          allNewMessages.map((m) => ({
+            conversationId,
+            role: m.role,
+            userId: m.role === "user" ? (userId ?? null) : null,
+            data: m,
+          })),
+        )
+        .returning({ id: messages.id, role: messages.role, data: messages.data });
+
+      for (const row of insertedRows) {
+        if (row.role === "assistant") {
+          const data = row.data as { content?: Array<{ type: string; id?: string }> };
+          for (const block of data.content ?? []) {
+            if (block.type === "toolCall" && block.id) {
+              toolCallToMsg.set(block.id, row.id);
+            }
+          }
+        }
+      }
+    }
+
+    // Save deferred media refs with messageId
+    for (const { toolCallId, ref } of pendingRefs) {
+      const messageId = toolCallToMsg.get(toolCallId);
+      if (!messageId) {
+        log.error("no messageId found for pending media ref", { toolCallId, title: ref.title });
+        continue;
+      }
+      saveMediaRef(conversationId, toolCallId, ref, userId!, messageId);
     }
 
     // Reply in thread

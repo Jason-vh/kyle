@@ -1,4 +1,4 @@
-import { sql } from "drizzle-orm";
+import { sql, eq, asc } from "drizzle-orm";
 import { createLogger } from "../logger.ts";
 import { db } from "./index.ts";
 import { mediaRefs } from "./schema.ts";
@@ -135,6 +135,37 @@ export async function getRequestsForUser(
   }));
 }
 
+export interface MediaRefRow {
+  id: string;
+  action: string;
+  mediaType: string;
+  title: string;
+  ids: MediaRefIds;
+  userId: string | null;
+  createdAt: Date;
+}
+
+/**
+ * Get all media refs for a conversation, ordered by creation time.
+ */
+export async function getMediaRefsForConversation(conversationId: string): Promise<MediaRefRow[]> {
+  const rows = await db
+    .select()
+    .from(mediaRefs)
+    .where(eq(mediaRefs.conversationId, conversationId))
+    .orderBy(asc(mediaRefs.createdAt));
+
+  return rows.map((r) => ({
+    id: r.id,
+    action: r.action,
+    mediaType: r.mediaType,
+    title: r.title,
+    ids: r.ids as MediaRefIds,
+    userId: r.userId,
+    createdAt: r.createdAt,
+  }));
+}
+
 /**
  * Save a media ref to the database. Non-fatal — logs errors but doesn't throw.
  */
@@ -142,13 +173,15 @@ export async function saveMediaRef(
   conversationId: string,
   toolCallId: string,
   ref: MediaRefData,
-  userId?: string,
+  userId: string,
+  messageId: string,
 ): Promise<void> {
   try {
     await db.insert(mediaRefs).values({
       conversationId,
       toolCallId,
-      userId: userId ?? null,
+      messageId,
+      userId,
       action: ref.action,
       mediaType: ref.mediaType,
       title: ref.title,
@@ -157,6 +190,7 @@ export async function saveMediaRef(
     log.info("saved media ref", {
       conversationId,
       toolCallId,
+      messageId,
       action: ref.action,
       mediaType: ref.mediaType,
       title: ref.title,

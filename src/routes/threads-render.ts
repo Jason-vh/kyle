@@ -6,6 +6,10 @@ import type {
   ToolCall,
 } from "@mariozechner/pi-ai";
 import type { WebhookNotification } from "../db/webhook-notifications.ts";
+import type { MediaRefRow } from "../db/media-refs.ts";
+
+const SONARR_HOST = process.env.SONARR_HOST;
+const RADARR_HOST = process.env.RADARR_HOST;
 
 type Message = UserMessage | AssistantMessage | ToolResultMessage;
 
@@ -237,15 +241,54 @@ function renderWebhookNotification(n: WebhookNotification, id: string): string {
 </div>`;
 }
 
-export type TimestampedMessage = { msg: Message; createdAt: Date };
+function renderMediaRefsSummary(refs: MediaRefRow[], usernameMap: Map<string, string>): string {
+  if (refs.length === 0) return "";
+
+  const items = refs
+    .map((ref) => {
+      const isAdd = ref.action === "add";
+      const symbol = isAdd ? "+" : "−";
+      const symbolClass = isAdd ? "media-ref-add" : "media-ref-remove";
+      const ids = ref.ids as Record<string, unknown>;
+
+      let titleHtml: string;
+      if (ref.mediaType === "movie" && RADARR_HOST && ids.radarr) {
+        titleHtml = `<a href="${escapeHtml(RADARR_HOST)}/movie/${ids.radarr}" target="_blank" rel="noopener">${escapeHtml(ref.title)}</a>`;
+      } else if (ref.mediaType === "series" && SONARR_HOST && ids.sonarr) {
+        titleHtml = `<a href="${escapeHtml(SONARR_HOST)}/series/${ids.sonarr}" target="_blank" rel="noopener">${escapeHtml(ref.title)}</a>`;
+      } else {
+        titleHtml = escapeHtml(ref.title);
+      }
+
+      const username = ref.userId ? usernameMap.get(ref.userId) : null;
+      const metaParts = [ref.mediaType];
+      if (username) metaParts.push(`@${username}`);
+      const meta = escapeHtml(metaParts.join(" · "));
+
+      return `<div class="media-ref-item">
+    <span class="${symbolClass}">${symbol}</span>
+    <span class="media-ref-title">${titleHtml}</span>
+    <span class="media-ref-meta">${meta}</span>
+  </div>`;
+    })
+    .join("\n  ");
+
+  return `<div class="media-refs-summary">
+  <div class="media-refs-label">Media</div>
+  ${items}
+</div>`;
+}
+
+export type TimestampedMessage = { msg: Message; createdAt: Date; userId?: string | null };
 
 export function renderThreadPage(
   threadTs: string,
   createdAt: Date,
   messages: TimestampedMessage[],
-  username: string = "You",
+  usernameMap: Map<string, string> = new Map(),
   shareUrl?: string,
   webhookNotifications: WebhookNotification[] = [],
+  mediaRefs: MediaRefRow[] = [],
 ): string {
   // Build a map of toolCallId → ToolResultMessage for pairing
   const resultMap = new Map<string, ToolResultMessage>();
@@ -257,12 +300,12 @@ export function renderThreadPage(
 
   // Interleave messages and webhook notifications by timestamp
   type RenderItem =
-    | { kind: "message"; msg: Message; ts: number; idx: number }
+    | { kind: "message"; tsMsg: TimestampedMessage; ts: number; idx: number }
     | { kind: "webhook"; notification: WebhookNotification; ts: number; idx: number };
 
   const msgItems: RenderItem[] = messages.map((m, idx) => ({
     kind: "message",
-    msg: m.msg,
+    tsMsg: m,
     ts: m.createdAt.getTime(),
     idx,
   }));
@@ -281,7 +324,8 @@ export function renderThreadPage(
     .map((item) => {
       if (item.kind === "message") {
         const id = `msg-${msgCounter++}`;
-        return renderMessage(item.msg, username, resultMap, id);
+        const username = (item.tsMsg.userId && usernameMap.get(item.tsMsg.userId)) ?? "You";
+        return renderMessage(item.tsMsg.msg, username, resultMap, id);
       } else {
         const id = `webhook-${webhookCounter++}`;
         return renderWebhookNotification(item.notification, id);
@@ -354,6 +398,15 @@ export function renderThreadPage(
   .webhook-time { font-size: 0.8125rem; color: #8b949e; }
   .webhook-title { font-weight: 600; color: #c9d1d9; }
   .webhook-detail { margin-top: 0.25rem; font-size: 0.8125rem; color: #8b949e; white-space: pre-wrap; }
+  .media-refs-summary { background: #161b22; border: 1px solid #21262d; border-radius: 8px; padding: 0.75rem 1rem; margin-bottom: 1.5rem; }
+  .media-refs-label { font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #8b949e; margin-bottom: 0.5rem; }
+  .media-ref-item { display: flex; align-items: baseline; gap: 0.5rem; padding: 0.125rem 0; font-size: 0.875rem; }
+  .media-ref-add { color: #3fb950; font-weight: 700; flex-shrink: 0; }
+  .media-ref-remove { color: #f85149; font-weight: 700; flex-shrink: 0; }
+  .media-ref-title { color: #c9d1d9; }
+  .media-ref-title a { color: #58a6ff; text-decoration: none; }
+  .media-ref-title a:hover { text-decoration: underline; }
+  .media-ref-meta { color: #8b949e; font-size: 0.8125rem; margin-left: auto; white-space: nowrap; }
 </style>
 </head>
 <body>
@@ -366,6 +419,7 @@ export function renderThreadPage(
     </div>
     ${shareUrl ? `<button class="share-btn" onclick="copyShareUrl()" id="share-btn">Copy share link</button>` : ""}
   </header>
+  ${renderMediaRefsSummary(mediaRefs, usernameMap)}
   ${messagesHtml}
 </div>
 <script>

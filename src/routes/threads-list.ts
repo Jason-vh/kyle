@@ -56,7 +56,6 @@ export async function handleThreadList(req: Request): Promise<Response> {
     .select({
       id: conversations.id,
       externalId: conversations.externalId,
-      userId: conversations.userId,
       createdAt: conversations.createdAt,
       messageCount: msgCounts.msgCount,
       preview: sql<string | null>`(

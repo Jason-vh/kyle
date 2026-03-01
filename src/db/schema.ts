@@ -16,6 +16,7 @@ export const mediaRefs = pgTable(
     conversationId: uuid("conversation_id")
       .notNull()
       .references(() => conversations.id, { onDelete: "cascade" }),
+    messageId: uuid("message_id").references(() => messages.id),
     toolCallId: text("tool_call_id").notNull(),
     userId: text("user_id"),
     mediaType: text("media_type").notNull(),
@@ -26,6 +27,7 @@ export const mediaRefs = pgTable(
   },
   (table) => [
     index("media_refs_conversation_id_idx").on(table.conversationId),
+    index("media_refs_message_id_idx").on(table.messageId),
     index("media_refs_action_idx").on(table.action),
     index("media_refs_user_id_idx").on(table.userId),
   ],
@@ -70,6 +72,7 @@ export const messages = pgTable(
       .notNull()
       .references(() => conversations.id, { onDelete: "cascade" }),
     role: text("role").notNull(),
+    userId: text("user_id"),
     sequence: integer("sequence").notNull().generatedAlwaysAsIdentity(),
     data: jsonb("data").notNull(),
     createdAt: timestamp("created_at").notNull().defaultNow(),
@@ -77,5 +80,6 @@ export const messages = pgTable(
   (table) => [
     index("messages_conversation_id_idx").on(table.conversationId),
     index("messages_conversation_sequence_idx").on(table.conversationId, table.sequence),
+    index("messages_user_id_idx").on(table.userId),
   ],
 );

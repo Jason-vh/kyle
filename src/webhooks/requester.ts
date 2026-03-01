@@ -46,7 +46,8 @@ export async function findMediaRequesters(
       c.metadata->>'threadTs' AS thread_ts,
       mr.title
     FROM media_refs mr
-    JOIN conversations c ON c.id = mr.conversation_id
+    LEFT JOIN messages m ON m.id = mr.message_id
+    JOIN conversations c ON c.id = COALESCE(m.conversation_id, mr.conversation_id)
     WHERE mr.action = 'add'
       AND mr.media_type = ${mediaType}
       AND c.interface_type = 'slack'
