@@ -33,16 +33,15 @@ const WEB_DIST = "web/dist";
 
 async function serveSpaFile(pathname: string): Promise<Response | null> {
   // Try serving a static file from web/dist/
-  if (pathname.startsWith("/assets/")) {
-    const file = Bun.file(`${WEB_DIST}${pathname}`);
-    if (await file.exists()) {
-      return new Response(file, {
-        headers: {
-          "Cache-Control": "public, max-age=31536000, immutable",
-        },
-      });
-    }
-    return null;
+  const file = Bun.file(`${WEB_DIST}${pathname}`);
+  if (await file.exists()) {
+    return new Response(file, {
+      headers: {
+        "Cache-Control": pathname.startsWith("/assets/")
+          ? "public, max-age=31536000, immutable"
+          : "no-cache",
+      },
+    });
   }
 
   // SPA routes → serve index.html
