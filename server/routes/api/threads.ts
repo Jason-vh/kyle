@@ -54,7 +54,7 @@ function toolSummary(tc: ToolCall): string {
     case "search_series":
       return `Searched for series '${a.title}'`;
     case "add_series":
-      return "Added series to Sonarr";
+      return a.title ? `Added '${a.title}' to Sonarr` : "Added series to Sonarr";
     case "remove_series":
       return "Removed series from Sonarr";
     case "remove_season":
@@ -76,7 +76,7 @@ function toolSummary(tc: ToolCall): string {
     case "search_movies":
       return `Searched for movie '${a.title}'`;
     case "add_movie":
-      return "Added movie to Radarr";
+      return a.title ? `Added '${a.title}' to Radarr` : "Added movie to Radarr";
     case "remove_movie":
       return "Removed movie from Radarr";
     case "get_movie_queue":
@@ -89,6 +89,19 @@ function toolSummary(tc: ToolCall): string {
       return "Listed torrents";
     case "delete_torrents":
       return "Deleted torrents";
+    case "convert_time": {
+      const from =
+        String(a.fromTimezone ?? "")
+          .split("/")
+          .pop()
+          ?.replace(/_/g, " ") ?? "";
+      const to =
+        String(a.toTimezone ?? "")
+          .split("/")
+          .pop()
+          ?.replace(/_/g, " ") ?? "";
+      return `Converted ${a.time} from ${from} to ${to}`;
+    }
     case "web_search":
       return `Searched the web for '${a.query}'`;
     default:

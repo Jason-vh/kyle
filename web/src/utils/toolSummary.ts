@@ -20,7 +20,7 @@ export function toolSummary(name: string, args: Record<string, unknown>): string
     case "search_series":
       return `Searched for series '${args.title}'`;
     case "add_series":
-      return "Added series to Sonarr";
+      return args.title ? `Added '${args.title}' to Sonarr` : "Added series to Sonarr";
     case "remove_series":
       return "Removed series from Sonarr";
     case "remove_season":
@@ -42,7 +42,7 @@ export function toolSummary(name: string, args: Record<string, unknown>): string
     case "search_movies":
       return `Searched for movie '${args.title}'`;
     case "add_movie":
-      return "Added movie to Radarr";
+      return args.title ? `Added '${args.title}' to Radarr` : "Added movie to Radarr";
     case "remove_movie":
       return "Removed movie from Radarr";
     case "get_movie_queue":
@@ -55,6 +55,19 @@ export function toolSummary(name: string, args: Record<string, unknown>): string
       return "Listed torrents";
     case "delete_torrents":
       return "Deleted torrents";
+    case "convert_time": {
+      const from =
+        String(args.fromTimezone ?? "")
+          .split("/")
+          .pop()
+          ?.replace(/_/g, " ") ?? "";
+      const to =
+        String(args.toTimezone ?? "")
+          .split("/")
+          .pop()
+          ?.replace(/_/g, " ") ?? "";
+      return `Converted ${args.time} from ${from} to ${to}`;
+    }
     case "web_search":
       return `Searched the web for '${args.query}'`;
     default:
