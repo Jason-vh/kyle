@@ -55,6 +55,8 @@ export function toolSummary(name: string, args: Record<string, unknown>): string
       return "Listed torrents";
     case "delete_torrents":
       return "Deleted torrents";
+    case "share_conversation":
+      return "Generated share link";
     case "convert_time": {
       const from =
         String(args.fromTimezone ?? "")

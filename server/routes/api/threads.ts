@@ -89,6 +89,8 @@ function toolSummary(tc: ToolCall): string {
       return "Listed torrents";
     case "delete_torrents":
       return "Deleted torrents";
+    case "share_conversation":
+      return "Generated share link";
     case "convert_time": {
       const from =
         String(a.fromTimezone ?? "")
