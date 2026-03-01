@@ -121,7 +121,7 @@ drizzle.config.ts           → Drizzle Kit config
 - **Slack dedup**: In-memory `Set<string>` on `event_id` (capped at 10k entries) + `X-Slack-Retry-Num` header skipping prevents duplicate processing.
 - **Structured logging**: `createLogger(module)` from `server/logger.ts` emits JSON lines with `level`, `module`, `msg`, `timestamp` + contextual fields. Use throughout — no raw `console.log`.
 - **Token optimization**: Each service has `utils.ts` with `toPartial*` helpers that strip large API responses down to essential fields before sending to the LLM.
-- **Adding new tools**: Create `api.ts` and `tools.ts` under `server/<service>/`. Register tools in `server/agent/index.ts` (add to imports + `allTools` array). Also add the service to the media architecture list in `server/agent/system-prompt.ts` — the agent won't use tools it doesn't know about.
+- **Adding new tools**: Create `api.ts` and `tools.ts` under `server/<service>/`. Register tools in `server/agent/index.ts` (add to imports + `allTools` array). Also add the service to the media architecture list in `server/agent/system-prompt.ts` — the agent won't use tools it doesn't know about. Add a human-readable summary case in the `toolSummary` switch in both `server/routes/api/threads.ts` and `web/src/utils/toolSummary.ts` — without this, the web UI falls back to the raw tool name.
 - **SPA serving**: In production, `server/server.ts` serves `web/dist/` static files. Hashed `/assets/*` get immutable caching; `index.html` gets `no-cache`. SPA routes (`/`, `/threads/*`, `/login`) fall through to `index.html`.
 - **Shared types**: `shared/types.ts` defines API response types used by both the server API routes and the Vue frontend. Imported as `@shared/types` in web code.
 
