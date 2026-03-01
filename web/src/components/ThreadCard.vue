@@ -10,7 +10,7 @@
         <span>&middot;</span>
         <time :datetime="thread.createdAt">{{ formattedDate }}</time>
         <span>&middot;</span>
-        <span>{{ thread.messageCount }} msg</span>
+        <span>{{ thread.messageCount }} messages</span>
       </div>
     </div>
     <!-- Media ref pills -->
