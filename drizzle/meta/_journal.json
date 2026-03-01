@@ -43,6 +43,13 @@
       "when": 1740787200000,
       "tag": "0005_fix_webhook_user_messages_cleanup",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1772365917298,
+      "tag": "0006_cold_dragon_man",
+      "breakpoints": true
     }
   ]
 }

@@ -120,11 +120,10 @@ export async function getRequestsForUser(
     ids: MediaRefIds;
     created_at: string;
   }>(sql`
-    SELECT mr.action, mr.media_type, mr.title, mr.ids, mr.created_at
-    FROM media_refs mr
-    JOIN conversations c ON c.id = mr.conversation_id
-    WHERE c.user_id = ${userId}
-    ORDER BY mr.created_at DESC
+    SELECT action, media_type, title, ids, created_at
+    FROM media_refs
+    WHERE user_id = ${userId}
+    ORDER BY created_at DESC
   `);
 
   return rows.map((r) => ({
@@ -143,11 +142,13 @@ export async function saveMediaRef(
   conversationId: string,
   toolCallId: string,
   ref: MediaRefData,
+  userId?: string,
 ): Promise<void> {
   try {
     await db.insert(mediaRefs).values({
       conversationId,
       toolCallId,
+      userId: userId ?? null,
       action: ref.action,
       mediaType: ref.mediaType,
       title: ref.title,

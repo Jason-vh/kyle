@@ -17,6 +17,7 @@ export const mediaRefs = pgTable(
       .notNull()
       .references(() => conversations.id, { onDelete: "cascade" }),
     toolCallId: text("tool_call_id").notNull(),
+    userId: text("user_id"),
     mediaType: text("media_type").notNull(),
     title: text("title").notNull(),
     action: text("action").notNull(),
@@ -26,6 +27,7 @@ export const mediaRefs = pgTable(
   (table) => [
     index("media_refs_conversation_id_idx").on(table.conversationId),
     index("media_refs_action_idx").on(table.action),
+    index("media_refs_user_id_idx").on(table.userId),
   ],
 );
 

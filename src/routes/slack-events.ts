@@ -148,7 +148,7 @@ async function processSlackMessage(
         event.result as { content?: Array<{ type: string; text?: string }> },
       );
       if (ref) {
-        saveMediaRef(conversationId, event.toolCallId, ref);
+        saveMediaRef(conversationId, event.toolCallId, ref, userId);
       }
     }
   };
