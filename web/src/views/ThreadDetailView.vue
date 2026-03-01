@@ -54,7 +54,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from "vue";
+import { ref, computed, onMounted, nextTick } from "vue";
 import { useRoute } from "vue-router";
 import { getThread } from "../api/threads";
 import { relativeTime } from "../composables/useRelativeTime";
@@ -125,6 +125,17 @@ onMounted(async () => {
     error.value = e instanceof Error ? e.message : "Failed to load thread";
   } finally {
     loading.value = false;
+  }
+
+  await nextTick();
+  const hash = window.location.hash.slice(1);
+  if (hash) {
+    const el = document.getElementById(hash);
+    if (el) {
+      const details = el.closest("details");
+      if (details && !details.open) details.open = true;
+      requestAnimationFrame(() => el.scrollIntoView({ behavior: "smooth", block: "start" }));
+    }
   }
 });
 

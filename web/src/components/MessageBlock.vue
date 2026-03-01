@@ -3,7 +3,7 @@
   <div
     v-if="msg.role === 'user'"
     :id="msg.id"
-    class="message-block fade-in relative mb-4 rounded-lg border border-border-primary bg-bg-surface p-4 scroll-mt-4"
+    class="group/msg message-block fade-in relative mb-4 rounded-lg border border-border-primary bg-bg-surface p-4 scroll-mt-4"
   >
     <div class="mb-2 flex items-center gap-2">
       <UserAvatar :name="msg.username" />
@@ -11,6 +11,7 @@
       <time :datetime="msg.createdAt" class="ml-auto whitespace-nowrap text-xs text-text-muted">
         {{ time }}
       </time>
+      <AnchorLink :anchor="msg.id" class="opacity-0 group-hover/msg:opacity-100" />
     </div>
     <MarkdownContent v-if="msg.textContent" :text="msg.textContent" />
   </div>
@@ -19,7 +20,7 @@
   <div
     v-else-if="msg.stopReason === 'error'"
     :id="msg.id"
-    class="message-block fade-in relative mb-4 rounded-lg bg-accent-red-light p-4 scroll-mt-4"
+    class="group/msg message-block fade-in relative mb-4 rounded-lg bg-accent-red-light p-4 scroll-mt-4"
   >
     <div class="mb-2 flex items-center gap-2">
       <span
@@ -30,6 +31,7 @@
       <time :datetime="msg.createdAt" class="ml-auto whitespace-nowrap text-xs text-text-muted">
         {{ time }}
       </time>
+      <AnchorLink :anchor="msg.id" class="opacity-0 group-hover/msg:opacity-100" />
     </div>
     <div class="text-sm">{{ msg.errorMessage }}</div>
     <details v-if="msg.errorRaw" class="error-raw mt-2">
@@ -48,15 +50,16 @@
     v-else-if="msg.stopReason === 'toolUse'"
     :id="msg.id"
     :open="msg.hasErrors"
-    class="message-block fade-in relative mb-4 cursor-pointer p-3 opacity-60 scroll-mt-4"
+    class="tool-use-block message-block fade-in relative mb-4 cursor-pointer rounded-lg border border-border-primary p-3 opacity-60 scroll-mt-4"
   >
-    <summary class="flex gap-3 list-none">
+    <summary class="group/msg flex gap-3 list-none">
       <div class="min-w-0 flex-1">
         <div class="mb-1 flex items-center gap-2">
-          <span class="text-xs font-medium text-text-muted">Tool calls</span>
+          <span class="text-xs font-medium text-text-muted">Tool call</span>
           <time :datetime="msg.createdAt" class="ml-auto whitespace-nowrap text-xs text-text-muted">
             {{ time }}
           </time>
+          <AnchorLink :anchor="msg.id" class="opacity-0 group-hover/msg:opacity-100" />
         </div>
         <div v-if="msg.textContent" class="mb-2 text-sm italic text-text-muted">
           {{ msg.textContent }}
@@ -64,13 +67,15 @@
         <div
           v-for="tc in msg.toolCalls"
           :key="tc.id"
-          class="flex items-center gap-2 py-0.5 text-sm text-text-muted"
+          :id="tc.id"
+          class="group/tc flex items-center gap-2 py-0.5 text-sm text-text-muted scroll-mt-4"
         >
           <span
             class="inline-block size-2 shrink-0 rounded-full"
             :class="tc.result?.isError ? 'bg-accent-red' : 'bg-accent-green'"
           ></span>
-          <span class="truncate">{{ tc.summaryText }}</span>
+          <span class="min-w-0 truncate">{{ tc.summaryText }}</span>
+          <AnchorLink :anchor="tc.id" class="shrink-0 opacity-0 group-hover/tc:opacity-100" />
         </div>
       </div>
     </summary>
@@ -83,7 +88,7 @@
   <div
     v-else
     :id="msg.id"
-    class="message-block fade-in relative mb-4 rounded-lg border border-border-primary bg-bg-surface p-4 scroll-mt-4"
+    class="group/msg message-block fade-in relative mb-4 rounded-lg border border-border-primary bg-bg-surface p-4 scroll-mt-4"
   >
     <div class="mb-2 flex items-center gap-2">
       <UserAvatar name="Kyle" />
@@ -91,19 +96,22 @@
       <time :datetime="msg.createdAt" class="ml-auto whitespace-nowrap text-xs text-text-muted">
         {{ time }}
       </time>
+      <AnchorLink :anchor="msg.id" class="opacity-0 group-hover/msg:opacity-100" />
     </div>
     <MarkdownContent v-if="msg.textContent" :text="msg.textContent" />
     <div v-if="msg.toolCalls?.length" class="mt-1">
       <div
         v-for="tc in msg.toolCalls"
         :key="tc.id"
-        class="flex items-center gap-2 py-0.5 text-sm text-text-muted"
+        :id="tc.id"
+        class="group/tc flex items-center gap-2 py-0.5 text-sm text-text-muted scroll-mt-4"
       >
         <span
           class="inline-block size-1.5 shrink-0 rounded-full"
           :class="tc.result?.isError ? 'bg-accent-red' : 'bg-accent-green'"
         ></span>
-        <span class="truncate">{{ tc.summaryText }}</span>
+        <span class="min-w-0 truncate">{{ tc.summaryText }}</span>
+        <AnchorLink :anchor="tc.id" class="shrink-0 opacity-0 group-hover/tc:opacity-100" />
       </div>
     </div>
   </div>
@@ -116,6 +124,7 @@ import type { ThreadMessage } from "@shared/types";
 import UserAvatar from "./UserAvatar.vue";
 import MarkdownContent from "./MarkdownContent.vue";
 import ToolCallBlock from "./ToolCallBlock.vue";
+import AnchorLink from "./AnchorLink.vue";
 
 const props = defineProps<{ msg: ThreadMessage }>();
 

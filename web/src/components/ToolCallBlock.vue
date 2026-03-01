@@ -1,9 +1,10 @@
 <template>
   <div class="tool-call-detail">
-    <div>
-      <div class="mb-0.5 text-xs font-medium text-text-muted">{{ tc.name }} — Input</div>
-      <pre class="tool-pre">{{ prettyArgs }}</pre>
+    <div class="mb-0.5 flex items-center justify-between">
+      <span class="text-xs font-medium text-text-muted">Input</span>
+      <code class="text-xs text-text-muted font-mono">{{ tc.name }}</code>
     </div>
+    <pre class="tool-pre">{{ prettyArgs }}</pre>
     <div v-if="tc.result">
       <div class="mb-0.5 text-xs font-medium text-text-muted">
         Output{{ tc.result.isError ? " (error)" : "" }}
