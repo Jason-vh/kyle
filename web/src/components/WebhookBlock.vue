@@ -1,11 +1,11 @@
 <template>
   <div
     :id="notification.id"
-    class="webhook-block message-block fade-in relative mb-4 border-l-2 border-accent-amber pl-3 scroll-mt-4"
+    class="webhook-block message-block fade-in relative mb-4 border-l-2 border-accent-green pl-3 scroll-mt-4"
   >
     <div class="flex items-center gap-2 text-sm">
       <svg
-        class="size-3.5 shrink-0 text-accent-amber"
+        class="size-3.5 shrink-0 text-accent-green"
         viewBox="0 0 24 24"
         fill="none"
         stroke="currentColor"
@@ -13,16 +13,15 @@
         stroke-linecap="round"
         stroke-linejoin="round"
       >
-        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
-        <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+        <polyline points="7 10 12 15 17 10" />
+        <line x1="12" y1="15" x2="12" y2="3" />
       </svg>
-      <span class="text-text-muted">{{ sourceName }}</span>
+      <span class="text-text-muted">{{ sourceName }} · Downloaded</span>
       <span class="font-medium text-text-secondary">
         {{ notification.payload.title }}
       </span>
-      <span v-if="qualityBadge" class="rounded bg-bg-elevated px-1.5 py-px text-xs text-text-muted">
-        {{ qualityBadge }}
-      </span>
+
       <time
         :datetime="notification.receivedAt"
         class="ml-auto shrink-0 whitespace-nowrap text-xs text-text-muted"
@@ -63,12 +62,6 @@ const episodes = computed(() => {
     code: `S${String(e.seasonNumber).padStart(2, "0")}E${String(e.episodeNumber).padStart(2, "0")}`,
     title: e.title,
   }));
-});
-
-const qualityBadge = computed(() => {
-  const p = props.notification.payload;
-  if (!p.quality) return "";
-  return p.releaseGroup ? `${p.quality} · ${p.releaseGroup}` : p.quality;
 });
 </script>
 
