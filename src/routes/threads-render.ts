@@ -157,7 +157,7 @@ function toolSummary(tc: ToolCall): { text: string } {
     case "get_series_by_id":
       return { text: "Fetched series details" };
     case "search_series":
-      return { text: `Searched for series '${a.term}'` };
+      return { text: `Searched for series '${a.title}'` };
     case "add_series":
       return { text: "Added series to Sonarr" };
     case "remove_series":
@@ -181,7 +181,7 @@ function toolSummary(tc: ToolCall): { text: string } {
     case "get_radarr_movie":
       return { text: "Fetched movie details" };
     case "search_movies":
-      return { text: `Searched for movie '${a.term}'` };
+      return { text: `Searched for movie '${a.title}'` };
     case "add_movie":
       return { text: "Added movie to Radarr" };
     case "remove_movie":
