@@ -156,6 +156,7 @@ async function processSlackMessage(
 
   try {
     let previousMessages: AgentMessage[] = [];
+    let messageTimestamps: WeakMap<object, Date> | undefined;
 
     // Look up existing conversation
     const existing = await db.query.conversations.findFirst({
@@ -167,7 +168,9 @@ async function processSlackMessage(
 
     if (existing) {
       conversationId = existing.id;
-      previousMessages = await loadConversationHistory(conversationId);
+      const history = await loadConversationHistory(conversationId);
+      previousMessages = history.messages;
+      messageTimestamps = history.timestamps;
     } else {
       const [conversation] = await db
         .insert(conversations)
@@ -200,6 +203,7 @@ async function processSlackMessage(
       (attempt, maxAttempts) => {
         setThreadStatus(channel, replyThreadTs, `is retrying... (${attempt}/${maxAttempts})`);
       },
+      messageTimestamps,
     );
     log.info("agent completed", {
       conversationId,

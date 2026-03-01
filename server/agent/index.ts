@@ -3,6 +3,7 @@ import {
   getModel,
   getEnvApiKey,
   type AssistantMessage,
+  type Message,
   type TextContent,
 } from "@mariozechner/pi-ai";
 import { createLogger } from "../logger.ts";
@@ -123,7 +124,10 @@ log.info("tools registered", {
   tools: allTools.map((t) => t.name),
 });
 
-export function createAgent(context?: AgentContext): Agent {
+export function createAgent(
+  context?: AgentContext,
+  messageTimestamps?: WeakMap<object, Date>,
+): Agent {
   if (!getEnvApiKey("anthropic")) {
     throw new Error("ANTHROPIC_API_KEY environment variable is required");
   }
@@ -142,6 +146,30 @@ export function createAgent(context?: AgentContext): Agent {
       thinkingLevel: "off",
       tools,
     },
+    convertToLlm: (messages) => {
+      return messages
+        .filter(
+          (m): m is Message =>
+            m.role === "user" || m.role === "assistant" || m.role === "toolResult",
+        )
+        .map((m) => {
+          if (m.role !== "user") return m;
+          const createdAt = messageTimestamps?.get(m) ?? new Date();
+          const time = createdAt.toLocaleTimeString("en-US", {
+            hour: "numeric",
+            minute: "2-digit",
+            timeZoneName: "short",
+          });
+          const prefix = `[${time}] `;
+          if (typeof m.content === "string") {
+            return { ...m, content: prefix + m.content };
+          }
+          const content = m.content.map((c, i) =>
+            i === 0 && c.type === "text" ? { ...c, text: prefix + c.text } : c,
+          );
+          return { ...m, content };
+        });
+    },
   });
 }
 
@@ -153,8 +181,9 @@ export async function runAgent(
   context?: AgentContext,
   onEvent?: (event: AgentEvent) => void,
   onRetry?: (attempt: number, maxAttempts: number) => void,
+  messageTimestamps?: WeakMap<object, Date>,
 ): Promise<{ messages: AgentMessage[]; responseText: string; errorMessages: AgentMessage[] }> {
-  const agent = createAgent(context);
+  const agent = createAgent(context, messageTimestamps);
 
   if (previousMessages.length > 0) {
     agent.replaceMessages(previousMessages);
@@ -164,12 +193,7 @@ export async function runAgent(
     agent.subscribe(onEvent);
   }
 
-  const time = new Date().toLocaleTimeString("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-    timeZoneName: "short",
-  });
-  await agent.prompt(`[${time}] ${message}`);
+  await agent.prompt(message);
 
   const errorMessages: AgentMessage[] = [];
 

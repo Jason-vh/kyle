@@ -57,6 +57,13 @@
       "when": 1772366930813,
       "tag": "0007_chubby_brood",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1772531200000,
+      "tag": "0008_strip_message_timestamps",
+      "breakpoints": true
     }
   ]
 }

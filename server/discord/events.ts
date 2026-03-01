@@ -123,6 +123,7 @@ export async function handleDiscordMessage(message: Message): Promise<void> {
 
   try {
     let previousMessages: AgentMessage[] = [];
+    let messageTimestamps: WeakMap<object, Date> | undefined;
 
     // Look up existing conversation
     const existing = await db.query.conversations.findFirst({
@@ -134,7 +135,9 @@ export async function handleDiscordMessage(message: Message): Promise<void> {
 
     if (existing) {
       conversationId = existing.id;
-      previousMessages = await loadConversationHistory(conversationId);
+      const history = await loadConversationHistory(conversationId);
+      previousMessages = history.messages;
+      messageTimestamps = history.timestamps;
     } else {
       const metadata: Record<string, unknown> = { channelId: replyChannel.id };
       if (!isDM && "guildId" in message && message.guildId) {
@@ -166,7 +169,14 @@ export async function handleDiscordMessage(message: Message): Promise<void> {
       message: messageText,
       username,
     });
-    const result = await runAgent(messageText, previousMessages, agentContext, onEvent);
+    const result = await runAgent(
+      messageText,
+      previousMessages,
+      agentContext,
+      onEvent,
+      undefined,
+      messageTimestamps,
+    );
     log.info("agent completed", {
       conversationId,
       externalId,

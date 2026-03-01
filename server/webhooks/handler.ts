@@ -92,7 +92,7 @@ async function notifyRequester(
   const { conversationId } = requester;
 
   // Load conversation history
-  const previousMessages = await loadConversationHistory(conversationId);
+  const history = await loadConversationHistory(conversationId);
 
   const prompt = formatWebhookPrompt(media, source);
 
@@ -116,13 +116,20 @@ async function notifyRequester(
     conversationId,
     interfaceType: requester.interfaceType,
     title: media.title,
-    historyLength: previousMessages.length,
+    historyLength: history.messages.length,
   });
 
-  const result = await runAgent(prompt, previousMessages, agentContext);
+  const result = await runAgent(
+    prompt,
+    history.messages,
+    agentContext,
+    undefined,
+    undefined,
+    history.timestamps,
+  );
 
   // Save new agent messages to DB
-  const newMsgs = result.messages.slice(previousMessages.length).filter((m) => m.role !== "user");
+  const newMsgs = result.messages.slice(history.messages.length).filter((m) => m.role !== "user");
   if (newMsgs.length > 0) {
     await db
       .insert(messages)

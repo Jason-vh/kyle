@@ -47,6 +47,7 @@ export async function handleChat(req: Request): Promise<Response> {
 
   let conversationId = body.conversationId;
   let previousMessages: AgentMessage[] = [];
+  let messageTimestamps: WeakMap<object, Date> | undefined;
 
   if (conversationId) {
     // Load existing conversation
@@ -64,9 +65,15 @@ export async function handleChat(req: Request): Promise<Response> {
       orderBy: [asc(messages.sequence)],
     });
 
+    const timestamps = new WeakMap<object, Date>();
     previousMessages = rows
-      .map((r) => r.data as AgentMessage)
+      .map((r) => {
+        const msg = r.data as AgentMessage;
+        timestamps.set(msg, r.createdAt);
+        return msg;
+      })
       .filter((m) => !(m.role === "assistant" && (m as AssistantMessage).stopReason === "error"));
+    messageTimestamps = timestamps;
   } else {
     // Create new conversation
     const [conversation] = await db
@@ -117,7 +124,14 @@ export async function handleChat(req: Request): Promise<Response> {
   let responseText: string;
   let errorMessages: AgentMessage[];
   try {
-    const result = await runAgent(body.message, previousMessages, undefined, onEvent);
+    const result = await runAgent(
+      body.message,
+      previousMessages,
+      undefined,
+      onEvent,
+      undefined,
+      messageTimestamps,
+    );
     allMessages = result.messages;
     responseText = result.responseText;
     errorMessages = result.errorMessages;
