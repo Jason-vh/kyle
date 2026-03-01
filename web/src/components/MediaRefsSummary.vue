@@ -1,18 +1,17 @@
 <template>
-  <div v-if="refs.length > 0" class="rule-top-strong mb-6 pt-3">
-    <div
-      class="font-ui mb-2 text-[0.6875rem] font-semibold tracking-widest uppercase text-text-muted"
-    >
-      Media Index
-    </div>
+  <div
+    v-if="refs.length > 0"
+    class="mb-6 rounded-lg border border-border-primary bg-bg-surface p-4"
+  >
+    <div class="mb-2 text-xs font-medium text-text-muted">Media Actions</div>
     <div
       v-for="ref in refs"
       :key="`${ref.action}-${ref.title}`"
-      class="flex items-baseline gap-2 py-0.5 text-sm"
+      class="flex items-center gap-2 py-0.5 text-sm"
     >
       <span
-        :class="ref.action === 'add' ? 'text-accent-green' : 'text-accent-red'"
-        class="shrink-0 font-bold"
+        class="flex size-5 shrink-0 items-center justify-center rounded-full text-xs font-bold text-text-inverse"
+        :class="ref.action === 'add' ? 'bg-accent-green' : 'bg-accent-red'"
       >
         {{ ref.action === "add" ? "+" : "\u2212" }}
       </span>
@@ -22,12 +21,12 @@
           :href="ref.href"
           target="_blank"
           rel="noopener"
-          class="text-accent-blue underline decoration-dotted underline-offset-2 hover:decoration-solid"
+          class="text-accent-blue underline decoration-accent-blue/40 underline-offset-2 hover:decoration-accent-blue"
           >{{ ref.title }}</a
         >
         <span v-else>{{ ref.title }}</span>
       </span>
-      <span class="font-ui ml-auto whitespace-nowrap text-[0.8125rem] text-text-muted">
+      <span class="ml-auto whitespace-nowrap text-xs text-text-muted">
         {{ metaText(ref) }}
       </span>
     </div>

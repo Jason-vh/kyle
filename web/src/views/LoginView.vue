@@ -1,17 +1,24 @@
 <template>
   <div class="flex min-h-[80vh] items-center justify-center p-4">
     <div class="w-full max-w-sm">
-      <div class="rule-top rule-bottom border-border-rule-light py-8">
-        <h1 class="mb-1 text-center font-serif text-2xl font-bold">The Kyle Record</h1>
-        <p class="font-ui mb-6 text-center text-xs tracking-wide text-text-muted">
-          Thread Viewer Access
-        </p>
-        <p v-if="error" class="mb-4 text-center text-sm text-accent-red">{{ error }}</p>
-        <form @submit.prevent="onSubmit">
-          <label
-            for="token"
-            class="font-ui mb-2 block text-xs uppercase tracking-wide text-text-secondary"
+      <div class="rounded-lg border border-border-primary bg-bg-surface p-8 shadow-sm">
+        <div class="mb-6 flex justify-center">
+          <div
+            class="flex size-12 items-center justify-center rounded-lg bg-accent-purple text-lg font-bold text-text-inverse"
           >
+            K
+          </div>
+        </div>
+        <h1 class="mb-1 text-center text-xl font-semibold">Sign in</h1>
+        <p class="mb-6 text-center text-sm text-text-muted">Access the thread viewer</p>
+        <div
+          v-if="error"
+          class="mb-4 rounded-lg bg-accent-red-light px-3 py-2 text-center text-sm text-accent-red"
+        >
+          {{ error }}
+        </div>
+        <form @submit.prevent="onSubmit">
+          <label for="token" class="mb-2 block text-sm font-medium text-text-secondary">
             Token
           </label>
           <input
@@ -20,14 +27,14 @@
             type="password"
             autofocus
             required
-            class="font-ui w-full border-b border-border-muted bg-transparent px-1 py-2 text-text-primary focus:border-border-rule focus:outline-none"
+            class="w-full rounded-lg border border-border-primary bg-bg-input px-3 py-2 text-text-primary focus:border-accent-purple focus:outline-none focus:ring-2 focus:ring-accent-purple/20"
           />
           <button
             type="submit"
             :disabled="loading"
-            class="font-ui mt-6 w-full bg-bg-masthead px-4 py-2.5 text-sm font-semibold text-text-inverse transition-colors hover:bg-text-secondary disabled:opacity-50"
+            class="mt-4 w-full rounded-lg bg-accent-purple px-4 py-2.5 text-sm font-semibold text-text-inverse transition-colors hover:bg-accent-purple/90 disabled:opacity-50"
           >
-            {{ loading ? "Logging in\u2026" : "Log in" }}
+            {{ loading ? "Signing in\u2026" : "Sign in" }}
           </button>
         </form>
       </div>

@@ -15,7 +15,7 @@ const rendered = computed(() => renderMarkdown(props.text));
 <style scoped>
 .content {
   word-break: break-word;
-  line-height: 1.7;
+  line-height: 1.6;
 }
 .content :deep(p) {
   margin-bottom: 0.5em;
@@ -26,11 +26,11 @@ const rendered = computed(() => renderMarkdown(props.text));
 .content :deep(a) {
   color: var(--color-accent-blue);
   text-decoration: underline;
-  text-decoration-style: dotted;
+  text-decoration-color: color-mix(in srgb, var(--color-accent-blue) 40%, transparent);
   text-underline-offset: 2px;
 }
 .content :deep(a:hover) {
-  text-decoration-style: solid;
+  text-decoration-color: var(--color-accent-blue);
 }
 .content :deep(ul) {
   list-style-type: disc;
@@ -43,6 +43,7 @@ const rendered = computed(() => renderMarkdown(props.text));
 .content :deep(code) {
   background: var(--color-bg-elevated);
   padding: 0.125em 0.375em;
+  border-radius: 4px;
   font-size: 0.875em;
   font-family: var(--font-family-mono);
 }
@@ -52,16 +53,17 @@ const rendered = computed(() => renderMarkdown(props.text));
   overflow-x: auto;
   font-size: 0.8125rem;
   margin: 0.5em 0;
-  border-top: 1px solid var(--color-border-subtle);
-  border-bottom: 1px solid var(--color-border-subtle);
+  border: 1px solid var(--color-border-primary);
+  border-radius: 8px;
   font-family: var(--font-family-mono);
 }
 .content :deep(pre code) {
   background: none;
   padding: 0;
+  border-radius: 0;
   font-size: inherit;
 }
 .content :deep(strong) {
-  font-weight: 500;
+  font-weight: 600;
 }
 </style>

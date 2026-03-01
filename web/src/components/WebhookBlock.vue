@@ -1,27 +1,41 @@
 <template>
   <div
     :id="notification.id"
-    class="message-block fade-in rule-top rule-bottom relative mb-4 py-3 scroll-mt-4"
-    style="border-color: var(--color-border-rule-light)"
+    class="message-block fade-in relative mb-4 rounded-lg bg-accent-amber-light p-4 scroll-mt-4"
   >
-    <div class="mb-1 flex items-center gap-2">
+    <div class="mb-2 flex items-center gap-2">
       <span
-        class="font-ui border border-accent-amber px-1.5 py-0.5 text-[0.6875rem] font-bold tracking-widest uppercase text-accent-amber"
+        class="flex size-6 items-center justify-center rounded-full bg-accent-amber text-xs text-text-inverse"
       >
-        Bulletin
+        <svg
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+          <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+        </svg>
       </span>
-      <span class="font-ui text-[0.6875rem] uppercase tracking-wide text-text-muted">
+      <span
+        class="text-sm font-semibold"
+        :class="notification.source === 'sonarr' ? 'text-accent-cyan' : 'text-accent-amber'"
+      >
         {{ sourceName }}
       </span>
-      <time :datetime="notification.receivedAt" class="font-ui ml-auto text-xs text-text-muted">
+      <time :datetime="notification.receivedAt" class="ml-auto text-xs text-text-muted">
         {{ formattedTime }}
       </time>
     </div>
-    <div class="font-serif text-lg font-semibold">
+    <div class="text-base font-semibold text-text-primary">
       {{ notification.payload.title
       }}{{ notification.payload.year ? ` (${notification.payload.year})` : "" }}
     </div>
-    <div v-if="detail" class="mt-1 whitespace-pre-wrap text-[0.8125rem] text-text-secondary">
+    <div v-if="detail" class="mt-1 whitespace-pre-wrap text-sm text-text-secondary">
       {{ detail }}
     </div>
   </div>

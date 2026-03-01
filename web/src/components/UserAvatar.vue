@@ -1,14 +1,7 @@
 <template>
   <div
-    v-if="isKyle"
-    class="avatar-kyle flex shrink-0 items-center justify-center font-serif text-sm italic"
-  >
-    K
-  </div>
-  <div
-    v-else
-    class="font-ui flex size-8 shrink-0 items-center justify-center text-[0.8125rem] font-bold text-white"
-    :style="{ background: color }"
+    class="flex size-8 shrink-0 items-center justify-center rounded-full text-sm font-semibold text-text-inverse"
+    :style="{ background: avatarColor }"
   >
     {{ letter }}
   </div>
@@ -32,23 +25,15 @@ const AVATAR_COLORS = [
 
 const isKyle = computed(() => props.name === "Kyle");
 
-const color = computed(() => {
+const avatarColor = computed(() => {
+  if (isKyle.value) return "#7C3AED";
   const cp = props.name.codePointAt(0) ?? 0;
   return AVATAR_COLORS[cp % AVATAR_COLORS.length]!;
 });
 
 const letter = computed(() => {
+  if (isKyle.value) return "K";
   const first = String.fromCodePoint(props.name.codePointAt(0) ?? 63);
   return /\p{L}/u.test(first) ? first.toUpperCase() : "?";
 });
 </script>
-
-<style scoped>
-.avatar-kyle {
-  width: 32px;
-  height: 32px;
-  border: 1.5px solid var(--color-accent-purple);
-  border-radius: 50%;
-  color: var(--color-accent-purple);
-}
-</style>

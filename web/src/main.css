@@ -2,66 +2,43 @@
 
 @theme {
   /* Typography */
-  --font-family-serif: "Cormorant Garamond", Georgia, serif;
-  --font-family-sans: "Lora", Georgia, serif;
+  --font-family-sans: "Inter", system-ui, sans-serif;
   --font-family-mono: "JetBrains Mono", Menlo, monospace;
 
-  /* Warm newsprint palette */
-  --color-bg-base: #f8f5f0;
+  /* Color palette */
+  --color-bg-base: #f9fafb;
   --color-bg-surface: #ffffff;
-  --color-bg-elevated: #f0ede6;
+  --color-bg-elevated: #f3f4f6;
   --color-bg-input: #ffffff;
-  --color-border-subtle: #e5e0d8;
-  --color-border-muted: #d4cec4;
-  --color-border-rule: #1c1917;
-  --color-border-rule-light: #c8c2b8;
-  --color-text-primary: #1c1917;
-  --color-text-secondary: #44403c;
-  --color-text-muted: #78716c;
-  --color-text-inverse: #f8f5f0;
-  --color-bg-masthead: #1c1917;
-  --color-accent-blue: #1a4d8f;
-  --color-accent-green: #2d6a4f;
-  --color-accent-red: #8b1a1a;
-  --color-accent-amber: #8b6914;
-  --color-accent-purple: #5b3a8f;
-  --color-accent-cyan: #1a6b7a;
+  --color-border-primary: #e5e7eb;
+  --color-border-secondary: #d1d5db;
+  --color-text-primary: #111827;
+  --color-text-secondary: #4b5563;
+  --color-text-muted: #9ca3af;
+  --color-text-inverse: #ffffff;
+  --color-accent-purple: #7c3aed;
+  --color-accent-purple-light: #ede9fe;
+  --color-accent-blue: #2563eb;
+  --color-accent-green: #16a34a;
+  --color-accent-green-light: #dcfce7;
+  --color-accent-red: #dc2626;
+  --color-accent-red-light: #fee2e2;
+  --color-accent-amber: #d97706;
+  --color-accent-amber-light: #fef3c7;
+  --color-accent-cyan: #0891b2;
 }
 
 body {
   background: var(--color-bg-base);
-  background-image: url("./assets/noise.png");
-  background-repeat: repeat;
   color: var(--color-text-primary);
   font-family: var(--font-family-sans);
-  line-height: 1.7;
-  text-rendering: optimizeLegibility;
-  font-feature-settings:
-    "liga" 1,
-    "onum" 1;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 ::selection {
-  background: color-mix(in srgb, var(--color-accent-blue) 20%, transparent);
-}
-
-/* System sans for UI chrome */
-.font-ui {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-}
-
-/* Editorial rule utilities */
-.rule-top {
-  border-top: 1px solid var(--color-border-rule-light);
-}
-.rule-top-strong {
-  border-top: 2px solid var(--color-border-rule);
-}
-.rule-bottom {
-  border-bottom: 1px solid var(--color-border-rule-light);
-}
-.rule-double {
-  border-top: 3px double var(--color-border-rule);
+  background: color-mix(in srgb, var(--color-accent-purple) 20%, transparent);
 }
 
 /* Fade-in animation */
@@ -78,14 +55,4 @@ body {
 
 .fade-in {
   animation: fade-in 0.3s ease-out both;
-}
-
-/* Drop cap for Kyle's first response */
-.drop-cap :deep(p:first-of-type::first-letter) {
-  font-family: var(--font-family-serif);
-  font-size: 3.5em;
-  line-height: 0.8;
-  float: left;
-  margin-right: 0.1em;
-  color: var(--color-text-primary);
 }
