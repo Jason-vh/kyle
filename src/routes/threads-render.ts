@@ -334,12 +334,11 @@ function renderToolUseMessage(
         </div>`;
     }
 
-    parts.push(`<div class="tool-summary-row">
-      ${statusIcon}
-      <span class="tool-summary-text">${escapeHtml(summary.text)}</span>
-    </div>
-    <details class="tool-raw"${isError ? " open" : ""}>
-      <summary>Details</summary>
+    parts.push(`<details class="tool-block"${isError ? " open" : ""}>
+      <summary class="tool-summary-row">
+        ${statusIcon}
+        <span class="tool-summary-text">${escapeHtml(summary.text)}</span>
+      </summary>
       <div class="tool-detail-section">
         <div class="tool-detail-label">${escapeHtml(tc.name)} — Input</div>
         <pre>${escapeHtml(args)}</pre>
@@ -712,17 +711,18 @@ export function renderThreadPage(
   /* Tool summaries */
   .tool-thinking { font-style: italic; color: var(--text-secondary); margin-bottom: 0.5rem; font-size: 0.875rem; }
   .tool-thinking p { margin-bottom: 0.25em; }
-  .tool-summary-row { display: flex; align-items: center; gap: 0.5rem; font-size: 0.8125rem; color: var(--text-secondary); padding: 0.125rem 0; }
+  .tool-block { margin: 0.125rem 0; }
+  .tool-block > summary { list-style: none; }
+  .tool-block > summary::-webkit-details-marker { display: none; }
+  .tool-summary-row { display: flex; align-items: center; gap: 0.5rem; font-size: 0.8125rem; color: var(--text-secondary); padding: 0.25rem 0.5rem; margin: 0 -0.5rem; border-radius: 6px; cursor: pointer; transition: background 0.1s; }
+  .tool-summary-row:hover { background: var(--bg-elevated); }
   .tool-status { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
   .tool-status-ok { background: var(--accent-green); }
   .tool-status-error { background: var(--accent-red); }
   .tool-summary-text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .tool-raw { margin-top: 0.25rem; margin-bottom: 0.375rem; }
-  .tool-raw > summary { cursor: pointer; font-size: 0.75rem; color: var(--text-muted); padding: 0.125rem 0; }
-  .tool-raw > summary:hover { color: var(--text-secondary); }
   .tool-detail-section { margin-top: 0.375rem; }
   .tool-detail-label { font-size: 0.6875rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 0.125rem; }
-  .tool-raw pre { background: var(--bg-base); padding: 0.5rem; border-radius: 6px; overflow-x: auto; font-size: 0.75rem; margin-top: 0.25rem; border: 1px solid var(--border-subtle); max-height: 300px; overflow-y: auto; }
+  .tool-block pre { background: var(--bg-base); padding: 0.5rem; border-radius: 6px; overflow-x: auto; font-size: 0.75rem; margin-top: 0.25rem; border: 1px solid var(--border-subtle); max-height: 300px; overflow-y: auto; }
   .tool-error { color: var(--accent-red); }
 
   /* Error card */
@@ -785,7 +785,7 @@ export function renderThreadPage(
     .message { padding: 0.625rem 0.5rem; gap: 0.5rem; }
     .avatar { width: 28px; height: 28px; font-size: 0.75rem; }
     .avatar-kyle { border-radius: 6px; }
-    .tool-raw pre, .error-raw pre, .content pre { max-height: 300px; overflow-y: auto; }
+    .tool-block pre, .error-raw pre, .content pre { max-height: 300px; overflow-y: auto; }
     .media-ref-item { flex-wrap: wrap; }
     .media-ref-meta { margin-left: 0; }
   }
