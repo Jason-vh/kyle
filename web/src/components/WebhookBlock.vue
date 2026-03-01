@@ -50,7 +50,9 @@ import type { ThreadWebhook } from "@shared/types";
 
 const props = defineProps<{ notification: ThreadWebhook }>();
 
-const sourceName = computed(() => (props.notification.source === "sonarr" ? "Sonarr" : "Radarr"));
+const sourceName = computed(
+  () => props.notification.source.charAt(0).toUpperCase() + props.notification.source.slice(1),
+);
 
 const formattedTime = computed(() => relativeTime(props.notification.receivedAt));
 
