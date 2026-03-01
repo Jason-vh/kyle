@@ -1,47 +1,48 @@
 <template>
   <div class="mx-auto max-w-[800px] p-4 sm:p-8">
-    <div v-if="loading" class="py-12 text-center text-text-muted">Loading…</div>
+    <div v-if="loading" class="py-12 text-center text-text-muted">Loading&hellip;</div>
     <div v-else-if="error" class="py-12 text-center text-accent-red">{{ error }}</div>
     <template v-else-if="thread">
-      <header
-        class="mb-5 flex flex-col gap-3 border-b border-border-subtle pb-4 sm:flex-row sm:items-start sm:justify-between sm:gap-4"
-      >
-        <div>
-          <div v-if="thread.shareUrl" class="mb-1 text-[0.8125rem] text-text-secondary">
-            <router-link to="/threads" class="text-accent-blue hover:underline"
-              >&larr; All threads</router-link
-            >
-          </div>
-          <h1 class="text-xl font-semibold leading-snug">{{ thread.pageTitle }}</h1>
-          <div class="mt-1 flex items-center gap-2 text-[0.8125rem] text-text-secondary">
-            <span
-              v-if="thread.interfaceType === 'discord'"
-              class="inline-flex items-center text-accent-cyan"
-              v-html="discordIcon"
-            ></span>
-            <span
-              v-else
-              class="inline-flex items-center text-accent-blue"
-              v-html="slackIcon"
-            ></span>
-            <time :datetime="thread.createdAt">{{ formattedDate }}</time>
-          </div>
+      <header class="mb-6">
+        <div v-if="thread.shareUrl" class="font-ui mb-2 text-[0.8125rem]">
+          <router-link
+            to="/threads"
+            class="text-accent-blue underline decoration-dotted underline-offset-2 hover:decoration-solid"
+            >&larr; All dispatches</router-link
+          >
         </div>
-        <button
-          v-if="thread.shareUrl"
-          class="inline-flex shrink-0 items-center gap-1.5 self-start rounded-md border border-border-muted bg-bg-elevated px-3 py-1.5 text-[0.8125rem] text-text-secondary transition-colors hover:border-text-secondary hover:text-text-primary"
-          @click="copyShareUrl"
-        >
-          <span v-html="copied ? '' : shareIcon"></span>
-          {{ copied ? "Copied!" : "Share" }}
-        </button>
+        <h1 class="font-serif text-2xl font-bold leading-snug sm:text-3xl">
+          {{ thread.pageTitle }}
+        </h1>
+        <div class="font-ui mt-2 flex items-center gap-2 text-[0.8125rem] text-text-secondary">
+          <span
+            v-if="thread.interfaceType === 'discord'"
+            class="inline-flex items-center text-accent-cyan"
+            v-html="discordIcon"
+          ></span>
+          <span v-else class="inline-flex items-center text-accent-blue" v-html="slackIcon"></span>
+          <time :datetime="thread.createdAt">{{ formattedDate }}</time>
+          <button
+            v-if="thread.shareUrl"
+            class="font-ui ml-auto inline-flex shrink-0 items-center gap-1.5 self-start border border-border-muted px-3 py-1.5 text-[0.8125rem] text-text-secondary transition-colors hover:border-border-rule hover:text-text-primary"
+            @click="copyShareUrl"
+          >
+            <span v-html="copied ? '' : shareIcon"></span>
+            {{ copied ? "Copied!" : "Share" }}
+          </button>
+        </div>
+        <div class="rule-double mt-4 border-border-rule"></div>
       </header>
 
       <MediaRefsSummary :refs="thread.mediaRefs" />
 
       <template v-for="(item, index) in thread.items" :key="itemKey(item, index)">
         <DateSeparator v-if="showDateSeparator(index)" :date="itemDate(item)" />
-        <MessageBlock v-if="item.kind === 'message'" :msg="item.message" />
+        <MessageBlock
+          v-if="item.kind === 'message'"
+          :msg="item.message"
+          :is-first="index === firstAssistantIndex"
+        />
         <WebhookBlock v-else :notification="item.notification" />
       </template>
     </template>
@@ -66,6 +67,16 @@ const error = ref("");
 const copied = ref(false);
 
 const formattedDate = computed(() => (thread.value ? relativeTime(thread.value.createdAt) : ""));
+
+const firstAssistantIndex = computed(() => {
+  if (!thread.value) return -1;
+  return thread.value.items.findIndex(
+    (item) =>
+      item.kind === "message" &&
+      item.message.role === "assistant" &&
+      item.message.stopReason === "endTurn",
+  );
+});
 
 function itemKey(item: ThreadItem, index: number): string {
   if (item.kind === "message") return item.message.id;

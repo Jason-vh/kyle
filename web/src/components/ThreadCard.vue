@@ -1,7 +1,7 @@
 <template>
   <router-link
     :to="`/threads/${thread.id}`"
-    class="flex items-center gap-3 rounded-lg border border-border-subtle bg-bg-surface px-4 py-3.5 transition-colors hover:border-border-muted hover:bg-bg-elevated no-underline"
+    class="group flex items-center gap-3 border-b border-border-subtle px-1 py-3 no-underline transition-colors hover:bg-bg-elevated"
   >
     <div class="min-w-0 flex-1">
       <div class="flex items-center gap-2">
@@ -16,9 +16,11 @@
           class="inline-flex shrink-0 items-center text-accent-blue"
           v-html="slackIcon"
         ></span>
-        <span class="truncate text-[0.9375rem] font-medium">{{ thread.preview }}</span>
+        <span class="truncate font-serif text-lg font-semibold text-text-primary">{{
+          thread.preview
+        }}</span>
       </div>
-      <div class="mt-0.5 flex items-center gap-3">
+      <div class="font-ui mt-0.5 flex items-center gap-3">
         <time :datetime="thread.createdAt" class="text-xs text-text-muted">{{
           formattedDate
         }}</time>
@@ -34,20 +36,20 @@
       <span
         v-for="(ref, i) in thread.mediaRefs"
         :key="i"
-        class="inline-block max-w-40 truncate rounded px-1.5 py-0.5 text-[0.6875rem] font-semibold"
+        class="font-ui inline-block max-w-40 truncate border px-1.5 py-0.5 text-[0.6875rem] font-semibold"
         :class="ref.action === 'add' ? 'pill-add' : 'pill-remove'"
       >
-        {{ ref.action === "add" ? "+" : "−" }} {{ ref.title }}
+        {{ ref.action === "add" ? "+" : "\u2212" }} {{ ref.title }}
       </span>
     </div>
     <!-- Share button -->
     <button
       v-if="thread.shareUrl"
-      class="hidden shrink-0 items-center justify-center rounded-md border border-border-muted text-text-muted transition-colors hover:border-text-secondary hover:text-text-primary group-hover:inline-flex md:inline-flex"
+      class="hidden shrink-0 items-center justify-center border border-border-muted text-text-muted transition-colors hover:border-text-secondary hover:text-text-primary group-hover:inline-flex md:inline-flex"
       style="width: 32px; height: 32px"
       @click.prevent="copyShareUrl"
       title="Copy share link"
-      v-html="copied ? '✓' : shareIcon"
+      v-html="copied ? '\u2713' : shareIcon"
     ></button>
   </router-link>
 </template>
@@ -82,11 +84,13 @@ const shareIcon = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" s
 
 <style scoped>
 .pill-add {
-  background: color-mix(in srgb, var(--color-accent-green) 15%, var(--color-bg-elevated));
+  border-color: var(--color-accent-green);
   color: var(--color-accent-green);
+  background: transparent;
 }
 .pill-remove {
-  background: color-mix(in srgb, var(--color-accent-red) 15%, var(--color-bg-elevated));
+  border-color: var(--color-accent-red);
   color: var(--color-accent-red);
+  background: transparent;
 }
 </style>

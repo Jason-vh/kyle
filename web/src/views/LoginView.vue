@@ -1,26 +1,36 @@
 <template>
-  <div class="flex min-h-screen items-center justify-center p-4">
-    <div class="w-full max-w-sm rounded-lg border border-border-muted bg-bg-surface p-8">
-      <h1 class="mb-6 text-center text-xl font-semibold">Kyle Thread Viewer</h1>
-      <p v-if="error" class="mb-4 text-center text-sm text-accent-red">{{ error }}</p>
-      <form @submit.prevent="onSubmit">
-        <label for="token" class="mb-2 block text-sm text-text-secondary">Token</label>
-        <input
-          id="token"
-          v-model="token"
-          type="password"
-          autofocus
-          required
-          class="w-full rounded-md border border-border-subtle bg-bg-input px-3 py-2 text-text-primary focus:border-accent-blue focus:outline-none"
-        />
-        <button
-          type="submit"
-          :disabled="loading"
-          class="mt-4 w-full rounded-md border border-green-600 bg-green-700 px-4 py-2 text-white hover:bg-green-600 disabled:opacity-50"
-        >
-          {{ loading ? "Logging in…" : "Log in" }}
-        </button>
-      </form>
+  <div class="flex min-h-[80vh] items-center justify-center p-4">
+    <div class="w-full max-w-sm">
+      <div class="rule-top rule-bottom border-border-rule-light py-8">
+        <h1 class="mb-1 text-center font-serif text-2xl font-bold">The Kyle Record</h1>
+        <p class="font-ui mb-6 text-center text-xs tracking-wide text-text-muted">
+          Thread Viewer Access
+        </p>
+        <p v-if="error" class="mb-4 text-center text-sm text-accent-red">{{ error }}</p>
+        <form @submit.prevent="onSubmit">
+          <label
+            for="token"
+            class="font-ui mb-2 block text-xs uppercase tracking-wide text-text-secondary"
+          >
+            Token
+          </label>
+          <input
+            id="token"
+            v-model="token"
+            type="password"
+            autofocus
+            required
+            class="font-ui w-full border-b border-border-muted bg-transparent px-1 py-2 text-text-primary focus:border-border-rule focus:outline-none"
+          />
+          <button
+            type="submit"
+            :disabled="loading"
+            class="font-ui mt-6 w-full bg-bg-masthead px-4 py-2.5 text-sm font-semibold text-text-inverse transition-colors hover:bg-text-secondary disabled:opacity-50"
+          >
+            {{ loading ? "Logging in\u2026" : "Log in" }}
+          </button>
+        </form>
+      </div>
     </div>
   </div>
 </template>

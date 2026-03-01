@@ -1,13 +1,13 @@
 <template>
   <div
     v-if="isKyle"
-    class="avatar-kyle flex shrink-0 items-center justify-center text-[0.8125rem] font-bold"
+    class="avatar-kyle flex shrink-0 items-center justify-center font-serif text-sm italic"
   >
     K
   </div>
   <div
     v-else
-    class="flex size-8 shrink-0 items-center justify-center rounded-full text-[0.8125rem] font-bold text-bg-base"
+    class="font-ui flex size-8 shrink-0 items-center justify-center text-[0.8125rem] font-bold text-white"
     :style="{ background: color }"
   >
     {{ letter }}
@@ -20,14 +20,14 @@ import { computed } from "vue";
 const props = defineProps<{ name: string }>();
 
 const AVATAR_COLORS = [
-  "#60a5fa",
-  "#34d399",
-  "#f87171",
-  "#fbbf24",
-  "#a78bfa",
-  "#22d3ee",
-  "#fb923c",
-  "#e879f9",
+  "#2563EB",
+  "#059669",
+  "#DC2626",
+  "#D97706",
+  "#7C3AED",
+  "#0891B2",
+  "#EA580C",
+  "#C026D3",
 ];
 
 const isKyle = computed(() => props.name === "Kyle");
@@ -47,9 +47,8 @@ const letter = computed(() => {
 .avatar-kyle {
   width: 32px;
   height: 32px;
-  background: var(--color-accent-purple);
-  border-radius: 8px;
-  border: 1.5px solid color-mix(in srgb, var(--color-accent-purple) 50%, white);
-  color: var(--color-bg-base);
+  border: 1.5px solid var(--color-accent-purple);
+  border-radius: 50%;
+  color: var(--color-accent-purple);
 }
 </style>
