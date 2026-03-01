@@ -132,7 +132,7 @@ export async function handleThreadList(req: Request): Promise<Response> {
     </div>
     <div class="card-meta">
       <time datetime="${row.createdAt.toISOString()}">${escapeHtml(row.createdAt.toLocaleDateString("en-US", { month: "short", day: "numeric" }))}</time>
-      <span class="card-count">${row.messageCount ?? 0} msgs</span>
+      <span class="card-count">${row.messageCount ?? 0} messages</span>
     </div>
   </div>
   ${pillsHtml ? `<div class="card-pills">${pillsHtml}</div>` : ""}
@@ -185,12 +185,12 @@ export async function handleThreadList(req: Request): Promise<Response> {
   .search-input:focus { border-color: var(--accent-blue); }
 
   /* Cards */
-  .card-list { display: flex; flex-direction: column; gap: 2px; }
+  .card-list { display: flex; flex-direction: column; gap: 6px; }
   .card {
     display: flex;
     align-items: center;
     gap: 0.75rem;
-    padding: 0.75rem 1rem;
+    padding: 0.875rem 1.125rem;
     background: var(--bg-surface);
     border: 1px solid var(--border-subtle);
     border-radius: 8px;
