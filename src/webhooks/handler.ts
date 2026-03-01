@@ -1,8 +1,7 @@
-import { MessageFlags } from "discord.js";
 import { timingSafeEqual } from "crypto";
 import { createLogger } from "../logger.ts";
 import { getSlackClient } from "../slack/client.ts";
-import { getDiscordClient } from "../discord/client.ts";
+import { sendDiscordMessageToChannel } from "../discord/messages.ts";
 import { db } from "../db/index.ts";
 import { messages } from "../db/schema.ts";
 import { findMediaRequesters } from "./requester.ts";
@@ -146,20 +145,7 @@ async function notifyRequester(
       title: media.title,
     });
   } else if (requester.interfaceType === "discord") {
-    const discord = getDiscordClient();
-    if (!discord) {
-      log.warn("discord client not available for webhook notification", {
-        channelId: requester.channelId,
-      });
-      return;
-    }
-    const channel = await discord.channels.fetch(requester.channelId);
-    if (channel && "send" in channel) {
-      await channel.send({
-        content: result.responseText.slice(0, 2000),
-        flags: MessageFlags.SuppressEmbeds,
-      });
-    }
+    await sendDiscordMessageToChannel(requester.channelId, result.responseText);
     log.info("notified requester via discord", {
       channelId: requester.channelId,
       title: media.title,

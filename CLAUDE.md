@@ -24,7 +24,7 @@ src/
     chat.ts                 → POST /chat handler
     health.ts               → GET /health handler (includes deployId for deploy verification)
     slack-events.ts         → POST /slack/events handler (supports X-Sync-Response header)
-    threads.ts              → GET /threads/:thread_ts handler (server-rendered thread viewer)
+    threads.ts              → GET /threads/:uuid handler (server-rendered thread viewer)
     threads-auth.ts         → Cookie-based auth (HMAC-SHA256 signed cookies, login form)
     threads-render.ts       → HTML rendering for thread messages (dark theme, tool call pairing)
   slack/
@@ -35,7 +35,7 @@ src/
   discord/
     client.ts               → Discord.js Client singleton (Gateway connection, lazy-init from DISCORD_BOT_TOKEN)
     events.ts               → messageCreate handler (DM, thread, @mention → thread creation)
-    users.ts                → Discord display name resolution
+    users.ts                → Discord display name resolution (single + batch)
   sonarr/
     types.ts                → Sonarr API type definitions
     api.ts                  → Sonarr API client (series, episodes, queue, calendar, history)
@@ -183,5 +183,6 @@ Use `TODO(KYL-123)` comments in code to mark where work is needed, linking to th
 - **Production DB**: The Railway DATABASE_URL uses internal networking (not reachable locally). Use `echo "SELECT ..." | railway connect kyle-db` to query production. The messages table stores agent messages as JSONB in a `data` column.
 - **Slack**: `@slack/web-api` only (no Bolt). Signature verification uses `crypto.subtle` (native in Bun).
 - **Discord**: `discord.js` with Gateway WebSocket. Runs in-process alongside the HTTP server. Optional — skips gracefully if `DISCORD_BOT_TOKEN` is unset.
+- **Formatting**: `oxfmt` via `bun run fmt`. Pre-commit hook (`lefthook`) runs `oxfmt --check`, `oxlint`, and `tsc --noEmit`. Always run `bun run fmt` before committing.
 - **Git workflow**: Commit and push to `main` — Railway deploys automatically via GitHub integration.
 - **Linear**: Update issue status (`linear issue update <id> -s completed`) when work is completed.

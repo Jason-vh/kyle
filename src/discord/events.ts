@@ -1,4 +1,4 @@
-import { ChannelType, MessageFlags, type Message, type SendableChannels } from "discord.js";
+import { ChannelType, type Message, type SendableChannels } from "discord.js";
 import { eq, and } from "drizzle-orm";
 import type { AgentMessage } from "@mariozechner/pi-agent-core";
 import { createLogger } from "../logger.ts";
@@ -9,10 +9,9 @@ import { runAgent, ApiOverloadedError, type AgentContext } from "../agent/index.
 import { extractMediaRef, saveMediaRef, type MediaRefData } from "../db/media-refs.ts";
 import { BOT_USER_ID } from "./client.ts";
 import { resolveDiscordUsername } from "./users.ts";
+import { sendDiscordMessage } from "./messages.ts";
 
 const log = createLogger("discord");
-
-const DISCORD_MAX_LENGTH = 2000;
 
 /**
  * Strip bot @mention from message text and trim.
@@ -20,34 +19,6 @@ const DISCORD_MAX_LENGTH = 2000;
 function cleanDiscordMessage(text: string): string {
   if (!BOT_USER_ID) return text.trim();
   return text.replace(new RegExp(`<@!?${BOT_USER_ID}>`, "g"), "").trim();
-}
-
-/**
- * Split a response into chunks that fit within Discord's 2000-character limit.
- * Splits on newlines to avoid breaking mid-line.
- */
-function splitResponse(text: string): string[] {
-  if (text.length <= DISCORD_MAX_LENGTH) return [text];
-
-  const chunks: string[] = [];
-  let remaining = text;
-
-  while (remaining.length > 0) {
-    if (remaining.length <= DISCORD_MAX_LENGTH) {
-      chunks.push(remaining);
-      break;
-    }
-
-    let splitAt = remaining.lastIndexOf("\n", DISCORD_MAX_LENGTH);
-    if (splitAt <= 0) {
-      splitAt = DISCORD_MAX_LENGTH;
-    }
-
-    chunks.push(remaining.slice(0, splitAt));
-    remaining = remaining.slice(splitAt).replace(/^\n/, "");
-  }
-
-  return chunks;
 }
 
 /**
@@ -246,9 +217,7 @@ export async function handleDiscordMessage(message: Message): Promise<void> {
     }
 
     // Reply (split into multiple messages if needed)
-    for (const chunk of splitResponse(result.responseText)) {
-      await replyChannel.send({ content: chunk, flags: MessageFlags.SuppressEmbeds });
-    }
+    await sendDiscordMessage(replyChannel, result.responseText);
     log.info("discord reply sent", { externalId, conversationId });
   } catch (error) {
     const isOverloaded = error instanceof ApiOverloadedError;
