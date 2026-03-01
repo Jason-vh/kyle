@@ -3,15 +3,17 @@
   <div
     v-if="msg.role === 'user'"
     :id="msg.id"
-    class="group/msg message-block fade-in relative mb-4 rounded-lg border border-border-primary bg-bg-surface p-4 scroll-mt-4"
+    class="message-block fade-in relative mb-4 rounded-lg border border-border-primary bg-bg-surface p-4 scroll-mt-4"
   >
     <div class="mb-2 flex items-center gap-2">
       <UserAvatar :name="msg.username" />
       <span class="text-sm font-semibold text-text-primary">{{ msg.username }}</span>
-      <time :datetime="msg.createdAt" class="ml-auto whitespace-nowrap text-xs text-text-muted">
+      <a
+        :href="anchorUrl(msg.id)"
+        class="ml-auto whitespace-nowrap text-xs text-text-muted no-underline hover:text-text-secondary"
+      >
         {{ time }}
-      </time>
-      <AnchorLink :anchor="msg.id" class="opacity-0 group-hover/msg:opacity-100" />
+      </a>
     </div>
     <MarkdownContent v-if="msg.textContent" :text="msg.textContent" />
   </div>
@@ -20,7 +22,7 @@
   <div
     v-else-if="msg.stopReason === 'error'"
     :id="msg.id"
-    class="group/msg message-block fade-in relative mb-4 rounded-lg bg-accent-red-light p-4 scroll-mt-4"
+    class="message-block fade-in relative mb-4 rounded-lg bg-accent-red-light p-4 scroll-mt-4"
   >
     <div class="mb-2 flex items-center gap-2">
       <span
@@ -28,10 +30,12 @@
         >!</span
       >
       <span class="text-sm font-semibold text-accent-red">Error</span>
-      <time :datetime="msg.createdAt" class="ml-auto whitespace-nowrap text-xs text-text-muted">
+      <a
+        :href="anchorUrl(msg.id)"
+        class="ml-auto whitespace-nowrap text-xs text-text-muted no-underline hover:text-text-secondary"
+      >
         {{ time }}
-      </time>
-      <AnchorLink :anchor="msg.id" class="opacity-0 group-hover/msg:opacity-100" />
+      </a>
     </div>
     <div class="text-sm">{{ msg.errorMessage }}</div>
     <details v-if="msg.errorRaw" class="error-raw mt-2">
@@ -52,7 +56,7 @@
     :open="msg.hasErrors"
     class="tool-use-block message-block fade-in relative mb-4 cursor-pointer border-l-2 border-border-secondary pl-3 opacity-60 scroll-mt-4"
   >
-    <summary class="group/msg flex gap-3 list-none">
+    <summary class="flex gap-3 list-none">
       <div class="min-w-0 flex-1">
         <div v-if="msg.textContent" class="mb-2 text-sm italic text-text-muted">
           {{ msg.textContent }}
@@ -68,13 +72,13 @@
           ></span>
           <span class="min-w-0 truncate">{{ tc.summaryText }}</span>
           <template v-if="i === 0">
-            <time
-              :datetime="msg.createdAt"
-              class="ml-auto shrink-0 whitespace-nowrap text-xs text-text-muted"
+            <a
+              :href="anchorUrl(msg.id)"
+              class="ml-auto shrink-0 whitespace-nowrap text-xs text-text-muted no-underline hover:text-text-secondary"
+              @click.stop
             >
               {{ time }}
-            </time>
-            <AnchorLink :anchor="msg.id" class="shrink-0 opacity-0 group-hover/msg:opacity-100" />
+            </a>
           </template>
         </div>
       </div>
@@ -88,15 +92,17 @@
   <div
     v-else
     :id="msg.id"
-    class="group/msg message-block fade-in relative mb-4 rounded-lg border border-border-primary bg-bg-surface p-4 scroll-mt-4"
+    class="message-block fade-in relative mb-4 rounded-lg border border-border-primary bg-bg-surface p-4 scroll-mt-4"
   >
     <div class="mb-2 flex items-center gap-2">
       <UserAvatar name="Kyle" />
       <span class="text-sm font-semibold text-accent-purple">Kyle</span>
-      <time :datetime="msg.createdAt" class="ml-auto whitespace-nowrap text-xs text-text-muted">
+      <a
+        :href="anchorUrl(msg.id)"
+        class="ml-auto whitespace-nowrap text-xs text-text-muted no-underline hover:text-text-secondary"
+      >
         {{ time }}
-      </time>
-      <AnchorLink :anchor="msg.id" class="opacity-0 group-hover/msg:opacity-100" />
+      </a>
     </div>
     <MarkdownContent v-if="msg.textContent" :text="msg.textContent" />
     <div v-if="msg.toolCalls?.length" class="mt-1">
@@ -116,17 +122,25 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, inject, ref, type Ref } from "vue";
 import { relativeTime } from "../composables/useRelativeTime";
 import type { ThreadMessage } from "@shared/types";
 import UserAvatar from "./UserAvatar.vue";
 import MarkdownContent from "./MarkdownContent.vue";
 import ToolCallBlock from "./ToolCallBlock.vue";
-import AnchorLink from "./AnchorLink.vue";
 
 const props = defineProps<{ msg: ThreadMessage }>();
 
+const shareUrl = inject<Ref<string | null>>("shareUrl", ref(null));
+
 const time = computed(() => relativeTime(props.msg.createdAt));
+
+function anchorUrl(id: string): string {
+  const base =
+    shareUrl.value ??
+    `${window.location.origin}${window.location.pathname}${window.location.search}`;
+  return `${base}#${id}`;
+}
 </script>
 
 <style scoped>

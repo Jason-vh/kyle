@@ -11,9 +11,13 @@
         Downloaded {{ episodes.length }} episodes of
         <span class="font-medium text-text-secondary">{{ notification.payload.title }}</span>
       </span>
-      <time :datetime="notification.receivedAt" class="ml-auto shrink-0 whitespace-nowrap text-xs">
+      <a
+        :href="anchorUrl"
+        class="ml-auto shrink-0 whitespace-nowrap text-xs text-text-muted no-underline hover:text-text-secondary"
+        @click.stop
+      >
         {{ formattedTime }}
-      </time>
+      </a>
     </summary>
     <div class="mt-1 space-y-px pl-5.5">
       <div
@@ -42,22 +46,34 @@
           {{ episodes[0]!.code }} "{{ episodes[0]!.title }}"
         </template>
       </span>
-      <time :datetime="notification.receivedAt" class="ml-auto shrink-0 whitespace-nowrap text-xs">
+      <a
+        :href="anchorUrl"
+        class="ml-auto shrink-0 whitespace-nowrap text-xs text-text-muted no-underline hover:text-text-secondary"
+      >
         {{ formattedTime }}
-      </time>
+      </a>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, inject, ref, type Ref } from "vue";
 import { relativeTime } from "../composables/useRelativeTime";
 import type { ThreadWebhook } from "@shared/types";
 import DownloadIcon from "./DownloadIcon.vue";
 
 const props = defineProps<{ notification: ThreadWebhook }>();
 
+const shareUrl = inject<Ref<string | null>>("shareUrl", ref(null));
+
 const formattedTime = computed(() => relativeTime(props.notification.receivedAt));
+
+const anchorUrl = computed(() => {
+  const base =
+    shareUrl.value ??
+    `${window.location.origin}${window.location.pathname}${window.location.search}`;
+  return `${base}#${props.notification.id}`;
+});
 
 const episodes = computed(() => {
   const p = props.notification.payload;
