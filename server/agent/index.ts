@@ -159,7 +159,11 @@ export async function runAgent(
     agent.subscribe(onEvent);
   }
 
-  await agent.prompt(message);
+  const time = new Date().toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+  await agent.prompt(`[${time}] ${message}`);
 
   const errorMessages: AgentMessage[] = [];
 
