@@ -1,4 +1,4 @@
-import { ChannelType, type Message, type SendableChannels } from "discord.js";
+import { ChannelType, MessageFlags, type Message, type SendableChannels } from "discord.js";
 import { eq, and } from "drizzle-orm";
 import type { AgentMessage } from "@mariozechner/pi-agent-core";
 import { createLogger } from "../logger.ts";
@@ -224,7 +224,7 @@ export async function handleDiscordMessage(message: Message): Promise<void> {
 
     // Reply
     const responseText = truncateResponse(result.responseText);
-    await replyChannel.send(responseText);
+    await replyChannel.send({ content: responseText, flags: MessageFlags.SuppressEmbeds });
     log.info("discord reply sent", { externalId, conversationId });
   } catch (error) {
     const isOverloaded = error instanceof ApiOverloadedError;

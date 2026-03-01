@@ -1,3 +1,4 @@
+import { MessageFlags } from "discord.js";
 import { timingSafeEqual } from "crypto";
 import { createLogger } from "../logger.ts";
 import { getSlackClient } from "../slack/client.ts";
@@ -158,7 +159,7 @@ async function notifyRequester(
       if (responseText.length > 2000) {
         responseText = responseText.slice(0, 1997) + "...";
       }
-      await channel.send(responseText);
+      await channel.send({ content: responseText, flags: MessageFlags.SuppressEmbeds });
     }
     log.info("notified requester via discord", {
       channelId: requester.channelId,
