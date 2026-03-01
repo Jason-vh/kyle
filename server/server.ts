@@ -3,9 +3,6 @@ import { handleHealth } from "./routes/health.ts";
 import { handleChat } from "./routes/chat.ts";
 import { handleSlackEvents } from "./routes/slack-events.ts";
 import { handleSonarrWebhook, handleRadarrWebhook } from "./webhooks/handler.ts";
-import { handleThread } from "./routes/threads.ts";
-import { handleThreadList } from "./routes/threads-list.ts";
-import { handleLogin } from "./routes/threads-auth.ts";
 import { handleApiThreadList, handleApiThreadDetail } from "./routes/api/threads.ts";
 import { handleApiLogin, handleApiAuthStatus } from "./routes/api/auth.ts";
 
@@ -86,7 +83,7 @@ export function startServer(port: number) {
           return await handleApiAuthStatus(req);
         }
 
-        // --- Existing routes ---
+        // --- Service routes ---
 
         if (req.method === "POST" && url.pathname === "/chat") {
           if (isBodyTooLarge(req)) {
@@ -114,23 +111,6 @@ export function startServer(port: number) {
             return Response.json({ error: "Payload too large" }, { status: 413 });
           }
           return await handleRadarrWebhook(req);
-        }
-
-        // --- Legacy HTML thread viewer (kept until SPA verified) ---
-
-        if (url.pathname === "/threads/login") {
-          return await handleLogin(req);
-        }
-
-        if (req.method === "GET" && (url.pathname === "/threads" || url.pathname === "/threads/")) {
-          return await handleThreadList(req);
-        }
-
-        if (req.method === "GET" && url.pathname.startsWith("/threads/")) {
-          const segments = url.pathname.split("/");
-          if (segments.length === 3 && segments[2]) {
-            return await handleThread(req, segments[2]);
-          }
         }
 
         // --- SPA static file serving ---
