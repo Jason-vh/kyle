@@ -323,6 +323,12 @@ const searchEpisodesParams = Type.Object({
       description: "The ID of the series to search for missing episodes",
     }),
   ),
+  seasonNumber: Type.Optional(
+    Type.Number({
+      description:
+        "The season number to search (requires seriesId). Auto-monitors unmonitored episodes before searching.",
+    }),
+  ),
   episodeIds: Type.Optional(
     Type.Array(Type.Number(), {
       description: "Array of specific episode IDs to search for",
@@ -332,28 +338,108 @@ const searchEpisodesParams = Type.Object({
 
 export const searchEpisodesTool: AgentTool<typeof searchEpisodesParams> = {
   name: "search_episodes",
-  description: "Search for missing episodes for a series or specific episodes",
+  description:
+    "Search for missing episodes for a series, a specific season, or specific episodes. When seasonNumber is provided with seriesId, automatically monitors unmonitored episodes before searching.",
   parameters: searchEpisodesParams,
   label: "Searching for episodes in Sonarr",
   async execute(_toolCallId, params) {
-    const command = await sonarr.searchEpisodes(params.seriesId, params.episodeIds);
-    return {
-      content: [
-        {
-          type: "text",
-          text: JSON.stringify({
-            commandId: command.id,
-            status: command.status,
-            message: `Search command queued for ${
-              params.seriesId
-                ? `series ${params.seriesId}`
-                : `${params.episodeIds?.length} episodes`
-            }`,
-          }),
-        },
-      ],
-      details: undefined,
-    };
+    const monitoringActions: string[] = [];
+
+    // Season-specific search with auto-monitoring
+    if (params.seriesId && params.seasonNumber !== undefined) {
+      const [series, episodes] = await Promise.all([
+        sonarr.getSeries(params.seriesId),
+        sonarr.getEpisodes(params.seriesId),
+      ]);
+
+      const seasonEpisodes = episodes.filter((ep) => ep.seasonNumber === params.seasonNumber);
+
+      if (seasonEpisodes.length === 0) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify({
+                error: `Season ${params.seasonNumber} has no episodes in series ${series.title}`,
+              }),
+            },
+          ],
+          details: undefined,
+        };
+      }
+
+      // Auto-monitor the season on the series if needed
+      const season = series.seasons.find((s) => s.seasonNumber === params.seasonNumber);
+      if (season && !season.monitored) {
+        season.monitored = true;
+        await sonarr.updateSeries(params.seriesId, series);
+        monitoringActions.push(`Monitored season ${params.seasonNumber} on ${series.title}`);
+      }
+
+      // Auto-monitor individual episodes if needed
+      const unmonitoredIds = seasonEpisodes.filter((ep) => !ep.monitored).map((ep) => ep.id);
+      if (unmonitoredIds.length > 0) {
+        await sonarr.monitorEpisodes(unmonitoredIds, true);
+        monitoringActions.push(
+          `Monitored ${unmonitoredIds.length} episode${unmonitoredIds.length === 1 ? "" : "s"}`,
+        );
+      }
+
+      const command = await sonarr.searchEpisodes(params.seriesId, undefined, params.seasonNumber);
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify({
+              commandId: command.id,
+              status: command.status,
+              message: `SeasonSearch queued for ${series.title} season ${params.seasonNumber}`,
+              ...(monitoringActions.length > 0 ? { monitoringActions } : {}),
+            }),
+          },
+        ],
+        details: undefined,
+      };
+    }
+
+    // Episode-specific search with auto-monitoring
+    if (params.episodeIds && params.episodeIds.length > 0) {
+      await sonarr.monitorEpisodes(params.episodeIds, true);
+      const command = await sonarr.searchEpisodes(undefined, params.episodeIds);
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify({
+              commandId: command.id,
+              status: command.status,
+              message: `EpisodeSearch queued for ${params.episodeIds.length} episode${params.episodeIds.length === 1 ? "" : "s"}`,
+            }),
+          },
+        ],
+        details: undefined,
+      };
+    }
+
+    // Series-wide search (no auto-monitoring)
+    if (params.seriesId) {
+      const command = await sonarr.searchEpisodes(params.seriesId);
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify({
+              commandId: command.id,
+              status: command.status,
+              message: `SeriesSearch queued for series ${params.seriesId}`,
+            }),
+          },
+        ],
+        details: undefined,
+      };
+    }
+
+    throw new Error("Must provide either seriesId or episodeIds");
   },
 };
 

@@ -153,13 +153,28 @@ export async function getCalendar(
   return (await makeRequest(endpoint)) as SonarrCalendarEpisode[];
 }
 
+export async function monitorEpisodes(
+  episodeIds: number[],
+  monitored: boolean,
+): Promise<SonarrEpisode[]> {
+  return (await makeRequest("/episode/monitor", {
+    method: "PUT",
+    body: JSON.stringify({ episodeIds, monitored }),
+  })) as SonarrEpisode[];
+}
+
 export async function searchEpisodes(
   seriesId?: number,
   episodeIds?: number[],
+  seasonNumber?: number,
 ): Promise<SonarrCommand> {
   const commandBody: Record<string, unknown> = {};
 
-  if (seriesId && !episodeIds) {
+  if (seriesId && seasonNumber !== undefined) {
+    commandBody.name = "SeasonSearch";
+    commandBody.seriesId = seriesId;
+    commandBody.seasonNumber = seasonNumber;
+  } else if (seriesId && !episodeIds) {
     commandBody.name = "SeriesSearch";
     commandBody.seriesId = seriesId;
   } else if (episodeIds && episodeIds.length > 0) {

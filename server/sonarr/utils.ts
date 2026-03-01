@@ -26,6 +26,13 @@ export function toPartialSeries(series: SonarrSeries) {
     tvdbId: series.tvdbId,
     imdbId: series.imdbId,
     titleSlug: series.titleSlug,
+    ...(series.seasons.some((s) => !s.monitored && s.seasonNumber > 0)
+      ? {
+          unmonitoredSeasons: series.seasons
+            .filter((s) => !s.monitored && s.seasonNumber > 0)
+            .map((s) => s.seasonNumber),
+        }
+      : {}),
   };
 }
 
