@@ -18,13 +18,13 @@
       <input
         v-model="search"
         type="text"
-        placeholder="Search conversations\u2026"
+        placeholder="Search conversations…"
         autocomplete="off"
         class="font-ui w-full border-b border-border-muted bg-transparent px-1 py-2 text-sm text-text-primary placeholder-text-muted focus:border-border-rule focus:outline-none"
       />
     </div>
 
-    <div v-if="loading" class="py-12 text-center text-text-muted">Loading\u2026</div>
+    <div v-if="loading" class="py-12 text-center text-text-muted">Loading…</div>
     <div v-else-if="error" class="py-12 text-center text-accent-red">{{ error }}</div>
     <div v-else-if="filteredThreads.length === 0" class="py-12 text-center italic text-text-muted">
       Nothing to report
