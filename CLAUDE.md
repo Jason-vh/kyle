@@ -9,8 +9,13 @@ index.ts                    → entry point (Bun.serve)
 cli.ts                      → interactive CLI client
 test-slack.ts               → Send test messages to /slack/events (sync response by default)
 deploy.sh                   → Deploy to Railway with deploy ID verification
-src/
-  server.ts                 → HTTP routing
+tsconfig.server.json        → Server TypeScript config (scoped to server/ + shared/)
+
+shared/
+  types.ts                  → API response types shared between server + web
+
+server/
+  server.ts                 → HTTP routing (/api/*, /slack, /webhooks, SPA serving)
   logger.ts                 → Structured JSON logger
   agent/
     index.ts                → Agent factory + runAgent(), tool registration
@@ -24,9 +29,10 @@ src/
     chat.ts                 → POST /chat handler
     health.ts               → GET /health handler (includes deployId for deploy verification)
     slack-events.ts         → POST /slack/events handler (supports X-Sync-Response header)
-    threads.ts              → GET /threads/:uuid handler (server-rendered thread viewer)
-    threads-auth.ts         → Cookie-based auth (HMAC-SHA256 signed cookies, login form)
-    threads-render.ts       → HTML rendering for thread messages (dark theme, tool call pairing)
+    threads-auth.ts         → Cookie-based auth (HMAC-SHA256 signed cookies, token signing)
+    api/
+      threads.ts            → GET /api/threads, GET /api/threads/:uuid
+      auth.ts               → POST /api/auth/login, GET /api/auth/status
   slack/
     client.ts               → WebClient singleton (lazy-init from SLACK_BOT_TOKEN)
     verify.ts               → HMAC-SHA256 signature verification
@@ -67,6 +73,40 @@ src/
     requester.ts            → Find who requested media (media_refs + conversations query)
     notifications.ts        → AI notification generation via Haiku (fallback to template)
     handler.ts              → POST /webhooks/sonarr + /webhooks/radarr handlers
+
+web/                        → Vue 3 + Vite + Tailwind CSS 4 SPA
+  package.json              → Vue, vue-router, vite, tailwindcss
+  tsconfig.json             → Vue TS config with @shared alias
+  vite.config.ts            → Proxy /api → localhost:3000
+  index.html                → SPA shell
+  src/
+    main.ts                 → App bootstrap
+    main.css                → Tailwind v4 @import + @theme palette
+    App.vue                 → <RouterView>
+    router.ts               → /threads, /threads/:id, /login + auth guard
+    api/
+      client.ts             → Fetch wrapper, 401 → redirect to /login
+      threads.ts            → getThreads(), getThread(id, sig?)
+      auth.ts               → login(), checkAuth()
+    composables/
+      useRelativeTime.ts    → Reactive relative timestamps
+    components/
+      ThreadCard.vue        → Thread list card
+      MessageBlock.vue      → Dispatches user/assistant/tool-use/error
+      ToolCallBlock.vue     → Clickable <details> with summary
+      WebhookBlock.vue      → Sonarr/Radarr notification card
+      MediaRefsSummary.vue  → Media actions summary
+      DateSeparator.vue     → Day boundary divider
+      UserAvatar.vue        → Color-hashed avatar (Kyle gets purple "K")
+      MarkdownContent.vue   → v-html with renderMarkdown()
+    views/
+      ThreadListView.vue    → Search + thread card list
+      ThreadDetailView.vue  → Messages + webhooks + media refs
+      LoginView.vue         → Token login form
+    utils/
+      markdown.ts           → Port of renderMarkdown (escape-first security model)
+      toolSummary.ts        → Fallback tool summary (server provides summaryText)
+
 drizzle/                    → Generated migration SQL
 drizzle.config.ts           → Drizzle Kit config
 ```
@@ -79,21 +119,42 @@ drizzle.config.ts           → Drizzle Kit config
 - **Slack immediate ack**: The `/slack/events` handler returns 200 immediately and processes the message async (fire-and-forget) to stay within Slack's 3-second timeout. Responses are always posted as thread replies.
 - **Slack sync mode**: Sending `X-Sync-Response: true` header makes `/slack/events` wait for the agent and return the response in the HTTP body (used by `test-slack.ts` for dev workflow).
 - **Slack dedup**: In-memory `Set<string>` on `event_id` (capped at 10k entries) + `X-Slack-Retry-Num` header skipping prevents duplicate processing.
-- **Structured logging**: `createLogger(module)` from `src/logger.ts` emits JSON lines with `level`, `module`, `msg`, `timestamp` + contextual fields. Use throughout — no raw `console.log`.
+- **Structured logging**: `createLogger(module)` from `server/logger.ts` emits JSON lines with `level`, `module`, `msg`, `timestamp` + contextual fields. Use throughout — no raw `console.log`.
 - **Token optimization**: Each service has `utils.ts` with `toPartial*` helpers that strip large API responses down to essential fields before sending to the LLM.
-- **Adding new tools**: Create `api.ts` and `tools.ts` under `src/<service>/`. Register tools in `src/agent/index.ts` (add to imports + `allTools` array). Also add the service to the media architecture list in `src/agent/system-prompt.ts` — the agent won't use tools it doesn't know about.
+- **Adding new tools**: Create `api.ts` and `tools.ts` under `server/<service>/`. Register tools in `server/agent/index.ts` (add to imports + `allTools` array). Also add the service to the media architecture list in `server/agent/system-prompt.ts` — the agent won't use tools it doesn't know about.
+- **SPA serving**: In production, `server/server.ts` serves `web/dist/` static files. Hashed `/assets/*` get immutable caching; `index.html` gets `no-cache`. SPA routes (`/`, `/threads/*`, `/login`) fall through to `index.html`.
+- **Shared types**: `shared/types.ts` defines API response types used by both the server API routes and the Vue frontend. Imported as `@shared/types` in web code.
 
 ## Development
 
 ```bash
 bun run db:up        # Start Postgres (Docker)
 bun run db:migrate   # Run migrations
-bun run dev          # Run with hot reload
+bun run dev          # Run server with hot reload (:3000)
+bun run dev:web      # Run Vite dev server (:5173, proxies /api → :3000)
 bun run cli          # Interactive CLI client
 
 bun run db:down      # Stop Postgres
 bun run db:studio    # Open Drizzle Studio GUI
 ```
+
+### First-time setup
+
+```bash
+bun install && cd web && bun install
+```
+
+### Dev workflow
+
+```bash
+# Terminal 1 — backend
+bun run dev
+
+# Terminal 2 — frontend with HMR
+bun run dev:web
+```
+
+Open `http://localhost:5173` for development. Production serves everything from `:3000`.
 
 ### Testing Slack Locally
 
@@ -120,7 +181,7 @@ BASE_URL=https://kyle.vhtm.eu bun run test-slack.ts "<@U099N4BJT5Y> add inceptio
 
 ### Schema Changes
 
-1. Edit `src/db/schema.ts`
+1. Edit `server/db/schema.ts`
 2. `bun run db:generate` to create migration file
 3. `bun run db:migrate` to apply locally
 4. Commit both schema.ts and the migration
@@ -179,10 +240,10 @@ Use `TODO(KYL-123)` comments in code to mark where work is needed, linking to th
 - **HTTP**: `Bun.serve()` — no Express.
 - **Database**: `postgres` package with Drizzle ORM — no `pg`.
 - **File I/O**: Prefer `Bun.file` over `node:fs`.
-- **Deployment**: Pushes to `main` auto-deploy via Railway's built-in GitHub integration. Migrations run via pre-deploy command. Health check at `/health`. Live at https://kyle.vhtm.eu. Logs: `railway logs -n 80`.
+- **Deployment**: Pushes to `main` auto-deploy via Railway RAILPACK builder. `buildCommand` builds the Vue SPA (`cd web && bun install && bun run build`). Migrations run via pre-deploy command. Health check at `/health`. Live at https://kyle.vhtm.eu. Logs: `railway logs -n 80`.
 - **Production DB**: The Railway DATABASE_URL uses internal networking (not reachable locally). Use `echo "SELECT ..." | railway connect kyle-db` to query production. The messages table stores agent messages as JSONB in a `data` column.
 - **Slack**: `@slack/web-api` only (no Bolt). Signature verification uses `crypto.subtle` (native in Bun).
 - **Discord**: `discord.js` with Gateway WebSocket. Runs in-process alongside the HTTP server. Optional — skips gracefully if `DISCORD_BOT_TOKEN` is unset.
-- **Formatting**: `oxfmt` via `bun run fmt`. Pre-commit hook (`lefthook`) runs `oxfmt --check`, `oxlint`, and `tsc --noEmit`. Always run `bun run fmt` before committing.
+- **Formatting**: `oxfmt` via `bun run fmt`. Pre-commit hook (`lefthook`) runs `oxfmt --check`, `oxlint`, `tsc --noEmit -p tsconfig.server.json`, and `vue-tsc --noEmit` (in `web/`). Always run `bun run fmt` before committing.
 - **Git workflow**: Commit and push to `main` — Railway deploys automatically via GitHub integration.
 - **Linear**: Update issue status (`linear issue update <id> -s completed`) when work is completed.
