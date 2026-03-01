@@ -245,5 +245,6 @@ Use `TODO(KYL-123)` comments in code to mark where work is needed, linking to th
 - **Slack**: `@slack/web-api` only (no Bolt). Signature verification uses `crypto.subtle` (native in Bun).
 - **Discord**: `discord.js` with Gateway WebSocket. Runs in-process alongside the HTTP server. Optional — skips gracefully if `DISCORD_BOT_TOKEN` is unset.
 - **Formatting**: `oxfmt` via `bun run fmt`. Pre-commit hook (`lefthook`) runs `oxfmt --check`, `oxlint`, `tsc --noEmit -p tsconfig.server.json`, and `vue-tsc --noEmit` (in `web/`). Always run `bun run fmt` before committing.
+- **Type safety**: Type assertions (`as any`, `as Type`) are not allowed unless absolutely necessary. Use type guards, generics, `WeakMap`, or other patterns to maintain type safety.
 - **Git workflow**: Commit and push to `main` — Railway deploys automatically via GitHub integration.
-- **Linear**: Update issue status (`linear issue update <id> -s completed`) when work is completed.
+- **Linear**: Update issue status (`linear issue update <id> -s completed`) when work is committed.
