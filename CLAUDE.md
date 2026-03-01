@@ -103,7 +103,7 @@ bun run test-slack.ts "follow up" --thread <thread_ts>
 bun run test-slack.ts "hello" --channel <channel_id>
 
 # Against production
-BASE_URL=https://kyle.vanhattum.xyz bun run test-slack.ts "hello"
+BASE_URL=https://kyle.vhtm.eu bun run test-slack.ts "hello"
 ```
 
 The test script signs requests using `SLACK_SIGNING_SECRET` from `.env`, matching Slack's signature format. Messages sent this way will trigger real agent processing and post responses to Slack. Kyle's response is returned synchronously in the terminal via `X-Sync-Response` header.
@@ -111,7 +111,7 @@ The test script signs requests using `SLACK_SIGNING_SECRET` from `.env`, matchin
 **Important**: The test payload doesn't set `channel_type`, so `shouldProcess` treats it as a channel message and requires a bot mention. Prefix messages with `<@U099N4BJT5Y>`:
 
 ```bash
-BASE_URL=https://kyle.vanhattum.xyz bun run test-slack.ts "<@U099N4BJT5Y> add inception"
+BASE_URL=https://kyle.vhtm.eu bun run test-slack.ts "<@U099N4BJT5Y> add inception"
 ```
 
 ### Schema Changes
@@ -124,7 +124,7 @@ BASE_URL=https://kyle.vanhattum.xyz bun run test-slack.ts "<@U099N4BJT5Y> add in
 ## Slack App Configuration
 
 - **App settings**: Managed via manifest at [api.slack.com/apps](https://api.slack.com/apps)
-- **Request URL**: `https://kyle.vanhattum.xyz/slack/events`
+- **Request URL**: `https://kyle.vhtm.eu/slack/events`
 - **Bot events**: `message.im`, `message.channels`, `message.groups`, `message.mpim`, `assistant_thread_started`, `assistant_thread_context_changed`
 - **Bot scopes**: `chat:write`, `app_mentions:read`, `assistant:write`, `im:history`, `im:read`, `channels:history`, `groups:history`, `mpim:history`, `users:read`, `chat:write.customize`, `incoming-webhook`
 - The app uses Slack's **Assistant** feature (assistant events are subscribed but not yet handled with the `assistant.threads.*` API)
@@ -174,7 +174,7 @@ Use `TODO(KYL-123)` comments in code to mark where work is needed, linking to th
 - **HTTP**: `Bun.serve()` — no Express.
 - **Database**: `postgres` package with Drizzle ORM — no `pg`.
 - **File I/O**: Prefer `Bun.file` over `node:fs`.
-- **Deployment**: Pushes to `main` auto-deploy via Railway's built-in GitHub integration. Migrations run via pre-deploy command. Health check at `/health`. Live at https://kyle.vanhattum.xyz. Logs: `railway logs -n 80`.
+- **Deployment**: Pushes to `main` auto-deploy via Railway's built-in GitHub integration. Migrations run via pre-deploy command. Health check at `/health`. Live at https://kyle.vhtm.eu. Logs: `railway logs -n 80`.
 - **Production DB**: The Railway DATABASE_URL uses internal networking (not reachable locally). Use `echo "SELECT ..." | railway connect kyle-db` to query production. The messages table stores agent messages as JSONB in a `data` column.
 - **Slack**: `@slack/web-api` only (no Bolt). Signature verification uses `crypto.subtle` (native in Bun).
 - **Git workflow**: Commit and push to `main` — Railway deploys automatically via GitHub integration.

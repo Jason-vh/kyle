@@ -2,7 +2,7 @@ import { Type } from "@sinclair/typebox";
 import type { AgentTool } from "@mariozechner/pi-agent-core";
 import { signThreadSig } from "../routes/threads-auth.ts";
 
-const BASE_URL = "https://kyle.vanhattum.xyz";
+const BASE_URL = "https://kyle.vhtm.eu";
 
 const emptyParams = Type.Object({});
 

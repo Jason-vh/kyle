@@ -2,7 +2,7 @@
 set -euo pipefail
 
 DEPLOY_ID=$(git rev-parse --short HEAD)
-HEALTH_URL="https://kyle.vanhattum.xyz/health"
+HEALTH_URL="https://kyle.vhtm.eu/health"
 
 echo "$DEPLOY_ID" > deploy-id.txt
 echo "Deploying $DEPLOY_ID..."

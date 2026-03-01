@@ -45,7 +45,7 @@ Features:
 - Error states shown with full error details
 - Slack usernames resolved via the Slack API
 
-Visit `https://kyle.vanhattum.xyz/threads/<thread_ts>` to view any Slack thread.
+Visit `https://kyle.vhtm.eu/threads/<thread_ts>` to view any Slack thread.
 
 ## API
 
