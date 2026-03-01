@@ -47,6 +47,8 @@ async function onPasskeyLogin() {
     await passkeyLogin();
     await router.push("/threads");
   } catch (e) {
+    // User cancelled the passkey popup — just reset, don't show an error
+    if (e instanceof DOMException && e.name === "NotAllowedError") return;
     error.value = e instanceof Error ? e.message : "Login failed";
   } finally {
     loading.value = false;

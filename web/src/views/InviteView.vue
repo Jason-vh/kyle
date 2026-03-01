@@ -88,6 +88,8 @@ async function onRegister() {
     state.value = "done";
     setTimeout(() => router.push("/threads"), 500);
   } catch (e) {
+    // User cancelled the passkey popup — just reset, don't show an error
+    if (e instanceof DOMException && e.name === "NotAllowedError") return;
     error.value = e instanceof Error ? e.message : "Registration failed";
   } finally {
     registering.value = false;
