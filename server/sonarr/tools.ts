@@ -394,6 +394,9 @@ export const searchEpisodesTool: AgentTool<typeof searchEpisodesParams> = {
               commandId: command.id,
               status: command.status,
               message: `SeasonSearch queued for ${series.title} season ${params.seasonNumber}`,
+              seriesId: series.id,
+              seriesTitle: series.title,
+              tvdbId: series.tvdbId,
               ...(monitoringActions.length > 0 ? { monitoringActions } : {}),
             }),
           },
@@ -404,8 +407,12 @@ export const searchEpisodesTool: AgentTool<typeof searchEpisodesParams> = {
 
     // Episode-specific search with auto-monitoring
     if (params.episodeIds && params.episodeIds.length > 0) {
-      await sonarr.monitorEpisodes(params.episodeIds, true);
-      const command = await sonarr.searchEpisodes(undefined, params.episodeIds);
+      const monitoredEpisodes = await sonarr.monitorEpisodes(params.episodeIds, true);
+      const seriesId = monitoredEpisodes[0]?.seriesId;
+      const [command, series] = await Promise.all([
+        sonarr.searchEpisodes(undefined, params.episodeIds),
+        seriesId ? sonarr.getSeries(seriesId) : Promise.resolve(undefined),
+      ]);
       return {
         content: [
           {
@@ -414,6 +421,9 @@ export const searchEpisodesTool: AgentTool<typeof searchEpisodesParams> = {
               commandId: command.id,
               status: command.status,
               message: `EpisodeSearch queued for ${params.episodeIds.length} episode${params.episodeIds.length === 1 ? "" : "s"}`,
+              ...(series
+                ? { seriesId: series.id, seriesTitle: series.title, tvdbId: series.tvdbId }
+                : {}),
             }),
           },
         ],
@@ -423,7 +433,10 @@ export const searchEpisodesTool: AgentTool<typeof searchEpisodesParams> = {
 
     // Series-wide search (no auto-monitoring)
     if (params.seriesId) {
-      const command = await sonarr.searchEpisodes(params.seriesId);
+      const [command, series] = await Promise.all([
+        sonarr.searchEpisodes(params.seriesId),
+        sonarr.getSeries(params.seriesId),
+      ]);
       return {
         content: [
           {
@@ -432,6 +445,9 @@ export const searchEpisodesTool: AgentTool<typeof searchEpisodesParams> = {
               commandId: command.id,
               status: command.status,
               message: `SeriesSearch queued for series ${params.seriesId}`,
+              seriesId: series.id,
+              seriesTitle: series.title,
+              tvdbId: series.tvdbId,
             }),
           },
         ],

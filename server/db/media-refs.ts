@@ -108,6 +108,21 @@ export function extractMediaRef(
         },
       };
 
+    case "search_episodes":
+      // Track episode searches so webhook notifications link back to this conversation
+      if (parsed.seriesTitle && parsed.seriesId) {
+        return {
+          action: "add",
+          mediaType: "series",
+          title: parsed.seriesTitle as string,
+          ids: {
+            sonarr: parsed.seriesId as number,
+            tvdb: parsed.tvdbId as number | undefined,
+          },
+        };
+      }
+      return null;
+
     default:
       return null;
   }
