@@ -8,11 +8,49 @@ import { runAgent, toolLabels, ApiOverloadedError, type AgentContext } from "../
 import { extractMediaRef, saveMediaRef, type MediaRefData } from "../db/media-refs.ts";
 import { verifySlackSignature } from "../slack/verify.ts";
 import { getSlackClient, setThreadStatus } from "../slack/client.ts";
-import { type SlackEventPayload, shouldProcess, cleanMessageText } from "../slack/events.ts";
+import {
+  type SlackEventPayload,
+  type SlackFile,
+  shouldProcess,
+  cleanMessageText,
+  getImageFiles,
+} from "../slack/events.ts";
 import { extractUserIds, resolveUsernames } from "../slack/users.ts";
 import { resolveAppUserId } from "../db/users.ts";
+import type { ImageContent } from "@mariozechner/pi-ai";
 
 const log = createLogger("slack");
+
+const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5 MB
+
+async function downloadSlackImages(files: SlackFile[]): Promise<ImageContent[]> {
+  const token = process.env.SLACK_BOT_TOKEN;
+  if (!token) return [];
+
+  const results = await Promise.allSettled(
+    files
+      .filter((f) => !f.size || f.size <= MAX_IMAGE_SIZE)
+      .map(async (f): Promise<ImageContent> => {
+        const res = await fetch(f.url_private, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) throw new Error(`Failed to download ${f.name}: ${res.status}`);
+        const buffer = await res.arrayBuffer();
+        const data = Buffer.from(buffer).toString("base64");
+        return { type: "image", data, mimeType: f.mimetype };
+      }),
+  );
+
+  const images: ImageContent[] = [];
+  for (const r of results) {
+    if (r.status === "fulfilled") {
+      images.push(r.value);
+    } else {
+      log.warn("failed to download slack image", { error: r.reason?.message ?? String(r.reason) });
+    }
+  }
+  return images;
+}
 
 // Dedup: track recently seen event IDs
 const seenEvents = new Set<string>();
@@ -63,20 +101,30 @@ export async function handleSlackEvents(req: Request): Promise<Response> {
 
     const syncResponse = req.headers.get("x-sync-response") === "true";
 
+    const imageFiles = getImageFiles(event.files);
+
     if (syncResponse) {
       // Wait for processing and return response in body
       const responseText = await processSlackMessage(
-        event.text!,
+        event.text ?? "",
         event.channel,
         event.ts,
         event.thread_ts,
         event.user,
+        imageFiles,
       );
       return Response.json({ ok: true, response: responseText });
     }
 
     // Ack immediately, process async
-    processSlackMessage(event.text!, event.channel, event.ts, event.thread_ts, event.user);
+    processSlackMessage(
+      event.text ?? "",
+      event.channel,
+      event.ts,
+      event.thread_ts,
+      event.user,
+      imageFiles,
+    );
   }
 
   return new Response("ok", { status: 200 });
@@ -88,6 +136,7 @@ async function processSlackMessage(
   ts: string,
   threadTs?: string,
   userId?: string,
+  imageFiles?: SlackFile[],
 ): Promise<string> {
   const slack = getSlackClient();
   const replyThreadTs = threadTs ?? ts;
@@ -98,7 +147,10 @@ async function processSlackMessage(
   const usernameMap = mentionedIds.length > 0 ? await resolveUsernames(mentionedIds) : undefined;
   const messageText = cleanMessageText(rawText, usernameMap);
 
-  if (!messageText) return "";
+  // Download images from Slack
+  const images = imageFiles?.length ? await downloadSlackImages(imageFiles) : [];
+
+  if (!messageText && images.length === 0) return "";
 
   // Resolve platform user to app user
   const appUserId = userId ? await resolveAppUserId("slack", userId) : null;
@@ -202,7 +254,7 @@ async function processSlackMessage(
       username: agentContext?.username,
     });
     const result = await runAgent(
-      messageText,
+      messageText || "[shared an image]",
       previousMessages,
       agentContext,
       onEvent,
@@ -210,6 +262,7 @@ async function processSlackMessage(
         setThreadStatus(channel, replyThreadTs, `is retrying... (${attempt}/${maxAttempts})`);
       },
       messageTimestamps,
+      images.length > 0 ? images : undefined,
     );
     log.info("agent completed", {
       conversationId,

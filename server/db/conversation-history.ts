@@ -1,9 +1,33 @@
 import { eq, asc } from "drizzle-orm";
 import type { AgentMessage } from "@mariozechner/pi-agent-core";
-import type { AssistantMessage } from "@mariozechner/pi-ai";
+import type { AssistantMessage, TextContent, ImageContent } from "@mariozechner/pi-ai";
 import { db } from "./index.ts";
 import { messages } from "./schema.ts";
 import { getWebhookNotifications, type WebhookNotification } from "./webhook-notifications.ts";
+
+/**
+ * Strip base64 image data from user messages to avoid context bloat.
+ * Replaces image blocks with a text placeholder so the model knows an image was sent.
+ */
+function stripImageData(msg: AgentMessage): AgentMessage {
+  if (msg.role !== "user") return msg;
+  if (typeof msg.content === "string") return msg;
+
+  // AgentMessage with role "user" has content: string | (TextContent | ImageContent)[]
+  // but TypeScript can't narrow through the union, so check the array directly
+  const content = msg.content as (TextContent | ImageContent)[];
+
+  let hasImages = false;
+  const stripped: (TextContent | ImageContent)[] = content.map((block) => {
+    if (block.type === "image") {
+      hasImages = true;
+      return { type: "text" as const, text: "[image]" };
+    }
+    return block;
+  });
+
+  return hasImages ? { ...msg, content: stripped } : msg;
+}
 
 export function formatWebhookMessage(n: WebhookNotification): string {
   const service = n.source === "sonarr" ? "Sonarr" : "Radarr";
@@ -42,7 +66,7 @@ export async function loadConversationHistory(
           (r.data as AgentMessage as AssistantMessage).stopReason === "error"
         ),
     )
-    .map((r) => ({ msg: r.data as AgentMessage, createdAt: r.createdAt }));
+    .map((r) => ({ msg: stripImageData(r.data as AgentMessage), createdAt: r.createdAt }));
 
   const notifications = await getWebhookNotifications(conversationId);
   const webhookMessages = notifications.map((n) => ({

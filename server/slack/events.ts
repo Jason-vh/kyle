@@ -1,3 +1,11 @@
+export interface SlackFile {
+  id: string;
+  mimetype: string;
+  url_private: string;
+  name?: string;
+  size?: number;
+}
+
 export interface SlackEvent {
   type: string;
   subtype?: string;
@@ -8,6 +16,7 @@ export interface SlackEvent {
   ts: string;
   thread_ts?: string;
   bot_id?: string;
+  files?: SlackFile[];
 }
 
 export const BOT_USER_ID = "U099N4BJT5Y";
@@ -25,14 +34,23 @@ export function buildExternalId(event: SlackEvent): string {
   return `${event.channel}:${threadTs}`;
 }
 
+const SUPPORTED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/gif", "image/webp"]);
+
+export function getImageFiles(files?: SlackFile[]): SlackFile[] {
+  return (files ?? []).filter((f) => SUPPORTED_IMAGE_TYPES.has(f.mimetype));
+}
+
 export function shouldProcess(event: SlackEvent): boolean {
   if (event.bot_id) return false;
   if (event.subtype) return false;
-  if (!event.text?.trim()) return false;
+
+  const hasText = !!event.text?.trim();
+  const hasImages = getImageFiles(event.files).length > 0;
+  if (!hasText && !hasImages) return false;
 
   // DMs always pass through; channels require @mention
   if (event.channel_type !== "im") {
-    if (!event.text.includes(`<@${BOT_USER_ID}>`)) return false;
+    if (!event.text?.includes(`<@${BOT_USER_ID}>`)) return false;
   }
 
   return true;

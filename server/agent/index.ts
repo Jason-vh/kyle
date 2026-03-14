@@ -3,6 +3,7 @@ import {
   getModel,
   getEnvApiKey,
   type AssistantMessage,
+  type ImageContent,
   type Message,
   type TextContent,
 } from "@mariozechner/pi-ai";
@@ -182,6 +183,7 @@ export async function runAgent(
   onEvent?: (event: AgentEvent) => void,
   onRetry?: (attempt: number, maxAttempts: number) => void,
   messageTimestamps?: WeakMap<object, Date>,
+  images?: ImageContent[],
 ): Promise<{ messages: AgentMessage[]; responseText: string; errorMessages: AgentMessage[] }> {
   const agent = createAgent(context, messageTimestamps);
 
@@ -193,7 +195,7 @@ export async function runAgent(
     agent.subscribe(onEvent);
   }
 
-  await agent.prompt(message);
+  await agent.prompt(message, images?.length ? images : undefined);
 
   const errorMessages: AgentMessage[] = [];
 

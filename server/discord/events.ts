@@ -1,4 +1,4 @@
-import { ChannelType, type Message, type SendableChannels } from "discord.js";
+import { ChannelType, type Attachment, type Message, type SendableChannels } from "discord.js";
 import { eq, and } from "drizzle-orm";
 import type { AgentMessage } from "@mariozechner/pi-agent-core";
 import { createLogger } from "../logger.ts";
@@ -11,8 +11,42 @@ import { BOT_USER_ID } from "./client.ts";
 import { resolveDiscordUsername } from "./users.ts";
 import { sendDiscordMessage } from "./messages.ts";
 import { resolveAppUserId } from "../db/users.ts";
+import type { ImageContent } from "@mariozechner/pi-ai";
 
 const log = createLogger("discord");
+
+const SUPPORTED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/gif", "image/webp"]);
+const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5 MB
+
+function getImageAttachments(attachments: Message["attachments"]): Attachment[] {
+  return [...attachments.values()].filter(
+    (a) => a.contentType && SUPPORTED_IMAGE_TYPES.has(a.contentType) && a.size <= MAX_IMAGE_SIZE,
+  );
+}
+
+async function downloadDiscordImages(attachments: Attachment[]): Promise<ImageContent[]> {
+  const results = await Promise.allSettled(
+    attachments.map(async (a): Promise<ImageContent> => {
+      const res = await fetch(a.url);
+      if (!res.ok) throw new Error(`Failed to download ${a.name}: ${res.status}`);
+      const buffer = await res.arrayBuffer();
+      const data = Buffer.from(buffer).toString("base64");
+      return { type: "image", data, mimeType: a.contentType! };
+    }),
+  );
+
+  const images: ImageContent[] = [];
+  for (const r of results) {
+    if (r.status === "fulfilled") {
+      images.push(r.value);
+    } else {
+      log.warn("failed to download discord image", {
+        error: r.reason?.message ?? String(r.reason),
+      });
+    }
+  }
+  return images;
+}
 
 /**
  * Strip bot @mention from message text and trim.
@@ -47,7 +81,8 @@ export async function handleDiscordMessage(message: Message): Promise<void> {
   }
 
   const messageText = cleanDiscordMessage(message.content);
-  if (!messageText) return;
+  const imageAttachments = getImageAttachments(message.attachments);
+  if (!messageText && imageAttachments.length === 0) return;
 
   // Determine thread strategy and externalId
   let externalId: string;
@@ -166,20 +201,25 @@ export async function handleDiscordMessage(message: Message): Promise<void> {
     // Attach conversationId to agent context for share tool
     agentContext.conversationId = conversationId;
 
+    // Download images from Discord attachments
+    const images = imageAttachments.length > 0 ? await downloadDiscordImages(imageAttachments) : [];
+
     // Run the agent
     log.info("running agent", {
       conversationId,
       externalId,
       message: messageText,
       username,
+      imageCount: images.length,
     });
     const result = await runAgent(
-      messageText,
+      messageText || "[shared an image]",
       previousMessages,
       agentContext,
       onEvent,
       undefined,
       messageTimestamps,
+      images.length > 0 ? images : undefined,
     );
     log.info("agent completed", {
       conversationId,
