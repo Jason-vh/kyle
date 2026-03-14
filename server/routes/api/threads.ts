@@ -19,6 +19,7 @@ import type {
 import type {
   UserMessage,
   AssistantMessage,
+  ImageContent,
   ToolResultMessage,
   TextContent,
   ToolCall,
@@ -124,6 +125,14 @@ function extractTextContent(msg: UserMessage): string {
       .map((c) => c.text)
       .join(" ") || ""
   );
+}
+
+function extractImages(msg: UserMessage): { data: string; mimeType: string }[] | undefined {
+  if (typeof msg.content === "string") return undefined;
+  const images = msg.content
+    .filter((c): c is ImageContent => c.type === "image")
+    .map((c) => ({ data: c.data, mimeType: c.mimeType }));
+  return images.length > 0 ? images : undefined;
 }
 
 function prettyPrint(str: string): string {
@@ -439,6 +448,7 @@ export async function handleApiThreadDetail(req: Request, id: string): Promise<R
 
       if (msg.role === "user") {
         const text = extractTextContent(msg);
+        const images = extractImages(msg);
         items.push({
           kind: "message",
           message: {
@@ -447,6 +457,7 @@ export async function handleApiThreadDetail(req: Request, id: string): Promise<R
             createdAt: createdAt.toISOString(),
             username,
             textContent: text,
+            images,
           },
         });
       } else if (msg.role === "assistant") {

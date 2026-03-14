@@ -40,6 +40,7 @@ export interface ThreadMessage {
   createdAt: string;
   username: string;
   textContent?: string;
+  images?: { data: string; mimeType: string }[];
   stopReason?: string;
   errorMessage?: string;
   errorRaw?: string;

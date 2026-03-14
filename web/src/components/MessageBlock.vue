@@ -16,6 +16,15 @@
       </a>
     </div>
     <MarkdownContent v-if="msg.textContent" :text="msg.textContent" />
+    <div v-if="msg.images?.length" class="mt-2 flex flex-wrap gap-2">
+      <img
+        v-for="(img, i) in msg.images"
+        :key="i"
+        :src="`data:${img.mimeType};base64,${img.data}`"
+        class="max-h-64 rounded-md border border-border-primary"
+        alt="Attached image"
+      />
+    </div>
   </div>
 
   <!-- Error message -->
