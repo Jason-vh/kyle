@@ -35,6 +35,12 @@ async function downloadSlackImages(files: SlackFile[]): Promise<ImageContent[]> 
           headers: { Authorization: `Bearer ${token}` },
         });
         if (!res.ok) throw new Error(`Failed to download ${f.name}: ${res.status}`);
+        const contentType = res.headers.get("content-type") ?? "";
+        if (!contentType.startsWith("image/")) {
+          throw new Error(
+            `Expected image content-type for ${f.name}, got ${contentType} (bot may need files:read scope)`,
+          );
+        }
         const buffer = await res.arrayBuffer();
         const data = Buffer.from(buffer).toString("base64");
         return { type: "image", data, mimeType: f.mimetype };
