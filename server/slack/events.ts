@@ -42,7 +42,7 @@ export function getImageFiles(files?: SlackFile[]): SlackFile[] {
 
 export function shouldProcess(event: SlackEvent): boolean {
   if (event.bot_id) return false;
-  if (event.subtype) return false;
+  if (event.subtype && event.subtype !== "file_share") return false;
 
   const hasText = !!event.text?.trim();
   const hasImages = getImageFiles(event.files).length > 0;
