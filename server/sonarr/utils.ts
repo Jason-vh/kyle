@@ -36,6 +36,20 @@ export function toPartialSeries(series: SonarrSeries) {
   };
 }
 
+export function toSeriesLookupResult(series: SonarrSeries) {
+  return {
+    title: series.title,
+    year: series.year,
+    status: series.status,
+    overview: series.overview,
+    network: series.network,
+    seasonCount: series.seasons.length,
+    tvdbId: series.tvdbId,
+    imdbId: series.imdbId,
+    titleSlug: series.titleSlug,
+  };
+}
+
 export function toPartialEpisode(episode: SonarrEpisode) {
   return {
     id: episode.id,

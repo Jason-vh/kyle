@@ -15,6 +15,17 @@ export const toPartialMovie = (movie: RadarrMovie) => {
   };
 };
 
+export const toMovieLookupResult = (movie: RadarrMovie) => {
+  return {
+    title: movie.title,
+    year: movie.year,
+    status: movie.status,
+    overview: movie.overview,
+    tmdbId: movie.tmdbId,
+    imdbId: movie.imdbId,
+  };
+};
+
 export const toPartialQueueItem = (item: RadarrQueueItem) => {
   return {
     id: item.id,

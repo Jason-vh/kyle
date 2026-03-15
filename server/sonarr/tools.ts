@@ -3,6 +3,7 @@ import type { AgentTool } from "@mariozechner/pi-agent-core";
 import * as sonarr from "./api.ts";
 import {
   toPartialSeries,
+  toSeriesLookupResult,
   toPartialEpisode,
   toPartialQueueItem,
   toPartialCalendarEpisode,
@@ -53,13 +54,14 @@ const searchSeriesParams = Type.Object({
 
 export const searchSeriesTool: AgentTool<typeof searchSeriesParams> = {
   name: "search_series",
-  description: "Search for TV series to add to Sonarr using a title",
+  description:
+    "Search for TV series in external databases (TVDB). Returns lookup results, not library entries — use get_all_series to check what's already in the library.",
   parameters: searchSeriesParams,
   label: "Searching for series in Sonarr",
   async execute(_toolCallId, params) {
     const series = await sonarr.searchSeries(params.title);
     return {
-      content: [{ type: "text", text: JSON.stringify(series.map(toPartialSeries)) }],
+      content: [{ type: "text", text: JSON.stringify(series.map(toSeriesLookupResult)) }],
       details: undefined,
     };
   },

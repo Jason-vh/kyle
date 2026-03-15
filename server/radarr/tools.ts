@@ -1,7 +1,12 @@
 import { Type } from "@sinclair/typebox";
 import type { AgentTool } from "@mariozechner/pi-agent-core";
 import * as radarr from "./api.ts";
-import { toPartialMovie, toPartialQueueItem, toPartialHistoryRecord } from "./utils.ts";
+import {
+  toPartialMovie,
+  toMovieLookupResult,
+  toPartialQueueItem,
+  toPartialHistoryRecord,
+} from "./utils.ts";
 
 const emptyParams = Type.Object({});
 
@@ -45,13 +50,14 @@ const searchMoviesParams = Type.Object({
 
 export const searchMoviesTool: AgentTool<typeof searchMoviesParams> = {
   name: "search_movies",
-  description: "Search for movies to add to Radarr using a title",
+  description:
+    "Search for movies in external databases (TMDB). Returns lookup results, not library entries — use get_all_movies to check what's already in the library.",
   parameters: searchMoviesParams,
   label: "Searching for movies in Radarr",
   async execute(_toolCallId, params) {
     const movies = await radarr.searchMovies(params.title);
     return {
-      content: [{ type: "text", text: JSON.stringify(movies.map(toPartialMovie)) }],
+      content: [{ type: "text", text: JSON.stringify(movies.map(toMovieLookupResult)) }],
       details: undefined,
     };
   },
