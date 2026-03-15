@@ -28,7 +28,7 @@ export function startDiscordBot(): void {
     partials: [Partials.Channel],
   });
 
-  client.on("ready", (c) => {
+  client.on("clientReady", (c) => {
     BOT_USER_ID = c.user.id;
     log.info("discord bot ready", { username: c.user.tag, userId: BOT_USER_ID });
   });
