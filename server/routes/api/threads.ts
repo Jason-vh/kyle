@@ -108,8 +108,6 @@ function toolSummary(tc: ToolCall): string {
     }
     case "web_search":
       return `Searched the web for '${a.query}'`;
-    case "unsubscribe_notifications":
-      return `Unsubscribed from notifications for '${a.title}'`;
     default:
       return tc.name.replace(/_/g, " ");
   }

@@ -75,7 +75,6 @@ import { convertTimeTool } from "../time/tools.ts";
 // Conversation tools
 import { createShareConversationTool } from "./share-tool.ts";
 import { getRequestsForUserTool } from "./requests-tool.ts";
-import { unsubscribeNotificationsTool } from "./unsubscribe-tool.ts";
 
 const log = createLogger("agent");
 
@@ -117,8 +116,6 @@ const allTools = [
   convertTimeTool,
   // Requests
   getRequestsForUserTool,
-  // Notifications
-  unsubscribeNotificationsTool,
 ];
 
 export const toolLabels = new Map(allTools.map((t) => [t.name, t.label]));
