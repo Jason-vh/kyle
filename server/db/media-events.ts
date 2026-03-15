@@ -1,11 +1,11 @@
-import { sql, eq, asc } from "drizzle-orm";
+import { eq, asc } from "drizzle-orm";
 import { createLogger } from "../logger.ts";
 import { db } from "./index.ts";
-import { mediaRefs } from "./schema.ts";
+import { mediaEvents } from "./schema.ts";
 
-const log = createLogger("media-refs");
+const log = createLogger("media-events");
 
-interface MediaRefIds {
+interface MediaEventIds {
   tmdb?: number;
   imdb?: string;
   tvdb?: number;
@@ -14,23 +14,24 @@ interface MediaRefIds {
   titleSlug?: string;
 }
 
-export interface MediaRefData {
+export interface MediaEventData {
   action: string;
   mediaType: string;
   title: string;
-  ids: MediaRefIds;
+  ids: MediaEventIds;
+  seasonNumber?: number;
+  episodeNumber?: number;
 }
 
 /**
- * Extract a media ref from a tool execution result.
+ * Extract a media event from a tool execution result.
  * Returns null for non-tracked tools or if parsing fails.
  */
-export function extractMediaRef(
+export function extractMediaEvent(
   toolName: string,
   args: Record<string, unknown>,
   result: { content?: Array<{ type: string; text?: string }> },
-): MediaRefData | null {
-  // Parse the JSON text content from the tool result
+): MediaEventData | null {
   const textContent = result.content?.find((c) => c.type === "text");
   if (!textContent?.text) return null;
 
@@ -106,19 +107,22 @@ export function extractMediaRef(
           tmdb: parsed.tmdbId as number | undefined,
           titleSlug: parsed.titleSlug as string | undefined,
         },
+        seasonNumber: (args.seasonNumber as number) ?? (parsed.seasonNumber as number | undefined),
       };
 
+    case "download_episodes":
     case "search_episodes":
-      // Track episode searches so webhook notifications link back to this conversation
+      // Handle both current and historical tool name
       if (parsed.seriesTitle && parsed.seriesId) {
         return {
-          action: "add",
+          action: "download",
           mediaType: "series",
           title: parsed.seriesTitle as string,
           ids: {
             sonarr: parsed.seriesId as number,
             tvdb: parsed.tvdbId as number | undefined,
           },
+          seasonNumber: args.seasonNumber as number | undefined,
         };
       }
       return null;
@@ -128,63 +132,39 @@ export function extractMediaRef(
   }
 }
 
-/**
- * Get all media requests for a given user, ordered by most recent first.
- */
-export async function getRequestsForUser(
-  userId: string,
-): Promise<(MediaRefData & { date: string })[]> {
-  const rows = await db.execute<{
-    action: string;
-    media_type: string;
-    title: string;
-    ids: MediaRefIds;
-    notify: boolean;
-    created_at: string;
-  }>(sql`
-    SELECT action, media_type, title, ids, notify, created_at
-    FROM media_refs
-    WHERE user_id = ${userId}
-    ORDER BY created_at DESC
-  `);
-
-  return rows.map((r) => ({
-    action: r.action,
-    mediaType: r.media_type,
-    title: r.title,
-    ids: r.ids as MediaRefIds,
-    notify: r.notify,
-    date: r.created_at,
-  }));
-}
-
-export interface MediaRefRow {
+export interface MediaEventRow {
   id: string;
   action: string;
   mediaType: string;
   title: string;
-  ids: MediaRefIds;
+  ids: MediaEventIds;
+  seasonNumber: number | null;
+  episodeNumber: number | null;
   platformUserId: string | null;
   userId: string | null;
   createdAt: Date;
 }
 
 /**
- * Get all media refs for a conversation, ordered by creation time.
+ * Get all media events for a conversation, ordered by creation time.
  */
-export async function getMediaRefsForConversation(conversationId: string): Promise<MediaRefRow[]> {
+export async function getMediaEventsForConversation(
+  conversationId: string,
+): Promise<MediaEventRow[]> {
   const rows = await db
     .select()
-    .from(mediaRefs)
-    .where(eq(mediaRefs.conversationId, conversationId))
-    .orderBy(asc(mediaRefs.createdAt));
+    .from(mediaEvents)
+    .where(eq(mediaEvents.conversationId, conversationId))
+    .orderBy(asc(mediaEvents.createdAt));
 
   return rows.map((r) => ({
     id: r.id,
     action: r.action,
     mediaType: r.mediaType,
     title: r.title,
-    ids: r.ids as MediaRefIds,
+    ids: r.ids as MediaEventIds,
+    seasonNumber: r.seasonNumber,
+    episodeNumber: r.episodeNumber,
     platformUserId: r.platformUserId,
     userId: r.userId,
     createdAt: r.createdAt,
@@ -192,38 +172,40 @@ export async function getMediaRefsForConversation(conversationId: string): Promi
 }
 
 /**
- * Save a media ref to the database. Non-fatal — logs errors but doesn't throw.
+ * Save a media event to the database. Non-fatal — logs errors but doesn't throw.
  */
-export async function saveMediaRef(
+export async function saveMediaEvent(
   conversationId: string,
   toolCallId: string,
-  ref: MediaRefData,
+  event: MediaEventData,
   platformUserId: string,
   messageId: string,
   appUserId?: string | null,
 ): Promise<void> {
   try {
-    await db.insert(mediaRefs).values({
+    await db.insert(mediaEvents).values({
       conversationId,
       toolCallId,
       messageId,
       platformUserId,
       userId: appUserId ?? null,
-      action: ref.action,
-      mediaType: ref.mediaType,
-      title: ref.title,
-      ids: ref.ids,
+      action: event.action,
+      mediaType: event.mediaType,
+      title: event.title,
+      ids: event.ids,
+      seasonNumber: event.seasonNumber ?? null,
+      episodeNumber: event.episodeNumber ?? null,
     });
-    log.info("saved media ref", {
+    log.info("saved media event", {
       conversationId,
       toolCallId,
       messageId,
-      action: ref.action,
-      mediaType: ref.mediaType,
-      title: ref.title,
+      action: event.action,
+      mediaType: event.mediaType,
+      title: event.title,
     });
   } catch (error) {
-    log.error("failed to save media ref", {
+    log.error("failed to save media event", {
       conversationId,
       toolCallId,
       error: error instanceof Error ? error.message : String(error),

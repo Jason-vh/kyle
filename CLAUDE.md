@@ -26,12 +26,14 @@ server/
   agent/
     index.ts                → Agent factory + runAgent(), tool registration
     system-prompt.ts        → Kyle's system prompt + AgentContext
-    requests-tool.ts        → get_requests_for_user tool (queries by app user UUID)
+    requests-tool.ts        → get_requests_for_user tool (queries subscriptions by app user UUID)
+    unsubscribe-tool.ts     → unsubscribe_notifications tool (deactivates subscriptions by Radarr/Sonarr ID)
   db/
     index.ts                → Drizzle + postgres connection
-    schema.ts               → All tables: users, platform_identities, user_credentials, user_invites, conversations, messages, media_refs
+    schema.ts               → All tables: users, platform_identities, user_credentials, user_invites, conversations, messages, media_events, movie_subscriptions, series_subscriptions
     users.ts                → Platform identity resolution (cached), backfill, user CRUD
-    media-refs.ts           → Media ref extraction from tool events + persistence
+    media-events.ts         → Media event extraction from tool results + persistence
+    subscriptions.ts        → Movie/series subscription CRUD, webhook subscriber lookup, processMediaEvent helper
     migrate.ts              → Migration runner
   routes/
     chat.ts                 → POST /chat handler
@@ -81,7 +83,7 @@ server/
     tools.ts                → 1 Brave Search agent tool
   webhooks/
     types.ts                → Webhook payload types + MediaNotificationInfo
-    requester.ts            → Find who requested media (media_refs + conversations query)
+    requester.ts            → Find who requested media (subscription tables + conversations query)
     notifications.ts        → AI notification generation via Haiku (fallback to template)
     handler.ts              → POST /webhooks/sonarr + /webhooks/radarr handlers
 
@@ -130,7 +132,8 @@ drizzle.config.ts           → Drizzle Kit config
 - **Stateless agent**: Agent is created per-request. Previous messages are loaded from DB and restored via `agent.replaceMessages()`.
 - **JSONB messages**: Full `AgentMessage` objects stored as JSONB in the `messages` table. The `role` and `sequence` columns exist for querying and ordering.
 - **Interface-agnostic conversations**: The `conversations` table has an `interfaceType` field (http/slack/discord/cli) so multiple frontends can share the same backend. Slack conversations are keyed by `externalId` = `"{channel}:{thread_ts}"`. Discord conversations use `"dm:{channelId}"` or `"thread:{threadId}"`.
-- **User identity**: First-class `users` table with UUIDs, linked to platform identities (Slack/Discord) via `platform_identities`. Each conversation, message, and media ref has both a `platformUserId` (text, the raw Slack/Discord ID) and a `userId` (uuid FK → users). Slack/Discord handlers resolve the app user via `resolveAppUserId()` (cached in-memory Map). The thread viewer prefers app user `displayName` over platform API names.
+- **User identity**: First-class `users` table with UUIDs, linked to platform identities (Slack/Discord) via `platform_identities`. Each conversation, message, and media event has both a `platformUserId` (text, the raw Slack/Discord ID) and a `userId` (uuid FK → users). Slack/Discord handlers resolve the app user via `resolveAppUserId()` (cached in-memory Map). The thread viewer prefers app user `displayName` over platform API names.
+- **Media events + subscriptions**: `media_events` is an append-only event log of tool actions (add, remove, download). `movie_subscriptions` and `series_subscriptions` track notification preferences — created on add/download, deactivated on remove/unsubscribe. Series subscriptions support season/episode granularity via partial unique indexes. Webhook notifications query subscription tables (not events) to find who to notify.
 - **Agent decoupling**: The agent only sees app user UUIDs and display names — never platform-specific IDs. `AgentContext.userId` is the app user UUID. The `get_requests_for_user` tool queries by `user_id` FK, not platform ID.
 - **Auth: Passkeys + JWT**: Users authenticate via WebAuthn passkeys. JWT sessions (`jose`, HS256) stored in httpOnly `kyle_auth` cookie with 30-day expiry and sliding window refresh at 15 days. Admin-generated invite links for onboarding new users. Thread sharing uses separate `?sig=` HMAC signatures (unchanged, uses `THREAD_VIEWER_TOKEN`).
 - **Slack immediate ack**: The `/slack/events` handler returns 200 immediately and processes the message async (fire-and-forget) to stay within Slack's 3-second timeout. Responses are always posted as thread replies.

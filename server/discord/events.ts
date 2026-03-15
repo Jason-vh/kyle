@@ -6,7 +6,8 @@ import { db } from "../db/index.ts";
 import { conversations, messages } from "../db/schema.ts";
 import { loadConversationHistory } from "../db/conversation-history.ts";
 import { runAgent, ApiOverloadedError, type AgentContext } from "../agent/index.ts";
-import { extractMediaRef, saveMediaRef, type MediaRefData } from "../db/media-refs.ts";
+import { extractMediaEvent, saveMediaEvent, type MediaEventData } from "../db/media-events.ts";
+import { processMediaEvent } from "../db/subscriptions.ts";
 import { BOT_USER_ID } from "./client.ts";
 import { resolveDiscordUsername } from "./users.ts";
 import { sendDiscordMessage } from "./messages.ts";
@@ -125,7 +126,7 @@ export async function handleDiscordMessage(message: Message): Promise<void> {
 
   // Build event handler for deferred media ref collection
   const toolArgs = new Map<string, Record<string, unknown>>();
-  const pendingRefs: Array<{ toolCallId: string; ref: MediaRefData }> = [];
+  const pendingEvents: Array<{ toolCallId: string; event: MediaEventData }> = [];
   const onEvent = (event: {
     type: string;
     toolCallId?: string;
@@ -147,13 +148,13 @@ export async function handleDiscordMessage(message: Message): Promise<void> {
     ) {
       const args = toolArgs.get(event.toolCallId) ?? {};
       toolArgs.delete(event.toolCallId);
-      const ref = extractMediaRef(
+      const mediaEvent = extractMediaEvent(
         event.toolName,
         args,
         event.result as { content?: Array<{ type: string; text?: string }> },
       );
-      if (ref) {
-        pendingRefs.push({ toolCallId: event.toolCallId, ref });
+      if (mediaEvent) {
+        pendingEvents.push({ toolCallId: event.toolCallId, event: mediaEvent });
       }
     }
   };
@@ -261,14 +262,18 @@ export async function handleDiscordMessage(message: Message): Promise<void> {
       }
     }
 
-    // Save deferred media refs with messageId
-    for (const { toolCallId, ref } of pendingRefs) {
+    // Save deferred media events with messageId + process subscriptions
+    for (const { toolCallId, event: mediaEvent } of pendingEvents) {
       const messageId = toolCallToMsg.get(toolCallId);
       if (!messageId) {
-        log.error("no messageId found for pending media ref", { toolCallId, title: ref.title });
+        log.error("no messageId found for pending media event", {
+          toolCallId,
+          title: mediaEvent.title,
+        });
         continue;
       }
-      saveMediaRef(conversationId, toolCallId, ref, userId, messageId, appUserId);
+      saveMediaEvent(conversationId, toolCallId, mediaEvent, userId, messageId, appUserId);
+      processMediaEvent(mediaEvent, conversationId, appUserId);
     }
 
     // Reply (split into multiple messages if needed)

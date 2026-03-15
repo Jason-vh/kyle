@@ -11,6 +11,7 @@ import {
   uniqueIndex,
   customType,
 } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 
 // Custom type for bytea columns
 const bytea = customType<{ data: Uint8Array; driverData: Buffer }>({
@@ -96,8 +97,8 @@ export const userInvites = pgTable("user_invites", {
 
 // ---- Existing tables (userId renamed to platformUserId, new userId FK added) ----
 
-export const mediaRefs = pgTable(
-  "media_refs",
+export const mediaEvents = pgTable(
+  "media_events",
   {
     id: uuid("id").primaryKey().defaultRandom(),
     conversationId: uuid("conversation_id")
@@ -111,14 +112,71 @@ export const mediaRefs = pgTable(
     title: text("title").notNull(),
     action: text("action").notNull(),
     ids: jsonb("ids").notNull(),
-    notify: boolean("notify").notNull().default(true),
+    seasonNumber: integer("season_number"),
+    episodeNumber: integer("episode_number"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
   (table) => [
-    index("media_refs_conversation_id_idx").on(table.conversationId),
-    index("media_refs_message_id_idx").on(table.messageId),
-    index("media_refs_action_idx").on(table.action),
-    index("media_refs_platform_user_id_idx").on(table.platformUserId),
+    index("media_events_conversation_id_idx").on(table.conversationId),
+    index("media_events_message_id_idx").on(table.messageId),
+    index("media_events_action_idx").on(table.action),
+    index("media_events_platform_user_id_idx").on(table.platformUserId),
+  ],
+);
+
+export const movieSubscriptions = pgTable(
+  "movie_subscriptions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id),
+    radarrId: integer("radarr_id").notNull(),
+    conversationId: uuid("conversation_id")
+      .notNull()
+      .references(() => conversations.id),
+    active: boolean("active").notNull().default(true),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("movie_subscriptions_user_radarr_idx").on(table.userId, table.radarrId),
+    index("movie_subscriptions_radarr_active_idx")
+      .on(table.radarrId)
+      .where(sql`active = true`),
+  ],
+);
+
+export const seriesSubscriptions = pgTable(
+  "series_subscriptions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id),
+    sonarrId: integer("sonarr_id").notNull(),
+    seasonNumber: integer("season_number"),
+    episodeNumber: integer("episode_number"),
+    conversationId: uuid("conversation_id")
+      .notNull()
+      .references(() => conversations.id),
+    active: boolean("active").notNull().default(true),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("series_subscriptions_whole_series_idx")
+      .on(table.userId, table.sonarrId)
+      .where(sql`season_number IS NULL AND episode_number IS NULL`),
+    uniqueIndex("series_subscriptions_season_idx")
+      .on(table.userId, table.sonarrId, table.seasonNumber)
+      .where(sql`season_number IS NOT NULL AND episode_number IS NULL`),
+    uniqueIndex("series_subscriptions_episode_idx")
+      .on(table.userId, table.sonarrId, table.seasonNumber, table.episodeNumber)
+      .where(sql`season_number IS NOT NULL AND episode_number IS NOT NULL`),
+    index("series_subscriptions_sonarr_active_idx")
+      .on(table.sonarrId)
+      .where(sql`active = true`),
   ],
 );
 

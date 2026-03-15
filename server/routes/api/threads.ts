@@ -6,7 +6,7 @@ import { requireAuth } from "../../auth/middleware.ts";
 import { resolveUsernames } from "../../slack/users.ts";
 import { resolveDiscordUsernames } from "../../discord/users.ts";
 import { getWebhookNotifications } from "../../db/webhook-notifications.ts";
-import { getMediaRefsForConversation } from "../../db/media-refs.ts";
+import { getMediaEventsForConversation } from "../../db/media-events.ts";
 import { createLogger } from "../../logger.ts";
 import type {
   ThreadListItem,
@@ -67,6 +67,7 @@ function toolSummary(tc: ToolCall): string {
       return "Checked download queue (TV)";
     case "get_calendar":
       return "Checked upcoming episodes";
+    case "download_episodes":
     case "search_episodes":
       return "Searched for missing episodes";
     case "get_series_history":
@@ -210,7 +211,7 @@ export async function handleApiThreadList(req: Request): Promise<Response> {
         )::text
         FROM (
           SELECT action, title, created_at
-          FROM media_refs
+          FROM media_events
           WHERE conversation_id = ${conversations.id}
           LIMIT 5
         ) sub
@@ -305,16 +306,16 @@ export async function handleApiThreadDetail(req: Request, id: string): Promise<R
     userId: r.userId,
   }));
 
-  const [webhookNotifications, mediaRefRows] = await Promise.all([
+  const [webhookNotifications, mediaEventRows] = await Promise.all([
     getWebhookNotifications(conv.id),
-    getMediaRefsForConversation(conv.id),
+    getMediaEventsForConversation(conv.id),
   ]);
 
   // Resolve usernames — prefer app user display names, fall back to platform API
   const appUserIds = [
     ...new Set([
       ...rows.filter((r) => r.userId).map((r) => r.userId!),
-      ...mediaRefRows.filter((r) => r.userId).map((r) => r.userId!),
+      ...mediaEventRows.filter((r) => r.userId).map((r) => r.userId!),
     ]),
   ];
   const appUserNameMap = new Map<string, string>();
@@ -328,11 +329,11 @@ export async function handleApiThreadDetail(req: Request, id: string): Promise<R
     }
   }
 
-  // For messages/media refs without an app user, fall back to platform API
+  // For messages/media events without an app user, fall back to platform API
   const unresolvedPlatformIds = [
     ...new Set([
       ...rows.filter((r) => !r.userId && r.platformUserId).map((r) => r.platformUserId!),
-      ...mediaRefRows.filter((r) => !r.userId && r.platformUserId).map((r) => r.platformUserId!),
+      ...mediaEventRows.filter((r) => !r.userId && r.platformUserId).map((r) => r.platformUserId!),
     ]),
   ];
   let platformUsernameMap = new Map<string, string>();
@@ -380,7 +381,7 @@ export async function handleApiThreadDetail(req: Request, id: string): Promise<R
   }
 
   // Build media refs with pre-computed hrefs
-  const apiMediaRefs: MediaRef[] = mediaRefRows.map((ref) => {
+  const apiMediaRefs: MediaRef[] = mediaEventRows.map((ref) => {
     const ids = ref.ids as Record<string, unknown>;
     let href: string | null = null;
     if (ref.mediaType === "movie" && RADARR_HOST && ids.titleSlug) {

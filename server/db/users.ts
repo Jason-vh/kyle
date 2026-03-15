@@ -70,7 +70,7 @@ export async function backfillUserFromPlatformLink(
   appUserId: string,
   platform: string,
   platformUserId: string,
-): Promise<{ conversations: number; messages: number; mediaRefs: number }> {
+): Promise<{ conversations: number; messages: number; mediaEvents: number }> {
   const interfaceType = platformToInterfaceType(platform);
 
   const [convResult] = await db
@@ -84,7 +84,7 @@ export async function backfillUserFromPlatformLink(
   `)
     .catch(() => [{ count: "0" }]);
 
-  // For messages/media_refs, scope by conversations of the right interface type
+  // For messages/media_events, scope by conversations of the right interface type
   const [msgResult] = await db
     .execute<{ count: string }>(sql`
     WITH updated AS (
@@ -104,7 +104,7 @@ export async function backfillUserFromPlatformLink(
   const [refResult] = await db
     .execute<{ count: string }>(sql`
     WITH updated AS (
-      UPDATE media_refs
+      UPDATE media_events
       SET user_id = ${appUserId}
       WHERE platform_user_id = ${platformUserId}
         AND user_id IS NULL
@@ -120,7 +120,7 @@ export async function backfillUserFromPlatformLink(
   const counts = {
     conversations: parseInt(convResult?.count ?? "0", 10),
     messages: parseInt(msgResult?.count ?? "0", 10),
-    mediaRefs: parseInt(refResult?.count ?? "0", 10),
+    mediaEvents: parseInt(refResult?.count ?? "0", 10),
   };
 
   log.info("backfill complete", { appUserId, platform, platformUserId, ...counts });

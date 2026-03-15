@@ -31,6 +31,7 @@ export function toolSummary(name: string, args: Record<string, unknown>): string
       return "Checked download queue (TV)";
     case "get_calendar":
       return "Checked upcoming episodes";
+    case "download_episodes":
     case "search_episodes":
       return "Searched for missing episodes";
     case "get_series_history":

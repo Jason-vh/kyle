@@ -6,36 +6,26 @@ import type { MediaRequester } from "./types.ts";
 const log = createLogger("webhooks:requester");
 
 /**
- * Find conversations where a media item was added, so we can notify the requester.
- * Queries media_refs (action=add) joined with conversations (interfaceType=slack or discord),
- * matching on any of the provided IDs (radarr, sonarr, tmdb, tvdb).
+ * Find conversations where a media item was requested, so we can notify the requester.
+ * Queries subscription tables (movie_subscriptions / series_subscriptions) joined with
+ * conversations to get interface type + channel metadata.
  */
 export async function findMediaRequesters(
   mediaType: "movie" | "series",
   ids: { radarr?: number; sonarr?: number; tmdb?: number; tvdb?: number },
 ): Promise<MediaRequester[]> {
-  const conditions: ReturnType<typeof sql>[] = [];
-
-  if (ids.radarr != null) {
-    conditions.push(sql`(mr.ids->>'radarr')::int = ${ids.radarr}`);
+  if (mediaType === "movie" && ids.radarr != null) {
+    return findMovieSubscribers(ids.radarr);
   }
-  if (ids.sonarr != null) {
-    conditions.push(sql`(mr.ids->>'sonarr')::int = ${ids.sonarr}`);
-  }
-  if (ids.tmdb != null) {
-    conditions.push(sql`(mr.ids->>'tmdb')::int = ${ids.tmdb}`);
-  }
-  if (ids.tvdb != null) {
-    conditions.push(sql`(mr.ids->>'tvdb')::int = ${ids.tvdb}`);
+  if (mediaType === "series" && ids.sonarr != null) {
+    return findSeriesSubscribers(ids.sonarr);
   }
 
-  if (conditions.length === 0) {
-    log.warn("no IDs provided for requester lookup", { mediaType });
-    return [];
-  }
+  log.warn("no usable IDs for subscription lookup", { mediaType, ids });
+  return [];
+}
 
-  const idFilter = conditions.reduce((acc, cond, i) => (i === 0 ? cond : sql`${acc} OR ${cond}`));
-
+async function findMovieSubscribers(radarrId: number): Promise<MediaRequester[]> {
   const rows = await db.execute<{
     conversation_id: string;
     interface_type: string;
@@ -43,21 +33,66 @@ export async function findMediaRequesters(
     title: string;
   }>(sql`
     SELECT
-      c.id AS conversation_id,
+      ms.conversation_id,
       c.interface_type,
       c.metadata,
-      mr.title
-    FROM media_refs mr
-    LEFT JOIN messages m ON m.id = mr.message_id
-    JOIN conversations c ON c.id = COALESCE(m.conversation_id, mr.conversation_id)
-    WHERE mr.action = 'add'
-      AND mr.notify = true
-      AND mr.media_type = ${mediaType}
+      COALESCE(
+        (SELECT me.title FROM media_events me
+         WHERE me.user_id = ms.user_id
+           AND (me.ids->>'radarr')::int = ms.radarr_id
+           AND me.action = 'add'
+         ORDER BY me.created_at DESC LIMIT 1),
+        ''
+      ) as title
+    FROM movie_subscriptions ms
+    JOIN conversations c ON c.id = ms.conversation_id
+    WHERE ms.radarr_id = ${radarrId}
+      AND ms.active = true
       AND c.interface_type IN ('slack', 'discord')
-      AND (${idFilter})
-    ORDER BY mr.created_at DESC
   `);
 
+  return rowsToRequesters(rows, "movie", { radarr: radarrId });
+}
+
+async function findSeriesSubscribers(sonarrId: number): Promise<MediaRequester[]> {
+  const rows = await db.execute<{
+    conversation_id: string;
+    interface_type: string;
+    metadata: Record<string, unknown>;
+    title: string;
+  }>(sql`
+    SELECT
+      ss.conversation_id,
+      c.interface_type,
+      c.metadata,
+      COALESCE(
+        (SELECT me.title FROM media_events me
+         WHERE me.user_id = ss.user_id
+           AND (me.ids->>'sonarr')::int = ss.sonarr_id
+           AND me.action IN ('add', 'download')
+         ORDER BY me.created_at DESC LIMIT 1),
+        ''
+      ) as title
+    FROM series_subscriptions ss
+    JOIN conversations c ON c.id = ss.conversation_id
+    WHERE ss.sonarr_id = ${sonarrId}
+      AND ss.active = true
+      AND c.interface_type IN ('slack', 'discord')
+  `);
+
+  return rowsToRequesters(rows, "series", { sonarr: sonarrId });
+}
+
+function rowsToRequesters(
+  rows: Array<{
+    conversation_id: string;
+    interface_type: string;
+    metadata: Record<string, unknown>;
+    title: string;
+  }>,
+  mediaType: string,
+  ids: Record<string, unknown>,
+): MediaRequester[] {
   const requesters: MediaRequester[] = [];
 
   for (const r of rows) {

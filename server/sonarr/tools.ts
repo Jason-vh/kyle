@@ -338,12 +338,12 @@ const searchEpisodesParams = Type.Object({
   ),
 });
 
-export const searchEpisodesTool: AgentTool<typeof searchEpisodesParams> = {
-  name: "search_episodes",
+export const downloadEpisodesTool: AgentTool<typeof searchEpisodesParams> = {
+  name: "download_episodes",
   description:
-    "Search for missing episodes for a series, a specific season, or specific episodes. When seasonNumber is provided with seriesId, automatically monitors unmonitored episodes before searching.",
+    "Search indexers and download missing episodes for a series, a specific season, or specific episodes. When seasonNumber is provided with seriesId, automatically monitors unmonitored episodes before searching.",
   parameters: searchEpisodesParams,
-  label: "Searching for episodes in Sonarr",
+  label: "Downloading episodes from Sonarr",
   async execute(_toolCallId, params) {
     const monitoringActions: string[] = [];
 

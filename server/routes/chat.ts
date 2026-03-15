@@ -5,7 +5,8 @@ import { db } from "../db/index.ts";
 import { conversations, messages } from "../db/schema.ts";
 import { runAgent, ApiOverloadedError } from "../agent/index.ts";
 import type { AssistantMessage } from "@mariozechner/pi-ai";
-import { extractMediaRef, saveMediaRef, type MediaRefData } from "../db/media-refs.ts";
+import { extractMediaEvent, saveMediaEvent, type MediaEventData } from "../db/media-events.ts";
+import { processMediaEvent } from "../db/subscriptions.ts";
 import { timingSafeEqual } from "crypto";
 
 const log = createLogger("chat");
@@ -88,7 +89,7 @@ export async function handleChat(req: Request): Promise<Response> {
 
   // Build event handler for deferred media ref collection
   const toolArgs = new Map<string, Record<string, unknown>>();
-  const pendingRefs: Array<{ toolCallId: string; ref: MediaRefData }> = [];
+  const pendingEvents: Array<{ toolCallId: string; event: MediaEventData }> = [];
   const onEvent = (event: {
     type: string;
     toolCallId?: string;
@@ -108,13 +109,13 @@ export async function handleChat(req: Request): Promise<Response> {
     ) {
       const args = toolArgs.get(event.toolCallId) ?? {};
       toolArgs.delete(event.toolCallId);
-      const ref = extractMediaRef(
+      const mediaEvent = extractMediaEvent(
         event.toolName,
         args,
         event.result as { content?: Array<{ type: string; text?: string }> },
       );
-      if (ref) {
-        pendingRefs.push({ toolCallId: event.toolCallId, ref });
+      if (mediaEvent) {
+        pendingEvents.push({ toolCallId: event.toolCallId, event: mediaEvent });
       }
     }
   };
@@ -178,19 +179,20 @@ export async function handleChat(req: Request): Promise<Response> {
     }
   }
 
-  // Save deferred media refs with messageId
-  for (const { toolCallId, ref } of pendingRefs) {
+  // Save deferred media events with messageId + process subscriptions
+  for (const { toolCallId, event: mediaEvent } of pendingEvents) {
     const messageId = toolCallToMsg.get(toolCallId);
     if (!messageId || !body.userId) {
-      log.error("missing messageId or userId for pending media ref", {
+      log.error("missing messageId or userId for pending media event", {
         toolCallId,
-        title: ref.title,
+        title: mediaEvent.title,
         hasMessageId: !!messageId,
         hasUserId: !!body.userId,
       });
       continue;
     }
-    saveMediaRef(conversationId!, toolCallId, ref, body.userId, messageId);
+    saveMediaEvent(conversationId!, toolCallId, mediaEvent, body.userId, messageId);
+    processMediaEvent(mediaEvent, conversationId!, null);
   }
 
   return Response.json({

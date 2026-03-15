@@ -36,7 +36,7 @@ import {
   getEpisodesTool,
   getSeriesQueueTool,
   getCalendarTool,
-  searchEpisodesTool,
+  downloadEpisodesTool,
   getSeriesHistoryTool,
 } from "../sonarr/tools.ts";
 
@@ -90,7 +90,7 @@ const allTools = [
   getEpisodesTool,
   getSeriesQueueTool,
   getCalendarTool,
-  searchEpisodesTool,
+  downloadEpisodesTool,
   getSeriesHistoryTool,
   // Radarr
   getRadarrMovieTool,
