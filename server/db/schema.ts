@@ -111,6 +111,7 @@ export const mediaRefs = pgTable(
     title: text("title").notNull(),
     action: text("action").notNull(),
     ids: jsonb("ids").notNull(),
+    notify: boolean("notify").notNull().default(true),
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
   (table) => [

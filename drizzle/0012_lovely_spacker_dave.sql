@@ -1,0 +1,1 @@
+ALTER TABLE "media_refs" ADD COLUMN "notify" boolean DEFAULT true NOT NULL;

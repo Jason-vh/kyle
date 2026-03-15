@@ -139,9 +139,10 @@ export async function getRequestsForUser(
     media_type: string;
     title: string;
     ids: MediaRefIds;
+    notify: boolean;
     created_at: string;
   }>(sql`
-    SELECT action, media_type, title, ids, created_at
+    SELECT action, media_type, title, ids, notify, created_at
     FROM media_refs
     WHERE user_id = ${userId}
     ORDER BY created_at DESC
@@ -152,6 +153,7 @@ export async function getRequestsForUser(
     mediaType: r.media_type,
     title: r.title,
     ids: r.ids as MediaRefIds,
+    notify: r.notify,
     date: r.created_at,
   }));
 }

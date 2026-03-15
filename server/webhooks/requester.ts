@@ -51,6 +51,7 @@ export async function findMediaRequesters(
     LEFT JOIN messages m ON m.id = mr.message_id
     JOIN conversations c ON c.id = COALESCE(m.conversation_id, mr.conversation_id)
     WHERE mr.action = 'add'
+      AND mr.notify = true
       AND mr.media_type = ${mediaType}
       AND c.interface_type IN ('slack', 'discord')
       AND (${idFilter})

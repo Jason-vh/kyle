@@ -72,6 +72,8 @@ export function toolSummary(name: string, args: Record<string, unknown>): string
     }
     case "web_search":
       return `Searched the web for '${args.query}'`;
+    case "unsubscribe_notifications":
+      return `Unsubscribed from notifications for '${args.title}'`;
     default:
       return name.replace(/_/g, " ");
   }

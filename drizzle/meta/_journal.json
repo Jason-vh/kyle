@@ -85,6 +85,13 @@
       "when": 1772531500000,
       "tag": "0011_third_nico_minoru",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1773567584558,
+      "tag": "0012_lovely_spacker_dave",
+      "breakpoints": true
     }
   ]
 }
