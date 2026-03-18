@@ -9,16 +9,20 @@ const log = createLogger("webhooks:requester");
  * Find conversations where a media item was requested, so we can notify the requester.
  * Queries subscription tables (movie_subscriptions / series_subscriptions) joined with
  * conversations to get interface type + channel metadata.
+ *
+ * For series, pass episodes to filter by subscription scope — whole-series subs match
+ * everything, season subs match episodes in that season, episode subs match exactly.
  */
 export async function findMediaRequesters(
   mediaType: "movie" | "series",
   ids: { radarr?: number; sonarr?: number; tmdb?: number; tvdb?: number },
+  episodes?: Array<{ seasonNumber: number; episodeNumber: number }>,
 ): Promise<MediaRequester[]> {
   if (mediaType === "movie" && ids.radarr != null) {
     return findMovieSubscribers(ids.radarr);
   }
   if (mediaType === "series" && ids.sonarr != null) {
-    return findSeriesSubscribers(ids.sonarr);
+    return findSeriesSubscribers(ids.sonarr, episodes);
   }
 
   log.warn("no usable IDs for subscription lookup", { mediaType, ids });
@@ -54,17 +58,42 @@ async function findMovieSubscribers(radarrId: number): Promise<MediaRequester[]>
   return rowsToRequesters(rows, "movie", { radarr: radarrId });
 }
 
-async function findSeriesSubscribers(sonarrId: number): Promise<MediaRequester[]> {
+/**
+ * Check whether a subscription's scope matches any of the downloaded episodes.
+ * - Whole series (season IS NULL): matches everything
+ * - Season (season set, episode IS NULL): matches episodes in that season
+ * - Episode (both set): matches that exact episode
+ */
+function subscriptionMatchesEpisodes(
+  seasonNumber: number | null,
+  episodeNumber: number | null,
+  episodes: Array<{ seasonNumber: number; episodeNumber: number }>,
+): boolean {
+  if (seasonNumber === null) return true;
+  if (episodeNumber === null) {
+    return episodes.some((e) => e.seasonNumber === seasonNumber);
+  }
+  return episodes.some((e) => e.seasonNumber === seasonNumber && e.episodeNumber === episodeNumber);
+}
+
+async function findSeriesSubscribers(
+  sonarrId: number,
+  episodes?: Array<{ seasonNumber: number; episodeNumber: number }>,
+): Promise<MediaRequester[]> {
   const rows = await db.execute<{
     conversation_id: string;
     interface_type: string;
     metadata: Record<string, unknown>;
     title: string;
+    season_number: number | null;
+    episode_number: number | null;
   }>(sql`
     SELECT
       ss.conversation_id,
       c.interface_type,
       c.metadata,
+      ss.season_number,
+      ss.episode_number,
       COALESCE(
         (SELECT me.title FROM media_events me
          WHERE me.user_id = ss.user_id
@@ -80,7 +109,12 @@ async function findSeriesSubscribers(sonarrId: number): Promise<MediaRequester[]
       AND c.interface_type IN ('slack', 'discord')
   `);
 
-  return rowsToRequesters(rows, "series", { sonarr: sonarrId });
+  const filtered =
+    episodes && episodes.length > 0
+      ? rows.filter((r) => subscriptionMatchesEpisodes(r.season_number, r.episode_number, episodes))
+      : rows;
+
+  return rowsToRequesters(filtered, "series", { sonarr: sonarrId });
 }
 
 function rowsToRequesters(

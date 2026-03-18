@@ -41,26 +41,27 @@ function checkWebhookAuth(req: Request): Response | null {
   return null; // Auth valid
 }
 
-const BATCH_DELAY_MS = 30_000;
+const BATCH_DELAY_MS = 600_000; // 10 minutes
 
 interface PendingBatch {
   media: MediaNotificationInfo;
-  requesters: MediaRequester[];
+  sonarrId: number;
   timer: ReturnType<typeof setTimeout>;
 }
 
 const pendingBatches = new Map<string, PendingBatch>();
 
-function flushBatch(key: string): void {
+async function flushBatch(key: string): Promise<void> {
   const batch = pendingBatches.get(key);
   if (!batch) return;
   pendingBatches.delete(key);
-  notifyRequesters(batch.requesters, batch.media).catch((error) => {
-    log.error("batched notification failed", {
-      title: batch.media.title,
-      error: error instanceof Error ? error.message : String(error),
-    });
-  });
+
+  const requesters = await findMediaRequesters(
+    "series",
+    { sonarr: batch.sonarrId },
+    batch.media.episodes,
+  );
+  await notifyRequesters(requesters, batch.media);
 }
 
 function formatWebhookPrompt(media: MediaNotificationInfo, source: "sonarr" | "radarr"): string {
@@ -288,17 +289,6 @@ export async function handleSonarrWebhook(req: Request): Promise<Response> {
     return Response.json({ ok: true, batched: true });
   }
 
-  // No pending batch — look up requesters
-  const requesters = await findMediaRequesters("series", {
-    sonarr: payload.series.id,
-    tvdb: payload.series.tvdbId,
-  });
-
-  if (requesters.length === 0) {
-    log.info("no requesters to notify", { title: payload.series.title });
-    return Response.json({ ok: true, requesters: 0 });
-  }
-
   const media: MediaNotificationInfo = {
     mediaType: "series",
     title: payload.series.title,
@@ -308,14 +298,20 @@ export async function handleSonarrWebhook(req: Request): Promise<Response> {
     episodes: newEpisodes,
   };
 
-  const timer = setTimeout(() => flushBatch(key), BATCH_DELAY_MS);
-  pendingBatches.set(key, { media, requesters, timer });
+  const timer = setTimeout(() => {
+    flushBatch(key).catch((error) => {
+      log.error("batched notification failed", {
+        title: payload.series.title,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    });
+  }, BATCH_DELAY_MS);
+  pendingBatches.set(key, { media, sonarrId: payload.series.id, timer });
   log.info("batch started", {
     title: payload.series.title,
     episode: newEpisodes.map((e) => `S${e.seasonNumber}E${e.episodeNumber}`).join(", "),
-    requesters: requesters.length,
     delayMs: BATCH_DELAY_MS,
   });
 
-  return Response.json({ ok: true, batched: true, requesters: requesters.length });
+  return Response.json({ ok: true, batched: true });
 }
