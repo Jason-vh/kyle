@@ -137,6 +137,15 @@ async function notifyRequester(
       .values(newMsgs.map((m) => ({ conversationId, role: m.role, data: m })));
   }
 
+  // Skip notification if agent produced no response text
+  if (!result.responseText) {
+    log.warn("agent returned empty response for webhook notification", {
+      conversationId,
+      title: media.title,
+    });
+    return;
+  }
+
   // Post to the correct platform
   if (requester.interfaceType === "slack") {
     const slack = getSlackClient();

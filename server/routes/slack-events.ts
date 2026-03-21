@@ -325,11 +325,13 @@ async function processSlackMessage(
       processMediaEvent(mediaEvent, conversationId, appUserId);
     }
 
-    // Reply in thread
+    // Reply in thread (guard against empty response)
+    const replyText =
+      result.responseText || "Sorry, I wasn't able to generate a response. Please try again.";
     await slack.chat.postMessage({
       channel,
       thread_ts: replyThreadTs,
-      text: result.responseText,
+      text: replyText,
       unfurl_links: false,
       unfurl_media: false,
     });

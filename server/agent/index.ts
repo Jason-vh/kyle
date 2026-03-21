@@ -239,6 +239,12 @@ export async function runAgent(
     throw new ApiOverloadedError();
   }
 
+  // Check for any other API error (billing, auth, invalid request, etc.)
+  if (agent.state.error) {
+    log.error("agent API error", { error: agent.state.error });
+    throw new Error(agent.state.error);
+  }
+
   const messages = agent.state.messages;
 
   // Extract response text from the last assistant message

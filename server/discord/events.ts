@@ -276,8 +276,10 @@ export async function handleDiscordMessage(message: Message): Promise<void> {
       processMediaEvent(mediaEvent, conversationId, appUserId);
     }
 
-    // Reply (split into multiple messages if needed)
-    await sendDiscordMessage(replyChannel, result.responseText);
+    // Reply (split into multiple messages if needed, guard against empty response)
+    const replyText =
+      result.responseText || "Sorry, I wasn't able to generate a response. Please try again.";
+    await sendDiscordMessage(replyChannel, replyText);
     log.info("discord reply sent", { externalId, conversationId });
   } catch (error) {
     const isOverloaded = error instanceof ApiOverloadedError;
