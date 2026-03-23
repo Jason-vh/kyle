@@ -473,44 +473,55 @@ export const downloadEpisodesTool: AgentTool<typeof searchEpisodesParams> = {
 };
 
 const getSeriesHistoryParams = Type.Object({
+  seriesId: Type.Optional(
+    Type.Number({
+      description:
+        "Filter history to a specific series ID. Uses a dedicated endpoint that returns all history for the series (no pagination needed). Omit for global history.",
+    }),
+  ),
   page: Type.Optional(
     Type.Number({
-      description: "Page number for pagination",
+      description: "Page number for pagination (global history only, ignored when seriesId is set)",
       default: 1,
     }),
   ),
   pageSize: Type.Optional(
     Type.Number({
-      description: "Number of items per page",
+      description: "Number of items per page (global history only, ignored when seriesId is set)",
       default: 20,
-    }),
-  ),
-  includeSeries: Type.Optional(
-    Type.Boolean({
-      description: "Include series information",
-      default: true,
-    }),
-  ),
-  includeEpisode: Type.Optional(
-    Type.Boolean({
-      description: "Include episode information",
-      default: true,
     }),
   ),
 });
 
 export const getSeriesHistoryTool: AgentTool<typeof getSeriesHistoryParams> = {
   name: "get_series_history",
-  description: "Get download and import history from Sonarr",
+  description:
+    "Get download and import history from Sonarr. When investigating a specific series, pass seriesId to get all history for that series.",
   parameters: getSeriesHistoryParams,
   label: "Checking Sonarr history",
   async execute(_toolCallId, params) {
+    // Series-specific history uses a dedicated endpoint
+    if (params.seriesId) {
+      const items = await sonarr.getSeriesHistory(params.seriesId);
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify({
+              totalRecords: items.length,
+              items: items.map(toPartialHistoryItem),
+            }),
+          },
+        ],
+        details: undefined,
+      };
+    }
+
+    // Global history with pagination
     const page = params.page ?? 1;
     const pageSize = params.pageSize ?? 20;
-    const includeSeries = params.includeSeries ?? true;
-    const includeEpisode = params.includeEpisode ?? true;
 
-    const historyResponse = await sonarr.getHistory(page, pageSize, includeSeries, includeEpisode);
+    const historyResponse = await sonarr.getHistory(page, pageSize);
 
     return {
       content: [

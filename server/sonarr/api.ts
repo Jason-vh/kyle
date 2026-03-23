@@ -2,6 +2,7 @@ import type {
   SonarrCalendarEpisode,
   SonarrCommand,
   SonarrEpisode,
+  SonarrHistoryItem,
   SonarrHistoryResponse,
   SonarrManualImportItem,
   SonarrQualityProfile,
@@ -216,6 +217,20 @@ export async function getHistory(
   });
 
   return (await makeRequest(`/history?${params.toString()}`)) as SonarrHistoryResponse;
+}
+
+export async function getSeriesHistory(
+  seriesId: number,
+  includeSeries: boolean = true,
+  includeEpisode: boolean = true,
+): Promise<SonarrHistoryItem[]> {
+  const params = new URLSearchParams({
+    seriesId: seriesId.toString(),
+    includeSeries: includeSeries.toString(),
+    includeEpisode: includeEpisode.toString(),
+  });
+
+  return (await makeRequest(`/history/series?${params.toString()}`)) as SonarrHistoryItem[];
 }
 
 export async function getManualImport(
