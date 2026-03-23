@@ -277,6 +277,28 @@ export interface SonarrHistoryResponse {
   records: SonarrHistoryItem[];
 }
 
+export interface SonarrManualImportRejection {
+  reason: string;
+  type: string;
+}
+
+export interface SonarrManualImportItem {
+  id: number;
+  path: string;
+  relativePath: string;
+  folderName: string;
+  name: string;
+  size: number;
+  series?: SonarrSeries;
+  seasonNumber?: number;
+  episodes?: SonarrEpisode[];
+  episodeFileId?: number;
+  releaseGroup?: string;
+  quality: SonarrQualityInfo;
+  languages: SonarrLanguage[];
+  rejections: SonarrManualImportRejection[];
+}
+
 export interface SonarrCommand {
   id?: number;
   name: string;

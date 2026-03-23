@@ -3,6 +3,7 @@ import type {
   SonarrCommand,
   SonarrEpisode,
   SonarrHistoryResponse,
+  SonarrManualImportItem,
   SonarrQualityProfile,
   SonarrQueueResponse,
   SonarrRootFolder,
@@ -204,4 +205,34 @@ export async function getHistory(
   });
 
   return (await makeRequest(`/history?${params.toString()}`)) as SonarrHistoryResponse;
+}
+
+export async function getManualImport(
+  downloadId: string,
+  seriesId?: number,
+): Promise<SonarrManualImportItem[]> {
+  const params = new URLSearchParams({ downloadId });
+  if (seriesId !== undefined) params.append("seriesId", seriesId.toString());
+
+  return (await makeRequest(`/manualimport?${params.toString()}`)) as SonarrManualImportItem[];
+}
+
+export async function triggerManualImport(
+  files: Array<{
+    path: string;
+    seriesId: number;
+    seasonNumber: number;
+    episodeIds: number[];
+    quality: SonarrManualImportItem["quality"];
+    languages: SonarrManualImportItem["languages"];
+  }>,
+): Promise<SonarrCommand> {
+  return (await makeRequest("/command", {
+    method: "POST",
+    body: JSON.stringify({
+      name: "ManualImport",
+      files,
+      importMode: "move",
+    }),
+  })) as SonarrCommand;
 }

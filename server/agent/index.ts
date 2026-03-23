@@ -38,6 +38,7 @@ import {
   getCalendarTool,
   downloadEpisodesTool,
   getSeriesHistoryTool,
+  manualImportTool,
 } from "../sonarr/tools.ts";
 
 // Radarr tools
@@ -92,6 +93,7 @@ const allTools = [
   getCalendarTool,
   downloadEpisodesTool,
   getSeriesHistoryTool,
+  manualImportTool,
   // Radarr
   getRadarrMovieTool,
   getAllMoviesTool,

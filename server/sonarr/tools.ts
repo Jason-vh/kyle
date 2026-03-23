@@ -8,6 +8,7 @@ import {
   toPartialQueueItem,
   toPartialCalendarEpisode,
   toPartialHistoryItem,
+  toPartialManualImportItem,
 } from "./utils.ts";
 
 const emptyParams = Type.Object({});
@@ -510,6 +511,135 @@ export const getSeriesHistoryTool: AgentTool<typeof getSeriesHistoryParams> = {
             page: historyResponse.page,
             pageSize: historyResponse.pageSize,
             items: historyResponse.records.map(toPartialHistoryItem),
+          }),
+        },
+      ],
+      details: undefined,
+    };
+  },
+};
+
+const manualImportParams = Type.Object({
+  downloadId: Type.String({
+    description:
+      "The download client ID (from the queue item's downloadId field). Used to find files eligible for import.",
+  }),
+  seriesId: Type.Optional(
+    Type.Number({
+      description: "The series ID to scope the import to",
+    }),
+  ),
+  importAll: Type.Optional(
+    Type.Boolean({
+      description:
+        "If true, immediately import all eligible files (those without rejections and with matched episodes). If false or omitted, just list what's available for import.",
+      default: false,
+    }),
+  ),
+});
+
+export const manualImportTool: AgentTool<typeof manualImportParams> = {
+  name: "manual_import",
+  description:
+    "Inspect and force-import downloaded files that are stuck in the queue (downloaded but not imported). First call without importAll to see what files are available and any rejections, then call with importAll=true to import them.",
+  parameters: manualImportParams,
+  label: "Checking manual import candidates",
+  async execute(_toolCallId, params) {
+    const items = await sonarr.getManualImport(params.downloadId, params.seriesId);
+
+    if (items.length === 0) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify({
+              message: "No files found for manual import with this download ID",
+            }),
+          },
+        ],
+        details: undefined,
+      };
+    }
+
+    // List-only mode
+    if (!params.importAll) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify({
+              totalFiles: items.length,
+              files: items.map(toPartialManualImportItem),
+            }),
+          },
+        ],
+        details: undefined,
+      };
+    }
+
+    // Import mode — filter to files that have matched episodes and no rejections
+    const importable = items.filter(
+      (item) =>
+        item.series &&
+        item.episodes &&
+        item.episodes.length > 0 &&
+        item.rejections.length === 0 &&
+        item.seasonNumber !== undefined,
+    );
+
+    if (importable.length === 0) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify({
+              message:
+                "No files eligible for automatic import (missing episode match or have rejections)",
+              totalFiles: items.length,
+              files: items.map(toPartialManualImportItem),
+            }),
+          },
+        ],
+        details: undefined,
+      };
+    }
+
+    const command = await sonarr.triggerManualImport(
+      importable.map((item) => ({
+        path: item.path,
+        seriesId: item.series!.id,
+        seasonNumber: item.seasonNumber!,
+        episodeIds: item.episodes!.map((ep) => ep.id),
+        quality: item.quality,
+        languages: item.languages,
+      })),
+    );
+
+    return {
+      content: [
+        {
+          type: "text",
+          text: JSON.stringify({
+            commandId: command.id,
+            status: command.status,
+            message: `Manual import queued for ${importable.length} file${importable.length === 1 ? "" : "s"}`,
+            importedFiles: importable.map((item) => ({
+              name: item.name,
+              seriesTitle: item.series!.title,
+              seasonNumber: item.seasonNumber,
+              episodes: item.episodes!.map(
+                (ep) =>
+                  `S${String(ep.seasonNumber).padStart(2, "0")}E${String(ep.episodeNumber).padStart(2, "0")}`,
+              ),
+            })),
+            ...(items.length > importable.length
+              ? {
+                  skippedFiles: items.length - importable.length,
+                  skipped: items
+                    .filter((item) => !importable.includes(item))
+                    .map(toPartialManualImportItem),
+                }
+              : {}),
           }),
         },
       ],

@@ -72,6 +72,8 @@ function toolSummary(tc: ToolCall): string {
       return "Searched for missing episodes";
     case "get_series_history":
       return "Checked series history";
+    case "manual_import":
+      return a.importAll ? "Force-importing downloaded files" : "Checking import candidates";
     case "get_all_movies":
       return "Checked movie library";
     case "get_radarr_movie":

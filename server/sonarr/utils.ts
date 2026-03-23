@@ -2,6 +2,7 @@ import type {
   SonarrCalendarEpisode,
   SonarrEpisode,
   SonarrHistoryItem,
+  SonarrManualImportItem,
   SonarrQueueItem,
   SonarrSeries,
 } from "./types.ts";
@@ -70,6 +71,12 @@ export function toPartialQueueItem(item: SonarrQueueItem) {
     series: toPartialSeries(item.series),
     episode: toPartialEpisode(item.episode),
     status: item.status,
+    trackedDownloadStatus: item.trackedDownloadStatus,
+    trackedDownloadState: item.trackedDownloadState,
+    ...(item.statusMessages?.length ? { statusMessages: item.statusMessages } : {}),
+    ...(item.errorMessage ? { errorMessage: item.errorMessage } : {}),
+    ...(item.outputPath ? { outputPath: item.outputPath } : {}),
+    ...(item.downloadId ? { downloadId: item.downloadId } : {}),
     estimatedCompletionTime: item.estimatedCompletionTime,
     quality: item.quality.quality.name,
     tvdbId: item.episode.tvdbId,
@@ -103,5 +110,22 @@ export function toPartialHistoryItem(item: SonarrHistoryItem) {
     eventType: item.eventType.name,
     series: toPartialSeries(item.series),
     episode: toPartialEpisode(item.episode),
+  };
+}
+
+export function toPartialManualImportItem(item: SonarrManualImportItem) {
+  return {
+    id: item.id,
+    path: item.path,
+    relativePath: item.relativePath,
+    name: item.name,
+    size: item.size,
+    seriesId: item.series?.id,
+    seriesTitle: item.series?.title,
+    seasonNumber: item.seasonNumber,
+    episodes: item.episodes?.map(toPartialEpisode),
+    quality: item.quality.quality.name,
+    languages: item.languages.map((l) => l.name),
+    ...(item.rejections.length > 0 ? { rejections: item.rejections.map((r) => r.reason) } : {}),
   };
 }

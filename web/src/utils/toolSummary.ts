@@ -36,6 +36,8 @@ export function toolSummary(name: string, args: Record<string, unknown>): string
       return "Searched for missing episodes";
     case "get_series_history":
       return "Checked series history";
+    case "manual_import":
+      return args.importAll ? "Force-importing downloaded files" : "Checking import candidates";
     case "get_all_movies":
       return "Checked movie library";
     case "get_radarr_movie":
