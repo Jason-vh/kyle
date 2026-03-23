@@ -78,12 +78,15 @@ const addSeriesParams = Type.Object({
       Type.Literal("future"),
       Type.Literal("missing"),
       Type.Literal("existing"),
+      Type.Literal("pilot"),
+      Type.Literal("firstSeason"),
       Type.Literal("lastSeason"),
+      Type.Literal("monitorSpecials"),
       Type.Literal("none"),
     ],
     {
       description:
-        "Which episodes to monitor and download: 'all' (entire series), 'lastSeason' (latest season only), 'future' (upcoming episodes), 'missing' (missing episodes), 'existing' (existing episodes), 'none' (don't download)",
+        "Which episodes to monitor and download: 'all' (entire series), 'lastSeason' (latest season only), 'firstSeason' (first season only), 'future' (upcoming episodes), 'missing' (missing episodes), 'existing' (existing episodes), 'pilot' (pilot episode only), 'monitorSpecials' (specials only), 'none' (don't download)",
     },
   ),
 });

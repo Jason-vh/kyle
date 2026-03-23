@@ -58,7 +58,16 @@ export async function searchSeries(term: string): Promise<SonarrSeries[]> {
   return (await makeRequest(`/series/lookup?term=${encodeURIComponent(term)}`)) as SonarrSeries[];
 }
 
-export type MonitorOption = "all" | "future" | "missing" | "existing" | "lastSeason" | "none";
+export type MonitorOption =
+  | "all"
+  | "future"
+  | "missing"
+  | "existing"
+  | "pilot"
+  | "firstSeason"
+  | "lastSeason"
+  | "monitorSpecials"
+  | "none";
 
 export async function addSeries(
   title: string,
