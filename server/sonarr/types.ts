@@ -295,7 +295,7 @@ export interface SonarrManualImportItem {
   episodeFileId?: number;
   releaseGroup?: string;
   quality: SonarrQualityInfo;
-  languages: SonarrLanguage[];
+  languages?: SonarrLanguage[];
   rejections: SonarrManualImportRejection[];
 }
 

@@ -125,7 +125,7 @@ export function toPartialManualImportItem(item: SonarrManualImportItem) {
     seasonNumber: item.seasonNumber,
     episodes: item.episodes?.map(toPartialEpisode),
     quality: item.quality.quality.name,
-    languages: item.languages.map((l) => l.name),
+    ...(item.languages?.length ? { languages: item.languages.map((l) => l.name) } : {}),
     ...(item.rejections.length > 0 ? { rejections: item.rejections.map((r) => r.reason) } : {}),
   };
 }

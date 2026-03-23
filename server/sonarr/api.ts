@@ -235,7 +235,7 @@ export async function triggerManualImport(
     seasonNumber: number;
     episodeIds: number[];
     quality: SonarrManualImportItem["quality"];
-    languages: SonarrManualImportItem["languages"];
+    languages: NonNullable<SonarrManualImportItem["languages"]>;
   }>,
 ): Promise<SonarrCommand> {
   return (await makeRequest("/command", {

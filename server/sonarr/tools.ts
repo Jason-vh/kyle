@@ -621,7 +621,7 @@ export const manualImportTool: AgentTool<typeof manualImportParams> = {
         seasonNumber: item.seasonNumber!,
         episodeIds: item.episodes!.map((ep) => ep.id),
         quality: item.quality,
-        languages: item.languages,
+        languages: item.languages ?? [],
       })),
     );
 
