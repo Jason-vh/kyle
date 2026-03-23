@@ -245,13 +245,23 @@ export const getEpisodesTool: AgentTool<typeof getEpisodesParams> = {
   },
 };
 
-export const getSeriesQueueTool: AgentTool<typeof emptyParams> = {
+const getSeriesQueueParams = Type.Object({
+  seriesId: Type.Optional(
+    Type.Number({
+      description: "Filter queue to a specific series ID. Omit to see all queued items.",
+    }),
+  ),
+});
+
+export const getSeriesQueueTool: AgentTool<typeof getSeriesQueueParams> = {
   name: "get_series_queue",
   description: "Get TV series episodes currently downloading or in the queue",
-  parameters: emptyParams,
+  parameters: getSeriesQueueParams,
   label: "Checking Sonarr download queue",
-  async execute() {
-    const queueResponse = await sonarr.getQueue();
+  async execute(_toolCallId, params) {
+    const queueResponse = await sonarr.getQueue({
+      seriesIds: params.seriesId ? [params.seriesId] : undefined,
+    });
     const queueItems = queueResponse.records.map(toPartialQueueItem);
 
     if (queueItems.length === 0) {

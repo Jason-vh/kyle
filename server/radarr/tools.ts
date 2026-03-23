@@ -127,13 +127,23 @@ export const removeMovieTool: AgentTool<typeof removeMovieParams> = {
   },
 };
 
-export const getMovieQueueTool: AgentTool<typeof emptyParams> = {
+const getMovieQueueParams = Type.Object({
+  movieId: Type.Optional(
+    Type.Number({
+      description: "Filter queue to a specific movie ID. Omit to see all queued items.",
+    }),
+  ),
+});
+
+export const getMovieQueueTool: AgentTool<typeof getMovieQueueParams> = {
   name: "get_movie_queue",
   description: "Get movies currently downloading or in the queue",
-  parameters: emptyParams,
+  parameters: getMovieQueueParams,
   label: "Checking movie download queue",
-  async execute() {
-    const queue = await radarr.getQueue();
+  async execute(_toolCallId, params) {
+    const queue = await radarr.getQueue({
+      movieIds: params.movieId ? [params.movieId] : undefined,
+    });
     return {
       content: [
         {

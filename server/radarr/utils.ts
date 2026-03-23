@@ -31,6 +31,12 @@ export const toPartialQueueItem = (item: RadarrQueueItem) => {
     id: item.id,
     movie: toPartialMovie(item.movie),
     status: item.status,
+    trackedDownloadStatus: item.trackedDownloadStatus,
+    trackedDownloadState: item.trackedDownloadState,
+    ...(item.statusMessages?.length ? { statusMessages: item.statusMessages } : {}),
+    ...(item.errorMessage ? { errorMessage: item.errorMessage } : {}),
+    ...(item.outputPath ? { outputPath: item.outputPath } : {}),
+    ...(item.downloadId ? { downloadId: item.downloadId } : {}),
     timeLeft: item.timeLeft,
     quality: item.quality.quality.name,
   };

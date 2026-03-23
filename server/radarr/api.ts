@@ -86,8 +86,20 @@ export async function removeMovie(movieId: number, deleteFiles: boolean = true):
   });
 }
 
-export async function getQueue(): Promise<RadarrQueueResponse> {
-  return (await makeRequest("/queue?includeMovie=true")) as RadarrQueueResponse;
+export async function getQueue(options?: {
+  movieIds?: number[];
+  pageSize?: number;
+}): Promise<RadarrQueueResponse> {
+  const params = new URLSearchParams({
+    includeMovie: "true",
+    pageSize: (options?.pageSize ?? 50).toString(),
+  });
+  if (options?.movieIds?.length) {
+    for (const id of options.movieIds) {
+      params.append("movieIds", id.toString());
+    }
+  }
+  return (await makeRequest(`/queue?${params.toString()}`)) as RadarrQueueResponse;
 }
 
 export async function getHistory(pageSize: number = 20): Promise<RadarrHistoryResponse> {

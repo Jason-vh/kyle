@@ -126,10 +126,21 @@ export async function getEpisodes(seriesId: number): Promise<SonarrEpisode[]> {
   return (await makeRequest(`/episode?seriesId=${seriesId}`)) as SonarrEpisode[];
 }
 
-export async function getQueue(): Promise<SonarrQueueResponse> {
-  return (await makeRequest(
-    "/queue?includeEpisode=true&includeSeries=true",
-  )) as SonarrQueueResponse;
+export async function getQueue(options?: {
+  seriesIds?: number[];
+  pageSize?: number;
+}): Promise<SonarrQueueResponse> {
+  const params = new URLSearchParams({
+    includeEpisode: "true",
+    includeSeries: "true",
+    pageSize: (options?.pageSize ?? 50).toString(),
+  });
+  if (options?.seriesIds?.length) {
+    for (const id of options.seriesIds) {
+      params.append("seriesIds", id.toString());
+    }
+  }
+  return (await makeRequest(`/queue?${params.toString()}`)) as SonarrQueueResponse;
 }
 
 export async function getQualityProfiles(): Promise<SonarrQualityProfile[]> {
