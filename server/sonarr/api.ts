@@ -126,21 +126,21 @@ export async function getEpisodes(seriesId: number): Promise<SonarrEpisode[]> {
   return (await makeRequest(`/episode?seriesId=${seriesId}`)) as SonarrEpisode[];
 }
 
-export async function getQueue(options?: {
-  seriesIds?: number[];
-  pageSize?: number;
-}): Promise<SonarrQueueResponse> {
+export async function getQueue(options?: { seriesIds?: number[] }): Promise<SonarrQueueResponse> {
   const params = new URLSearchParams({
     includeEpisode: "true",
     includeSeries: "true",
-    pageSize: (options?.pageSize ?? 50).toString(),
+    pageSize: "1000",
   });
+  const response = (await makeRequest(`/queue?${params.toString()}`)) as SonarrQueueResponse;
+
+  // Sonarr's queue endpoint doesn't support server-side filtering, so filter client-side
   if (options?.seriesIds?.length) {
-    for (const id of options.seriesIds) {
-      params.append("seriesIds", id.toString());
-    }
+    const idSet = new Set(options.seriesIds);
+    response.records = response.records.filter((r) => r.seriesId && idSet.has(r.seriesId));
+    response.totalRecords = response.records.length;
   }
-  return (await makeRequest(`/queue?${params.toString()}`)) as SonarrQueueResponse;
+  return response;
 }
 
 export async function getQualityProfiles(): Promise<SonarrQualityProfile[]> {

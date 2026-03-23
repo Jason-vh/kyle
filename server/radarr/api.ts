@@ -86,20 +86,20 @@ export async function removeMovie(movieId: number, deleteFiles: boolean = true):
   });
 }
 
-export async function getQueue(options?: {
-  movieIds?: number[];
-  pageSize?: number;
-}): Promise<RadarrQueueResponse> {
+export async function getQueue(options?: { movieIds?: number[] }): Promise<RadarrQueueResponse> {
   const params = new URLSearchParams({
     includeMovie: "true",
-    pageSize: (options?.pageSize ?? 50).toString(),
+    pageSize: "1000",
   });
+  const response = (await makeRequest(`/queue?${params.toString()}`)) as RadarrQueueResponse;
+
+  // Radarr's queue endpoint may not support server-side filtering, so filter client-side
   if (options?.movieIds?.length) {
-    for (const id of options.movieIds) {
-      params.append("movieIds", id.toString());
-    }
+    const idSet = new Set(options.movieIds);
+    response.records = response.records.filter((r) => r.movie?.id && idSet.has(r.movie.id));
+    response.totalRecords = response.records.length;
   }
-  return (await makeRequest(`/queue?${params.toString()}`)) as RadarrQueueResponse;
+  return response;
 }
 
 export async function getHistory(pageSize: number = 20): Promise<RadarrHistoryResponse> {
