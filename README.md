@@ -81,8 +81,8 @@ bun run db:studio    # Open Drizzle Studio GUI
 
 ## Deployment
 
-Deployed on [Railway](https://railway.com). Migrations run automatically before each deploy.
-
-```bash
-railway up
-```
+Hosted on the `vhtm-eu` exe.dev VM. Custom domain: `kyle.vhtm.eu`. Deploy
+on push to `main` via a self-hosted GitHub Actions runner; migrations
+run as a one-shot container before the long-running app starts. Per-app
+runbook: [`deploy/README.md`](deploy/README.md). VM-wide conventions:
+<https://github.com/Jason-vh/vhtm.eu>.

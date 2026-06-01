@@ -1,6 +1,6 @@
 # Kyle
 
-AI-powered Plex media library assistant. Uses pi-agent-core with Anthropic Claude, persists conversations in Postgres via Drizzle ORM, deployed on Railway.
+AI-powered Plex media library assistant. Uses pi-agent-core with Anthropic Claude, persists conversations in Postgres via Drizzle ORM, deployed on the `vhtm-eu` exe.dev VM.
 
 ## Architecture
 
@@ -10,8 +10,11 @@ cli.ts                      → interactive CLI client
 create-admin.ts             → CLI: bootstrap first admin user + invite link
 invite.ts                   → CLI: create invite link for existing admin
 test-slack.ts               → Send test messages to /slack/events (sync response by default)
-deploy.sh                   → Deploy to Railway with deploy ID verification
 tsconfig.server.json        → Server TypeScript config (scoped to server/ + shared/)
+Dockerfile                  → Multi-stage build: web SPA + Bun runtime
+docker-compose.yml          → Single app service, joins shared apps-net
+.github/workflows/deploy.yml → Self-hosted runner deploy
+deploy/                     → Per-app runbook, Caddy snippet, env example
 
 shared/
   types.ts                  → API response types shared between server + web
@@ -282,11 +285,11 @@ Use `TODO(KYL-123)` comments in code to mark where work is needed, linking to th
 - **HTTP**: `Bun.serve()` — no Express.
 - **Database**: `postgres` package with Drizzle ORM — no `pg`.
 - **File I/O**: Prefer `Bun.file` over `node:fs`.
-- **Deployment**: Pushes to `main` auto-deploy via Railway RAILPACK builder. `buildCommand` builds the Vue SPA (`cd web && bun install && bun run build`). Migrations run via pre-deploy command. Health check at `/health`. Live at https://kyle.vhtm.eu. Logs: `railway logs -n 80`.
-- **Production DB**: The Railway DATABASE_URL uses internal networking (not reachable locally). Use `echo "SELECT ..." | railway connect kyle-db` to query production. The messages table stores agent messages as JSONB in a `data` column.
+- **Deployment**: Pushes to `main` auto-deploy via self-hosted runner (`gh-actions-runner-kyle.service` on `vhtm-eu`, label `kyle-prod`). Multi-stage Dockerfile builds the Vue SPA into `web/dist/`, then runtime image runs `bun run index.ts`. Migrations apply as a one-shot container before `up -d`. Health check at `/health`. Live at https://kyle.vhtm.eu. Per-app runbook: [`deploy/README.md`](deploy/README.md). Logs: `ssh vhtm-eu.exe.xyz docker compose -f /home/exedev/apps/kyle/docker-compose.yml logs -f app`.
+- **Production DB**: The shared Postgres on `vhtm-eu` (DB `kyle`, role `kyle`). On the VM: `docker compose -f /home/exedev/infra/postgres/docker-compose.yml exec postgres psql -U kyle -d kyle`. The messages table stores agent messages as JSONB in a `data` column.
 - **Slack**: `@slack/web-api` only (no Bolt). Signature verification uses `crypto.subtle` (native in Bun).
 - **Discord**: `discord.js` with Gateway WebSocket. Runs in-process alongside the HTTP server. Optional — skips gracefully if `DISCORD_BOT_TOKEN` is unset.
 - **Formatting**: `oxfmt` via `bun run fmt`. Pre-commit hook (`lefthook`) runs `oxfmt --check`, `oxlint`, `tsc --noEmit -p tsconfig.server.json`, and `vue-tsc --noEmit` (in `web/`). Always run `bun run fmt` before committing.
 - **Type safety**: Type assertions (`as any`, `as Type`) are not allowed unless absolutely necessary. Use type guards, generics, `WeakMap`, or other patterns to maintain type safety.
-- **Git workflow**: Commit and push to `main` — Railway deploys automatically via GitHub integration.
+- **Git workflow**: Commit and push to `main` — the self-hosted runner on `vhtm-eu` deploys automatically.
 - **Linear**: Update issue status (`linear issue update <id> -s completed`) when work is committed.

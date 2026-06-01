@@ -1,0 +1,17 @@
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    env_file:
+      - .env.production
+    environment:
+      HOST: 0.0.0.0
+      PORT: 3000
+    ports:
+      - "127.0.0.1:${KYLE_APP_HOST_PORT:-3003}:3000"
+    networks:
+      - apps-net
+
+networks:
+  apps-net:
+    external: true

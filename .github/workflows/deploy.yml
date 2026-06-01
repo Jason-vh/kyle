@@ -1,0 +1,81 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: kyle-production
+  cancel-in-progress: true
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  DEPLOY_DIR: /home/exedev/apps/kyle
+
+jobs:
+  deploy:
+    name: Deploy to exe.dev VM
+    runs-on: [self-hosted, linux, kyle-prod]
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Write production env file
+        run: |
+          cat > .env.production <<EOF
+          APP_URL=https://kyle.vhtm.eu
+          WEBAUTHN_ORIGIN=https://kyle.vhtm.eu
+          WEBAUTHN_RP_ID=kyle.vhtm.eu
+          DATABASE_URL=postgresql://kyle:${{ secrets.KYLE_DB_PASSWORD }}@postgres:5432/kyle
+          JWT_SECRET=${{ secrets.JWT_SECRET }}
+          CHAT_API_KEY=${{ secrets.CHAT_API_KEY }}
+          THREAD_VIEWER_TOKEN=${{ secrets.THREAD_VIEWER_TOKEN }}
+          WEBHOOK_AUTH=${{ secrets.WEBHOOK_AUTH }}
+          ANTHROPIC_API_KEY=${{ secrets.ANTHROPIC_API_KEY }}
+          BRAVE_API_KEY=${{ secrets.BRAVE_API_KEY }}
+          SLACK_BOT_TOKEN=${{ secrets.SLACK_BOT_TOKEN }}
+          SLACK_SIGNING_SECRET=${{ secrets.SLACK_SIGNING_SECRET }}
+          DISCORD_BOT_TOKEN=${{ secrets.DISCORD_BOT_TOKEN }}
+          RADARR_HOST=${{ secrets.RADARR_HOST }}
+          RADARR_API_KEY=${{ secrets.RADARR_API_KEY }}
+          SONARR_HOST=${{ secrets.SONARR_HOST }}
+          SONARR_API_KEY=${{ secrets.SONARR_API_KEY }}
+          TMDB_API_TOKEN=${{ secrets.TMDB_API_TOKEN }}
+          QBITTORRENT_HOST=${{ secrets.QBITTORRENT_HOST }}
+          QBITTORRENT_USERNAME=${{ secrets.QBITTORRENT_USERNAME }}
+          QBITTORRENT_PASSWORD=${{ secrets.QBITTORRENT_PASSWORD }}
+          ULTRA_HOST=${{ secrets.ULTRA_HOST }}
+          ULTRA_API_TOKEN=${{ secrets.ULTRA_API_TOKEN }}
+          KYLE_APP_HOST_PORT=3003
+          COMPOSE_PROJECT_NAME=kyle
+          EOF
+
+      - name: Copy checkout to stable deploy directory
+        run: |
+          rm -rf "$DEPLOY_DIR.tmp"
+          mkdir -p "$DEPLOY_DIR.tmp"
+          cp -a . "$DEPLOY_DIR.tmp/"
+          rm -rf "$DEPLOY_DIR"
+          mv "$DEPLOY_DIR.tmp" "$DEPLOY_DIR"
+
+      - name: Build images
+        run: |
+          cd "$DEPLOY_DIR"
+          docker compose --env-file .env.production build
+
+      - name: Apply Drizzle migrations
+        run: |
+          cd "$DEPLOY_DIR"
+          docker compose --env-file .env.production run --rm app bun run server/db/migrate.ts
+
+      - name: Start app
+        run: |
+          cd "$DEPLOY_DIR"
+          docker compose --env-file .env.production up -d --remove-orphans
+          docker compose --env-file .env.production ps
+
+      - name: Reload Caddy (picks up deploy/caddy.snippet)
+        run: |
+          sudo /usr/bin/caddy validate --config /etc/caddy/Caddyfile
+          sudo /usr/bin/systemctl reload caddy
