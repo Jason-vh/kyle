@@ -1,9 +1,12 @@
 # Stage 1: build the Vue SPA under web/
+# web/ imports from ../shared/ via the @shared/* path alias (see web/tsconfig.json
+# + web/vite.config.ts), so shared/ has to be present at /app/shared during the build.
 FROM oven/bun:1 AS web-build
 WORKDIR /app/web
 COPY web/package.json web/bun.lock ./
 RUN bun install --frozen-lockfile
 COPY web ./
+COPY shared /app/shared
 RUN bun run build
 
 # Stage 2: server deps only (Bun runs the TypeScript source directly)
