@@ -205,7 +205,7 @@ export function startServer(port: number) {
 
         // --- SPA static file serving ---
 
-        if (req.method === "GET") {
+        if (req.method === "GET" || req.method === "HEAD") {
           const spaResponse = await serveSpaFile(url.pathname);
           if (spaResponse) return spaResponse;
         }
