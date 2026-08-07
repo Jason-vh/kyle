@@ -5,6 +5,8 @@
  *   bun run test-slack.ts "hello kyle"
  *   bun run test-slack.ts "follow up" --thread 1770916700.760769
  *   bun run test-slack.ts "hello" --channel C09AF7W8DME
+ *
+ * Set SLACK_TEAM_ID to exercise streamed replies (Slack requires it in channels).
  */
 
 const BASE_URL = process.env.BASE_URL ?? "http://localhost:3000";
@@ -33,6 +35,7 @@ const eventId = `Ev_test_${Date.now()}`;
 const payload = {
   type: "event_callback",
   event_id: eventId,
+  team_id: process.env.SLACK_TEAM_ID,
   event: {
     type: "message",
     channel: CHANNEL,

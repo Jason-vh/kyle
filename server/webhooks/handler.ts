@@ -152,7 +152,7 @@ async function notifyRequester(
     await slack.chat.postMessage({
       channel: requester.channel,
       thread_ts: requester.threadTs,
-      text: result.responseText,
+      markdown_text: result.responseText,
       unfurl_links: false,
       unfurl_media: false,
     });

@@ -1,5 +1,5 @@
 import { eq, and } from "drizzle-orm";
-import type { AgentMessage } from "@mariozechner/pi-agent-core";
+import type { AgentEvent, AgentMessage } from "@mariozechner/pi-agent-core";
 import { createLogger } from "../logger.ts";
 import { db } from "../db/index.ts";
 import { conversations, messages } from "../db/schema.ts";
@@ -9,7 +9,9 @@ import { extractMediaEvent, saveMediaEvent, type MediaEventData } from "../db/me
 import { processMediaEvent } from "../db/subscriptions.ts";
 import { verifySlackSignature } from "../slack/verify.ts";
 import { getSlackClient, setThreadStatus } from "../slack/client.ts";
+import { SlackResponseStream } from "../slack/stream.ts";
 import {
+  type SlackEvent,
   type SlackEventPayload,
   type SlackFile,
   shouldProcess,
@@ -108,45 +110,25 @@ export async function handleSlackEvents(req: Request): Promise<Response> {
 
     const syncResponse = req.headers.get("x-sync-response") === "true";
 
-    const imageFiles = getImageFiles(event.files);
-
     if (syncResponse) {
       // Wait for processing and return response in body
-      const responseText = await processSlackMessage(
-        event.text ?? "",
-        event.channel,
-        event.ts,
-        event.thread_ts,
-        event.user,
-        imageFiles,
-      );
+      const responseText = await processSlackMessage(event, payload.team_id);
       return Response.json({ ok: true, response: responseText });
     }
 
     // Ack immediately, process async
-    processSlackMessage(
-      event.text ?? "",
-      event.channel,
-      event.ts,
-      event.thread_ts,
-      event.user,
-      imageFiles,
-    );
+    processSlackMessage(event, payload.team_id);
   }
 
   return new Response("ok", { status: 200 });
 }
 
-async function processSlackMessage(
-  rawText: string,
-  channel: string,
-  ts: string,
-  threadTs?: string,
-  userId?: string,
-  imageFiles?: SlackFile[],
-): Promise<string> {
+async function processSlackMessage(slackEvent: SlackEvent, teamId?: string): Promise<string> {
   const slack = getSlackClient();
-  const replyThreadTs = threadTs ?? ts;
+  const { channel, user: userId } = slackEvent;
+  const rawText = slackEvent.text ?? "";
+  const imageFiles: SlackFile[] = getImageFiles(slackEvent.files);
+  const replyThreadTs = slackEvent.thread_ts ?? slackEvent.ts;
   const externalId = `${channel}:${replyThreadTs}`;
 
   // Resolve @mentions to display names
@@ -155,7 +137,7 @@ async function processSlackMessage(
   const messageText = cleanMessageText(rawText, usernameMap);
 
   // Download images from Slack
-  const images = imageFiles?.length ? await downloadSlackImages(imageFiles) : [];
+  const images = imageFiles.length ? await downloadSlackImages(imageFiles) : [];
 
   if (!messageText && images.length === 0) return "";
 
@@ -176,41 +158,48 @@ async function processSlackMessage(
   // Set initial thinking status
   setThreadStatus(channel, replyThreadTs, "is thinking...");
 
+  const stream = new SlackResponseStream(slack, {
+    channel,
+    threadTs: replyThreadTs,
+    userId,
+    teamId,
+  });
+
   let conversationId: string;
 
   // Build event handler for tool status updates + deferred media ref collection
   const toolArgs = new Map<string, Record<string, unknown>>();
   const pendingEvents: Array<{ toolCallId: string; event: MediaEventData }> = [];
-  const onEvent = (event: {
-    type: string;
-    toolCallId?: string;
-    toolName?: string;
-    args?: unknown;
-    result?: unknown;
-    isError?: boolean;
-  }) => {
-    if (event.type === "tool_execution_start" && event.toolName) {
+  const onEvent = (event: AgentEvent) => {
+    if (event.type === "message_start" && event.message.role === "assistant") {
+      stream.newParagraph();
+    }
+    if (event.type === "message_update" && event.assistantMessageEvent.type === "text_delta") {
+      stream.appendText(event.assistantMessageEvent.delta);
+    }
+    if (event.type === "tool_execution_start") {
       const label = toolLabels.get(event.toolName);
       if (label) {
         setThreadStatus(channel, replyThreadTs, label);
+        stream.updateTask({ id: event.toolCallId, title: label, status: "in_progress" });
       }
-      if (event.toolCallId && event.args) {
-        toolArgs.set(event.toolCallId, event.args as Record<string, unknown>);
+      if (event.args) {
+        toolArgs.set(event.toolCallId, event.args);
       }
     }
-    if (
-      event.type === "tool_execution_end" &&
-      event.toolName &&
-      event.toolCallId &&
-      !event.isError
-    ) {
+    if (event.type === "tool_execution_end") {
+      const label = toolLabels.get(event.toolName);
+      if (label) {
+        stream.updateTask({
+          id: event.toolCallId,
+          title: label,
+          status: event.isError ? "error" : "complete",
+        });
+      }
+      if (event.isError) return;
       const args = toolArgs.get(event.toolCallId) ?? {};
       toolArgs.delete(event.toolCallId);
-      const mediaEvent = extractMediaEvent(
-        event.toolName,
-        args,
-        event.result as { content?: Array<{ type: string; text?: string }> },
-      );
+      const mediaEvent = extractMediaEvent(event.toolName, args, event.result);
       if (mediaEvent) {
         pendingEvents.push({ toolCallId: event.toolCallId, event: mediaEvent });
       }
@@ -325,16 +314,10 @@ async function processSlackMessage(
       processMediaEvent(mediaEvent, conversationId, appUserId);
     }
 
-    // Reply in thread (guard against empty response)
-    const replyText =
-      result.responseText || "Sorry, I wasn't able to generate a response. Please try again.";
-    await slack.chat.postMessage({
-      channel,
-      thread_ts: replyThreadTs,
-      text: replyText,
-      unfurl_links: false,
-      unfurl_media: false,
-    });
+    // Close the stream (guard against empty response)
+    await stream.finish(
+      result.responseText || "Sorry, I wasn't able to generate a response. Please try again.",
+    );
     log.info("slack reply sent", { channel, threadTs: replyThreadTs, conversationId });
     return result.responseText;
   } catch (error) {
@@ -346,14 +329,13 @@ async function processSlackMessage(
       error: error instanceof Error ? error.message : String(error),
       stack: error instanceof Error ? error.stack : undefined,
     });
+    const errorText = isOverloaded
+      ? "Sorry, I'm having trouble reaching my brain right now. Give me a minute and try again?"
+      : "Sorry, something went wrong processing your message.";
     try {
-      await slack.chat.postMessage({
-        channel,
-        thread_ts: replyThreadTs,
-        text: isOverloaded
-          ? "Sorry, I'm having trouble reaching my brain right now. Give me a minute and try again?"
-          : "Sorry, something went wrong processing your message.",
-      });
+      stream.newParagraph();
+      stream.appendText(errorText);
+      await stream.finish(errorText);
     } catch (postError) {
       log.error("failed to post error message to slack", {
         error: postError instanceof Error ? postError.message : String(postError),

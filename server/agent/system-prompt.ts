@@ -99,14 +99,14 @@ function getFormattingRules(interfaceType?: string): string {
   }
 
   if (interfaceType === "slack" || !interfaceType) {
-    return `- You are posting in Slack — use Slack mrkdwn, NOT markdown
-- Bold: \`*bold*\` (single asterisks). NEVER use \`**double asterisks**\` — that renders literally in Slack
-- Italic: \`_italic_\` (underscores)
+    return `- You are posting in Slack — use standard Markdown
+- Bold: \`**bold**\` (double asterisks)
+- Italic: \`*italic*\` (single asterisks)
 - Use lists with - for multiple items or options
 - Use > for block quotes when highlighting important information
 - NEVER use emojis in your responses
 - Avoid excessive formatting - use sparingly for maximum impact
-- When mentioning a movie or TV show, link the title using Slack mrkdwn: \`<url|title>\`
+- When mentioning a movie or TV show, link the title using Markdown: \`[title](url)\`
 - Prefer IMDB links (\`https://www.imdb.com/title/{imdbId}\`) when an IMDB ID is available
 - Fall back to TMDB links (\`https://www.themoviedb.org/movie/{tmdbId}\` or \`/tv/{tmdbId}\`) when only a TMDB ID is available
 - Link the title on first mention only — don't repeat links in the same message`;

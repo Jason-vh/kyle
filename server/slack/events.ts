@@ -26,6 +26,7 @@ export interface SlackEventPayload {
   token?: string;
   challenge?: string;
   event_id?: string;
+  team_id?: string;
   event?: SlackEvent;
 }
 

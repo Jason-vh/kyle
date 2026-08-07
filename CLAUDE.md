@@ -51,6 +51,7 @@ server/
       users.ts              → User listing, platform link management (admin)
   slack/
     client.ts               → WebClient singleton (lazy-init from SLACK_BOT_TOKEN)
+    stream.ts               → SlackResponseStream: streams agent replies via chat.*Stream
     verify.ts               → HMAC-SHA256 signature verification
     events.ts               → Event types + helpers (shouldProcess, cleanMessageText, buildExternalId)
     users.ts                → Slack user ID → display name resolution
@@ -141,6 +142,7 @@ drizzle.config.ts           → Drizzle Kit config
 - **Auth: Passkeys + JWT**: Users authenticate via WebAuthn passkeys. JWT sessions (`jose`, HS256) stored in httpOnly `kyle_auth` cookie with 30-day expiry and sliding window refresh at 15 days. Admin-generated invite links for onboarding new users. Thread sharing uses separate `?sig=` HMAC signatures (unchanged, uses `THREAD_VIEWER_TOKEN`).
 - **Slack immediate ack**: The `/slack/events` handler returns 200 immediately and processes the message async (fire-and-forget) to stay within Slack's 3-second timeout. Responses are always posted as thread replies.
 - **Slack sync mode**: Sending `X-Sync-Response: true` header makes `/slack/events` wait for the agent and return the response in the HTTP body (used by `test-slack.ts` for dev workflow).
+- **Slack streaming**: Agent replies stream into the thread via `chat.startStream`/`appendStream`/`stopStream` (`server/slack/stream.ts`). Text deltas from agent `message_update` events are buffered (512 chars) and flushed through a serialized promise chain — agent event handlers are synchronous, so unserialized calls would race and start two streams. Tool progress is sent as `task_update` chunks (`task_display_mode: dense`). Responses that never reach the flush threshold, and streams that fail, fall back to a plain `chat.postMessage`; delivery is tracked exactly so text is never duplicated or dropped. Slack messages use **standard Markdown** (`markdown_text`), not mrkdwn.
 - **Slack dedup**: In-memory `Set<string>` on `event_id` (capped at 10k entries) + `X-Slack-Retry-Num` header skipping prevents duplicate processing.
 - **Structured logging**: `createLogger(module)` from `server/logger.ts` emits JSON lines with `level`, `module`, `msg`, `timestamp` + contextual fields. Use throughout — no raw `console.log`.
 - **Token optimization**: Each service has `utils.ts` with `toPartial*` helpers that strip large API responses down to essential fields before sending to the LLM.
@@ -156,6 +158,7 @@ bun run db:migrate   # Run migrations
 bun run dev          # Run server with hot reload (:3000)
 bun run dev:web      # Run Vite dev server (:5173, proxies /api → :3000)
 bun run cli          # Interactive CLI client
+bun test             # Run tests
 
 bun run db:down      # Stop Postgres
 bun run db:studio    # Open Drizzle Studio GUI
