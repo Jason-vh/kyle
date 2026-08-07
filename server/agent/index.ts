@@ -1,6 +1,7 @@
 import { Agent, type AgentMessage, type AgentEvent } from "@mariozechner/pi-agent-core";
 import {
   getModel,
+  getModels,
   getEnvApiKey,
   type AssistantMessage,
   type ImageContent,
@@ -80,6 +81,22 @@ import { unsubscribeNotificationsTool } from "./unsubscribe-tool.ts";
 
 const log = createLogger("agent");
 
+const DEFAULT_MODEL = "claude-sonnet-4-5";
+
+/** Resolve ANTHROPIC_MODEL against the known Anthropic catalog, falling back to the default. */
+function resolveModel() {
+  const configured = process.env.ANTHROPIC_MODEL;
+  if (configured) {
+    const match = getModels("anthropic").find((m) => m.id === configured);
+    if (match) return match;
+    log.warn("unknown ANTHROPIC_MODEL, using default", { configured, default: DEFAULT_MODEL });
+  }
+  return getModel("anthropic", DEFAULT_MODEL);
+}
+
+const model = resolveModel();
+log.info("agent model selected", { model: model.id });
+
 const allTools = [
   // Sonarr
   getAllSeriesTool,
@@ -147,7 +164,7 @@ export function createAgent(
   return new Agent({
     initialState: {
       systemPrompt: getSystemPrompt(context),
-      model: getModel("anthropic", "claude-sonnet-4-20250514"),
+      model,
       thinkingLevel: "off",
       tools,
     },

@@ -243,6 +243,7 @@ Admin API endpoints (require JWT with `admin: true`):
 | `DATABASE_URL`         | Postgres connection string (auto-injected by Railway in production)                      |
 | `PORT`                 | Server port (default: 3000)                                                              |
 | `ANTHROPIC_API_KEY`    | Anthropic API key for Claude                                                             |
+| `ANTHROPIC_MODEL`      | Agent model override (default: `claude-sonnet-4-5`); unknown ids fall back to default    |
 | `JWT_SECRET`           | High-entropy secret for JWT signing (required, server refuses to start without it)       |
 | `WEBAUTHN_RP_ID`       | WebAuthn relying party ID (default: `localhost` dev / `kyle.vhtm.eu` prod)               |
 | `WEBAUTHN_ORIGIN`      | WebAuthn origin URL (default: `http://localhost:5173` dev / `https://kyle.vhtm.eu` prod) |
