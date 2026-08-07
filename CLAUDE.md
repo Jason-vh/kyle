@@ -197,6 +197,8 @@ bun run test-slack.ts "hello" --channel <channel_id>
 BASE_URL=https://kyle.vhtm.eu bun run test-slack.ts "hello"
 ```
 
+Streamed replies need `SLACK_TEAM_ID` plus a real `SLACK_TEST_USER` ID, and a `--thread` anchored to a message that actually exists in Slack — `chat.startStream` rejects the script's synthetic `ts` with `invalid_thread_ts`. Without those, Kyle falls back to a plain message (correct behaviour, but it doesn't exercise streaming). To test streaming, post a real message, then pass its `ts` as `--thread`.
+
 The test script signs requests using `SLACK_SIGNING_SECRET` from `.env`, matching Slack's signature format. Messages sent this way will trigger real agent processing and post responses to Slack. Kyle's response is returned synchronously in the terminal via `X-Sync-Response` header.
 
 **Important**: The test payload doesn't set `channel_type`, so `shouldProcess` treats it as a channel message and requires a bot mention. Prefix messages with `<@U099N4BJT5Y>`:

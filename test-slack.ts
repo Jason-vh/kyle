@@ -6,7 +6,9 @@
  *   bun run test-slack.ts "follow up" --thread 1770916700.760769
  *   bun run test-slack.ts "hello" --channel C09AF7W8DME
  *
- * Set SLACK_TEAM_ID to exercise streamed replies (Slack requires it in channels).
+ * Streamed replies need a real team and user ID (Slack validates both), so set
+ * SLACK_TEAM_ID and SLACK_TEST_USER to exercise streaming rather than the
+ * plain-message fallback.
  */
 
 const BASE_URL = process.env.BASE_URL ?? "http://localhost:3000";
@@ -39,7 +41,7 @@ const payload = {
   event: {
     type: "message",
     channel: CHANNEL,
-    user: "U_TEST_USER",
+    user: process.env.SLACK_TEST_USER ?? "U_TEST_USER",
     text: message,
     ts,
     ...(THREAD_TS ? { thread_ts: THREAD_TS } : {}),
