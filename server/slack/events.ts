@@ -1,3 +1,5 @@
+import { SUPPORTED_IMAGE_TYPES } from "../images.ts";
+
 export interface SlackFile {
   id: string;
   mimetype: string;
@@ -36,8 +38,6 @@ export function buildExternalId(event: SlackEvent): string {
   const threadTs = event.thread_ts ?? event.ts;
   return `${event.channel}:${threadTs}`;
 }
-
-const SUPPORTED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/gif", "image/webp"]);
 
 export function getImageFiles(files?: SlackFile[]): SlackFile[] {
   return (files ?? []).filter((f) => SUPPORTED_IMAGE_TYPES.has(f.mimetype));

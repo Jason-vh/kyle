@@ -1,47 +1,28 @@
-import { ChannelType, type Attachment, type Message, type SendableChannels } from "discord.js";
+import { ChannelType, type Message, type SendableChannels } from "discord.js";
 import { createLogger } from "../logger.ts";
-import { ApiOverloadedError, type AgentContext } from "../agent/index.ts";
+import { type AgentContext } from "../agent/index.ts";
+import { EMPTY_REPLY, failureReply } from "../agent/replies.ts";
 import { runConversationTurn } from "../agent/conversation.ts";
+import {
+  downloadImages,
+  MAX_IMAGE_SIZE,
+  SUPPORTED_IMAGE_TYPES,
+  type RemoteImage,
+} from "../images.ts";
 import { BOT_USER_ID } from "./client.ts";
 import { resolveDiscordUsername } from "./users.ts";
 import { sendDiscordMessage } from "./messages.ts";
 import { resolveAppUserId } from "../db/users.ts";
-import type { ImageContent } from "@mariozechner/pi-ai";
-import { errorFields, errorMessage } from "../errors.ts";
+import { errorFields } from "../errors.ts";
 
 const log = createLogger("discord");
 
-const SUPPORTED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/gif", "image/webp"]);
-const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5 MB
-
-function getImageAttachments(attachments: Message["attachments"]): Attachment[] {
-  return [...attachments.values()].filter(
-    (a) => a.contentType && SUPPORTED_IMAGE_TYPES.has(a.contentType) && a.size <= MAX_IMAGE_SIZE,
-  );
-}
-
-async function downloadDiscordImages(attachments: Attachment[]): Promise<ImageContent[]> {
-  const results = await Promise.allSettled(
-    attachments.map(async (a): Promise<ImageContent> => {
-      const res = await fetch(a.url);
-      if (!res.ok) throw new Error(`Failed to download ${a.name}: ${res.status}`);
-      const buffer = await res.arrayBuffer();
-      const data = Buffer.from(buffer).toString("base64");
-      return { type: "image", data, mimeType: a.contentType! };
-    }),
-  );
-
-  const images: ImageContent[] = [];
-  for (const r of results) {
-    if (r.status === "fulfilled") {
-      images.push(r.value);
-    } else {
-      log.warn("failed to download discord image", {
-        error: r.reason?.message ?? String(r.reason),
-      });
-    }
-  }
-  return images;
+function toRemoteImages(attachments: Message["attachments"]): RemoteImage[] {
+  return [...attachments.values()]
+    .filter(
+      (a) => a.contentType && SUPPORTED_IMAGE_TYPES.has(a.contentType) && a.size <= MAX_IMAGE_SIZE,
+    )
+    .map((a) => ({ name: a.name, url: a.url }));
 }
 
 /**
@@ -90,8 +71,8 @@ export async function handleDiscordMessage(message: Message): Promise<void> {
   }
 
   const messageText = cleanDiscordMessage(message.content);
-  const imageAttachments = getImageAttachments(message.attachments);
-  if (!messageText && imageAttachments.length === 0) return;
+  const remoteImages = toRemoteImages(message.attachments);
+  if (!messageText && remoteImages.length === 0) return;
 
   // Determine thread strategy and externalId
   let externalId: string;
@@ -131,7 +112,7 @@ export async function handleDiscordMessage(message: Message): Promise<void> {
   };
 
   try {
-    const images = imageAttachments.length > 0 ? await downloadDiscordImages(imageAttachments) : [];
+    const images = await downloadImages("discord", remoteImages);
 
     const { conversationId, responseText } = await runConversationTurn({
       interfaceType: "discord",
@@ -144,28 +125,15 @@ export async function handleDiscordMessage(message: Message): Promise<void> {
       context: agentContext,
     });
 
-    // Reply (split into multiple messages if needed, guard against empty response)
-    const replyText =
-      responseText || "Sorry, I wasn't able to generate a response. Please try again.";
-    await sendDiscordMessage(replyChannel, replyText);
+    // Split into multiple messages if needed.
+    await sendDiscordMessage(replyChannel, responseText || EMPTY_REPLY);
     log.info("discord reply sent", { externalId, conversationId });
   } catch (error) {
-    const isOverloaded = error instanceof ApiOverloadedError;
-    log.error("discord message processing failed", {
-      externalId,
-      isOverloaded,
-      ...errorFields(error),
-    });
+    log.error("discord message processing failed", { externalId, ...errorFields(error) });
     try {
-      await replyChannel.send(
-        isOverloaded
-          ? "Sorry, I'm having trouble reaching my brain right now. Give me a minute and try again?"
-          : "Sorry, something went wrong processing your message.",
-      );
+      await replyChannel.send(failureReply(error));
     } catch (postError) {
-      log.error("failed to post error message to discord", {
-        error: errorMessage(postError),
-      });
+      log.error("failed to post error message to discord", errorFields(postError));
     }
   }
 }
