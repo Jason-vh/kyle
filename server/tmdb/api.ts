@@ -7,42 +7,19 @@ import type {
   TMDBTVShow,
   TMDBTVShowDetails,
 } from "./types.ts";
+import { createApiClient } from "../http/client.ts";
+import { requireEnv } from "../config.ts";
 
-const TMDB_BASE_URL = "https://api.themoviedb.org/3";
-const TMDB_API_TOKEN = process.env.TMDB_API_TOKEN;
-
-async function makeRequest(endpoint: string, options: RequestInit = {}): Promise<unknown> {
-  if (!TMDB_API_TOKEN) {
-    throw new Error("TMDB_API_TOKEN environment variable is required");
-  }
-
-  const url = `${TMDB_BASE_URL}${endpoint}`;
-
-  const response = await fetch(url, {
-    ...options,
-    signal: AbortSignal.timeout(15_000),
-    headers: {
-      Authorization: `Bearer ${TMDB_API_TOKEN}`,
-      "Content-Type": "application/json",
-      ...options.headers,
-    },
-  });
-
-  if (!response.ok) {
-    const body = await response.text();
-    let parsed: unknown;
-    try {
-      parsed = JSON.parse(body);
-    } catch {
-      parsed = body;
-    }
-    throw new Error(
-      `TMDB API error ${response.status} ${response.statusText}: ${JSON.stringify(parsed)}`,
-    );
-  }
-
-  return response.json();
-}
+const request = createApiClient({
+  service: "tmdb",
+  config: () => {
+    const [token] = requireEnv("TMDB_API_TOKEN");
+    return {
+      baseUrl: "https://api.themoviedb.org/3",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    };
+  },
+});
 
 function buildQueryString(query: string, options?: TMDBSearchOptions): string {
   const params = new URLSearchParams({ query });
@@ -64,7 +41,7 @@ export async function searchMovies(
   options?: TMDBSearchOptions,
 ): Promise<TMDBSearchResponse<TMDBMovie>> {
   const queryString = buildQueryString(query, options);
-  return (await makeRequest(`/search/movie?${queryString}`)) as TMDBSearchResponse<TMDBMovie>;
+  return request<TMDBSearchResponse<TMDBMovie>>(`/search/movie?${queryString}`);
 }
 
 export async function searchTV(
@@ -72,7 +49,7 @@ export async function searchTV(
   options?: TMDBSearchOptions,
 ): Promise<TMDBSearchResponse<TMDBTVShow>> {
   const queryString = buildQueryString(query, options);
-  return (await makeRequest(`/search/tv?${queryString}`)) as TMDBSearchResponse<TMDBTVShow>;
+  return request<TMDBSearchResponse<TMDBTVShow>>(`/search/tv?${queryString}`);
 }
 
 export async function searchMulti(
@@ -80,13 +57,13 @@ export async function searchMulti(
   options?: TMDBSearchOptions,
 ): Promise<TMDBSearchResponse<TMDBMultiResult>> {
   const queryString = buildQueryString(query, options);
-  return (await makeRequest(`/search/multi?${queryString}`)) as TMDBSearchResponse<TMDBMultiResult>;
+  return request<TMDBSearchResponse<TMDBMultiResult>>(`/search/multi?${queryString}`);
 }
 
 export async function getMovie(movieId: number): Promise<TMDBMovieDetails> {
-  return (await makeRequest(`/movie/${movieId}`)) as TMDBMovieDetails;
+  return request<TMDBMovieDetails>(`/movie/${movieId}`);
 }
 
 export async function getTVShow(tvId: number): Promise<TMDBTVShowDetails> {
-  return (await makeRequest(`/tv/${tvId}`)) as TMDBTVShowDetails;
+  return request<TMDBTVShowDetails>(`/tv/${tvId}`);
 }

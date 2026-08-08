@@ -1,62 +1,43 @@
 import type { RadarrHistoryResponse, RadarrMovie, RadarrQueueResponse } from "./types.ts";
+import { createApiClient } from "../http/client.ts";
+import { requireEnv } from "../config.ts";
 
-const RADARR_HOST = process.env.RADARR_HOST;
-const RADARR_API_KEY = process.env.RADARR_API_KEY;
-
-async function makeRequest(endpoint: string, options: RequestInit = {}): Promise<unknown> {
-  if (!RADARR_HOST || !RADARR_API_KEY) {
-    throw new Error("RADARR_HOST and RADARR_API_KEY environment variables are required");
-  }
-
-  const url = `${RADARR_HOST}/api/v3${endpoint}`;
-
-  const response = await fetch(url, {
-    ...options,
-    signal: AbortSignal.timeout(15_000),
-    headers: {
-      "X-Api-Key": RADARR_API_KEY,
-      "Content-Type": "application/json",
-      ...options.headers,
-    },
-  });
-
-  if (!response.ok) {
-    const body = await response.text();
-    let parsed: unknown;
-    try {
-      parsed = JSON.parse(body);
-    } catch {
-      parsed = body;
-    }
-    throw new Error(
-      `Radarr API error ${response.status} ${response.statusText}: ${JSON.stringify(parsed)}`,
-    );
-  }
-
-  return response.json();
-}
+const request = createApiClient({
+  service: "radarr",
+  config: () => {
+    const [host, apiKey] = requireEnv("RADARR_HOST", "RADARR_API_KEY");
+    return {
+      baseUrl: `${host}/api/v3`,
+      headers: { "X-Api-Key": apiKey, "Content-Type": "application/json" },
+    };
+  },
+});
 
 export async function getMovie(id: number): Promise<RadarrMovie> {
-  return (await makeRequest(`/movie/${id}`)) as RadarrMovie;
+  return request<RadarrMovie>(`/movie/${id}`);
 }
 
 export async function getMovies(): Promise<RadarrMovie[]> {
-  return (await makeRequest("/movie")) as RadarrMovie[];
+  return request<RadarrMovie[]>("/movie");
 }
 
 export async function searchMovies(title: string): Promise<RadarrMovie[]> {
-  return (await makeRequest(`/movie/lookup?term=${encodeURIComponent(title)}`)) as RadarrMovie[];
+  return request<RadarrMovie[]>(`/movie/lookup?term=${encodeURIComponent(title)}`);
 }
 
 export async function lookupMovieByTmdbId(tmdbId: number): Promise<RadarrMovie> {
-  return (await makeRequest(`/movie/lookup/tmdb?tmdbId=${tmdbId}`)) as RadarrMovie;
+  return request<RadarrMovie>(`/movie/lookup/tmdb?tmdbId=${tmdbId}`);
 }
 
 export async function addMovie(title: string, year: number, tmdbId: number): Promise<RadarrMovie> {
-  const qualityProfiles = (await makeRequest("/qualityprofile")) as any[];
-  const rootFolders = (await makeRequest("/rootfolder")) as any[];
+  const [qualityProfiles, rootFolders] = await Promise.all([
+    request<{ id: number }[]>("/qualityprofile"),
+    request<{ path: string }[]>("/rootfolder"),
+  ]);
 
-  if (qualityProfiles.length === 0 || rootFolders.length === 0) {
+  const qualityProfile = qualityProfiles[0];
+  const rootFolder = rootFolders[0];
+  if (!qualityProfile || !rootFolder) {
     throw new Error("No quality profiles or root folders configured");
   }
 
@@ -64,9 +45,9 @@ export async function addMovie(title: string, year: number, tmdbId: number): Pro
     title,
     year,
     tmdbId,
-    qualityProfileId: qualityProfiles[0].id,
-    rootFolderPath: rootFolders[0].path,
-    path: `${rootFolders[0].path}/${title} (${year})`,
+    qualityProfileId: qualityProfile.id,
+    rootFolderPath: rootFolder.path,
+    path: `${rootFolder.path}/${title} (${year})`,
     monitored: true,
     searchForMovie: true,
     addOptions: {
@@ -74,14 +55,14 @@ export async function addMovie(title: string, year: number, tmdbId: number): Pro
     },
   };
 
-  return (await makeRequest("/movie", {
+  return request<RadarrMovie>("/movie", {
     method: "POST",
     body: JSON.stringify(movieData),
-  })) as RadarrMovie;
+  });
 }
 
 export async function removeMovie(movieId: number, deleteFiles: boolean = true): Promise<void> {
-  await makeRequest(`/movie/${movieId}?deleteFiles=${deleteFiles}`, {
+  await request<void>(`/movie/${movieId}?deleteFiles=${deleteFiles}`, {
     method: "DELETE",
   });
 }
@@ -91,7 +72,7 @@ export async function getQueue(options?: { movieIds?: number[] }): Promise<Radar
     includeMovie: "true",
     pageSize: "1000",
   });
-  const response = (await makeRequest(`/queue?${params.toString()}`)) as RadarrQueueResponse;
+  const response = await request<RadarrQueueResponse>(`/queue?${params.toString()}`);
 
   // Radarr's queue endpoint may not support server-side filtering, so filter client-side
   if (options?.movieIds?.length) {
@@ -103,7 +84,5 @@ export async function getQueue(options?: { movieIds?: number[] }): Promise<Radar
 }
 
 export async function getHistory(pageSize: number = 20): Promise<RadarrHistoryResponse> {
-  return (await makeRequest(
-    `/history?includeMovie=true&pageSize=${pageSize}`,
-  )) as RadarrHistoryResponse;
+  return request<RadarrHistoryResponse>(`/history?includeMovie=true&pageSize=${pageSize}`);
 }

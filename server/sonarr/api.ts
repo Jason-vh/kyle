@@ -10,52 +10,30 @@ import type {
   SonarrRootFolder,
   SonarrSeries,
 } from "./types.ts";
+import { createApiClient } from "../http/client.ts";
+import { requireEnv } from "../config.ts";
 
-const SONARR_HOST = process.env.SONARR_HOST;
-const SONARR_API_KEY = process.env.SONARR_API_KEY;
-
-async function makeRequest(endpoint: string, options: RequestInit = {}): Promise<unknown> {
-  if (!SONARR_HOST || !SONARR_API_KEY) {
-    throw new Error("SONARR_HOST and SONARR_API_KEY environment variables are required");
-  }
-
-  const url = `${SONARR_HOST}/api/v3${endpoint}`;
-
-  const response = await fetch(url, {
-    ...options,
-    signal: AbortSignal.timeout(15_000),
-    headers: {
-      "X-Api-Key": SONARR_API_KEY,
-      "Content-Type": "application/json",
-      ...options.headers,
-    },
-  });
-
-  if (!response.ok) {
-    let body: unknown;
-    try {
-      body = await response.json();
-    } catch {
-      body = await response.text().catch(() => "(unreadable)");
-    }
-    throw new Error(
-      `Sonarr API error ${response.status} ${response.statusText}: ${JSON.stringify(body)}`,
-    );
-  }
-
-  return response.json();
-}
+const request = createApiClient({
+  service: "sonarr",
+  config: () => {
+    const [host, apiKey] = requireEnv("SONARR_HOST", "SONARR_API_KEY");
+    return {
+      baseUrl: `${host}/api/v3`,
+      headers: { "X-Api-Key": apiKey, "Content-Type": "application/json" },
+    };
+  },
+});
 
 export async function getSeries(seriesId: number): Promise<SonarrSeries> {
-  return (await makeRequest(`/series/${seriesId}`)) as SonarrSeries;
+  return request<SonarrSeries>(`/series/${seriesId}`);
 }
 
 export async function getAllSeries(): Promise<SonarrSeries[]> {
-  return (await makeRequest("/series")) as SonarrSeries[];
+  return request<SonarrSeries[]>("/series");
 }
 
 export async function searchSeries(term: string): Promise<SonarrSeries[]> {
-  return (await makeRequest(`/series/lookup?term=${encodeURIComponent(term)}`)) as SonarrSeries[];
+  return request<SonarrSeries[]>(`/series/lookup?term=${encodeURIComponent(term)}`);
 }
 
 export type MonitorOption =
@@ -104,20 +82,20 @@ export async function addSeries(
     },
   };
 
-  return (await makeRequest("/series", {
+  return request<SonarrSeries>("/series", {
     method: "POST",
     body: JSON.stringify(seriesData),
-  })) as SonarrSeries;
+  });
 }
 
 export async function removeSeries(seriesId: number, deleteFiles: boolean = false): Promise<void> {
-  await makeRequest(`/series/${seriesId}?deleteFiles=${deleteFiles}`, {
+  await request<void>(`/series/${seriesId}?deleteFiles=${deleteFiles}`, {
     method: "DELETE",
   });
 }
 
 export async function deleteEpisodeFile(episodeFileId: number): Promise<void> {
-  await makeRequest(`/episodefile/${episodeFileId}`, {
+  await request<void>(`/episodefile/${episodeFileId}`, {
     method: "DELETE",
   });
 }
@@ -126,14 +104,14 @@ export async function updateSeries(
   seriesId: number,
   seriesData: SonarrSeries,
 ): Promise<SonarrSeries> {
-  return (await makeRequest(`/series/${seriesId}`, {
+  return request<SonarrSeries>(`/series/${seriesId}`, {
     method: "PUT",
     body: JSON.stringify(seriesData),
-  })) as SonarrSeries;
+  });
 }
 
 export async function getEpisodes(seriesId: number): Promise<SonarrEpisode[]> {
-  return (await makeRequest(`/episode?seriesId=${seriesId}`)) as SonarrEpisode[];
+  return request<SonarrEpisode[]>(`/episode?seriesId=${seriesId}`);
 }
 
 export async function getQueue(options?: { seriesIds?: number[] }): Promise<SonarrQueueResponse> {
@@ -142,7 +120,7 @@ export async function getQueue(options?: { seriesIds?: number[] }): Promise<Sona
     includeSeries: "true",
     pageSize: "1000",
   });
-  const response = (await makeRequest(`/queue?${params.toString()}`)) as SonarrQueueResponse;
+  const response = await request<SonarrQueueResponse>(`/queue?${params.toString()}`);
 
   // Sonarr's queue endpoint doesn't support server-side filtering, so filter client-side
   if (options?.seriesIds?.length) {
@@ -154,11 +132,11 @@ export async function getQueue(options?: { seriesIds?: number[] }): Promise<Sona
 }
 
 export async function getQualityProfiles(): Promise<SonarrQualityProfile[]> {
-  return (await makeRequest("/qualityprofile")) as SonarrQualityProfile[];
+  return request<SonarrQualityProfile[]>("/qualityprofile");
 }
 
 export async function getRootFolders(): Promise<SonarrRootFolder[]> {
-  return (await makeRequest("/rootfolder")) as SonarrRootFolder[];
+  return request<SonarrRootFolder[]>("/rootfolder");
 }
 
 export async function getCalendar(
@@ -172,17 +150,17 @@ export async function getCalendar(
   params.append("includeSeries", includeSeries.toString());
 
   const endpoint = `/calendar${params.toString() ? `?${params.toString()}` : ""}`;
-  return (await makeRequest(endpoint)) as SonarrCalendarEpisode[];
+  return request<SonarrCalendarEpisode[]>(endpoint);
 }
 
 export async function monitorEpisodes(
   episodeIds: number[],
   monitored: boolean,
 ): Promise<SonarrEpisode[]> {
-  return (await makeRequest("/episode/monitor", {
+  return request<SonarrEpisode[]>("/episode/monitor", {
     method: "PUT",
     body: JSON.stringify({ episodeIds, monitored }),
-  })) as SonarrEpisode[];
+  });
 }
 
 export async function searchEpisodes(
@@ -206,10 +184,10 @@ export async function searchEpisodes(
     throw new Error("Must provide either seriesId or episodeIds");
   }
 
-  return (await makeRequest("/command", {
+  return request<SonarrCommand>("/command", {
     method: "POST",
     body: JSON.stringify(commandBody),
-  })) as SonarrCommand;
+  });
 }
 
 export async function getHistory(
@@ -225,7 +203,7 @@ export async function getHistory(
     includeEpisode: includeEpisode.toString(),
   });
 
-  return (await makeRequest(`/history?${params.toString()}`)) as SonarrHistoryResponse;
+  return request<SonarrHistoryResponse>(`/history?${params.toString()}`);
 }
 
 export async function getSeriesHistory(
@@ -239,7 +217,7 @@ export async function getSeriesHistory(
     includeEpisode: includeEpisode.toString(),
   });
 
-  return (await makeRequest(`/history/series?${params.toString()}`)) as SonarrHistoryItem[];
+  return request<SonarrHistoryItem[]>(`/history/series?${params.toString()}`);
 }
 
 export async function getManualImport(
@@ -249,7 +227,7 @@ export async function getManualImport(
   const params = new URLSearchParams({ downloadId });
   if (seriesId !== undefined) params.append("seriesId", seriesId.toString());
 
-  return (await makeRequest(`/manualimport?${params.toString()}`)) as SonarrManualImportItem[];
+  return request<SonarrManualImportItem[]>(`/manualimport?${params.toString()}`);
 }
 
 export async function triggerManualImport(
@@ -262,12 +240,12 @@ export async function triggerManualImport(
     languages: NonNullable<SonarrManualImportItem["languages"]>;
   }>,
 ): Promise<SonarrCommand> {
-  return (await makeRequest("/command", {
+  return request<SonarrCommand>("/command", {
     method: "POST",
     body: JSON.stringify({
       name: "ManualImport",
       files,
       importMode: "move",
     }),
-  })) as SonarrCommand;
+  });
 }

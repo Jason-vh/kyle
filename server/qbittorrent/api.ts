@@ -1,10 +1,8 @@
 import { createLogger } from "../logger.ts";
+import { createApiClient } from "../http/client.ts";
+import { requireEnv } from "../config.ts";
 
 const log = createLogger("qbittorrent");
-
-const QBITTORRENT_HOST = process.env.QBITTORRENT_HOST;
-const QBITTORRENT_USERNAME = process.env.QBITTORRENT_USERNAME;
-const QBITTORRENT_PASSWORD = process.env.QBITTORRENT_PASSWORD;
 
 let sessionCookie: string | null = null;
 
@@ -38,19 +36,19 @@ export type TorrentFilter =
   | "errored";
 
 function getConfig() {
-  if (!QBITTORRENT_HOST || !QBITTORRENT_USERNAME || !QBITTORRENT_PASSWORD) {
-    throw new Error(
-      "QBITTORRENT_HOST, QBITTORRENT_USERNAME, and QBITTORRENT_PASSWORD environment variables are required",
-    );
-  }
-  return {
-    host: QBITTORRENT_HOST,
-    username: QBITTORRENT_USERNAME,
-    password: QBITTORRENT_PASSWORD,
-  };
+  const [host, username, password] = requireEnv(
+    "QBITTORRENT_HOST",
+    "QBITTORRENT_USERNAME",
+    "QBITTORRENT_PASSWORD",
+  );
+  return { host, username, password };
 }
 
-async function login(): Promise<void> {
+/** Logs in unless a session cookie is already cached; `force` discards it first. */
+async function login(force: boolean): Promise<void> {
+  if (sessionCookie && !force) return;
+  sessionCookie = null;
+
   const { host, username, password } = getConfig();
 
   const response = await fetch(`${host}/api/v2/auth/login`, {
@@ -77,51 +75,22 @@ async function login(): Promise<void> {
   throw new Error("qBittorrent login did not return a session cookie");
 }
 
-async function makeRequest(
-  endpoint: string,
-  options: RequestInit = {},
-  retry = true,
-): Promise<unknown> {
-  const { host } = getConfig();
-
-  if (!sessionCookie) {
-    await login();
-  }
-
-  const url = `${host}/api/v2${endpoint}`;
-
-  const response = await fetch(url, {
-    ...options,
-    signal: AbortSignal.timeout(15_000),
-    headers: {
-      Cookie: `SID=${sessionCookie}`,
-      ...options.headers,
-    },
-  });
-
-  if (response.status === 403 && retry) {
-    log.info("session expired, re-authenticating");
-    sessionCookie = null;
-    await login();
-    return makeRequest(endpoint, options, false);
-  }
-
-  if (!response.ok) {
-    const body = await response.text().catch(() => "(unreadable)");
-    throw new Error(`qBittorrent API error ${response.status} ${response.statusText}: ${body}`);
-  }
-
-  const text = await response.text();
-  if (!text) return undefined;
-  return JSON.parse(text);
-}
+const request = createApiClient({
+  service: "qbittorrent",
+  config: () => ({
+    baseUrl: `${getConfig().host}/api/v2`,
+    headers: { Cookie: `SID=${sessionCookie}` },
+  }),
+  authenticate: login,
+  isAuthFailure: (response) => response.status === 403,
+});
 
 export async function getTorrents(filter: TorrentFilter = "all"): Promise<QBittorrentTorrent[]> {
-  return (await makeRequest(`/torrents/info?filter=${filter}`)) as QBittorrentTorrent[];
+  return request<QBittorrentTorrent[]>(`/torrents/info?filter=${filter}`);
 }
 
 export async function deleteTorrents(hashes: string[], deleteFiles: boolean = true): Promise<void> {
-  await makeRequest("/torrents/delete", {
+  await request<void>("/torrents/delete", {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({

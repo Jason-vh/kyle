@@ -1,9 +1,5 @@
-import { createLogger } from "../logger.ts";
-
-const log = createLogger("ultra");
-
-const ULTRA_HOST = process.env.ULTRA_HOST;
-const ULTRA_API_TOKEN = process.env.ULTRA_API_TOKEN;
+import { createApiClient } from "../http/client.ts";
+import { requireEnv } from "../config.ts";
 
 export interface UltraStats {
   free_storage_bytes: number;
@@ -22,30 +18,18 @@ interface UltraStatsResponse {
   service_stats_info: UltraStats;
 }
 
-async function makeRequest(endpoint: string): Promise<unknown> {
-  if (!ULTRA_HOST || !ULTRA_API_TOKEN) {
-    throw new Error("ULTRA_HOST and ULTRA_API_TOKEN environment variables are required");
-  }
-
-  const url = `${ULTRA_HOST}/ultra-api${endpoint}`;
-
-  const response = await fetch(url, {
-    signal: AbortSignal.timeout(15_000),
-    headers: {
-      Authorization: `Bearer ${ULTRA_API_TOKEN}`,
-    },
-  });
-
-  if (!response.ok) {
-    const body = await response.text();
-    log.error("request failed", { url, status: response.status, body: body.slice(0, 200) });
-    throw new Error(`Ultra API error ${response.status} ${response.statusText}: ${body}`);
-  }
-
-  return response.json();
-}
+const request = createApiClient({
+  service: "ultra",
+  config: () => {
+    const [host, token] = requireEnv("ULTRA_HOST", "ULTRA_API_TOKEN");
+    return {
+      baseUrl: `${host}/ultra-api`,
+      headers: { Authorization: `Bearer ${token}` },
+    };
+  },
+});
 
 export async function getStats(): Promise<UltraStats> {
-  const data = (await makeRequest("/total-stats")) as UltraStatsResponse;
+  const data = await request<UltraStatsResponse>("/total-stats");
   return data.service_stats_info;
 }
