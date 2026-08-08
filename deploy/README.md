@@ -109,7 +109,9 @@ docker compose -f /home/exedev/infra/postgres/docker-compose.yml exec postgres \
 curl https://kyle.vhtm.eu/health
 ```
 
-Returns JSON including `deployId`.
+Returns JSON including `deployId`, the commit SHA the running container was built
+from (`dev` when `DEPLOY_ID` is unset, as in local runs). Compare it against
+`git rev-parse HEAD` to confirm a deploy landed.
 
 ## Database
 

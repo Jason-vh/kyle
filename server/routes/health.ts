@@ -1,12 +1,7 @@
 import { checkDatabaseHealth } from "../db/index.ts";
 
-import { resolve, dirname } from "node:path";
-
-const projectRoot = resolve(dirname(import.meta.dir), "..");
-const DEPLOY_ID = await Bun.file(resolve(projectRoot, "deploy-id.txt"))
-  .text()
-  .then((s) => s.trim())
-  .catch(() => "dev");
+/** Commit SHA of the running build, set by the deploy workflow. */
+const DEPLOY_ID = process.env.DEPLOY_ID?.trim() || "dev";
 
 export async function handleHealth(): Promise<Response> {
   const dbHealthy = await checkDatabaseHealth();

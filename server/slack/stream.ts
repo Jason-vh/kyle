@@ -1,5 +1,4 @@
-import type { WebClient } from "@slack/web-api";
-import type { AnyChunk } from "@slack/types";
+import type { AnyChunk, WebClient } from "@slack/web-api";
 import { createLogger } from "../logger.ts";
 
 const log = createLogger("slack:stream");

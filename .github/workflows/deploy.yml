@@ -49,6 +49,7 @@ jobs:
           ULTRA_API_TOKEN=${{ secrets.ULTRA_API_TOKEN }}
           KYLE_APP_HOST_PORT=3003
           COMPOSE_PROJECT_NAME=kyle
+          DEPLOY_ID=${{ github.sha }}
           EOF
 
       - name: Copy checkout to stable deploy directory

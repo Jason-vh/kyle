@@ -241,6 +241,28 @@ Admin API endpoints (require JWT with `admin: true`):
 - **Bot scopes**: `chat:write`, `app_mentions:read`, `assistant:write`, `im:history`, `im:read`, `channels:history`, `groups:history`, `mpim:history`, `users:read`, `chat:write.customize`, `incoming-webhook`
 - The app uses Slack's **Assistant** feature (assistant events are subscribed but not yet handled with the `assistant.threads.*` API)
 
+### Migrating to the Agent messaging experience (`agent_view`)
+
+Slack is deprecating `assistant_view` in favour of `agent_view`, where agent
+conversations live in the normal Messages tab instead of separate Chat/History
+tabs. **The switch is irreversible**, and it only needs app settings changes —
+no server code depends on the assistant events:
+
+1. In [app settings](https://api.slack.com/apps) → **Agent** tab, switch the app
+   to the Agent experience (`assistant_view` → `agent_view`; the nested
+   `assistant_description` becomes `agent_description`).
+2. Change bot event subscriptions: drop `assistant_thread_started` and
+   `assistant_thread_context_changed`, add `app_home_opened` (and
+   `app_context_changed` if we want to know what the user is viewing).
+3. Users must hard refresh Slack to see the new experience.
+
+Behaviour notes for whoever does this: `assistant_thread_started` stops
+indicating that a user opened a DM (`app_home_opened` with `tab === "messages"`
+replaces it), DM root messages come from the user rather than carrying the
+`assistant_app_thread` subtype, and `assistant.threads.setStatus` starts
+auto-opening the thread it's called on. Kyle handles none of these events
+today, so the migration is settings-only until we want that behaviour.
+
 ## Environment Variables
 
 | Variable               | Description                                                                              |
