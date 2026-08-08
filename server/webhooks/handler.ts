@@ -103,7 +103,7 @@ async function notifyRequester(
   saveWebhookNotification(
     conversationId,
     source,
-    `${describeMedia(media)} finished downloading.`,
+    `${describeMedia(media)} has finished downloading.`,
     media,
   );
 
