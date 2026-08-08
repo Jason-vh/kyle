@@ -1,5 +1,6 @@
 import { Type } from "@sinclair/typebox";
 import type { AgentTool } from "@mariozechner/pi-agent-core";
+import { jsonResult } from "../agent/tool-result.ts";
 import * as ultra from "./api.ts";
 
 const emptyParams = Type.Object({});
@@ -12,22 +13,14 @@ export const getUltraStatsTool: AgentTool<typeof emptyParams> = {
   label: "Checking Ultra seedbox stats",
   async execute() {
     const stats = await ultra.getStats();
-    return {
-      content: [
-        {
-          type: "text",
-          text: JSON.stringify({
-            freeStorageGB: stats.free_storage_gb,
-            usedStorageGB: stats.used_storage_value,
-            totalStorageGB: stats.total_storage_value,
-            trafficUsedPercent: stats.traffic_used_percentage,
-            trafficAvailablePercent: stats.traffic_available_percentage,
-            lastTrafficReset: stats.last_traffic_reset,
-            nextTrafficReset: stats.next_traffic_reset,
-          }),
-        },
-      ],
-      details: undefined,
-    };
+    return jsonResult({
+      freeStorageGB: stats.free_storage_gb,
+      usedStorageGB: stats.used_storage_value,
+      totalStorageGB: stats.total_storage_value,
+      trafficUsedPercent: stats.traffic_used_percentage,
+      trafficAvailablePercent: stats.traffic_available_percentage,
+      lastTrafficReset: stats.last_traffic_reset,
+      nextTrafficReset: stats.next_traffic_reset,
+    });
   },
 };

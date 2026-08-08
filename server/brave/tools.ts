@@ -1,5 +1,6 @@
 import { Type } from "@sinclair/typebox";
 import type { AgentTool } from "@mariozechner/pi-agent-core";
+import { jsonResult } from "../agent/tool-result.ts";
 import * as brave from "./api.ts";
 import { toPartialWebResult } from "./utils.ts";
 
@@ -25,9 +26,6 @@ export const webSearchTool: AgentTool<typeof webSearchParams> = {
     const count = params.count ?? 5;
     const response = await brave.searchWeb(params.query, { count });
     const results = (response.web?.results ?? []).map(toPartialWebResult);
-    return {
-      content: [{ type: "text", text: JSON.stringify(results) }],
-      details: undefined,
-    };
+    return jsonResult(results);
   },
 };

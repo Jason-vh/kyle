@@ -1,5 +1,6 @@
 import { Type } from "@sinclair/typebox";
 import type { AgentTool } from "@mariozechner/pi-agent-core";
+import { jsonResult } from "../agent/tool-result.ts";
 import * as tmdb from "./api.ts";
 import {
   toPartialMovie,
@@ -37,20 +38,12 @@ export const searchTmdbMoviesTool: AgentTool<typeof searchTmdbMoviesParams> = {
       page: params.page,
       include_adult: false,
     });
-    return {
-      content: [
-        {
-          type: "text",
-          text: JSON.stringify({
-            page: results.page,
-            total_pages: results.total_pages,
-            total_results: results.total_results,
-            results: results.results.map(toPartialMovie),
-          }),
-        },
-      ],
-      details: undefined,
-    };
+    return jsonResult({
+      page: results.page,
+      total_pages: results.total_pages,
+      total_results: results.total_results,
+      results: results.results.map(toPartialMovie),
+    });
   },
 };
 
@@ -76,20 +69,12 @@ export const searchTmdbSeriesTool: AgentTool<typeof searchTmdbSeriesParams> = {
       page: params.page,
       include_adult: false,
     });
-    return {
-      content: [
-        {
-          type: "text",
-          text: JSON.stringify({
-            page: results.page,
-            total_pages: results.total_pages,
-            total_results: results.total_results,
-            results: results.results.map(toPartialTVShow),
-          }),
-        },
-      ],
-      details: undefined,
-    };
+    return jsonResult({
+      page: results.page,
+      total_pages: results.total_pages,
+      total_results: results.total_results,
+      results: results.results.map(toPartialTVShow),
+    });
   },
 };
 
@@ -115,20 +100,12 @@ export const searchTmdbTool: AgentTool<typeof searchTmdbParams> = {
       page: params.page,
       include_adult: false,
     });
-    return {
-      content: [
-        {
-          type: "text",
-          text: JSON.stringify({
-            page: results.page,
-            total_pages: results.total_pages,
-            total_results: results.total_results,
-            results: results.results.map(toPartialMultiResult),
-          }),
-        },
-      ],
-      details: undefined,
-    };
+    return jsonResult({
+      page: results.page,
+      total_pages: results.total_pages,
+      total_results: results.total_results,
+      results: results.results.map(toPartialMultiResult),
+    });
   },
 };
 
@@ -146,10 +123,7 @@ export const getTmdbMovieDetailsTool: AgentTool<typeof getTmdbMovieDetailsParams
   label: "Fetching movie details from TMDB",
   async execute(_toolCallId, params) {
     const movie = await tmdb.getMovie(params.tmdbMovieId);
-    return {
-      content: [{ type: "text", text: JSON.stringify(toPartialMovieDetails(movie)) }],
-      details: undefined,
-    };
+    return jsonResult(toPartialMovieDetails(movie));
   },
 };
 
@@ -167,14 +141,6 @@ export const getTmdbSeriesDetailsTool: AgentTool<typeof getTmdbSeriesDetailsPara
   label: "Fetching TV show details from TMDB",
   async execute(_toolCallId, params) {
     const show = await tmdb.getTVShow(params.tmdbTVId);
-    return {
-      content: [
-        {
-          type: "text",
-          text: JSON.stringify(toPartialTVShowDetails(show)),
-        },
-      ],
-      details: undefined,
-    };
+    return jsonResult(toPartialTVShowDetails(show));
   },
 };

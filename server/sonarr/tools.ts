@@ -1,5 +1,6 @@
 import { Type } from "@sinclair/typebox";
 import type { AgentTool } from "@mariozechner/pi-agent-core";
+import { jsonResult } from "../agent/tool-result.ts";
 import * as sonarr from "./api.ts";
 import {
   toPartialSeries,
@@ -20,10 +21,7 @@ export const getAllSeriesTool: AgentTool<typeof emptyParams> = {
   label: "Fetching series from Sonarr",
   async execute() {
     const series = await sonarr.getAllSeries();
-    return {
-      content: [{ type: "text", text: JSON.stringify(series.map(toPartialSeries)) }],
-      details: undefined,
-    };
+    return jsonResult(series.map(toPartialSeries));
   },
 };
 
@@ -40,10 +38,7 @@ export const getSeriesByIdTool: AgentTool<typeof getSeriesByIdParams> = {
   label: "Checking series details in Sonarr",
   async execute(_toolCallId, params) {
     const series = await sonarr.getSeries(params.seriesId);
-    return {
-      content: [{ type: "text", text: JSON.stringify(toPartialSeries(series)) }],
-      details: undefined,
-    };
+    return jsonResult(toPartialSeries(series));
   },
 };
 
@@ -61,10 +56,7 @@ export const searchSeriesTool: AgentTool<typeof searchSeriesParams> = {
   label: "Searching for series in Sonarr",
   async execute(_toolCallId, params) {
     const series = await sonarr.searchSeries(params.title);
-    return {
-      content: [{ type: "text", text: JSON.stringify(series.map(toSeriesLookupResult)) }],
-      details: undefined,
-    };
+    return jsonResult(series.map(toSeriesLookupResult));
   },
 };
 
@@ -105,18 +97,10 @@ export const addSeriesTool: AgentTool<typeof addSeriesParams> = {
       params.monitorOption,
     );
     const result = toPartialSeries(series);
-    return {
-      content: [
-        {
-          type: "text",
-          text: JSON.stringify({
-            series: result,
-            message: `Added "${params.title}" (${params.year}) to Sonarr.`,
-          }),
-        },
-      ],
-      details: undefined,
-    };
+    return jsonResult({
+      series: result,
+      message: `Added "${params.title}" (${params.year}) to Sonarr.`,
+    });
   },
 };
 
@@ -134,24 +118,16 @@ export const removeSeriesTool: AgentTool<typeof removeSeriesParams> = {
   async execute(_toolCallId, params) {
     const series = await sonarr.getSeries(params.seriesId);
     await sonarr.removeSeries(params.seriesId, true);
-    return {
-      content: [
-        {
-          type: "text",
-          text: JSON.stringify({
-            success: true,
-            message: `Removed ${series.title} (${series.year}) from Sonarr and deleted files from disk.`,
-            title: series.title,
-            tvdbId: series.tvdbId,
-            tmdbId: series.tmdbId,
-            imdbId: series.imdbId,
-            titleSlug: series.titleSlug,
-            sonarrId: params.seriesId,
-          }),
-        },
-      ],
-      details: undefined,
-    };
+    return jsonResult({
+      success: true,
+      message: `Removed ${series.title} (${series.year}) from Sonarr and deleted files from disk.`,
+      title: series.title,
+      tvdbId: series.tvdbId,
+      tmdbId: series.tmdbId,
+      imdbId: series.imdbId,
+      titleSlug: series.titleSlug,
+      sonarrId: params.seriesId,
+    });
   },
 };
 
@@ -194,28 +170,20 @@ export const removeSeasonTool: AgentTool<typeof removeSeasonParams> = {
     season.monitored = false;
     await sonarr.updateSeries(params.seriesId, series);
 
-    return {
-      content: [
-        {
-          type: "text",
-          text: JSON.stringify({
-            success: true,
-            message:
-              seasonEpisodes.length > 0
-                ? `Removed season ${params.seasonNumber} from series ${params.seriesId}, deleted ${seasonEpisodes.length} episode file${seasonEpisodes.length === 1 ? "" : "s"} and unmonitored the season`
-                : `Unmonitored season ${params.seasonNumber} from series ${params.seriesId} (no files to delete)`,
-            filesDeleted: seasonEpisodes.length,
-            title: series.title,
-            tvdbId: series.tvdbId,
-            tmdbId: series.tmdbId,
-            titleSlug: series.titleSlug,
-            sonarrId: params.seriesId,
-            seasonNumber: params.seasonNumber,
-          }),
-        },
-      ],
-      details: undefined,
-    };
+    return jsonResult({
+      success: true,
+      message:
+        seasonEpisodes.length > 0
+          ? `Removed season ${params.seasonNumber} from series ${params.seriesId}, deleted ${seasonEpisodes.length} episode file${seasonEpisodes.length === 1 ? "" : "s"} and unmonitored the season`
+          : `Unmonitored season ${params.seasonNumber} from series ${params.seriesId} (no files to delete)`,
+      filesDeleted: seasonEpisodes.length,
+      title: series.title,
+      tvdbId: series.tvdbId,
+      tmdbId: series.tmdbId,
+      titleSlug: series.titleSlug,
+      sonarrId: params.seriesId,
+      seasonNumber: params.seasonNumber,
+    });
   },
 };
 
@@ -241,10 +209,7 @@ export const getEpisodesTool: AgentTool<typeof getEpisodesParams> = {
     const mapped = episodes.map(toPartialEpisode);
     const results =
       params.hasFile !== undefined ? mapped.filter((ep) => ep.hasFile === params.hasFile) : mapped;
-    return {
-      content: [{ type: "text", text: JSON.stringify(results) }],
-      details: undefined,
-    };
+    return jsonResult(results);
   },
 };
 
@@ -268,29 +233,13 @@ export const getSeriesQueueTool: AgentTool<typeof getSeriesQueueParams> = {
     const queueItems = queueResponse.records.map(toPartialQueueItem);
 
     if (queueItems.length === 0) {
-      return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify({ message: "No downloads in progress" }),
-          },
-        ],
-        details: undefined,
-      };
+      return jsonResult({ message: "No downloads in progress" });
     }
 
-    return {
-      content: [
-        {
-          type: "text",
-          text: JSON.stringify({
-            totalRecords: queueResponse.totalRecords,
-            items: queueItems,
-          }),
-        },
-      ],
-      details: undefined,
-    };
+    return jsonResult({
+      totalRecords: queueResponse.totalRecords,
+      items: queueItems,
+    });
   },
 };
 
@@ -321,15 +270,7 @@ export const getCalendarTool: AgentTool<typeof getCalendarParams> = {
   async execute(_toolCallId, params) {
     const includeSeries = params.includeSeries ?? true;
     const episodes = await sonarr.getCalendar(params.start, params.end, includeSeries);
-    return {
-      content: [
-        {
-          type: "text",
-          text: JSON.stringify(episodes.map(toPartialCalendarEpisode)),
-        },
-      ],
-      details: undefined,
-    };
+    return jsonResult(episodes.map(toPartialCalendarEpisode));
   },
 };
 
@@ -371,17 +312,9 @@ export const downloadEpisodesTool: AgentTool<typeof searchEpisodesParams> = {
       const seasonEpisodes = episodes.filter((ep) => ep.seasonNumber === params.seasonNumber);
 
       if (seasonEpisodes.length === 0) {
-        return {
-          content: [
-            {
-              type: "text",
-              text: JSON.stringify({
-                error: `Season ${params.seasonNumber} has no episodes in series ${series.title}`,
-              }),
-            },
-          ],
-          details: undefined,
-        };
+        return jsonResult({
+          error: `Season ${params.seasonNumber} has no episodes in series ${series.title}`,
+        });
       }
 
       // Auto-monitor the season on the series if needed
@@ -402,23 +335,15 @@ export const downloadEpisodesTool: AgentTool<typeof searchEpisodesParams> = {
       }
 
       const command = await sonarr.searchEpisodes(params.seriesId, undefined, params.seasonNumber);
-      return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify({
-              commandId: command.id,
-              status: command.status,
-              message: `SeasonSearch queued for ${series.title} season ${params.seasonNumber}`,
-              seriesId: series.id,
-              seriesTitle: series.title,
-              tvdbId: series.tvdbId,
-              ...(monitoringActions.length > 0 ? { monitoringActions } : {}),
-            }),
-          },
-        ],
-        details: undefined,
-      };
+      return jsonResult({
+        commandId: command.id,
+        status: command.status,
+        message: `SeasonSearch queued for ${series.title} season ${params.seasonNumber}`,
+        seriesId: series.id,
+        seriesTitle: series.title,
+        tvdbId: series.tvdbId,
+        ...(monitoringActions.length > 0 ? { monitoringActions } : {}),
+      });
     }
 
     // Episode-specific search with auto-monitoring
@@ -429,22 +354,14 @@ export const downloadEpisodesTool: AgentTool<typeof searchEpisodesParams> = {
         sonarr.searchEpisodes(undefined, params.episodeIds),
         seriesId ? sonarr.getSeries(seriesId) : Promise.resolve(undefined),
       ]);
-      return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify({
-              commandId: command.id,
-              status: command.status,
-              message: `EpisodeSearch queued for ${params.episodeIds.length} episode${params.episodeIds.length === 1 ? "" : "s"}`,
-              ...(series
-                ? { seriesId: series.id, seriesTitle: series.title, tvdbId: series.tvdbId }
-                : {}),
-            }),
-          },
-        ],
-        details: undefined,
-      };
+      return jsonResult({
+        commandId: command.id,
+        status: command.status,
+        message: `EpisodeSearch queued for ${params.episodeIds.length} episode${params.episodeIds.length === 1 ? "" : "s"}`,
+        ...(series
+          ? { seriesId: series.id, seriesTitle: series.title, tvdbId: series.tvdbId }
+          : {}),
+      });
     }
 
     // Series-wide search (no auto-monitoring)
@@ -453,22 +370,14 @@ export const downloadEpisodesTool: AgentTool<typeof searchEpisodesParams> = {
         sonarr.searchEpisodes(params.seriesId),
         sonarr.getSeries(params.seriesId),
       ]);
-      return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify({
-              commandId: command.id,
-              status: command.status,
-              message: `SeriesSearch queued for series ${params.seriesId}`,
-              seriesId: series.id,
-              seriesTitle: series.title,
-              tvdbId: series.tvdbId,
-            }),
-          },
-        ],
-        details: undefined,
-      };
+      return jsonResult({
+        commandId: command.id,
+        status: command.status,
+        message: `SeriesSearch queued for series ${params.seriesId}`,
+        seriesId: series.id,
+        seriesTitle: series.title,
+        tvdbId: series.tvdbId,
+      });
     }
 
     throw new Error("Must provide either seriesId or episodeIds");
@@ -506,18 +415,10 @@ export const getSeriesHistoryTool: AgentTool<typeof getSeriesHistoryParams> = {
     // Series-specific history uses a dedicated endpoint
     if (params.seriesId) {
       const items = await sonarr.getSeriesHistory(params.seriesId);
-      return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify({
-              totalRecords: items.length,
-              items: items.map(toPartialHistoryItem),
-            }),
-          },
-        ],
-        details: undefined,
-      };
+      return jsonResult({
+        totalRecords: items.length,
+        items: items.map(toPartialHistoryItem),
+      });
     }
 
     // Global history with pagination
@@ -526,20 +427,12 @@ export const getSeriesHistoryTool: AgentTool<typeof getSeriesHistoryParams> = {
 
     const historyResponse = await sonarr.getHistory(page, pageSize);
 
-    return {
-      content: [
-        {
-          type: "text",
-          text: JSON.stringify({
-            totalRecords: historyResponse.totalRecords,
-            page: historyResponse.page,
-            pageSize: historyResponse.pageSize,
-            items: historyResponse.records.map(toPartialHistoryItem),
-          }),
-        },
-      ],
-      details: undefined,
-    };
+    return jsonResult({
+      totalRecords: historyResponse.totalRecords,
+      page: historyResponse.page,
+      pageSize: historyResponse.pageSize,
+      items: historyResponse.records.map(toPartialHistoryItem),
+    });
   },
 };
 
@@ -572,33 +465,17 @@ export const manualImportTool: AgentTool<typeof manualImportParams> = {
     const items = await sonarr.getManualImport(params.downloadId, params.seriesId);
 
     if (items.length === 0) {
-      return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify({
-              message: "No files found for manual import with this download ID",
-            }),
-          },
-        ],
-        details: undefined,
-      };
+      return jsonResult({
+        message: "No files found for manual import with this download ID",
+      });
     }
 
     // List-only mode
     if (!params.importAll) {
-      return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify({
-              totalFiles: items.length,
-              files: items.map(toPartialManualImportItem),
-            }),
-          },
-        ],
-        details: undefined,
-      };
+      return jsonResult({
+        totalFiles: items.length,
+        files: items.map(toPartialManualImportItem),
+      });
     }
 
     // Import mode — filter to files that have matched episodes and no rejections
@@ -612,20 +489,12 @@ export const manualImportTool: AgentTool<typeof manualImportParams> = {
     );
 
     if (importable.length === 0) {
-      return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify({
-              message:
-                "No files eligible for automatic import (missing episode match or have rejections)",
-              totalFiles: items.length,
-              files: items.map(toPartialManualImportItem),
-            }),
-          },
-        ],
-        details: undefined,
-      };
+      return jsonResult({
+        message:
+          "No files eligible for automatic import (missing episode match or have rejections)",
+        totalFiles: items.length,
+        files: items.map(toPartialManualImportItem),
+      });
     }
 
     const command = await sonarr.triggerManualImport(
@@ -639,35 +508,27 @@ export const manualImportTool: AgentTool<typeof manualImportParams> = {
       })),
     );
 
-    return {
-      content: [
-        {
-          type: "text",
-          text: JSON.stringify({
-            commandId: command.id,
-            status: command.status,
-            message: `Manual import queued for ${importable.length} file${importable.length === 1 ? "" : "s"}`,
-            importedFiles: importable.map((item) => ({
-              name: item.name,
-              seriesTitle: item.series!.title,
-              seasonNumber: item.seasonNumber,
-              episodes: item.episodes!.map(
-                (ep) =>
-                  `S${String(ep.seasonNumber).padStart(2, "0")}E${String(ep.episodeNumber).padStart(2, "0")}`,
-              ),
-            })),
-            ...(items.length > importable.length
-              ? {
-                  skippedFiles: items.length - importable.length,
-                  skipped: items
-                    .filter((item) => !importable.includes(item))
-                    .map(toPartialManualImportItem),
-                }
-              : {}),
-          }),
-        },
-      ],
-      details: undefined,
-    };
+    return jsonResult({
+      commandId: command.id,
+      status: command.status,
+      message: `Manual import queued for ${importable.length} file${importable.length === 1 ? "" : "s"}`,
+      importedFiles: importable.map((item) => ({
+        name: item.name,
+        seriesTitle: item.series!.title,
+        seasonNumber: item.seasonNumber,
+        episodes: item.episodes!.map(
+          (ep) =>
+            `S${String(ep.seasonNumber).padStart(2, "0")}E${String(ep.episodeNumber).padStart(2, "0")}`,
+        ),
+      })),
+      ...(items.length > importable.length
+        ? {
+            skippedFiles: items.length - importable.length,
+            skipped: items
+              .filter((item) => !importable.includes(item))
+              .map(toPartialManualImportItem),
+          }
+        : {}),
+    });
   },
 };

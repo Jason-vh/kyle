@@ -1,5 +1,6 @@
 import { Type } from "@sinclair/typebox";
 import type { AgentTool } from "@mariozechner/pi-agent-core";
+import { jsonResult } from "./tool-result.ts";
 import { getSubscriptionsForUser } from "../db/subscriptions.ts";
 
 const params = Type.Object({
@@ -16,9 +17,6 @@ export const getRequestsForUserTool: AgentTool<typeof params> = {
   label: "Looking up user subscriptions",
   async execute(_toolCallId, params) {
     const subscriptions = await getSubscriptionsForUser(params.userId);
-    return {
-      content: [{ type: "text", text: JSON.stringify(subscriptions) }],
-      details: undefined,
-    };
+    return jsonResult(subscriptions);
   },
 };

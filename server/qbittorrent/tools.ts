@@ -1,5 +1,6 @@
 import { Type } from "@sinclair/typebox";
 import type { AgentTool } from "@mariozechner/pi-agent-core";
+import { jsonResult } from "../agent/tool-result.ts";
 import * as qbittorrent from "./api.ts";
 
 const getTorrentsParams = Type.Object({
@@ -31,28 +32,20 @@ export const getTorrentsTool: AgentTool<typeof getTorrentsParams> = {
   label: "Fetching torrents from qBittorrent",
   async execute(_toolCallId, params) {
     const torrents = await qbittorrent.getTorrents(params.filter ?? "all");
-    return {
-      content: [
-        {
-          type: "text",
-          text: JSON.stringify(
-            torrents.map((t) => ({
-              hash: t.hash,
-              name: t.name,
-              size: t.size,
-              progress: t.progress,
-              dlspeed: t.dlspeed,
-              upspeed: t.upspeed,
-              ratio: t.ratio,
-              state: t.state,
-              category: t.category,
-              addedOn: t.added_on,
-            })),
-          ),
-        },
-      ],
-      details: undefined,
-    };
+    return jsonResult(
+      torrents.map((t) => ({
+        hash: t.hash,
+        name: t.name,
+        size: t.size,
+        progress: t.progress,
+        dlspeed: t.dlspeed,
+        upspeed: t.upspeed,
+        ratio: t.ratio,
+        state: t.state,
+        category: t.category,
+        addedOn: t.added_on,
+      })),
+    );
   },
 };
 
@@ -76,18 +69,10 @@ export const deleteTorrentsTool: AgentTool<typeof deleteTorrentsParams> = {
   async execute(_toolCallId, params) {
     const deleteFiles = params.deleteFiles ?? true;
     await qbittorrent.deleteTorrents(params.hashes, deleteFiles);
-    return {
-      content: [
-        {
-          type: "text",
-          text: JSON.stringify({
-            success: true,
-            message: `Deleted ${params.hashes.length} torrent${params.hashes.length === 1 ? "" : "s"}${deleteFiles ? " and files from disk" : ""}`,
-            hashes: params.hashes,
-          }),
-        },
-      ],
-      details: undefined,
-    };
+    return jsonResult({
+      success: true,
+      message: `Deleted ${params.hashes.length} torrent${params.hashes.length === 1 ? "" : "s"}${deleteFiles ? " and files from disk" : ""}`,
+      hashes: params.hashes,
+    });
   },
 };

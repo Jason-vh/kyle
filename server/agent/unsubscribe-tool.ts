@@ -1,5 +1,6 @@
 import { Type } from "@sinclair/typebox";
 import type { AgentTool } from "@mariozechner/pi-agent-core";
+import { jsonResult } from "./tool-result.ts";
 import { deactivateMovieSubscription, deactivateSeriesSubscriptions } from "../db/subscriptions.ts";
 
 const params = Type.Object({
@@ -38,34 +39,18 @@ export const unsubscribeNotificationsTool: AgentTool<typeof params> = {
 
     if (params.mediaType === "movie") {
       if (!params.radarrId) {
-        return {
-          content: [
-            {
-              type: "text",
-              text: JSON.stringify({
-                success: false,
-                message: "radarrId is required for movie unsubscribe",
-              }),
-            },
-          ],
-          details: undefined,
-        };
+        return jsonResult({
+          success: false,
+          message: "radarrId is required for movie unsubscribe",
+        });
       }
       count = await deactivateMovieSubscription(params.userId, params.radarrId);
     } else {
       if (!params.sonarrId) {
-        return {
-          content: [
-            {
-              type: "text",
-              text: JSON.stringify({
-                success: false,
-                message: "sonarrId is required for series unsubscribe",
-              }),
-            },
-          ],
-          details: undefined,
-        };
+        return jsonResult({
+          success: false,
+          message: "sonarrId is required for series unsubscribe",
+        });
       }
       count = await deactivateSeriesSubscriptions(
         params.userId,
@@ -75,32 +60,16 @@ export const unsubscribeNotificationsTool: AgentTool<typeof params> = {
     }
 
     if (count === 0) {
-      return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify({
-              success: false,
-              message: "No active subscription found to deactivate",
-            }),
-          },
-        ],
-        details: undefined,
-      };
+      return jsonResult({
+        success: false,
+        message: "No active subscription found to deactivate",
+      });
     }
 
-    return {
-      content: [
-        {
-          type: "text",
-          text: JSON.stringify({
-            success: true,
-            deactivatedCount: count,
-            message: `Unsubscribed from ${count} notification${count === 1 ? "" : "s"}`,
-          }),
-        },
-      ],
-      details: undefined,
-    };
+    return jsonResult({
+      success: true,
+      deactivatedCount: count,
+      message: `Unsubscribed from ${count} notification${count === 1 ? "" : "s"}`,
+    });
   },
 };

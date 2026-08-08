@@ -1,5 +1,6 @@
 import { Type } from "@sinclair/typebox";
 import type { AgentTool } from "@mariozechner/pi-agent-core";
+import { jsonResult } from "../agent/tool-result.ts";
 import * as radarr from "./api.ts";
 import {
   toPartialMovie,
@@ -23,10 +24,7 @@ export const getRadarrMovieTool: AgentTool<typeof getRadarrMovieParams> = {
   label: "Checking movie details in Radarr",
   async execute(_toolCallId, params) {
     const movie = await radarr.getMovie(params.radarrMovieId);
-    return {
-      content: [{ type: "text", text: JSON.stringify(toPartialMovie(movie)) }],
-      details: undefined,
-    };
+    return jsonResult(toPartialMovie(movie));
   },
 };
 
@@ -37,10 +35,7 @@ export const getAllMoviesTool: AgentTool<typeof emptyParams> = {
   label: "Fetching movies from Radarr",
   async execute() {
     const movies = await radarr.getMovies();
-    return {
-      content: [{ type: "text", text: JSON.stringify(movies.map(toPartialMovie)) }],
-      details: undefined,
-    };
+    return jsonResult(movies.map(toPartialMovie));
   },
 };
 
@@ -56,10 +51,7 @@ export const searchMoviesTool: AgentTool<typeof searchMoviesParams> = {
   label: "Searching for movies in Radarr",
   async execute(_toolCallId, params) {
     const movies = await radarr.searchMovies(params.title);
-    return {
-      content: [{ type: "text", text: JSON.stringify(movies.map(toMovieLookupResult)) }],
-      details: undefined,
-    };
+    return jsonResult(movies.map(toMovieLookupResult));
   },
 };
 
@@ -77,21 +69,13 @@ export const addMovieTool: AgentTool<typeof addMovieParams> = {
     // Lookup canonical metadata via TMDB ID, then add
     const movieLookup = await radarr.lookupMovieByTmdbId(params.tmdbId);
     const result = await radarr.addMovie(movieLookup.title, movieLookup.year, params.tmdbId);
-    return {
-      content: [
-        {
-          type: "text",
-          text: JSON.stringify({
-            title: result.title,
-            year: result.year,
-            id: result.id,
-            titleSlug: result.titleSlug,
-            message: `Added "${result.title}" (${result.year}) to Radarr. If the movie is available, it will start downloading shortly.`,
-          }),
-        },
-      ],
-      details: undefined,
-    };
+    return jsonResult({
+      title: result.title,
+      year: result.year,
+      id: result.id,
+      titleSlug: result.titleSlug,
+      message: `Added "${result.title}" (${result.year}) to Radarr. If the movie is available, it will start downloading shortly.`,
+    });
   },
 };
 
@@ -107,23 +91,15 @@ export const removeMovieTool: AgentTool<typeof removeMovieParams> = {
   async execute(_toolCallId, params) {
     const movie = await radarr.getMovie(params.movieId);
     await radarr.removeMovie(params.movieId, true);
-    return {
-      content: [
-        {
-          type: "text",
-          text: JSON.stringify({
-            success: true,
-            message: `Removed ${movie.title} (${movie.year}) from Radarr and deleted files from disk.`,
-            title: movie.title,
-            tmdbId: movie.tmdbId,
-            imdbId: movie.imdbId,
-            titleSlug: movie.titleSlug,
-            radarrId: params.movieId,
-          }),
-        },
-      ],
-      details: undefined,
-    };
+    return jsonResult({
+      success: true,
+      message: `Removed ${movie.title} (${movie.year}) from Radarr and deleted files from disk.`,
+      title: movie.title,
+      tmdbId: movie.tmdbId,
+      imdbId: movie.imdbId,
+      titleSlug: movie.titleSlug,
+      radarrId: params.movieId,
+    });
   },
 };
 
@@ -144,18 +120,10 @@ export const getMovieQueueTool: AgentTool<typeof getMovieQueueParams> = {
     const queue = await radarr.getQueue({
       movieIds: params.movieId ? [params.movieId] : undefined,
     });
-    return {
-      content: [
-        {
-          type: "text",
-          text: JSON.stringify({
-            totalRecords: queue.totalRecords,
-            downloads: queue.records.map(toPartialQueueItem),
-          }),
-        },
-      ],
-      details: undefined,
-    };
+    return jsonResult({
+      totalRecords: queue.totalRecords,
+      downloads: queue.records.map(toPartialQueueItem),
+    });
   },
 };
 
@@ -171,14 +139,6 @@ export const getMovieHistoryTool: AgentTool<typeof getMovieHistoryParams> = {
   label: "Checking Radarr history",
   async execute(_toolCallId, params) {
     const history = await radarr.getHistory(params.pageSize);
-    return {
-      content: [
-        {
-          type: "text",
-          text: JSON.stringify(history.records.map(toPartialHistoryRecord)),
-        },
-      ],
-      details: undefined,
-    };
+    return jsonResult(history.records.map(toPartialHistoryRecord));
   },
 };

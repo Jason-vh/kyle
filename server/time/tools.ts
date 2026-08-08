@@ -1,5 +1,6 @@
 import { Type } from "@sinclair/typebox";
 import type { AgentTool } from "@mariozechner/pi-agent-core";
+import { jsonResult } from "../agent/tool-result.ts";
 
 const convertTimeParams = Type.Object({
   time: Type.String({ description: 'Time to convert, e.g. "8:00 PM", "20:00", "3:30 PM"' }),
@@ -26,12 +27,7 @@ export const convertTimeTool: AgentTool<typeof convertTimeParams> = {
     // Parse the input time
     const match = time.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)?$/i);
     if (!match) {
-      return {
-        content: [
-          { type: "text", text: JSON.stringify({ error: `Cannot parse time: "${time}"` }) },
-        ],
-        details: undefined,
-      };
+      return jsonResult({ error: `Cannot parse time: "${time}"` });
     }
 
     let hours = parseInt(match[1]!, 10);
@@ -99,9 +95,6 @@ export const convertTimeTool: AgentTool<typeof convertTimeParams> = {
       utc: utcTime.toISOString(),
     };
 
-    return {
-      content: [{ type: "text", text: JSON.stringify(result) }],
-      details: undefined,
-    };
+    return jsonResult(result);
   },
 };

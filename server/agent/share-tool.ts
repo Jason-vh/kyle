@@ -1,5 +1,6 @@
 import { Type } from "@sinclair/typebox";
 import type { AgentTool } from "@mariozechner/pi-agent-core";
+import { jsonResult } from "./tool-result.ts";
 import { signThreadSig } from "../routes/threads-auth.ts";
 
 const BASE_URL = "https://kyle.vhtm.eu";
@@ -15,10 +16,7 @@ export function createShareConversationTool(conversationId: string): AgentTool<t
     async execute() {
       const sig = await signThreadSig(conversationId);
       const url = `${BASE_URL}/threads/${conversationId}?sig=${sig}`;
-      return {
-        content: [{ type: "text", text: JSON.stringify({ url }) }],
-        details: undefined,
-      };
+      return jsonResult({ url });
     },
   };
 }
