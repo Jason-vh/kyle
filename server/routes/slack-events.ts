@@ -1,15 +1,10 @@
-import { eq, and } from "drizzle-orm";
-import type { AgentEvent, AgentMessage } from "@mariozechner/pi-agent-core";
+import type { AgentEvent } from "@mariozechner/pi-agent-core";
 import { createLogger } from "../logger.ts";
-import { db } from "../db/index.ts";
-import { conversations, messages } from "../db/schema.ts";
-import { loadConversationHistory } from "../db/conversation-history.ts";
-import { runAgent, toolLabels, ApiOverloadedError, type AgentContext } from "../agent/index.ts";
+import { toolLabels, ApiOverloadedError, type AgentContext } from "../agent/index.ts";
+import { runConversationTurn } from "../agent/conversation.ts";
 import { isActionTool, completedActionLabel } from "../agent/action-tools.ts";
 import { extractTable, type ResultTable } from "../agent/result-tables.ts";
 import { tableBlocks } from "../slack/tables.ts";
-import { extractMediaEvent, saveMediaEvent, type MediaEventData } from "../db/media-events.ts";
-import { processMediaEvent } from "../db/subscriptions.ts";
 import { verifySlackSignature } from "../slack/verify.ts";
 import { getSlackClient, setThreadStatus } from "../slack/client.ts";
 import { describeAppContext } from "../slack/context.ts";
@@ -170,11 +165,8 @@ async function processSlackMessage(slackEvent: SlackEvent, teamId?: string): Pro
     teamId,
   });
 
-  let conversationId: string;
-
-  // Build event handler for tool status updates + deferred media ref collection
+  // Build event handler for tool status updates and result tables
   const toolArgs = new Map<string, Record<string, unknown>>();
-  const pendingEvents: Array<{ toolCallId: string; event: MediaEventData }> = [];
   // Keyed by tool so repeated calls in one turn render a single, latest table.
   const tables = new Map<string, ResultTable>();
   const onEvent = (event: AgentEvent) => {
@@ -213,7 +205,6 @@ async function processSlackMessage(slackEvent: SlackEvent, teamId?: string): Pro
       const table = extractTable(event.toolName, event.result);
       if (table) tables.set(event.toolName, table);
 
-      const mediaEvent = extractMediaEvent(event.toolName, args, event.result);
       if (label && isAction) {
         stream.updateTask({
           id: event.toolCallId,
@@ -221,127 +212,32 @@ async function processSlackMessage(slackEvent: SlackEvent, teamId?: string): Pro
           status: "complete",
         });
       }
-      if (mediaEvent) {
-        pendingEvents.push({ toolCallId: event.toolCallId, event: mediaEvent });
-      }
     }
   };
 
   try {
-    let previousMessages: AgentMessage[] = [];
-    let messageTimestamps: WeakMap<object, Date> | undefined;
-
-    // Look up existing conversation
-    const existing = await db.query.conversations.findFirst({
-      where: and(
-        eq(conversations.externalId, externalId),
-        eq(conversations.interfaceType, "slack"),
-      ),
-    });
-
-    if (existing) {
-      conversationId = existing.id;
-      const history = await loadConversationHistory(conversationId);
-      previousMessages = history.messages;
-      messageTimestamps = history.timestamps;
-    } else {
-      const [conversation] = await db
-        .insert(conversations)
-        .values({
-          externalId,
-          interfaceType: "slack",
-          platformUserId: userId ?? null,
-          userId: appUserId,
-          metadata: { channel, threadTs: replyThreadTs },
-        })
-        .returning();
-      conversationId = conversation!.id;
-    }
-
-    // Attach conversationId to agent context for share tool
-    if (agentContext) {
-      agentContext.conversationId = conversationId;
-    }
-
-    // Run the agent
-    log.info("running agent", {
-      conversationId,
+    const { conversationId, responseText } = await runConversationTurn({
+      interfaceType: "slack",
       externalId,
-      message: messageText,
-      username: agentContext?.username,
-    });
-    const result = await runAgent(
-      messageText || "[shared an image]",
-      previousMessages,
-      agentContext,
+      metadata: { channel, threadTs: replyThreadTs },
+      platformUserId: userId,
+      appUserId,
+      text: messageText,
+      images,
+      context: agentContext,
       onEvent,
-      (attempt, maxAttempts) => {
+      onRetry: (attempt, maxAttempts) => {
         setThreadStatus(channel, replyThreadTs, `is retrying... (${attempt}/${maxAttempts})`);
       },
-      messageTimestamps,
-      images.length > 0 ? images : undefined,
-    );
-    log.info("agent completed", {
-      conversationId,
-      externalId,
-      newMessages: result.messages.length - previousMessages.length,
-      errorMessages: result.errorMessages.length,
-      responseLength: result.responseText.length,
     });
-
-    // Persist error messages (for thread viewer visibility) then new messages
-    const allNewMessages = [
-      ...result.errorMessages,
-      ...result.messages.slice(previousMessages.length),
-    ];
-    const toolCallToMsg = new Map<string, string>();
-    if (allNewMessages.length > 0) {
-      const insertedRows = await db
-        .insert(messages)
-        .values(
-          allNewMessages.map((m) => ({
-            conversationId,
-            role: m.role,
-            platformUserId: m.role === "user" ? (userId ?? null) : null,
-            userId: m.role === "user" ? appUserId : null,
-            data: m,
-          })),
-        )
-        .returning({ id: messages.id, role: messages.role, data: messages.data });
-
-      for (const row of insertedRows) {
-        if (row.role === "assistant") {
-          const data = row.data as { content?: Array<{ type: string; id?: string }> };
-          for (const block of data.content ?? []) {
-            if (block.type === "toolCall" && block.id) {
-              toolCallToMsg.set(block.id, row.id);
-            }
-          }
-        }
-      }
-    }
-
-    // Save deferred media events with messageId + process subscriptions
-    for (const { toolCallId, event: mediaEvent } of pendingEvents) {
-      const messageId = toolCallToMsg.get(toolCallId);
-      if (!messageId) {
-        log.error("no messageId found for pending media event", {
-          toolCallId,
-          title: mediaEvent.title,
-        });
-        continue;
-      }
-      saveMediaEvent(conversationId, toolCallId, mediaEvent, userId!, messageId, appUserId);
-      processMediaEvent(mediaEvent, conversationId, appUserId);
-    }
 
     // Close the stream (guard against empty response)
     await stream.finish(
-      result.responseText || "Sorry, I wasn't able to generate a response. Please try again.",
+      responseText || "Sorry, I wasn't able to generate a response. Please try again.",
       tables.size > 0 ? tableBlocks([...tables.values()]) : undefined,
     );
     log.info("slack reply sent", { channel, threadTs: replyThreadTs, conversationId });
-    return result.responseText;
+    return responseText;
   } catch (error) {
     const isOverloaded = error instanceof ApiOverloadedError;
     log.error("slack message processing failed", {

@@ -197,15 +197,32 @@ export function createAgent(
 
 const RETRY_DELAYS = [5_000, 15_000];
 
-export async function runAgent(
-  message: string,
-  previousMessages: AgentMessage[] = [],
-  context?: AgentContext,
-  onEvent?: (event: AgentEvent) => void,
-  onRetry?: (attempt: number, maxAttempts: number) => void,
-  messageTimestamps?: WeakMap<object, Date>,
-  images?: ImageContent[],
-): Promise<{ messages: AgentMessage[]; responseText: string; errorMessages: AgentMessage[] }> {
+export interface RunAgentOptions {
+  message: string;
+  previousMessages?: AgentMessage[];
+  context?: AgentContext;
+  images?: ImageContent[];
+  messageTimestamps?: WeakMap<object, Date>;
+  onEvent?: (event: AgentEvent) => void;
+  onRetry?: (attempt: number, maxAttempts: number) => void;
+}
+
+export interface RunAgentResult {
+  messages: AgentMessage[];
+  responseText: string;
+  errorMessages: AgentMessage[];
+}
+
+export async function runAgent(options: RunAgentOptions): Promise<RunAgentResult> {
+  const {
+    message,
+    previousMessages = [],
+    context,
+    images,
+    messageTimestamps,
+    onEvent,
+    onRetry,
+  } = options;
   const agent = createAgent(context, messageTimestamps);
 
   if (previousMessages.length > 0) {

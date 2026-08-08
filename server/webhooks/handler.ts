@@ -120,14 +120,12 @@ async function notifyRequester(
     historyLength: history.messages.length,
   });
 
-  const result = await runAgent(
-    prompt,
-    history.messages,
-    agentContext,
-    undefined,
-    undefined,
-    history.timestamps,
-  );
+  const result = await runAgent({
+    message: prompt,
+    previousMessages: history.messages,
+    context: agentContext,
+    messageTimestamps: history.timestamps,
+  });
 
   // Save new agent messages to DB
   const newMsgs = result.messages.slice(history.messages.length).filter((m) => m.role !== "user");

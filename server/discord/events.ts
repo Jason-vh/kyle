@@ -1,13 +1,7 @@
 import { ChannelType, type Attachment, type Message, type SendableChannels } from "discord.js";
-import { eq, and } from "drizzle-orm";
-import type { AgentMessage } from "@mariozechner/pi-agent-core";
 import { createLogger } from "../logger.ts";
-import { db } from "../db/index.ts";
-import { conversations, messages } from "../db/schema.ts";
-import { loadConversationHistory } from "../db/conversation-history.ts";
-import { runAgent, ApiOverloadedError, type AgentContext } from "../agent/index.ts";
-import { extractMediaEvent, saveMediaEvent, type MediaEventData } from "../db/media-events.ts";
-import { processMediaEvent } from "../db/subscriptions.ts";
+import { ApiOverloadedError, type AgentContext } from "../agent/index.ts";
+import { runConversationTurn } from "../agent/conversation.ts";
 import { BOT_USER_ID } from "./client.ts";
 import { resolveDiscordUsername } from "./users.ts";
 import { sendDiscordMessage } from "./messages.ts";
@@ -55,6 +49,19 @@ async function downloadDiscordImages(attachments: Attachment[]): Promise<ImageCo
 function cleanDiscordMessage(text: string): string {
   if (!BOT_USER_ID) return text.trim();
   return text.replace(new RegExp(`<@!?${BOT_USER_ID}>`, "g"), "").trim();
+}
+
+function conversationMetadata(
+  message: Message,
+  replyChannel: SendableChannels,
+  { isDM, isThread }: { isDM: boolean; isThread: boolean },
+): Record<string, unknown> {
+  const metadata: Record<string, unknown> = { channelId: replyChannel.id, isDM };
+  if (!isDM && message.guildId) metadata.guildId = message.guildId;
+  if (isThread || (!isDM && replyChannel.id !== message.channelId)) {
+    metadata.threadId = replyChannel.id;
+  }
+  return metadata;
 }
 
 /**
@@ -122,163 +129,23 @@ export async function handleDiscordMessage(message: Message): Promise<void> {
     interfaceType: "discord",
   };
 
-  let conversationId: string;
-
-  // Build event handler for deferred media ref collection
-  const toolArgs = new Map<string, Record<string, unknown>>();
-  const pendingEvents: Array<{ toolCallId: string; event: MediaEventData }> = [];
-  const onEvent = (event: {
-    type: string;
-    toolCallId?: string;
-    toolName?: string;
-    args?: unknown;
-    result?: unknown;
-    isError?: boolean;
-  }) => {
-    if (event.type === "tool_execution_start" && event.toolName) {
-      if (event.toolCallId && event.args) {
-        toolArgs.set(event.toolCallId, event.args as Record<string, unknown>);
-      }
-    }
-    if (
-      event.type === "tool_execution_end" &&
-      event.toolName &&
-      event.toolCallId &&
-      !event.isError
-    ) {
-      const args = toolArgs.get(event.toolCallId) ?? {};
-      toolArgs.delete(event.toolCallId);
-      const mediaEvent = extractMediaEvent(
-        event.toolName,
-        args,
-        event.result as { content?: Array<{ type: string; text?: string }> },
-      );
-      if (mediaEvent) {
-        pendingEvents.push({ toolCallId: event.toolCallId, event: mediaEvent });
-      }
-    }
-  };
-
   try {
-    let previousMessages: AgentMessage[] = [];
-    let messageTimestamps: WeakMap<object, Date> | undefined;
-
-    // Look up existing conversation
-    const existing = await db.query.conversations.findFirst({
-      where: and(
-        eq(conversations.externalId, externalId),
-        eq(conversations.interfaceType, "discord"),
-      ),
-    });
-
-    if (existing) {
-      conversationId = existing.id;
-      const history = await loadConversationHistory(conversationId);
-      previousMessages = history.messages;
-      messageTimestamps = history.timestamps;
-    } else {
-      const metadata: Record<string, unknown> = { channelId: replyChannel.id };
-      if (!isDM && "guildId" in message && message.guildId) {
-        metadata.guildId = message.guildId;
-      }
-      if (isThread || (!isDM && replyChannel.id !== message.channelId)) {
-        metadata.threadId = replyChannel.id;
-      }
-      metadata.isDM = isDM;
-
-      const [conversation] = await db
-        .insert(conversations)
-        .values({
-          externalId,
-          interfaceType: "discord",
-          platformUserId: userId,
-          userId: appUserId,
-          metadata,
-        })
-        .returning();
-      conversationId = conversation!.id;
-    }
-
-    // Attach conversationId to agent context for share tool
-    agentContext.conversationId = conversationId;
-
-    // Download images from Discord attachments
     const images = imageAttachments.length > 0 ? await downloadDiscordImages(imageAttachments) : [];
 
-    // Run the agent
-    log.info("running agent", {
-      conversationId,
+    const { conversationId, responseText } = await runConversationTurn({
+      interfaceType: "discord",
       externalId,
-      message: messageText,
-      username,
-      imageCount: images.length,
+      metadata: conversationMetadata(message, replyChannel, { isDM, isThread }),
+      platformUserId: userId,
+      appUserId,
+      text: messageText,
+      images,
+      context: agentContext,
     });
-    const result = await runAgent(
-      messageText || "[shared an image]",
-      previousMessages,
-      agentContext,
-      onEvent,
-      undefined,
-      messageTimestamps,
-      images.length > 0 ? images : undefined,
-    );
-    log.info("agent completed", {
-      conversationId,
-      externalId,
-      newMessages: result.messages.length - previousMessages.length,
-      errorMessages: result.errorMessages.length,
-      responseLength: result.responseText.length,
-    });
-
-    // Persist error messages then new messages
-    const allNewMessages = [
-      ...result.errorMessages,
-      ...result.messages.slice(previousMessages.length),
-    ];
-    const toolCallToMsg = new Map<string, string>();
-    if (allNewMessages.length > 0) {
-      const insertedRows = await db
-        .insert(messages)
-        .values(
-          allNewMessages.map((m) => ({
-            conversationId,
-            role: m.role,
-            platformUserId: m.role === "user" ? userId : null,
-            userId: m.role === "user" ? appUserId : null,
-            data: m,
-          })),
-        )
-        .returning({ id: messages.id, role: messages.role, data: messages.data });
-
-      for (const row of insertedRows) {
-        if (row.role === "assistant") {
-          const data = row.data as { content?: Array<{ type: string; id?: string }> };
-          for (const block of data.content ?? []) {
-            if (block.type === "toolCall" && block.id) {
-              toolCallToMsg.set(block.id, row.id);
-            }
-          }
-        }
-      }
-    }
-
-    // Save deferred media events with messageId + process subscriptions
-    for (const { toolCallId, event: mediaEvent } of pendingEvents) {
-      const messageId = toolCallToMsg.get(toolCallId);
-      if (!messageId) {
-        log.error("no messageId found for pending media event", {
-          toolCallId,
-          title: mediaEvent.title,
-        });
-        continue;
-      }
-      saveMediaEvent(conversationId, toolCallId, mediaEvent, userId, messageId, appUserId);
-      processMediaEvent(mediaEvent, conversationId, appUserId);
-    }
 
     // Reply (split into multiple messages if needed, guard against empty response)
     const replyText =
-      result.responseText || "Sorry, I wasn't able to generate a response. Please try again.";
+      responseText || "Sorry, I wasn't able to generate a response. Please try again.";
     await sendDiscordMessage(replyChannel, replyText);
     log.info("discord reply sent", { externalId, conversationId });
   } catch (error) {
