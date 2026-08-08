@@ -42,5 +42,7 @@ export function toolPresentation(name: string): ToolPresentation | undefined {
 
 /** The turn's tools, including the share tool once there is a conversation to share. */
 export function toolsForConversation(conversationId?: string): AnyTool[] {
-  return conversationId ? [...allTools, createShareConversationTool(conversationId)] : allTools;
+  const tools = [...allTools];
+  if (conversationId) tools.push(createShareConversationTool(conversationId));
+  return tools;
 }

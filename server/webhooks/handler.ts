@@ -69,25 +69,19 @@ export async function handleSonarrWebhook(req: Request): Promise<Response> {
     episodeCount: payload.episodes?.length,
   });
 
-  const episodes =
-    payload.episodes?.map((e) => ({
-      seasonNumber: e.seasonNumber,
-      episodeNumber: e.episodeNumber,
-      title: e.title,
-    })) ?? [];
-
-  batchSeriesNotification(
-    payload.series.id,
-    {
-      mediaType: "series",
-      title: payload.series.title,
-      year: payload.series.year,
-      quality: payload.release?.quality,
-      releaseGroup: payload.release?.releaseGroup,
-      episodes,
-    },
-    episodes,
-  );
+  batchSeriesNotification(payload.series.id, {
+    mediaType: "series",
+    title: payload.series.title,
+    year: payload.series.year,
+    quality: payload.release?.quality,
+    releaseGroup: payload.release?.releaseGroup,
+    episodes:
+      payload.episodes?.map((e) => ({
+        seasonNumber: e.seasonNumber,
+        episodeNumber: e.episodeNumber,
+        title: e.title,
+      })) ?? [],
+  });
 
   return Response.json({ ok: true, batched: true });
 }

@@ -10,7 +10,7 @@ import type { MediaNotificationInfo, MediaRequester } from "./types.ts";
 const log = createLogger("webhooks:notify");
 
 /** `Severance (2022) — S01E01 "Good News"`, with the episode list when there is one. */
-export function describeMedia(media: MediaNotificationInfo): string {
+function describeMedia(media: MediaNotificationInfo): string {
   const title = titleWithYear(media.title, media.year);
   if (media.mediaType !== "series" || !media.episodes?.length) return title;
   return `${title} — ${quotedEpisodeList(media.episodes)}`;
