@@ -1,14 +1,15 @@
-// Fallback tool summary — server provides summaryText, but this is
-// available in case we ever need client-side computation.
+import type { ToolCall } from "@mariozechner/pi-ai";
 
-export function toolSummary(name: string, args: Record<string, unknown>): string {
-  switch (name) {
+/** One-line, past-tense description of a tool call for the thread viewer. */
+export function toolSummary(tc: ToolCall): string {
+  const a = tc.arguments as Record<string, unknown>;
+  switch (tc.name) {
     case "search_tmdb_movies":
-      return `Searched TMDB movies for '${args.query}'`;
+      return `Searched TMDB movies for '${a.query}'`;
     case "search_tmdb_series":
-      return `Searched TMDB series for '${args.query}'`;
+      return `Searched TMDB series for '${a.query}'`;
     case "search_tmdb":
-      return `Searched TMDB for '${args.query}'`;
+      return `Searched TMDB for '${a.query}'`;
     case "get_tmdb_movie_details":
       return "Fetched TMDB movie details";
     case "get_tmdb_series_details":
@@ -18,9 +19,9 @@ export function toolSummary(name: string, args: Record<string, unknown>): string
     case "get_series_by_id":
       return "Fetched series details";
     case "search_series":
-      return `Searched for series '${args.title}'`;
+      return `Searched for series '${a.title}'`;
     case "add_series":
-      return args.title ? `Added '${args.title}' to Sonarr` : "Added series to Sonarr";
+      return a.title ? `Added '${a.title}' to Sonarr` : "Added series to Sonarr";
     case "remove_series":
       return "Removed series from Sonarr";
     case "remove_season":
@@ -37,15 +38,15 @@ export function toolSummary(name: string, args: Record<string, unknown>): string
     case "get_series_history":
       return "Checked series history";
     case "manual_import":
-      return args.importAll ? "Force-importing downloaded files" : "Checking import candidates";
+      return a.importAll ? "Force-importing downloaded files" : "Checking import candidates";
     case "get_all_movies":
       return "Checked movie library";
     case "get_radarr_movie":
       return "Fetched movie details";
     case "search_movies":
-      return `Searched for movie '${args.title}'`;
+      return `Searched for movie '${a.title}'`;
     case "add_movie":
-      return args.title ? `Added '${args.title}' to Radarr` : "Added movie to Radarr";
+      return a.title ? `Added '${a.title}' to Radarr` : "Added movie to Radarr";
     case "remove_movie":
       return "Removed movie from Radarr";
     case "get_movie_queue":
@@ -62,22 +63,22 @@ export function toolSummary(name: string, args: Record<string, unknown>): string
       return "Generated share link";
     case "convert_time": {
       const from =
-        String(args.fromTimezone ?? "")
+        String(a.fromTimezone ?? "")
           .split("/")
           .pop()
           ?.replace(/_/g, " ") ?? "";
       const to =
-        String(args.toTimezone ?? "")
+        String(a.toTimezone ?? "")
           .split("/")
           .pop()
           ?.replace(/_/g, " ") ?? "";
-      return `Converted ${args.time} from ${from} to ${to}`;
+      return `Converted ${a.time} from ${from} to ${to}`;
     }
     case "web_search":
-      return `Searched the web for '${args.query}'`;
+      return `Searched the web for '${a.query}'`;
     case "unsubscribe_notifications":
-      return `Unsubscribed from notifications for '${args.title}'`;
+      return `Unsubscribed from notifications for '${a.title}'`;
     default:
-      return name.replace(/_/g, " ");
+      return tc.name.replace(/_/g, " ");
   }
 }
