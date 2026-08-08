@@ -5,6 +5,7 @@ import { db } from "../db/index.ts";
 import { conversations, messages } from "../db/schema.ts";
 import { loadConversationHistory } from "../db/conversation-history.ts";
 import { runAgent, toolLabels, ApiOverloadedError, type AgentContext } from "../agent/index.ts";
+import { isActionTool } from "../agent/action-tools.ts";
 import { extractMediaEvent, saveMediaEvent, type MediaEventData } from "../db/media-events.ts";
 import { processMediaEvent } from "../db/subscriptions.ts";
 import { verifySlackSignature } from "../slack/verify.ts";
@@ -179,17 +180,21 @@ async function processSlackMessage(slackEvent: SlackEvent, teamId?: string): Pro
     }
     if (event.type === "tool_execution_start") {
       const label = toolLabels.get(event.toolName);
-      if (label) {
-        setThreadStatus(channel, replyThreadTs, label);
-        stream.updateTask({ id: event.toolCallId, title: label, status: "in_progress" });
-      }
       if (event.args) {
         toolArgs.set(event.toolCallId, event.args);
       }
+      if (label) {
+        setThreadStatus(channel, replyThreadTs, label);
+        if (isActionTool(event.toolName, event.args)) {
+          stream.updateTask({ id: event.toolCallId, title: label, status: "in_progress" });
+        }
+      }
     }
     if (event.type === "tool_execution_end") {
+      const args = toolArgs.get(event.toolCallId) ?? {};
+      toolArgs.delete(event.toolCallId);
       const label = toolLabels.get(event.toolName);
-      if (label) {
+      if (label && isActionTool(event.toolName, args)) {
         stream.updateTask({
           id: event.toolCallId,
           title: label,
@@ -197,8 +202,6 @@ async function processSlackMessage(slackEvent: SlackEvent, teamId?: string): Pro
         });
       }
       if (event.isError) return;
-      const args = toolArgs.get(event.toolCallId) ?? {};
-      toolArgs.delete(event.toolCallId);
       const mediaEvent = extractMediaEvent(event.toolName, args, event.result);
       if (mediaEvent) {
         pendingEvents.push({ toolCallId: event.toolCallId, event: mediaEvent });
