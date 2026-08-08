@@ -58,11 +58,16 @@ deploy/                      → Caddy snippet + production env shape
 
 shared/
   types.ts                   → API response types shared between server + web
+  media.ts                   → Episode/title formatting used by both server and viewer
 
 server/
   server.ts                  → Route table (/api/*, /slack, /webhooks) + SPA serving
-  config.ts                  → requireEnv(): env lookup that fails with every missing name
+  config.ts                  → requireEnv()/optionalEnv(): env lookup at call time
   logger.ts                  → Structured JSON logger
+  errors.ts                  → errorMessage()/errorFields(): log fields for a thrown value
+  json.ts                    → safeJsonParse(): parse without throwing
+  images.ts                  → downloadImages(): platform-agnostic image fetching
+  media-links.ts             → Deep links into Radarr/Sonarr
   http/
     client.ts                → createApiClient(): shared JSON HTTP client for every service
   auth/
@@ -70,11 +75,17 @@ server/
     middleware.ts            → requireAuth, requireAdmin, optionalAuth
     webauthn.ts              → WebAuthn registration/authentication (simplewebauthn)
   agent/
-    index.ts                 → Agent factory + runAgent(), tool registration
+    index.ts                 → Public surface of the agent package
+    tool.ts                  → Tool type: an AgentTool plus how to describe it
+    registry.ts              → The one map from tool name to tool
+    model.ts                 → Model selection (ANTHROPIC_MODEL)
+    run.ts                   → Agent factory + runAgent(), overload retries
     conversation.ts          → runConversationTurn(): the turn pipeline every interface uses
     tool-result.ts           → jsonResult(): the shape every tool returns
+    table.ts                 → buildTable(): capped tables for tools that declare one
     action-tools.ts          → isActionTool(): which tool calls show as Slack task cards
-    result-tables.ts         → extractTable(): queue/calendar results as tabular data
+    result-tables.ts         → extractTable(): a tool result rendered as tabular data
+    replies.ts               → What a user sees when a turn is empty or fails
     system-prompt.ts         → Kyle's system prompt + AgentContext
     requests-tool.ts         → get_requests_for_user tool
     unsubscribe-tool.ts      → unsubscribe_notifications tool
@@ -82,13 +93,14 @@ server/
     index.ts                 → Drizzle + postgres connection
     schema.ts                → All tables
     users.ts                 → Platform identity resolution (cached), backfill, user CRUD
+    threads.ts               → Queries behind the thread viewer
     media-events.ts          → Media event extraction + persistence
     subscriptions.ts         → Movie/series subscription CRUD, processMediaEvent
     migrate.ts               → Migration runner
   routes/
     chat.ts                  → POST /chat
     health.ts                → GET /health (includes deployId)
-    slack-events.ts          → POST /slack/events (supports X-Sync-Response header)
+    slack-events.ts          → POST /slack/events: verify, dedup, dispatch
     threads-auth.ts          → HMAC-SHA256 thread sharing signatures (?sig= URLs)
     api/
       threads.ts             → GET /api/threads, GET /api/threads/:uuid
@@ -99,9 +111,10 @@ server/
   threads/
     items.ts                 → buildThreadItems(): messages + webhooks as viewer items
     tool-summary.ts          → One-line description of a tool call
-  slack/                     → WebClient, response streaming, Block Kit tables, context, verify
+    usernames.ts             → Batch display-name resolution across app + platform users
+  slack/                     → handler (one message → one turn), streaming, tables, verify
   discord/                   → discord.js client, messageCreate handler, user resolution
-  sonarr/                    → types, api, utils, tools (11 tools)
+  sonarr/                    → types, api, utils, tools (12 tools)
   radarr/                    → types, api, utils, tools (7 tools)
   tmdb/                      → types, api, utils, tools (5 tools)
   ultra/                     → api, tools (stats)
@@ -109,8 +122,10 @@ server/
   brave/                     → types, api, utils, tools (web search)
   webhooks/
     types.ts                 → Webhook payload types + MediaNotificationInfo
+    auth.ts                  → Basic-auth check (WEBHOOK_AUTH)
     requester.ts             → Find who requested media
-    notifications.ts         → AI notification generation via Haiku (template fallback)
+    batch.ts                 → Collect a season's episodes before notifying once
+    notify.ts                → Run the turn and post the reply to the right platform
     handler.ts               → POST /webhooks/sonarr + /webhooks/radarr
 
 web/                         → Vue 3 + Vite + Tailwind CSS 4 SPA
@@ -169,12 +184,16 @@ web/                         → Vue 3 + Vite + Tailwind CSS 4 SPA
   raw `console.log`.
 - **Token optimization** — each service has `utils.ts` with `toPartial*` helpers that strip
   API responses to essential fields before sending to the LLM.
+- **Tools describe themselves** — a tool carries its own presentation: `label` (present
+  tense, for the ephemeral Slack status), `completedLabel` (past tense; its presence marks
+  the tool as an action worth a task card), `summary` (one line for the thread viewer), and
+  an optional `table`. `server/agent/registry.ts` is the only place a tool name maps back to
+  a tool, so `action-tools.ts`, `tool-summary.ts`, and `result-tables.ts` are all lookups.
 - **Adding a new tool** — create `api.ts` (over `createApiClient`) + `tools.ts` under
-  `server/<service>/`, returning `jsonResult(...)` from `server/agent/tool-result.ts`.
-  Register it in `server/agent/index.ts`, add it to `ACTION_TOOLS` in
-  `server/agent/action-tools.ts` if it changes state, add the service to the media list in
-  `server/agent/system-prompt.ts` (the agent won't use tools it doesn't know about), and add
-  a summary case in `server/threads/tool-summary.ts` for the thread viewer.
+  `server/<service>/`, returning `jsonResult(...)` from `server/agent/tool-result.ts`. Add
+  the tool to that module's exported list and the list to `server/agent/registry.ts`, then
+  add the service to the media list in `server/agent/system-prompt.ts` — the agent won't use
+  tools it doesn't know about. Everything the UI needs comes from the tool itself.
 
 ## Development
 

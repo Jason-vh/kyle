@@ -1,3 +1,8 @@
+/** Reads an optional env var at call time, treating blank as unset. */
+export function optionalEnv(name: string): string | undefined {
+  return process.env[name] || undefined;
+}
+
 /** Reads env vars at call time, failing with every missing name at once. */
 export function requireEnv<const T extends readonly string[]>(
   ...names: T
