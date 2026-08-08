@@ -187,6 +187,10 @@ bun test             # run tests
 bun run fmt          # format (oxfmt); bun run check runs fmt + lint + tsc + tests
 ```
 
+Most tests are pure unit tests. `server/agent/conversation.test.ts` exercises the real
+persistence path and needs a database — it skips itself unless `DATABASE_URL` is reachable,
+so run `bun run db:up && bun run db:migrate` first to include it.
+
 Open <http://localhost:5173> for development. Production serves everything from `:3000`.
 
 ### Quick start

@@ -193,8 +193,8 @@ export async function runConversationTurn(turn: ConversationTurn): Promise<Conve
       });
       continue;
     }
-    saveMediaEvent(conversationId, toolCallId, event, platformUserId, messageId, appUserId);
-    processMediaEvent(event, conversationId, appUserId);
+    await saveMediaEvent(conversationId, toolCallId, event, platformUserId, messageId, appUserId);
+    await processMediaEvent(event, conversationId, appUserId);
   }
 
   return { conversationId, responseText: result.responseText };
