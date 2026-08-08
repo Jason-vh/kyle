@@ -5,7 +5,7 @@ import { db } from "../db/index.ts";
 import { conversations, messages } from "../db/schema.ts";
 import { loadConversationHistory } from "../db/conversation-history.ts";
 import { runAgent, toolLabels, ApiOverloadedError, type AgentContext } from "../agent/index.ts";
-import { isActionTool } from "../agent/action-tools.ts";
+import { isActionTool, completedActionLabel } from "../agent/action-tools.ts";
 import { extractMediaEvent, saveMediaEvent, type MediaEventData } from "../db/media-events.ts";
 import { processMediaEvent } from "../db/subscriptions.ts";
 import { verifySlackSignature } from "../slack/verify.ts";
@@ -195,9 +195,11 @@ async function processSlackMessage(slackEvent: SlackEvent, teamId?: string): Pro
       toolArgs.delete(event.toolCallId);
       const label = toolLabels.get(event.toolName);
       if (label && isActionTool(event.toolName, args)) {
+        // A failed action keeps the present tense: it was attempted, not done.
+        const title = event.isError ? label : (completedActionLabel(event.toolName) ?? label);
         stream.updateTask({
           id: event.toolCallId,
-          title: label,
+          title,
           status: event.isError ? "error" : "complete",
         });
       }

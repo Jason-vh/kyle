@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { isActionTool } from "./action-tools.ts";
+import { completedActionLabel, isActionTool } from "./action-tools.ts";
 
 test("library changes are actions", () => {
   for (const tool of ["add_movie", "remove_series", "remove_season", "download_episodes"]) {
@@ -16,4 +16,9 @@ test("lookups are not actions", () => {
 test("manual_import counts only when it actually imports", () => {
   expect(isActionTool("manual_import", { downloadId: "abc" })).toBe(false);
   expect(isActionTool("manual_import", { downloadId: "abc", importAll: true })).toBe(true);
+});
+
+test("finished actions read in the past tense", () => {
+  expect(completedActionLabel("remove_movie")).toBe("Removed movie from Radarr");
+  expect(completedActionLabel("get_all_movies")).toBeUndefined();
 });
