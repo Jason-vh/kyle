@@ -130,6 +130,30 @@ test("a stream that never starts falls back to the full text", async () => {
   expect(posted!.args.markdown_text).toBe("a".repeat(600));
 });
 
+test("blocks are appended to the finished message, opening a stream if needed", async () => {
+  const { client, calls } = fakeSlack();
+  const stream = new SlackResponseStream(client, target);
+
+  stream.appendText("here's the queue");
+  await stream.finish("fallback", [{ type: "markdown", text: "**Download queue**" }]);
+
+  expect(calls.map((c) => c.method)).toEqual(["startStream", "stopStream"]);
+  expect(calls.map(textOf).join("")).toBe("here's the queue");
+  const blocks = calls.at(-1)!.args.blocks as Array<{ type: string }>;
+  expect(blocks.map((b) => b.type)).toEqual(["markdown"]);
+});
+
+test("blocks are dropped rather than lost when streaming is unavailable", async () => {
+  const { client, calls } = fakeSlack(["startStream"]);
+  const stream = new SlackResponseStream(client, target);
+
+  stream.appendText("here's the queue");
+  await stream.finish("fallback", [{ type: "markdown", text: "**Download queue**" }]);
+
+  expect(calls.map((c) => c.method)).toEqual(["postMessage"]);
+  expect(calls[0]!.args.markdown_text).toBe("here's the queue");
+});
+
 test("paragraphs separate consecutive assistant messages", async () => {
   const { client, calls } = fakeSlack();
   const stream = new SlackResponseStream(client, target);

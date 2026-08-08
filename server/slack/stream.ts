@@ -1,4 +1,4 @@
-import type { AnyChunk, WebClient } from "@slack/web-api";
+import type { AnyChunk, KnownBlock, WebClient } from "@slack/web-api";
 import { createLogger } from "../logger.ts";
 
 const log = createLogger("slack:stream");
@@ -21,6 +21,8 @@ export interface TaskUpdate {
   id: string;
   title: string;
   status: "in_progress" | "complete" | "error";
+  /** Links shown on the card, e.g. the media the action applied to. */
+  sources?: Array<{ type: "url"; url: string; text: string }>;
 }
 
 /**
@@ -62,14 +64,25 @@ export class SlackResponseStream {
     this.enqueue({ type: "task_update", ...task });
   }
 
-  /** Flush what's left and close the message, using fallbackText if nothing streamed. */
-  async finish(fallbackText: string): Promise<void> {
+  /**
+   * Flush what's left and close the message, using fallbackText if nothing
+   * streamed. Blocks are appended to the finished message.
+   */
+  async finish(fallbackText: string, blocks?: KnownBlock[]): Promise<void> {
     await this.queue;
     const closing = this.pending || (this.hasText ? "" : fallbackText);
+    this.pending = closing;
+
+    // Blocks can only ride along on a stream, so open one if there isn't one yet.
+    if (blocks?.length && !this.ts && !this.broken) await this.flush();
+    const remaining = this.pending;
     this.pending = "";
 
     if (!this.ts) {
-      await this.post(closing);
+      if (blocks?.length) {
+        log.warn("dropping blocks, stream unavailable", this.context());
+      }
+      await this.post(remaining);
       return;
     }
 
@@ -77,11 +90,12 @@ export class SlackResponseStream {
       await this.slack.chat.stopStream({
         channel: this.target.channel,
         ts: this.ts,
-        chunks: closing ? [{ type: "markdown_text", text: closing }] : [],
+        chunks: remaining ? [{ type: "markdown_text", text: remaining }] : [],
+        ...(blocks?.length ? { blocks } : {}),
       });
     } catch (error) {
       log.warn("failed to stop slack stream", { ...this.context(), error: message(error) });
-      if (closing) await this.post(closing);
+      if (remaining) await this.post(remaining);
     }
   }
 

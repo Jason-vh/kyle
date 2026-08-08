@@ -132,6 +132,20 @@ export function extractMediaEvent(
   }
 }
 
+/**
+ * Public link for a media event, preferring IMDB then TMDB.
+ *
+ * Mirrors the link preference Kyle is told to use in its replies.
+ */
+export function mediaEventUrl(event: MediaEventData): string | undefined {
+  if (event.ids.imdb) return `https://www.imdb.com/title/${event.ids.imdb}`;
+  if (event.ids.tmdb) {
+    const path = event.mediaType === "movie" ? "movie" : "tv";
+    return `https://www.themoviedb.org/${path}/${event.ids.tmdb}`;
+  }
+  return undefined;
+}
+
 export interface MediaEventRow {
   id: string;
   action: string;

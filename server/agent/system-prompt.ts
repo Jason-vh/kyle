@@ -109,7 +109,8 @@ function getFormattingRules(interfaceType?: string): string {
 - When mentioning a movie or TV show, link the title using Markdown: \`[title](url)\`
 - Prefer IMDB links (\`https://www.imdb.com/title/{imdbId}\`) when an IMDB ID is available
 - Fall back to TMDB links (\`https://www.themoviedb.org/movie/{tmdbId}\` or \`/tv/{tmdbId}\`) when only a TMDB ID is available
-- Link the title on first mention only — don't repeat links in the same message`;
+- Link the title on first mention only — don't repeat links in the same message
+- Download queue and calendar results are shown to the user as a table automatically — summarise them in a sentence or two instead of listing every row`;
   }
 
   // HTTP, CLI — standard Markdown

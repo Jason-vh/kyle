@@ -6,7 +6,14 @@ import { conversations, messages } from "../db/schema.ts";
 import { loadConversationHistory } from "../db/conversation-history.ts";
 import { runAgent, toolLabels, ApiOverloadedError, type AgentContext } from "../agent/index.ts";
 import { isActionTool, completedActionLabel } from "../agent/action-tools.ts";
-import { extractMediaEvent, saveMediaEvent, type MediaEventData } from "../db/media-events.ts";
+import { extractTable, type ResultTable } from "../agent/result-tables.ts";
+import { tableBlocks } from "../slack/tables.ts";
+import {
+  extractMediaEvent,
+  mediaEventUrl,
+  saveMediaEvent,
+  type MediaEventData,
+} from "../db/media-events.ts";
 import { processMediaEvent } from "../db/subscriptions.ts";
 import { verifySlackSignature } from "../slack/verify.ts";
 import { getSlackClient, setThreadStatus } from "../slack/client.ts";
@@ -60,6 +67,13 @@ async function downloadSlackImages(files: SlackFile[]): Promise<ImageContent[]> 
     }
   }
   return images;
+}
+
+/** Link to the media an action applied to, shown on its task card. */
+function mediaSources(event: MediaEventData | null) {
+  const url = event ? mediaEventUrl(event) : undefined;
+  if (!url || !event) return undefined;
+  return [{ type: "url" as const, url, text: event.title }];
 }
 
 // Dedup: track recently seen event IDs
@@ -171,6 +185,8 @@ async function processSlackMessage(slackEvent: SlackEvent, teamId?: string): Pro
   // Build event handler for tool status updates + deferred media ref collection
   const toolArgs = new Map<string, Record<string, unknown>>();
   const pendingEvents: Array<{ toolCallId: string; event: MediaEventData }> = [];
+  // Keyed by tool so repeated calls in one turn render a single, latest table.
+  const tables = new Map<string, ResultTable>();
   const onEvent = (event: AgentEvent) => {
     if (event.type === "message_start" && event.message.role === "assistant") {
       stream.newParagraph();
@@ -194,17 +210,28 @@ async function processSlackMessage(slackEvent: SlackEvent, teamId?: string): Pro
       const args = toolArgs.get(event.toolCallId) ?? {};
       toolArgs.delete(event.toolCallId);
       const label = toolLabels.get(event.toolName);
-      if (label && isActionTool(event.toolName, args)) {
+      const isAction = !!label && isActionTool(event.toolName, args);
+
+      if (event.isError) {
         // A failed action keeps the present tense: it was attempted, not done.
-        const title = event.isError ? label : (completedActionLabel(event.toolName) ?? label);
+        if (label && isAction) {
+          stream.updateTask({ id: event.toolCallId, title: label, status: "error" });
+        }
+        return;
+      }
+
+      const table = extractTable(event.toolName, event.result);
+      if (table) tables.set(event.toolName, table);
+
+      const mediaEvent = extractMediaEvent(event.toolName, args, event.result);
+      if (label && isAction) {
         stream.updateTask({
           id: event.toolCallId,
-          title,
-          status: event.isError ? "error" : "complete",
+          title: completedActionLabel(event.toolName) ?? label,
+          status: "complete",
+          sources: mediaSources(mediaEvent),
         });
       }
-      if (event.isError) return;
-      const mediaEvent = extractMediaEvent(event.toolName, args, event.result);
       if (mediaEvent) {
         pendingEvents.push({ toolCallId: event.toolCallId, event: mediaEvent });
       }
@@ -322,6 +349,7 @@ async function processSlackMessage(slackEvent: SlackEvent, teamId?: string): Pro
     // Close the stream (guard against empty response)
     await stream.finish(
       result.responseText || "Sorry, I wasn't able to generate a response. Please try again.",
+      tables.size > 0 ? tableBlocks([...tables.values()]) : undefined,
     );
     log.info("slack reply sent", { channel, threadTs: replyThreadTs, conversationId });
     return result.responseText;
