@@ -17,6 +17,7 @@ import {
 import { processMediaEvent } from "../db/subscriptions.ts";
 import { verifySlackSignature } from "../slack/verify.ts";
 import { getSlackClient, setThreadStatus } from "../slack/client.ts";
+import { describeAppContext } from "../slack/context.ts";
 import { SlackResponseStream } from "../slack/stream.ts";
 import {
   type SlackEvent,
@@ -167,6 +168,7 @@ async function processSlackMessage(slackEvent: SlackEvent, teamId?: string): Pro
       username: senderMap.get(userId),
       userId: appUserId ?? undefined,
       interfaceType: "slack",
+      viewing: await describeAppContext(slackEvent.app_context),
     };
   }
 

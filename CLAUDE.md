@@ -29,6 +29,7 @@ server/
   agent/
     index.ts                → Agent factory + runAgent(), tool registration
     action-tools.ts         → isActionTool(): which tool calls are worth showing in the UI
+    result-tables.ts        → extractTable(): queue/calendar results as tabular data
     system-prompt.ts        → Kyle's system prompt + AgentContext
     requests-tool.ts        → get_requests_for_user tool (queries subscriptions by app user UUID)
     unsubscribe-tool.ts     → unsubscribe_notifications tool (deactivates subscriptions by Radarr/Sonarr ID)
@@ -53,6 +54,8 @@ server/
   slack/
     client.ts               → WebClient singleton (lazy-init from SLACK_BOT_TOKEN)
     stream.ts               → SlackResponseStream: streams agent replies via chat.*Stream
+    tables.ts               → Renders ResultTables as Block Kit table blocks
+    context.ts              → describeAppContext(): what the user is currently viewing
     verify.ts               → HMAC-SHA256 signature verification
     events.ts               → Event types + helpers (shouldProcess, cleanMessageText, buildExternalId)
     users.ts                → Slack user ID → display name resolution
@@ -143,7 +146,7 @@ drizzle.config.ts           → Drizzle Kit config
 - **Auth: Passkeys + JWT**: Users authenticate via WebAuthn passkeys. JWT sessions (`jose`, HS256) stored in httpOnly `kyle_auth` cookie with 30-day expiry and sliding window refresh at 15 days. Admin-generated invite links for onboarding new users. Thread sharing uses separate `?sig=` HMAC signatures (unchanged, uses `THREAD_VIEWER_TOKEN`).
 - **Slack immediate ack**: The `/slack/events` handler returns 200 immediately and processes the message async (fire-and-forget) to stay within Slack's 3-second timeout. Responses are always posted as thread replies.
 - **Slack sync mode**: Sending `X-Sync-Response: true` header makes `/slack/events` wait for the agent and return the response in the HTTP body (used by `test-slack.ts` for dev workflow).
-- **Slack streaming**: Agent replies stream into the thread via `chat.startStream`/`appendStream`/`stopStream` (`server/slack/stream.ts`). Text deltas from agent `message_update` events are buffered (512 chars) and flushed through a serialized promise chain — agent event handlers are synchronous, so unserialized calls would race and start two streams. Tool progress is sent as `task_update` chunks (`task_display_mode: dense`), but only for tools that change something — see `isActionTool` in `server/agent/action-tools.ts`. Lookups run constantly and add noise, so they only move the ephemeral thread status. Responses that never reach the flush threshold, and streams that fail, fall back to a plain `chat.postMessage`; delivery is tracked exactly so text is never duplicated or dropped. Slack messages use **standard Markdown** (`markdown_text`), not mrkdwn.
+- **Slack streaming**: Agent replies stream into the thread via `chat.startStream`/`appendStream`/`stopStream` (`server/slack/stream.ts`). Text deltas from agent `message_update` events are buffered (512 chars) and flushed through a serialized promise chain — agent event handlers are synchronous, so unserialized calls would race and start two streams. Tool progress is sent as `task_update` chunks (`task_display_mode: dense`), but only for tools that change something — see `isActionTool` in `server/agent/action-tools.ts`. Lookups run constantly and add noise, so they only move the ephemeral thread status. Completed action cards use a past-tense title and link to the media they applied to. Queue and calendar results are appended as Block Kit tables (`server/agent/result-tables.ts` extracts the rows, `server/slack/tables.ts` renders them); blocks can only be attached when a stream is open, so a reply too short to stream will open one to carry the table. Responses that never reach the flush threshold, and streams that fail, fall back to a plain `chat.postMessage`; delivery is tracked exactly so text is never duplicated or dropped. Slack messages use **standard Markdown** (`markdown_text`), not mrkdwn.
 - **Slack dedup**: In-memory `Set<string>` on `event_id` (capped at 10k entries) + `X-Slack-Retry-Num` header skipping prevents duplicate processing.
 - **Structured logging**: `createLogger(module)` from `server/logger.ts` emits JSON lines with `level`, `module`, `msg`, `timestamp` + contextual fields. Use throughout — no raw `console.log`.
 - **Token optimization**: Each service has `utils.ts` with `toPartial*` helpers that strip large API responses down to essential fields before sending to the LLM.
@@ -253,9 +256,17 @@ no server code depends on the assistant events:
    to the Agent experience (`assistant_view` → `agent_view`; the nested
    `assistant_description` becomes `agent_description`).
 2. Change bot event subscriptions: drop `assistant_thread_started` and
-   `assistant_thread_context_changed`, add `app_home_opened` (and
-   `app_context_changed` if we want to know what the user is viewing).
+   `assistant_thread_context_changed`, add `app_home_opened` and
+   `app_context_changed`.
 3. Users must hard refresh Slack to see the new experience.
+
+Subscribing to `app_context_changed` makes Slack attach `app_context` to
+`message.im`, which Kyle already reads (`describeAppContext` in
+`server/slack/context.ts`) to tell the agent what the user is looking at. That
+code is inert until `agent_view` is on, since Slack only sends the context to
+agent apps. Resolving a channel ID to a name also needs the `channels:read`
+scope; without it the context is dropped rather than passed to the agent as an
+opaque ID.
 
 Behaviour notes for whoever does this: `assistant_thread_started` stops
 indicating that a user opened a DM (`app_home_opened` with `tab === "messages"`

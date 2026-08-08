@@ -3,6 +3,8 @@ export interface AgentContext {
   userId?: string; // App user UUID (from users table)
   conversationId?: string;
   interfaceType?: "slack" | "discord" | "http" | "cli";
+  /** What the user is currently looking at, e.g. "the #movies channel". */
+  viewing?: string;
 }
 
 const SYSTEM_PROMPT = `
@@ -135,15 +137,19 @@ export function getSystemPrompt(context?: AgentContext): string {
 
   prompt = prompt.replace("{FORMATTING_RULES}", getFormattingRules(context?.interfaceType));
 
+  const userContext: string[] = [];
   if (context?.username) {
-    prompt = prompt.replace(
-      "{USER_CONTEXT}",
+    userContext.push(
       `- You are chatting with ${context.username}` +
         (context.userId ? ` (user ID: ${context.userId})` : ""),
     );
-  } else {
-    prompt = prompt.replace("{USER_CONTEXT}", "");
   }
+  if (context?.viewing) {
+    userContext.push(
+      `- They are currently looking at ${context.viewing} — use it to resolve vague references, but don't mention it unprompted`,
+    );
+  }
+  prompt = prompt.replace("{USER_CONTEXT}", userContext.join("\n"));
 
   return prompt;
 }

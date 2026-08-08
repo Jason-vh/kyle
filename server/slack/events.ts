@@ -17,6 +17,8 @@ export interface SlackEvent {
   thread_ts?: string;
   bot_id?: string;
   files?: SlackFile[];
+  /** Present on message events once agent_view and app_context_changed are enabled. */
+  app_context?: { entities?: Array<{ type: string; value: string }> };
 }
 
 export const BOT_USER_ID = "U099N4BJT5Y";
