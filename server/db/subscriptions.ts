@@ -2,6 +2,7 @@ import { sql } from "drizzle-orm";
 import { createLogger } from "../logger.ts";
 import { db } from "./index.ts";
 import type { MediaEventData } from "./media-events.ts";
+import { errorMessage } from "../errors.ts";
 
 const log = createLogger("subscriptions");
 
@@ -247,7 +248,7 @@ export async function processMediaEvent(
       action: event.action,
       mediaType: event.mediaType,
       title: event.title,
-      error: error instanceof Error ? error.message : String(error),
+      error: errorMessage(error),
     });
   }
 }

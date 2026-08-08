@@ -8,6 +8,7 @@ import type {
 import type { WebhookNotification } from "../db/webhook-notifications.ts";
 import type { ThreadItem, ThreadMessage, ToolCallSummary } from "../../shared/types.ts";
 import { toolSummary } from "./tool-summary.ts";
+import { safeJsonParse } from "../json.ts";
 
 export type StoredMessage = UserMessage | AssistantMessage | ToolResultMessage;
 
@@ -38,11 +39,8 @@ export function stripMentions(text: string): string {
 }
 
 function prettyPrint(str: string): string {
-  try {
-    return JSON.stringify(JSON.parse(str), null, 2);
-  } catch {
-    return str;
-  }
+  const parsed = safeJsonParse(str);
+  return parsed === undefined ? str : JSON.stringify(parsed, null, 2);
 }
 
 function resultText(result: ToolResultMessage): string {
@@ -58,14 +56,10 @@ function resultText(result: ToolResultMessage): string {
 function friendlyError(errorMessage: string | undefined): string {
   const fallback = "Something went wrong while processing this message.";
   if (!errorMessage) return fallback;
-  try {
-    const parsed = JSON.parse(errorMessage);
-    if (parsed.error?.message) return parsed.error.message;
-    if (typeof parsed.message === "string") return parsed.message;
-    return fallback;
-  } catch {
-    return errorMessage.length < 200 ? errorMessage : fallback;
-  }
+
+  const parsed = safeJsonParse<{ error?: { message?: string }; message?: string }>(errorMessage);
+  if (parsed === undefined) return errorMessage.length < 200 ? errorMessage : fallback;
+  return parsed.error?.message ?? (typeof parsed.message === "string" ? parsed.message : fallback);
 }
 
 function buildAssistantMessage(

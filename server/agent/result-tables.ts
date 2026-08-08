@@ -1,3 +1,6 @@
+import { episodeLabel, titleWithYear } from "../../shared/media.ts";
+import { safeJsonParse } from "../json.ts";
+
 /** Tabular data pulled out of a tool result, ready to render however a client likes. */
 export interface ResultTable {
   caption: string;
@@ -67,7 +70,7 @@ function movieQueueTable(items: QueuedMovie[]): ResultTable | undefined {
     rows: items
       .slice(0, MAX_ROWS)
       .map((item) => [
-        item.movie?.year ? `${item.movie.title} (${item.movie.year})` : (item.movie?.title ?? "—"),
+        titleWithYear(item.movie?.title, item.movie?.year),
         item.trackedDownloadState ?? item.status ?? "—",
         item.timeLeft ?? "—",
         item.quality ?? "—",
@@ -111,22 +114,11 @@ function caption(label: string, total: number): string {
   return total > MAX_ROWS ? `${label} (${MAX_ROWS} of ${total})` : label;
 }
 
-function episodeLabel(season?: number, episode?: number, title?: string): string {
-  if (season === undefined || episode === undefined) return title ?? "—";
-  const code = `S${String(season).padStart(2, "0")}E${String(episode).padStart(2, "0")}`;
-  return title ? `${code} ${title}` : code;
-}
-
 function parseResult(result: {
   content?: Array<{ type: string; text?: string }>;
 }): unknown | undefined {
   const text = result.content?.find((c) => c.type === "text")?.text;
-  if (!text) return undefined;
-  try {
-    return JSON.parse(text);
-  } catch {
-    return undefined;
-  }
+  return text ? safeJsonParse(text) : undefined;
 }
 
 function asArray<T>(parsed: unknown, key: string): T[] {

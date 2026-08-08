@@ -1,5 +1,6 @@
 import type { AnyChunk, KnownBlock, WebClient } from "@slack/web-api";
 import { createLogger } from "../logger.ts";
+import { errorMessage } from "../errors.ts";
 
 const log = createLogger("slack:stream");
 
@@ -92,7 +93,7 @@ export class SlackResponseStream {
         ...(blocks?.length ? { blocks } : {}),
       });
     } catch (error) {
-      log.warn("failed to stop slack stream", { ...this.context(), error: message(error) });
+      log.warn("failed to stop slack stream", { ...this.context(), error: errorMessage(error) });
       if (remaining) await this.post(remaining);
     }
   }
@@ -131,7 +132,7 @@ export class SlackResponseStream {
       this.broken = true;
       log.warn("slack stream failed, falling back to a plain message", {
         ...this.context(),
-        error: message(error),
+        error: errorMessage(error),
       });
     }
   }
@@ -150,8 +151,4 @@ export class SlackResponseStream {
   private context() {
     return { channel: this.target.channel, threadTs: this.target.threadTs, ts: this.ts };
   }
-}
-
-function message(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
 }

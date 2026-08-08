@@ -2,6 +2,7 @@ import { createLogger } from "../logger.ts";
 import { ApiOverloadedError } from "../agent/index.ts";
 import { runConversationTurn, ConversationNotFoundError } from "../agent/conversation.ts";
 import { timingSafeEqual } from "crypto";
+import { errorFields } from "../errors.ts";
 
 const log = createLogger("chat");
 
@@ -54,8 +55,7 @@ export async function handleChat(req: Request): Promise<Response> {
     }
     log.error("agent error", {
       conversationId: body.conversationId,
-      error: error instanceof Error ? error.message : String(error),
-      stack: error instanceof Error ? error.stack : undefined,
+      ...errorFields(error),
     });
     if (error instanceof ApiOverloadedError) {
       return Response.json(

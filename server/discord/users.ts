@@ -1,6 +1,7 @@
 import type { Message } from "discord.js";
 import { getDiscordClient } from "./client.ts";
 import { createLogger } from "../logger.ts";
+import { errorMessage } from "../errors.ts";
 
 const log = createLogger("discord-users");
 
@@ -31,7 +32,7 @@ export async function resolveDiscordUsernames(userIds: string[]): Promise<Map<st
     } catch (err) {
       log.warn("failed to resolve discord user", {
         userId: id,
-        error: err instanceof Error ? err.message : String(err),
+        error: errorMessage(err),
       });
       map.set(id, id);
     }

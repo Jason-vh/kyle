@@ -1,6 +1,7 @@
 import { Client, GatewayIntentBits, Partials } from "discord.js";
 import { createLogger } from "../logger.ts";
 import { handleDiscordMessage } from "./events.ts";
+import { errorFields, errorMessage } from "../errors.ts";
 
 const log = createLogger("discord");
 
@@ -36,15 +37,14 @@ export function startDiscordBot(): void {
   client.on("messageCreate", (message) => {
     handleDiscordMessage(message).catch((error) => {
       log.error("unhandled error in discord message handler", {
-        error: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined,
+        ...errorFields(error),
       });
     });
   });
 
   client.login(token).catch((error) => {
     log.error("failed to connect to Discord", {
-      error: error instanceof Error ? error.message : String(error),
+      error: errorMessage(error),
     });
   });
 }

@@ -16,6 +16,8 @@ import {
 } from "../../threads/items.ts";
 import type { ThreadListItem, ThreadDetail, MediaRef } from "../../../shared/types.ts";
 import type { UserMessage } from "@mariozechner/pi-ai";
+import { errorMessage } from "../../errors.ts";
+import { safeJsonParse } from "../../json.ts";
 
 const log = createLogger("api-threads");
 
@@ -60,7 +62,7 @@ async function createUsernameResolver(
     } catch (err) {
       log.warn("failed to resolve usernames", {
         platformUserIds: platformIds,
-        error: err instanceof Error ? err.message : String(err),
+        error: errorMessage(err),
       });
     }
   }
@@ -151,14 +153,10 @@ export async function handleApiThreadList(req: Request): Promise<Response> {
 
   const items: ThreadListItem[] = await Promise.all(
     rows.map(async (row) => {
-      let mediaRefs: { action: string; title: string }[] = [];
-      if (row.mediaRefsJson) {
-        try {
-          mediaRefs = JSON.parse(row.mediaRefsJson);
-        } catch {
-          log.warn("unparseable media refs", { conversationId: row.id });
-        }
-      }
+      const mediaRefs = row.mediaRefsJson
+        ? safeJsonParse<{ action: string; title: string }[]>(row.mediaRefsJson)
+        : [];
+      if (!mediaRefs) log.warn("unparseable media refs", { conversationId: row.id });
 
       return {
         id: row.id,
@@ -167,7 +165,7 @@ export async function handleApiThreadList(req: Request): Promise<Response> {
         messageCount: row.messageCount ?? 0,
         createdAt: row.createdAt.toISOString(),
         shareUrl: await shareUrlFor(url.origin, row.id),
-        mediaRefs,
+        mediaRefs: mediaRefs ?? [],
       };
     }),
   );

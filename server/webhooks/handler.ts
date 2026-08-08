@@ -8,12 +8,14 @@ import { findMediaRequesters } from "./requester.ts";
 import { saveWebhookNotification } from "../db/webhook-notifications.ts";
 import { loadConversationHistory } from "../db/conversation-history.ts";
 import { runAgent, type AgentContext } from "../agent/index.ts";
+import { episodeCode, quotedEpisodeList, titleWithYear } from "../../shared/media.ts";
 import type {
   RadarrWebhookPayload,
   SonarrWebhookPayload,
   MediaNotificationInfo,
   MediaRequester,
 } from "./types.ts";
+import { errorMessage } from "../errors.ts";
 
 const log = createLogger("webhooks");
 
@@ -66,16 +68,9 @@ async function flushBatch(key: string): Promise<void> {
 
 /** "Severance (2022) — S01E01 "Good News"", with the episode list when there is one. */
 function describeMedia(media: MediaNotificationInfo): string {
-  const title = `${media.title} (${media.year})`;
+  const title = titleWithYear(media.title, media.year);
   if (media.mediaType !== "series" || !media.episodes?.length) return title;
-
-  const episodes = media.episodes
-    .map(
-      (e) =>
-        `S${String(e.seasonNumber).padStart(2, "0")}E${String(e.episodeNumber).padStart(2, "0")} "${e.title}"`,
-    )
-    .join(", ");
-  return `${title} — ${episodes}`;
+  return `${title} — ${quotedEpisodeList(media.episodes)}`;
 }
 
 function formatWebhookPrompt(media: MediaNotificationInfo, source: "sonarr" | "radarr"): string {
@@ -239,7 +234,7 @@ export async function handleRadarrWebhook(req: Request): Promise<Response> {
   notifyRequesters(requesters, media).catch((error) => {
     log.error("radarr notification failed", {
       title: payload.movie.title,
-      error: error instanceof Error ? error.message : String(error),
+      error: errorMessage(error),
     });
   });
 
@@ -286,7 +281,7 @@ export async function handleSonarrWebhook(req: Request): Promise<Response> {
     }
     log.info("batching episode", {
       title: payload.series.title,
-      episode: newEpisodes.map((e) => `S${e.seasonNumber}E${e.episodeNumber}`).join(", "),
+      episode: newEpisodes.map((e) => episodeCode(e.seasonNumber, e.episodeNumber)).join(", "),
       batchSize: existing.media.episodes?.length,
     });
     return Response.json({ ok: true, batched: true });
@@ -305,14 +300,14 @@ export async function handleSonarrWebhook(req: Request): Promise<Response> {
     flushBatch(key).catch((error) => {
       log.error("batched notification failed", {
         title: payload.series.title,
-        error: error instanceof Error ? error.message : String(error),
+        error: errorMessage(error),
       });
     });
   }, BATCH_DELAY_MS);
   pendingBatches.set(key, { media, sonarrId: payload.series.id, timer });
   log.info("batch started", {
     title: payload.series.title,
-    episode: newEpisodes.map((e) => `S${e.seasonNumber}E${e.episodeNumber}`).join(", "),
+    episode: newEpisodes.map((e) => episodeCode(e.seasonNumber, e.episodeNumber)).join(", "),
     delayMs: BATCH_DELAY_MS,
   });
 

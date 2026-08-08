@@ -1,6 +1,7 @@
 import { Type } from "@sinclair/typebox";
 import type { AgentTool } from "@mariozechner/pi-agent-core";
 import { jsonResult } from "../agent/tool-result.ts";
+import { episodeCode } from "../../shared/media.ts";
 import * as sonarr from "./api.ts";
 import {
   toPartialSeries,
@@ -516,10 +517,7 @@ export const manualImportTool: AgentTool<typeof manualImportParams> = {
         name: item.name,
         seriesTitle: item.series!.title,
         seasonNumber: item.seasonNumber,
-        episodes: item.episodes!.map(
-          (ep) =>
-            `S${String(ep.seasonNumber).padStart(2, "0")}E${String(ep.episodeNumber).padStart(2, "0")}`,
-        ),
+        episodes: item.episodes!.map((ep) => episodeCode(ep.seasonNumber, ep.episodeNumber)),
       })),
       ...(items.length > importable.length
         ? {

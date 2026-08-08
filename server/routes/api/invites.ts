@@ -11,6 +11,7 @@ import {
 import { signJwt, buildJwtCookie, isLocalhost } from "../../auth/jwt.ts";
 import { requireAdmin } from "../../auth/middleware.ts";
 import { createLogger } from "../../logger.ts";
+import { errorMessage } from "../../errors.ts";
 
 const log = createLogger("api-invites");
 
@@ -136,7 +137,7 @@ export async function handleInviteRegisterVerify(req: Request, code: string): Pr
     );
   } catch (error) {
     log.error("invite registration failed", {
-      error: error instanceof Error ? error.message : String(error),
+      error: errorMessage(error),
     });
     return Response.json({ error: "Verification failed" }, { status: 400 });
   }

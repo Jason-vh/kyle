@@ -20,6 +20,7 @@ import {
 import { extractUserIds, resolveUsernames } from "../slack/users.ts";
 import { resolveAppUserId } from "../db/users.ts";
 import type { ImageContent } from "@mariozechner/pi-ai";
+import { errorFields, errorMessage } from "../errors.ts";
 
 const log = createLogger("slack");
 
@@ -244,8 +245,7 @@ async function processSlackMessage(slackEvent: SlackEvent, teamId?: string): Pro
       channel,
       threadTs: replyThreadTs,
       isOverloaded,
-      error: error instanceof Error ? error.message : String(error),
-      stack: error instanceof Error ? error.stack : undefined,
+      ...errorFields(error),
     });
     const errorText = isOverloaded
       ? "Sorry, I'm having trouble reaching my brain right now. Give me a minute and try again?"
@@ -256,7 +256,7 @@ async function processSlackMessage(slackEvent: SlackEvent, teamId?: string): Pro
       await stream.finish(errorText);
     } catch (postError) {
       log.error("failed to post error message to slack", {
-        error: postError instanceof Error ? postError.message : String(postError),
+        error: errorMessage(postError),
       });
     }
     return "";

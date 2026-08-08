@@ -1,6 +1,7 @@
 import { getSlackClient } from "./client.ts";
 import { BOT_USER_ID } from "./events.ts";
 import { createLogger } from "../logger.ts";
+import { errorMessage } from "../errors.ts";
 
 const log = createLogger("slack:users");
 
@@ -26,7 +27,7 @@ export async function resolveUsernames(userIds: string[]): Promise<Map<string, s
     } catch (error) {
       log.warn("failed to resolve user", {
         userId: id,
-        error: error instanceof Error ? error.message : String(error),
+        error: errorMessage(error),
       });
       map.set(id, id);
     }

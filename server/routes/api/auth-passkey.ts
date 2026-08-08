@@ -15,6 +15,7 @@ import {
 } from "../../auth/webauthn.ts";
 import { signJwt, buildJwtCookie, isLocalhost, parseAuthCookie } from "../../auth/jwt.ts";
 import { createLogger } from "../../logger.ts";
+import { errorMessage } from "../../errors.ts";
 
 const log = createLogger("api-passkey");
 
@@ -88,7 +89,7 @@ export async function handlePasskeyLoginVerify(req: Request): Promise<Response> 
     );
   } catch (error) {
     log.error("passkey login verification failed", {
-      error: error instanceof Error ? error.message : String(error),
+      error: errorMessage(error),
     });
     return Response.json({ error: "Verification failed" }, { status: 400 });
   }
@@ -161,7 +162,7 @@ export async function handlePasskeyRegisterVerify(req: Request): Promise<Respons
     return Response.json({ verified: true });
   } catch (error) {
     log.error("passkey registration failed", {
-      error: error instanceof Error ? error.message : String(error),
+      error: errorMessage(error),
     });
     return Response.json({ error: "Verification failed" }, { status: 400 });
   }

@@ -3,6 +3,7 @@ import { db } from "./index.ts";
 import { webhookNotifications } from "./schema.ts";
 import type { WebhookNotificationPayload } from "./schema.ts";
 import { createLogger } from "../logger.ts";
+import { errorMessage } from "../errors.ts";
 
 const log = createLogger("webhook-notifications");
 
@@ -42,7 +43,7 @@ export async function saveWebhookNotification(
   } catch (error) {
     log.error("failed to save webhook notification", {
       conversationId,
-      error: error instanceof Error ? error.message : String(error),
+      error: errorMessage(error),
     });
   }
 }

@@ -1,5 +1,6 @@
 import { WebClient } from "@slack/web-api";
 import { createLogger } from "../logger.ts";
+import { errorMessage } from "../errors.ts";
 
 const log = createLogger("slack:client");
 
@@ -33,7 +34,7 @@ export async function setThreadStatus(
       channelId,
       threadTs,
       status,
-      error: error instanceof Error ? error.message : String(error),
+      error: errorMessage(error),
     });
   }
 }

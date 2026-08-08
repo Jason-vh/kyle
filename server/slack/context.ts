@@ -1,5 +1,6 @@
 import { createLogger } from "../logger.ts";
 import { getSlackClient } from "./client.ts";
+import { errorMessage } from "../errors.ts";
 
 const log = createLogger("slack:context");
 
@@ -41,7 +42,7 @@ async function resolveChannelName(channelId: string): Promise<string | undefined
     channelNames.set(channelId, null);
     log.warn("could not resolve channel name for app context", {
       channelId,
-      error: error instanceof Error ? error.message : String(error),
+      error: errorMessage(error),
     });
     return undefined;
   }

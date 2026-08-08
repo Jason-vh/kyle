@@ -7,6 +7,7 @@ import { resolveDiscordUsername } from "./users.ts";
 import { sendDiscordMessage } from "./messages.ts";
 import { resolveAppUserId } from "../db/users.ts";
 import type { ImageContent } from "@mariozechner/pi-ai";
+import { errorFields, errorMessage } from "../errors.ts";
 
 const log = createLogger("discord");
 
@@ -153,8 +154,7 @@ export async function handleDiscordMessage(message: Message): Promise<void> {
     log.error("discord message processing failed", {
       externalId,
       isOverloaded,
-      error: error instanceof Error ? error.message : String(error),
-      stack: error instanceof Error ? error.stack : undefined,
+      ...errorFields(error),
     });
     try {
       await replyChannel.send(
@@ -164,7 +164,7 @@ export async function handleDiscordMessage(message: Message): Promise<void> {
       );
     } catch (postError) {
       log.error("failed to post error message to discord", {
-        error: postError instanceof Error ? postError.message : String(postError),
+        error: errorMessage(postError),
       });
     }
   }

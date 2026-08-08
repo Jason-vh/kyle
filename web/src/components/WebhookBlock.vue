@@ -60,6 +60,7 @@
 import { computed, inject, ref, type Ref } from "vue";
 import { relativeTime } from "../composables/useRelativeTime";
 import type { ThreadWebhook } from "@shared/types";
+import { episodeCode } from "@shared/media";
 import DownloadIcon from "./DownloadIcon.vue";
 
 const props = defineProps<{ notification: ThreadWebhook }>();
@@ -79,7 +80,7 @@ const episodes = computed(() => {
   const p = props.notification.payload;
   if (!p.episodes || p.episodes.length === 0) return [];
   return p.episodes.map((e) => ({
-    code: `S${String(e.seasonNumber).padStart(2, "0")}E${String(e.episodeNumber).padStart(2, "0")}`,
+    code: episodeCode(e.seasonNumber, e.episodeNumber),
     title: e.title,
   }));
 });

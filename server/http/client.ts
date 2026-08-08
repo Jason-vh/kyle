@@ -1,4 +1,5 @@
 import { createLogger } from "../logger.ts";
+import { safeJsonParse } from "../json.ts";
 
 const DEFAULT_TIMEOUT_MS = 15_000;
 
@@ -34,11 +35,7 @@ export class ApiError extends Error {
 async function readBody(response: Response): Promise<unknown> {
   const text = await response.text().catch(() => "(unreadable)");
   if (!text) return undefined;
-  try {
-    return JSON.parse(text);
-  } catch {
-    return text;
-  }
+  return safeJsonParse(text) ?? text;
 }
 
 export type ApiRequest = <T>(endpoint: string, options?: RequestInit) => Promise<T>;

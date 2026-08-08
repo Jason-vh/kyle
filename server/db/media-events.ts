@@ -2,6 +2,8 @@ import { eq, asc } from "drizzle-orm";
 import { createLogger } from "../logger.ts";
 import { db } from "./index.ts";
 import { mediaEvents } from "./schema.ts";
+import { errorMessage } from "../errors.ts";
+import { safeJsonParse } from "../json.ts";
 
 const log = createLogger("media-events");
 
@@ -35,12 +37,8 @@ export function extractMediaEvent(
   const textContent = result.content?.find((c) => c.type === "text");
   if (!textContent?.text) return null;
 
-  let parsed: Record<string, unknown>;
-  try {
-    parsed = JSON.parse(textContent.text);
-  } catch {
-    return null;
-  }
+  const parsed = safeJsonParse<Record<string, unknown>>(textContent.text);
+  if (!parsed) return null;
 
   switch (toolName) {
     case "add_movie":
@@ -208,7 +206,7 @@ export async function saveMediaEvent(
     log.error("failed to save media event", {
       conversationId,
       toolCallId,
-      error: error instanceof Error ? error.message : String(error),
+      error: errorMessage(error),
     });
   }
 }
