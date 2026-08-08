@@ -1,221 +1,39 @@
-import { timingSafeEqual } from "crypto";
 import { createLogger } from "../logger.ts";
-import { getSlackClient } from "../slack/client.ts";
-import { sendDiscordMessageToChannel } from "../discord/messages.ts";
-import { db } from "../db/index.ts";
-import { messages } from "../db/schema.ts";
-import { findMediaRequesters } from "./requester.ts";
-import { saveWebhookNotification } from "../db/webhook-notifications.ts";
-import { loadConversationHistory } from "../db/conversation-history.ts";
-import { runAgent, type AgentContext } from "../agent/index.ts";
-import { episodeCode, quotedEpisodeList, titleWithYear } from "../../shared/media.ts";
-import type {
-  RadarrWebhookPayload,
-  SonarrWebhookPayload,
-  MediaNotificationInfo,
-  MediaRequester,
-} from "./types.ts";
 import { errorMessage } from "../errors.ts";
+import { checkWebhookAuth } from "./auth.ts";
+import { batchSeriesNotification } from "./batch.ts";
+import { notifyRequesters } from "./notify.ts";
+import { findMediaRequesters } from "./requester.ts";
+import type { MediaNotificationInfo, RadarrWebhookPayload, SonarrWebhookPayload } from "./types.ts";
 
 const log = createLogger("webhooks");
 
-function checkWebhookAuth(req: Request): Response | null {
-  const webhookAuth = process.env.WEBHOOK_AUTH;
-  if (!webhookAuth) {
-    return null; // No auth configured, allow through for backwards compat
+/** Reads an authenticated Download webhook, or the response explaining why not. */
+async function readDownloadPayload<T extends { eventType: string }>(
+  req: Request,
+): Promise<{ payload: T } | { response: Response }> {
+  const authError = checkWebhookAuth(req);
+  if (authError) return { response: authError };
+
+  let payload: T;
+  try {
+    payload = (await req.json()) as T;
+  } catch {
+    return { response: Response.json({ error: "Invalid JSON" }, { status: 400 }) };
   }
 
-  const authHeader = req.headers.get("authorization");
-  if (!authHeader || !authHeader.startsWith("Basic ")) {
-    log.warn("webhook request missing basic auth");
-    return Response.json({ error: "Unauthorized" }, { status: 401 });
+  if (payload.eventType !== "Download") {
+    return { response: Response.json({ ok: true, skipped: true }) };
   }
-
-  const decoded = Buffer.from(authHeader.slice(6), "base64").toString("utf-8");
-  const expected = Buffer.from(webhookAuth);
-  const actual = Buffer.from(decoded);
-
-  if (expected.length !== actual.length || !timingSafeEqual(expected, actual)) {
-    log.warn("webhook request invalid credentials");
-    return Response.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  return null; // Auth valid
-}
-
-const BATCH_DELAY_MS = 600_000; // 10 minutes
-
-interface PendingBatch {
-  media: MediaNotificationInfo;
-  sonarrId: number;
-  timer: ReturnType<typeof setTimeout>;
-}
-
-const pendingBatches = new Map<string, PendingBatch>();
-
-async function flushBatch(key: string): Promise<void> {
-  const batch = pendingBatches.get(key);
-  if (!batch) return;
-  pendingBatches.delete(key);
-
-  const requesters = await findMediaRequesters(
-    "series",
-    { sonarr: batch.sonarrId },
-    batch.media.episodes,
-  );
-  await notifyRequesters(requesters, batch.media);
-}
-
-/** "Severance (2022) — S01E01 "Good News"", with the episode list when there is one. */
-function describeMedia(media: MediaNotificationInfo): string {
-  const title = titleWithYear(media.title, media.year);
-  if (media.mediaType !== "series" || !media.episodes?.length) return title;
-  return `${title} — ${quotedEpisodeList(media.episodes)}`;
-}
-
-function formatWebhookPrompt(media: MediaNotificationInfo, source: "sonarr" | "radarr"): string {
-  const service = source === "sonarr" ? "Sonarr" : "Radarr";
-  const quality = media.quality
-    ? ` (${media.quality}${media.releaseGroup ? ` · ${media.releaseGroup}` : ""})`
-    : "";
-
-  return `[Webhook — ${service}] ${describeMedia(media)}${quality} has finished downloading. Let the user know it's ready.`;
-}
-
-async function notifyRequester(
-  requester: MediaRequester,
-  media: MediaNotificationInfo,
-  source: "sonarr" | "radarr",
-): Promise<void> {
-  const { conversationId } = requester;
-
-  // Load conversation history
-  const history = await loadConversationHistory(conversationId);
-
-  const prompt = formatWebhookPrompt(media, source);
-
-  // Saved before the agent runs so its receivedAt precedes the assistant reply.
-  saveWebhookNotification(
-    conversationId,
-    source,
-    `${describeMedia(media)} has finished downloading.`,
-    media,
-  );
-
-  const agentContext: AgentContext = { interfaceType: requester.interfaceType };
-
-  log.info("running agent for webhook notification", {
-    conversationId,
-    interfaceType: requester.interfaceType,
-    title: media.title,
-    historyLength: history.messages.length,
-  });
-
-  const result = await runAgent({
-    message: prompt,
-    previousMessages: history.messages,
-    context: agentContext,
-    messageTimestamps: history.timestamps,
-  });
-
-  // Save new agent messages to DB
-  const newMsgs = result.messages.slice(history.messages.length).filter((m) => m.role !== "user");
-  if (newMsgs.length > 0) {
-    await db
-      .insert(messages)
-      .values(newMsgs.map((m) => ({ conversationId, role: m.role, data: m })));
-  }
-
-  // Skip notification if agent produced no response text
-  if (!result.responseText) {
-    log.warn("agent returned empty response for webhook notification", {
-      conversationId,
-      title: media.title,
-    });
-    return;
-  }
-
-  // Post to the correct platform
-  if (requester.interfaceType === "slack") {
-    const slack = getSlackClient();
-    await slack.chat.postMessage({
-      channel: requester.channel,
-      thread_ts: requester.threadTs,
-      markdown_text: result.responseText,
-      unfurl_links: false,
-      unfurl_media: false,
-    });
-    log.info("notified requester via slack", {
-      channel: requester.channel,
-      threadTs: requester.threadTs,
-      title: media.title,
-    });
-  } else if (requester.interfaceType === "discord") {
-    await sendDiscordMessageToChannel(requester.channelId, result.responseText);
-    log.info("notified requester via discord", {
-      channelId: requester.channelId,
-      title: media.title,
-    });
-  }
-}
-
-async function notifyRequesters(
-  requesters: MediaRequester[],
-  media: MediaNotificationInfo,
-): Promise<void> {
-  if (requesters.length === 0) {
-    log.info("no requesters to notify", { title: media.title });
-    return;
-  }
-
-  // Deduplicate by conversationId
-  const seen = new Set<string>();
-  const unique = requesters.filter((r) => {
-    if (seen.has(r.conversationId)) return false;
-    seen.add(r.conversationId);
-    return true;
-  });
-
-  const source: "sonarr" | "radarr" = media.mediaType === "movie" ? "radarr" : "sonarr";
-
-  const results = await Promise.allSettled(unique.map((r) => notifyRequester(r, media, source)));
-
-  for (let i = 0; i < results.length; i++) {
-    if (results[i]!.status === "rejected") {
-      const requester = unique[i]!;
-      log.error("failed to notify requester", {
-        conversationId: requester.conversationId,
-        interfaceType: requester.interfaceType,
-        error:
-          results[i]!.status === "rejected"
-            ? (results[i] as PromiseRejectedResult).reason instanceof Error
-              ? (results[i] as PromiseRejectedResult).reason.message
-              : String((results[i] as PromiseRejectedResult).reason)
-            : "unknown",
-      });
-    }
-  }
+  return { payload };
 }
 
 export async function handleRadarrWebhook(req: Request): Promise<Response> {
-  const authError = checkWebhookAuth(req);
-  if (authError) return authError;
+  const result = await readDownloadPayload<RadarrWebhookPayload>(req);
+  if ("response" in result) return result.response;
+  const { payload } = result;
 
-  let payload: RadarrWebhookPayload;
-  try {
-    payload = (await req.json()) as RadarrWebhookPayload;
-  } catch {
-    return Response.json({ error: "Invalid JSON" }, { status: 400 });
-  }
-
-  log.info("radarr webhook received", {
-    eventType: payload.eventType,
-    movie: payload.movie?.title,
-  });
-
-  if (payload.eventType !== "Download") {
-    return Response.json({ ok: true, skipped: true });
-  }
+  log.info("radarr webhook received", { movie: payload.movie?.title });
 
   const requesters = await findMediaRequesters("movie", {
     radarr: payload.movie.id,
@@ -230,7 +48,7 @@ export async function handleRadarrWebhook(req: Request): Promise<Response> {
     releaseGroup: payload.release?.releaseGroup,
   };
 
-  // Fire-and-forget
+  // Radarr does not wait for a reply, so notify in the background.
   notifyRequesters(requesters, media).catch((error) => {
     log.error("radarr notification failed", {
       title: payload.movie.title,
@@ -242,74 +60,34 @@ export async function handleRadarrWebhook(req: Request): Promise<Response> {
 }
 
 export async function handleSonarrWebhook(req: Request): Promise<Response> {
-  const authError = checkWebhookAuth(req);
-  if (authError) return authError;
-
-  let payload: SonarrWebhookPayload;
-  try {
-    payload = (await req.json()) as SonarrWebhookPayload;
-  } catch {
-    return Response.json({ error: "Invalid JSON" }, { status: 400 });
-  }
+  const result = await readDownloadPayload<SonarrWebhookPayload>(req);
+  if ("response" in result) return result.response;
+  const { payload } = result;
 
   log.info("sonarr webhook received", {
-    eventType: payload.eventType,
     series: payload.series?.title,
     episodeCount: payload.episodes?.length,
   });
 
-  if (payload.eventType !== "Download") {
-    return Response.json({ ok: true, skipped: true });
-  }
-
-  const key = `series:${payload.series.id}`;
-  const newEpisodes =
+  const episodes =
     payload.episodes?.map((e) => ({
       seasonNumber: e.seasonNumber,
       episodeNumber: e.episodeNumber,
       title: e.title,
     })) ?? [];
 
-  // If a batch is already pending for this series, accumulate into it
-  const existing = pendingBatches.get(key);
-  if (existing) {
-    for (const ep of newEpisodes) {
-      const dup = existing.media.episodes?.some(
-        (e) => e.seasonNumber === ep.seasonNumber && e.episodeNumber === ep.episodeNumber,
-      );
-      if (!dup) existing.media.episodes?.push(ep);
-    }
-    log.info("batching episode", {
+  batchSeriesNotification(
+    payload.series.id,
+    {
+      mediaType: "series",
       title: payload.series.title,
-      episode: newEpisodes.map((e) => episodeCode(e.seasonNumber, e.episodeNumber)).join(", "),
-      batchSize: existing.media.episodes?.length,
-    });
-    return Response.json({ ok: true, batched: true });
-  }
-
-  const media: MediaNotificationInfo = {
-    mediaType: "series",
-    title: payload.series.title,
-    year: payload.series.year,
-    quality: payload.release?.quality,
-    releaseGroup: payload.release?.releaseGroup,
-    episodes: newEpisodes,
-  };
-
-  const timer = setTimeout(() => {
-    flushBatch(key).catch((error) => {
-      log.error("batched notification failed", {
-        title: payload.series.title,
-        error: errorMessage(error),
-      });
-    });
-  }, BATCH_DELAY_MS);
-  pendingBatches.set(key, { media, sonarrId: payload.series.id, timer });
-  log.info("batch started", {
-    title: payload.series.title,
-    episode: newEpisodes.map((e) => episodeCode(e.seasonNumber, e.episodeNumber)).join(", "),
-    delayMs: BATCH_DELAY_MS,
-  });
+      year: payload.series.year,
+      quality: payload.release?.quality,
+      releaseGroup: payload.release?.releaseGroup,
+      episodes,
+    },
+    episodes,
+  );
 
   return Response.json({ ok: true, batched: true });
 }

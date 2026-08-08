@@ -233,6 +233,36 @@ describe.skipIf(!dbReachable)("runConversationTurn", () => {
     expect(rows[0]!.data).toMatchObject({ stopReason: "error" });
   });
 
+  test("a prompt the user did not type is replayed but not stored", async () => {
+    script = (options) => assistantText(options, "it's ready");
+    const { conversationId } = await runConversationTurn({
+      interfaceType: "discord",
+      text: "hello",
+    });
+    createdConversationIds.push(conversationId);
+
+    let replayed: string[] | undefined;
+    script = (options) => {
+      replayed = options.previousMessages?.map((m) => m.role);
+      return assistantText(options, "your show finished downloading");
+    };
+    await runConversationTurn({
+      interfaceType: "discord",
+      conversationId,
+      text: "[Webhook — Sonarr] Severance has finished downloading.",
+      storePrompt: false,
+    });
+
+    expect(replayed).toEqual(["user", "assistant"]);
+
+    const rows = await db
+      .select()
+      .from(messages)
+      .where(eq(messages.conversationId, conversationId))
+      .orderBy(messages.sequence);
+    expect(rows.map((r) => r.role)).toEqual(["user", "assistant", "assistant"]);
+  });
+
   test("rejects an unknown conversation id", async () => {
     script = (options) => assistantText(options, "never runs");
     expect(

@@ -25,6 +25,12 @@ export interface ConversationTurn {
   appUserId?: string | null;
   text: string;
   images?: ImageContent[];
+  /**
+   * Whether to store the prompt itself. Turns the user did not type — a webhook,
+   * say — are replayed to the model but not stored, because the event that caused
+   * them is already recorded in the thread.
+   */
+  storePrompt?: boolean;
   context?: AgentContext;
   /** Platform-specific side effects (streaming, thread status, tables). */
   onEvent?: (event: AgentEvent) => void;
@@ -174,10 +180,15 @@ export async function runConversationTurn(turn: ConversationTurn): Promise<Conve
     responseLength: result.responseText.length,
   });
 
+  const newMessages = result.messages.slice(history.messages.length);
+
   // Error messages are persisted too so the thread viewer can show what happened.
   const toolCallToMessage = await persistMessages(
     conversationId,
-    [...result.errorMessages, ...result.messages.slice(history.messages.length)],
+    [
+      ...result.errorMessages,
+      ...(turn.storePrompt === false ? newMessages.filter((m) => m.role !== "user") : newMessages),
+    ],
     platformUserId,
     appUserId,
   );
