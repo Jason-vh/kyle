@@ -1,7 +1,8 @@
 import { Type } from "@sinclair/typebox";
-import type { AgentTool } from "@mariozechner/pi-agent-core";
+import type { Tool } from "../agent/tool.ts";
 import { jsonResult } from "../agent/tool-result.ts";
-import { episodeCode } from "../../shared/media.ts";
+import { buildTable } from "../agent/table.ts";
+import { episodeCode, episodeLabel } from "../../shared/media.ts";
 import * as sonarr from "./api.ts";
 import {
   toPartialSeries,
@@ -15,11 +16,55 @@ import {
 
 const emptyParams = Type.Object({});
 
-export const getAllSeriesTool: AgentTool<typeof emptyParams> = {
+/** Queue and calendar payloads as they arrive back through JSON, so every field is optional. */
+interface QueuedEpisode {
+  series?: { title?: string };
+  episode?: { seasonNumber?: number; episodeNumber?: number; title?: string };
+  status?: string;
+  trackedDownloadState?: string;
+  quality?: string;
+}
+
+interface CalendarEpisode {
+  series?: { title?: string };
+  seasonNumber?: number;
+  episodeNumber?: number;
+  title?: string;
+  airDate?: string;
+  hasFile?: boolean;
+}
+
+function seriesQueueTable(payload: unknown) {
+  const items = (payload as { items?: QueuedEpisode[] })?.items ?? [];
+  return buildTable("Download queue", ["Series", "Episode", "Status", "Quality"], items, (item) => [
+    item.series?.title ?? "\u2014",
+    episodeLabel(item.episode?.seasonNumber, item.episode?.episodeNumber, item.episode?.title),
+    item.trackedDownloadState ?? item.status ?? "\u2014",
+    item.quality ?? "\u2014",
+  ]);
+}
+
+function calendarTable(payload: unknown) {
+  const episodes = Array.isArray(payload) ? (payload as CalendarEpisode[]) : [];
+  return buildTable(
+    "Upcoming episodes",
+    ["Series", "Episode", "Airs", "Have it"],
+    episodes,
+    (episode) => [
+      episode.series?.title ?? "\u2014",
+      episodeLabel(episode.seasonNumber, episode.episodeNumber, episode.title),
+      episode.airDate ?? "\u2014",
+      episode.hasFile ? "Yes" : "No",
+    ],
+  );
+}
+
+export const getAllSeriesTool: Tool<typeof emptyParams> = {
   name: "get_all_series",
   description: "Get all TV series currently in the Sonarr library",
   parameters: emptyParams,
   label: "Fetching series from Sonarr",
+  summary: "Checked TV library",
   async execute() {
     const series = await sonarr.getAllSeries();
     return jsonResult(series.map(toPartialSeries));
@@ -32,11 +77,12 @@ const getSeriesByIdParams = Type.Object({
   }),
 });
 
-export const getSeriesByIdTool: AgentTool<typeof getSeriesByIdParams> = {
+export const getSeriesByIdTool: Tool<typeof getSeriesByIdParams> = {
   name: "get_series_by_id",
   description: "Get information about a specific TV series in Sonarr by ID",
   parameters: getSeriesByIdParams,
   label: "Checking series details in Sonarr",
+  summary: "Fetched series details",
   async execute(_toolCallId, params) {
     const series = await sonarr.getSeries(params.seriesId);
     return jsonResult(toPartialSeries(series));
@@ -49,12 +95,13 @@ const searchSeriesParams = Type.Object({
   }),
 });
 
-export const searchSeriesTool: AgentTool<typeof searchSeriesParams> = {
+export const searchSeriesTool: Tool<typeof searchSeriesParams> = {
   name: "search_series",
   description:
     "Search for TV series in external databases (TVDB). Returns lookup results, not library entries — use get_all_series to check what's already in the library.",
   parameters: searchSeriesParams,
   label: "Searching for series in Sonarr",
+  summary: (args) => `Searched for series '${args.title}'`,
   async execute(_toolCallId, params) {
     const series = await sonarr.searchSeries(params.title);
     return jsonResult(series.map(toSeriesLookupResult));
@@ -84,12 +131,14 @@ const addSeriesParams = Type.Object({
   ),
 });
 
-export const addSeriesTool: AgentTool<typeof addSeriesParams> = {
+export const addSeriesTool: Tool<typeof addSeriesParams> = {
   name: "add_series",
   description:
     "Add a TV series to Sonarr. Requires title, year, TVDB ID, and monitor option. The monitor option determines which episodes to download: 'all' for entire series, 'lastSeason' for only the latest season, 'future' for upcoming episodes only, 'missing' for missing episodes, 'existing' for existing episodes, or 'none' to add without downloading.",
   parameters: addSeriesParams,
   label: "Adding series to Sonarr",
+  completedLabel: "Added series to Sonarr",
+  summary: (args) => (args.title ? `Added '${args.title}' to Sonarr` : "Added series to Sonarr"),
   async execute(_toolCallId, params) {
     const series = await sonarr.addSeries(
       params.title,
@@ -111,11 +160,13 @@ const removeSeriesParams = Type.Object({
   }),
 });
 
-export const removeSeriesTool: AgentTool<typeof removeSeriesParams> = {
+export const removeSeriesTool: Tool<typeof removeSeriesParams> = {
   name: "remove_series",
   description: "Remove a TV series from Sonarr and delete the files from disk",
   parameters: removeSeriesParams,
   label: "Removing series from Sonarr",
+  completedLabel: "Removed series from Sonarr",
+  summary: "Removed series from Sonarr",
   async execute(_toolCallId, params) {
     const series = await sonarr.getSeries(params.seriesId);
     await sonarr.removeSeries(params.seriesId, true);
@@ -139,12 +190,14 @@ const removeSeasonParams = Type.Object({
   }),
 });
 
-export const removeSeasonTool: AgentTool<typeof removeSeasonParams> = {
+export const removeSeasonTool: Tool<typeof removeSeasonParams> = {
   name: "remove_season",
   description:
     "Remove a specific season from a TV series in Sonarr and delete all episode files from disk",
   parameters: removeSeasonParams,
   label: "Removing season from Sonarr",
+  completedLabel: "Removed season from Sonarr",
+  summary: "Removed season from Sonarr",
   async execute(_toolCallId, params) {
     const series = await sonarr.getSeries(params.seriesId);
     const episodes = await sonarr.getEpisodes(params.seriesId);
@@ -200,11 +253,12 @@ const getEpisodesParams = Type.Object({
   ),
 });
 
-export const getEpisodesTool: AgentTool<typeof getEpisodesParams> = {
+export const getEpisodesTool: Tool<typeof getEpisodesParams> = {
   name: "get_episodes",
   description: "Get episodes for a specific TV series",
   parameters: getEpisodesParams,
   label: "Fetching episodes from Sonarr",
+  summary: "Fetched episode list",
   async execute(_toolCallId, params) {
     const episodes = await sonarr.getEpisodes(params.seriesId);
     const mapped = episodes.map(toPartialEpisode);
@@ -222,11 +276,13 @@ const getSeriesQueueParams = Type.Object({
   ),
 });
 
-export const getSeriesQueueTool: AgentTool<typeof getSeriesQueueParams> = {
+export const getSeriesQueueTool: Tool<typeof getSeriesQueueParams> = {
   name: "get_series_queue",
   description: "Get TV series episodes currently downloading or in the queue",
   parameters: getSeriesQueueParams,
   label: "Checking Sonarr download queue",
+  summary: "Checked download queue (TV)",
+  table: seriesQueueTable,
   async execute(_toolCallId, params) {
     const queueResponse = await sonarr.getQueue({
       seriesIds: params.seriesId ? [params.seriesId] : undefined,
@@ -263,11 +319,13 @@ const getCalendarParams = Type.Object({
   ),
 });
 
-export const getCalendarTool: AgentTool<typeof getCalendarParams> = {
+export const getCalendarTool: Tool<typeof getCalendarParams> = {
   name: "get_calendar",
   description: "Get upcoming episodes from the calendar for a date range",
   parameters: getCalendarParams,
   label: "Checking Sonarr calendar",
+  summary: "Checked upcoming episodes",
+  table: calendarTable,
   async execute(_toolCallId, params) {
     const includeSeries = params.includeSeries ?? true;
     const episodes = await sonarr.getCalendar(params.start, params.end, includeSeries);
@@ -294,12 +352,14 @@ const searchEpisodesParams = Type.Object({
   ),
 });
 
-export const downloadEpisodesTool: AgentTool<typeof searchEpisodesParams> = {
+export const downloadEpisodesTool: Tool<typeof searchEpisodesParams> = {
   name: "download_episodes",
   description:
     "Search indexers and download missing episodes for a series, a specific season, or specific episodes. When seasonNumber is provided with seriesId, automatically monitors unmonitored episodes before searching.",
   parameters: searchEpisodesParams,
   label: "Downloading episodes from Sonarr",
+  completedLabel: "Started episode download",
+  summary: "Searched for missing episodes",
   async execute(_toolCallId, params) {
     const monitoringActions: string[] = [];
 
@@ -406,12 +466,13 @@ const getSeriesHistoryParams = Type.Object({
   ),
 });
 
-export const getSeriesHistoryTool: AgentTool<typeof getSeriesHistoryParams> = {
+export const getSeriesHistoryTool: Tool<typeof getSeriesHistoryParams> = {
   name: "get_series_history",
   description:
     "Get download and import history from Sonarr. When investigating a specific series, pass seriesId to get all history for that series.",
   parameters: getSeriesHistoryParams,
   label: "Checking Sonarr history",
+  summary: "Checked series history",
   async execute(_toolCallId, params) {
     // Series-specific history uses a dedicated endpoint
     if (params.seriesId) {
@@ -456,12 +517,17 @@ const manualImportParams = Type.Object({
   ),
 });
 
-export const manualImportTool: AgentTool<typeof manualImportParams> = {
+export const manualImportTool: Tool<typeof manualImportParams> = {
   name: "manual_import",
   description:
     "Inspect and force-import downloaded files that are stuck in the queue (downloaded but not imported). First call without importAll to see what files are available and any rejections, then call with importAll=true to import them.",
   parameters: manualImportParams,
   label: "Checking manual import candidates",
+  completedLabel: "Imported files into Sonarr",
+  // The tool both lists and imports; only the import half is an action.
+  isAction: (args) => args.importAll === true,
+  summary: (args) =>
+    args.importAll ? "Force-importing downloaded files" : "Checking import candidates",
   async execute(_toolCallId, params) {
     const items = await sonarr.getManualImport(params.downloadId, params.seriesId);
 
@@ -530,3 +596,18 @@ export const manualImportTool: AgentTool<typeof manualImportParams> = {
     });
   },
 };
+
+export const sonarrTools = [
+  getAllSeriesTool,
+  getSeriesByIdTool,
+  searchSeriesTool,
+  addSeriesTool,
+  removeSeriesTool,
+  removeSeasonTool,
+  getEpisodesTool,
+  getSeriesQueueTool,
+  getCalendarTool,
+  downloadEpisodesTool,
+  getSeriesHistoryTool,
+  manualImportTool,
+];

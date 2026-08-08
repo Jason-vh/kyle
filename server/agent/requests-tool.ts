@@ -1,5 +1,5 @@
 import { Type } from "@sinclair/typebox";
-import type { AgentTool } from "@mariozechner/pi-agent-core";
+import type { Tool } from "./tool.ts";
 import { jsonResult } from "./tool-result.ts";
 import { getSubscriptionsForUser } from "../db/subscriptions.ts";
 
@@ -9,12 +9,13 @@ const params = Type.Object({
   }),
 });
 
-export const getRequestsForUserTool: AgentTool<typeof params> = {
+export const getRequestsForUserTool: Tool<typeof params> = {
   name: "get_requests_for_user",
   description:
     "Get all media subscriptions for a specific user. Returns movies and series the user has requested, with their notification subscription status (active/inactive). The userId parameter is the app user UUID shown in conversation context.",
   parameters: params,
   label: "Looking up user subscriptions",
+  summary: "Looked up user subscriptions",
   async execute(_toolCallId, params) {
     const subscriptions = await getSubscriptionsForUser(params.userId);
     return jsonResult(subscriptions);

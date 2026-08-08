@@ -1,6 +1,6 @@
 import type { AgentEvent } from "@mariozechner/pi-agent-core";
 import { createLogger } from "../logger.ts";
-import { toolLabels, ApiOverloadedError, type AgentContext } from "../agent/index.ts";
+import { toolPresentation, ApiOverloadedError, type AgentContext } from "../agent/index.ts";
 import { runConversationTurn } from "../agent/conversation.ts";
 import { isActionTool, completedActionLabel } from "../agent/action-tools.ts";
 import { extractTable, type ResultTable } from "../agent/result-tables.ts";
@@ -178,7 +178,7 @@ async function processSlackMessage(slackEvent: SlackEvent, teamId?: string): Pro
       stream.appendText(event.assistantMessageEvent.delta);
     }
     if (event.type === "tool_execution_start") {
-      const label = toolLabels.get(event.toolName);
+      const label = toolPresentation(event.toolName)?.label;
       if (event.args) {
         toolArgs.set(event.toolCallId, event.args);
       }
@@ -192,7 +192,7 @@ async function processSlackMessage(slackEvent: SlackEvent, teamId?: string): Pro
     if (event.type === "tool_execution_end") {
       const args = toolArgs.get(event.toolCallId) ?? {};
       toolArgs.delete(event.toolCallId);
-      const label = toolLabels.get(event.toolName);
+      const label = toolPresentation(event.toolName)?.label;
       const isAction = !!label && isActionTool(event.toolName, args);
 
       if (event.isError) {

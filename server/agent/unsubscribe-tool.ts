@@ -1,5 +1,5 @@
 import { Type } from "@sinclair/typebox";
-import type { AgentTool } from "@mariozechner/pi-agent-core";
+import type { Tool } from "./tool.ts";
 import { jsonResult } from "./tool-result.ts";
 import { deactivateMovieSubscription, deactivateSeriesSubscriptions } from "../db/subscriptions.ts";
 
@@ -28,12 +28,14 @@ const params = Type.Object({
   ),
 });
 
-export const unsubscribeNotificationsTool: AgentTool<typeof params> = {
+export const unsubscribeNotificationsTool: Tool<typeof params> = {
   name: "unsubscribe_notifications",
   description:
     "Opt a user out of download notifications for a specific movie or series. Uses the Radarr/Sonarr ID to match the subscription precisely. For series, you can optionally scope to a specific season. Use this when a user says they don't want to be notified about a specific title anymore.",
   parameters: params,
   label: "Unsubscribing from notifications",
+  completedLabel: "Unsubscribed from notifications",
+  summary: (args) => `Unsubscribed from notifications for '${args.title}'`,
   async execute(_toolCallId, params) {
     let count = 0;
 

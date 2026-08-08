@@ -1,5 +1,5 @@
 import { Type } from "@sinclair/typebox";
-import type { AgentTool } from "@mariozechner/pi-agent-core";
+import type { Tool } from "../agent/tool.ts";
 import { jsonResult } from "../agent/tool-result.ts";
 import * as brave from "./api.ts";
 import { toPartialWebResult } from "./utils.ts";
@@ -16,12 +16,13 @@ const webSearchParams = Type.Object({
   ),
 });
 
-export const webSearchTool: AgentTool<typeof webSearchParams> = {
+export const webSearchTool: Tool<typeof webSearchParams> = {
   name: "web_search",
   description:
     "Search the web for information — release dates, cast info, reviews, general knowledge, or anything else online",
   parameters: webSearchParams,
   label: "Searching the web",
+  summary: (args) => `Searched the web for '${args.query}'`,
   async execute(_toolCallId, params) {
     const count = params.count ?? 5;
     const response = await brave.searchWeb(params.query, { count });
@@ -29,3 +30,5 @@ export const webSearchTool: AgentTool<typeof webSearchParams> = {
     return jsonResult(results);
   },
 };
+
+export const braveTools = [webSearchTool];

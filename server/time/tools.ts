@@ -1,6 +1,14 @@
 import { Type } from "@sinclair/typebox";
-import type { AgentTool } from "@mariozechner/pi-agent-core";
+import type { Tool } from "../agent/tool.ts";
 import { jsonResult } from "../agent/tool-result.ts";
+
+/** "America/New_York" reads as "New York" in a one-line summary. */
+function cityOf(timezone: unknown): string {
+  return String(timezone ?? "")
+    .split("/")
+    .pop()!
+    .replace(/_/g, " ");
+}
 
 const convertTimeParams = Type.Object({
   time: Type.String({ description: 'Time to convert, e.g. "8:00 PM", "20:00", "3:30 PM"' }),
@@ -15,12 +23,14 @@ const convertTimeParams = Type.Object({
   ),
 });
 
-export const convertTimeTool: AgentTool<typeof convertTimeParams> = {
+export const convertTimeTool: Tool<typeof convertTimeParams> = {
   name: "convert_time",
   description:
     "Convert a time between timezones. Handles date boundary crossings (e.g. 8 PM ET → 1 AM UTC next day). Use IANA timezone names.",
   parameters: convertTimeParams,
   label: "Converting timezone",
+  summary: (args) =>
+    `Converted ${args.time} from ${cityOf(args.fromTimezone)} to ${cityOf(args.toTimezone)}`,
   async execute(_toolCallId, { time, fromTimezone, toTimezone, date }) {
     const dateStr = date ?? new Date().toISOString().split("T")[0]!;
 
@@ -98,3 +108,5 @@ export const convertTimeTool: AgentTool<typeof convertTimeParams> = {
     return jsonResult(result);
   },
 };
+
+export const timeTools = [convertTimeTool];

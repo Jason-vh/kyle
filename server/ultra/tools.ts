@@ -1,16 +1,17 @@
 import { Type } from "@sinclair/typebox";
-import type { AgentTool } from "@mariozechner/pi-agent-core";
+import type { Tool } from "../agent/tool.ts";
 import { jsonResult } from "../agent/tool-result.ts";
 import * as ultra from "./api.ts";
 
 const emptyParams = Type.Object({});
 
-export const getUltraStatsTool: AgentTool<typeof emptyParams> = {
+export const getUltraStatsTool: Tool<typeof emptyParams> = {
   name: "get_ultra_stats",
   description:
     "Get Ultra seedbox storage and traffic stats including free/used/total storage and traffic usage",
   parameters: emptyParams,
   label: "Checking Ultra seedbox stats",
+  summary: "Checked seedbox stats",
   async execute() {
     const stats = await ultra.getStats();
     return jsonResult({
@@ -24,3 +25,5 @@ export const getUltraStatsTool: AgentTool<typeof emptyParams> = {
     });
   },
 };
+
+export const ultraTools = [getUltraStatsTool];

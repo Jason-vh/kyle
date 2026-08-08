@@ -1,5 +1,5 @@
 import { Type } from "@sinclair/typebox";
-import type { AgentTool } from "@mariozechner/pi-agent-core";
+import type { Tool, ToolPresentation } from "./tool.ts";
 import { jsonResult } from "./tool-result.ts";
 import { signThreadSig } from "../routes/threads-auth.ts";
 
@@ -7,12 +7,18 @@ const BASE_URL = "https://kyle.vhtm.eu";
 
 const emptyParams = Type.Object({});
 
-export function createShareConversationTool(conversationId: string): AgentTool<typeof emptyParams> {
+/** Bound to a conversation at call time, so the registry indexes it separately. */
+export const shareConversationPresentation: ToolPresentation = {
+  name: "share_conversation",
+  label: "Generating share link",
+  summary: "Generated share link",
+};
+
+export function createShareConversationTool(conversationId: string): Tool<typeof emptyParams> {
   return {
-    name: "share_conversation",
+    ...shareConversationPresentation,
     description: "Generate a shareable link to this conversation's thread viewer",
     parameters: emptyParams,
-    label: "Generating share link",
     async execute() {
       const sig = await signThreadSig(conversationId);
       const url = `${BASE_URL}/threads/${conversationId}?sig=${sig}`;
