@@ -21,8 +21,6 @@ export interface TaskUpdate {
   id: string;
   title: string;
   status: "in_progress" | "complete" | "error";
-  /** Links shown on the card, e.g. the media the action applied to. */
-  sources?: Array<{ type: "url"; url: string; text: string }>;
 }
 
 /**

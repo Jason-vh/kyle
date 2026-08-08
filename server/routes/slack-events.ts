@@ -8,12 +8,7 @@ import { runAgent, toolLabels, ApiOverloadedError, type AgentContext } from "../
 import { isActionTool, completedActionLabel } from "../agent/action-tools.ts";
 import { extractTable, type ResultTable } from "../agent/result-tables.ts";
 import { tableBlocks } from "../slack/tables.ts";
-import {
-  extractMediaEvent,
-  mediaEventUrl,
-  saveMediaEvent,
-  type MediaEventData,
-} from "../db/media-events.ts";
+import { extractMediaEvent, saveMediaEvent, type MediaEventData } from "../db/media-events.ts";
 import { processMediaEvent } from "../db/subscriptions.ts";
 import { verifySlackSignature } from "../slack/verify.ts";
 import { getSlackClient, setThreadStatus } from "../slack/client.ts";
@@ -68,13 +63,6 @@ async function downloadSlackImages(files: SlackFile[]): Promise<ImageContent[]> 
     }
   }
   return images;
-}
-
-/** Link to the media an action applied to, shown on its task card. */
-function mediaSources(event: MediaEventData | null) {
-  const url = event ? mediaEventUrl(event) : undefined;
-  if (!url || !event) return undefined;
-  return [{ type: "url" as const, url, text: event.title }];
 }
 
 // Dedup: track recently seen event IDs
@@ -231,7 +219,6 @@ async function processSlackMessage(slackEvent: SlackEvent, teamId?: string): Pro
           id: event.toolCallId,
           title: completedActionLabel(event.toolName) ?? label,
           status: "complete",
-          sources: mediaSources(mediaEvent),
         });
       }
       if (mediaEvent) {
