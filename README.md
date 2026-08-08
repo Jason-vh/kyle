@@ -156,15 +156,25 @@ web/                         → Vue 3 + Vite + Tailwind CSS 4 SPA
   or duplicated. Slack messages use **standard Markdown** (`markdown_text`), not mrkdwn.
 - **Slack dedup** — in-memory `Set<string>` on `event_id` (capped at 10k) plus
   `X-Slack-Retry-Num` header skipping.
+- **One HTTP client** — every outbound service (Sonarr, Radarr, TMDB, Ultra, Brave,
+  qBittorrent) is a thin wrapper over `createApiClient()` in `server/http/client.ts`, which
+  owns timeouts, error parsing (`ApiError`), JSON decoding, and optional session re-auth.
+  Service modules only declare a base URL and headers, resolved per request via
+  `requireEnv()` so missing configuration fails at call time with every missing name listed.
+- **Declarative routing** — `server/server.ts` is a `Bun.serve({ routes })` table with
+  `:params`; `maxRequestBodySize` enforces the 1 MB limit and `error()` turns any uncaught
+  throw into a 500, so handlers contain no boilerplate. Unrouted GET/HEAD falls through to
+  the SPA.
 - **Structured logging** — `createLogger(module)` emits JSON lines. Use it everywhere; no
   raw `console.log`.
 - **Token optimization** — each service has `utils.ts` with `toPartial*` helpers that strip
   API responses to essential fields before sending to the LLM.
-- **Adding a new tool** — create `api.ts` + `tools.ts` under `server/<service>/`, register
-  in `server/agent/index.ts`, add to `ACTION_TOOLS` in `server/agent/action-tools.ts` if it
-  changes state, add the service to the media list in `server/agent/system-prompt.ts` (the
-  agent won't use tools it doesn't know about), and add a summary case in the `toolSummary`
-  switch in **both** `server/routes/api/threads.ts` and `web/src/utils/toolSummary.ts`.
+- **Adding a new tool** — create `api.ts` (over `createApiClient`) + `tools.ts` under
+  `server/<service>/`, returning `jsonResult(...)` from `server/agent/tool-result.ts`.
+  Register it in `server/agent/index.ts`, add it to `ACTION_TOOLS` in
+  `server/agent/action-tools.ts` if it changes state, add the service to the media list in
+  `server/agent/system-prompt.ts` (the agent won't use tools it doesn't know about), and add
+  a summary case in `server/threads/tool-summary.ts` for the thread viewer.
 
 ## Development
 
@@ -328,21 +338,24 @@ rather than passed to the agent as an opaque ID.
 
 ## API reference
 
-| Endpoint                    | Auth                  | Description                                     |
-| --------------------------- | --------------------- | ----------------------------------------------- |
-| `GET /health`               | —                     | Health check (includes DB status + `deployId`)  |
-| `POST /chat`                | `CHAT_API_KEY` bearer | Send a message, get a response                  |
-| `POST /slack/events`        | Slack signature       | Slack event ingress; supports `X-Sync-Response` |
-| `POST /webhooks/sonarr`     | `WEBHOOK_AUTH` basic  | Sonarr webhook handler                          |
-| `POST /webhooks/radarr`     | `WEBHOOK_AUTH` basic  | Radarr webhook handler                          |
-| `GET /api/threads`          | JWT                   | List conversation threads                       |
-| `GET /api/threads/:uuid`    | JWT / `?sig=`         | Fetch a single thread's messages                |
-| `GET /api/auth/status`      | JWT cookie            | Current user + admin flag                       |
-| `POST /api/auth/logout`     | JWT cookie            | Clear the session cookie                        |
-| `POST /api/auth/passkey/*`  | —                     | WebAuthn registration/authentication            |
-| `POST /api/invites`         | Admin                 | Create an invite link                           |
-| `GET /api/users`            | Admin                 | List users + platform identities                |
-| `POST /api/users/:id/links` | Admin                 | Link a platform identity                        |
+| Endpoint                              | Auth                  | Description                                     |
+| ------------------------------------- | --------------------- | ----------------------------------------------- |
+| `GET /health`                         | —                     | Health check (includes DB status + `deployId`)  |
+| `POST /chat`                          | `CHAT_API_KEY` bearer | Send a message, get a response                  |
+| `POST /slack/events`                  | Slack signature       | Slack event ingress; supports `X-Sync-Response` |
+| `POST /webhooks/sonarr`               | `WEBHOOK_AUTH` basic  | Sonarr webhook handler                          |
+| `POST /webhooks/radarr`               | `WEBHOOK_AUTH` basic  | Radarr webhook handler                          |
+| `GET /api/threads`                    | JWT                   | List conversation threads                       |
+| `GET /api/threads/:uuid`              | JWT / `?sig=`         | Fetch a single thread's messages                |
+| `GET /api/auth/status`                | JWT cookie            | Current user + admin flag                       |
+| `POST /api/auth/logout`               | JWT cookie            | Clear the session cookie                        |
+| `POST /api/auth/passkey/*`            | —                     | WebAuthn registration/authentication            |
+| `POST /api/invites`                   | Admin                 | Create an invite link                           |
+| `GET /api/users`                      | Admin                 | List users + platform identities                |
+| `POST /api/users/:id/links`           | Admin                 | Link a platform identity                        |
+| `DELETE /api/users/:id/links/:linkId` | Admin                 | Unlink a platform identity                      |
+
+Requests larger than 1 MB are rejected with a `413` by `Bun.serve`'s `maxRequestBodySize`.
 
 ### POST /chat
 
@@ -465,7 +478,10 @@ This repo is public, so most app config lives in GitHub Actions secrets:
   `oxfmt --check`, `oxlint`, `tsc --noEmit -p tsconfig.server.json`, and `vue-tsc --noEmit`
   (in `web/`). Always run `bun run fmt` before committing.
 - **Type safety**: type assertions (`as any`) are not allowed unless absolutely necessary —
-  use type guards, generics, `WeakMap`, etc.
+  use type guards, generics, `WeakMap`, etc. Service clients return `request<T>()`, so tool
+  code should not need casts.
+- **Tests**: `bun test`. Keep them pure where possible; tests that need Postgres must skip
+  themselves when `DATABASE_URL` is unreachable so `bun run check` passes without Docker.
 - **Git workflow**: push to `main`; the self-hosted runner deploys automatically.
 - **Comments/docstrings**: keep them as short as possible, ideally a single line, and never
   include ticket references.
