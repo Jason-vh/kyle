@@ -26,12 +26,5 @@
     "noUnusedParameters": false,
     "noPropertyAccessFromIndexSignature": false
   },
-  "include": [
-    "index.ts",
-    "cli.ts",
-    "test-slack.ts",
-    "server/**/*",
-    "shared/**/*",
-    "drizzle.config.ts"
-  ]
+  "include": ["index.ts", "scripts/**/*", "server/**/*", "shared/**/*", "drizzle.config.ts"]
 }

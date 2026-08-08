@@ -45,10 +45,10 @@ Capabilities:
 
 ```text
 index.ts                     → entry point (Bun.serve)
-cli.ts                       → interactive CLI client
-create-admin.ts              → CLI: bootstrap first admin user + invite link
-invite.ts                    → CLI: create an invite link for an existing admin
-test-slack.ts                → Send test messages to /slack/events (sync response by default)
+scripts/cli.ts               → interactive CLI client
+scripts/create-admin.ts      → CLI: bootstrap first admin user + invite link
+scripts/invite.ts            → CLI: create an invite link for an existing admin
+scripts/test-slack.ts        → Send test messages to /slack/events (sync response by default)
 tsconfig.server.json         → Server TypeScript config (server/ + shared/)
 Dockerfile                   → Multi-stage build: web SPA + Bun runtime
 docker-compose.yml           → Single app service, joins shared apps-net
@@ -60,14 +60,19 @@ shared/
   types.ts                   → API response types shared between server + web
 
 server/
-  server.ts                  → HTTP routing (/api/*, /slack, /webhooks, SPA serving)
+  server.ts                  → Route table (/api/*, /slack, /webhooks) + SPA serving
+  config.ts                  → requireEnv(): env lookup that fails with every missing name
   logger.ts                  → Structured JSON logger
+  http/
+    client.ts                → createApiClient(): shared JSON HTTP client for every service
   auth/
     jwt.ts                   → JWT sign/verify (jose), httpOnly cookie, sliding refresh
     middleware.ts            → requireAuth, requireAdmin, optionalAuth
     webauthn.ts              → WebAuthn registration/authentication (simplewebauthn)
   agent/
     index.ts                 → Agent factory + runAgent(), tool registration
+    conversation.ts          → runConversationTurn(): the turn pipeline every interface uses
+    tool-result.ts           → jsonResult(): the shape every tool returns
     action-tools.ts          → isActionTool(): which tool calls show as Slack task cards
     result-tables.ts         → extractTable(): queue/calendar results as tabular data
     system-prompt.ts         → Kyle's system prompt + AgentContext
@@ -91,6 +96,9 @@ server/
       auth-passkey.ts        → Passkey login/register endpoints
       invites.ts             → Invite validation, redemption, creation (admin)
       users.ts               → User listing, platform link management (admin)
+  threads/
+    items.ts                 → buildThreadItems(): messages + webhooks as viewer items
+    tool-summary.ts          → One-line description of a tool call
   slack/                     → WebClient, response streaming, Block Kit tables, context, verify
   discord/                   → discord.js client, messageCreate handler, user resolution
   sonarr/                    → types, api, utils, tools (11 tools)
@@ -111,13 +119,16 @@ web/                         → Vue 3 + Vite + Tailwind CSS 4 SPA
     components/              → MessageBlock, ToolCallBlock, WebhookBlock, MarkdownContent, ...
     api/                     → client, threads, auth, passkey, invites
     composables/             → useRelativeTime
-    utils/                   → markdown, toolSummary
+    utils/                   → markdown
 ```
 
 ## Key patterns
 
 - **Stateless agent** — created per request; previous messages loaded from DB and restored
   via `agent.replaceMessages()`.
+- **One turn pipeline** — Slack, Discord, and HTTP all call `runConversationTurn()`, which
+  resolves the conversation, replays history, persists messages, and records media events.
+  Each interface only supplies its own I/O (streaming, replies, thread status).
 - **JSONB messages** — full `AgentMessage` objects stored as JSONB in the `messages` table.
   The `role` and `sequence` columns exist only for querying and ordering.
 - **Interface-agnostic conversations** — the `conversations` table has an `interfaceType`
@@ -204,12 +215,12 @@ curl -X POST http://localhost:3000/chat \
 bun run dev
 
 # Terminal 2 — send a message (defaults to localhost:3000)
-bun run test-slack.ts "hello kyle"
-bun run test-slack.ts "follow up" --thread <thread_ts>
-bun run test-slack.ts "hello" --channel <channel_id>
+bun run scripts/test-slack.ts "hello kyle"
+bun run scripts/test-slack.ts "follow up" --thread <thread_ts>
+bun run scripts/test-slack.ts "hello" --channel <channel_id>
 
 # Against production
-BASE_URL=https://kyle.vhtm.eu bun run test-slack.ts "hello"
+BASE_URL=https://kyle.vhtm.eu bun run scripts/test-slack.ts "hello"
 ```
 
 The script signs requests with `SLACK_SIGNING_SECRET` from `.env`, matching Slack's
@@ -218,7 +229,7 @@ header. **The test payload doesn't set `channel_type`, so `shouldProcess` treats
 channel message and requires a bot mention** — prefix messages with the bot ID:
 
 ```bash
-BASE_URL=https://kyle.vhtm.eu bun run test-slack.ts "<@U099N4BJT5Y> add inception"
+BASE_URL=https://kyle.vhtm.eu bun run scripts/test-slack.ts "<@U099N4BJT5Y> add inception"
 ```
 
 Streamed replies need `SLACK_TEAM_ID` plus a real `SLACK_TEST_USER` ID, and a `--thread`
@@ -240,8 +251,8 @@ timestamps. To test streaming, post a real message, then pass its `ts` as `--thr
 ## User management
 
 ```bash
-bun run create-admin.ts "Admin Name"   # bootstrap first admin (prints invite link)
-bun run invite.ts "Display Name"       # create invite for a new user (existing admin required)
+bun run scripts/create-admin.ts "Admin Name"   # bootstrap first admin (prints invite link)
+bun run scripts/invite.ts "Display Name"       # create invite for a new user (existing admin required)
 ```
 
 Admin API endpoints (require a JWT with `admin: true`):

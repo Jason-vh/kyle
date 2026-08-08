@@ -1,5 +1,5 @@
-import { db } from "./server/db/index.ts";
-import { users, userInvites } from "./server/db/schema.ts";
+import { db } from "../server/db/index.ts";
+import { users, userInvites } from "../server/db/schema.ts";
 
 const displayName = process.argv[2];
 if (!displayName) {

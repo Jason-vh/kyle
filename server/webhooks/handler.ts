@@ -64,25 +64,27 @@ async function flushBatch(key: string): Promise<void> {
   await notifyRequesters(requesters, batch.media);
 }
 
+/** "Severance (2022) — S01E01 "Good News"", with the episode list when there is one. */
+function describeMedia(media: MediaNotificationInfo): string {
+  const title = `${media.title} (${media.year})`;
+  if (media.mediaType !== "series" || !media.episodes?.length) return title;
+
+  const episodes = media.episodes
+    .map(
+      (e) =>
+        `S${String(e.seasonNumber).padStart(2, "0")}E${String(e.episodeNumber).padStart(2, "0")} "${e.title}"`,
+    )
+    .join(", ");
+  return `${title} — ${episodes}`;
+}
+
 function formatWebhookPrompt(media: MediaNotificationInfo, source: "sonarr" | "radarr"): string {
   const service = source === "sonarr" ? "Sonarr" : "Radarr";
-  let desc = `${media.title} (${media.year})`;
+  const quality = media.quality
+    ? ` (${media.quality}${media.releaseGroup ? ` · ${media.releaseGroup}` : ""})`
+    : "";
 
-  if (media.mediaType === "series" && media.episodes?.length) {
-    const eps = media.episodes
-      .map(
-        (e) =>
-          `S${String(e.seasonNumber).padStart(2, "0")}E${String(e.episodeNumber).padStart(2, "0")} "${e.title}"`,
-      )
-      .join(", ");
-    desc += ` — ${eps}`;
-  }
-
-  if (media.quality) {
-    desc += ` (${media.quality}${media.releaseGroup ? ` · ${media.releaseGroup}` : ""})`;
-  }
-
-  return `[Webhook — ${service}] ${desc} has finished downloading. Let the user know it's ready.`;
+  return `[Webhook — ${service}] ${describeMedia(media)}${quality} has finished downloading. Let the user know it's ready.`;
 }
 
 async function notifyRequester(
@@ -97,19 +99,13 @@ async function notifyRequester(
 
   const prompt = formatWebhookPrompt(media, source);
 
-  // Save webhook notification before running agent so its receivedAt timestamp
-  // is earlier than the assistant response messages' createdAt.
-  let desc = `${media.title} (${media.year}) has finished downloading.`;
-  if (media.mediaType === "series" && media.episodes?.length) {
-    const eps = media.episodes
-      .map(
-        (e) =>
-          `S${String(e.seasonNumber).padStart(2, "0")}E${String(e.episodeNumber).padStart(2, "0")} "${e.title}"`,
-      )
-      .join(", ");
-    desc = `${media.title} (${media.year}) — ${eps} finished downloading.`;
-  }
-  saveWebhookNotification(conversationId, source, desc, media);
+  // Saved before the agent runs so its receivedAt precedes the assistant reply.
+  saveWebhookNotification(
+    conversationId,
+    source,
+    `${describeMedia(media)} finished downloading.`,
+    media,
+  );
 
   const agentContext: AgentContext = { interfaceType: requester.interfaceType };
 
