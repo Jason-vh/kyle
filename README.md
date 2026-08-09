@@ -83,7 +83,7 @@ server/
     conversation.ts          → runConversationTurn(): the turn pipeline every interface uses
     tool-result.ts           → jsonResult(): the shape every tool returns
     table.ts                 → buildTable(): capped tables for tools that declare one
-    action-tools.ts          → isActionTool(): which tool calls show as Slack task cards
+    tool-display.ts          → isActionTool() + describeToolCall(): how a call is shown
     result-tables.ts         → extractTable(): a tool result rendered as tabular data
     replies.ts               → What a user sees when a turn is empty or fails
     system-prompt.ts         → Kyle's system prompt + AgentContext
@@ -110,7 +110,6 @@ server/
       users.ts               → User listing, platform link management (admin)
   threads/
     items.ts                 → buildThreadItems(): messages + webhooks as viewer items
-    tool-summary.ts          → One-line description of a tool call
     usernames.ts             → Batch display-name resolution across app + platform users
   slack/                     → handler (one message → one turn), streaming, tables, verify
   discord/                   → discord.js client, messageCreate handler, user resolution
@@ -185,10 +184,16 @@ web/                         → Vue 3 + Vite + Tailwind CSS 4 SPA
 - **Token optimization** — each service has `utils.ts` with `toPartial*` helpers that strip
   API responses to essential fields before sending to the LLM.
 - **Tools describe themselves** — a tool carries its own presentation: `label` (present
-  tense, for the ephemeral Slack status), `completedLabel` (past tense; its presence marks
-  the tool as an action worth a task card), `summary` (one line for the thread viewer), and
-  an optional `table`. `server/agent/registry.ts` is the only place a tool name maps back to
-  a tool, so `action-tools.ts`, `tool-summary.ts`, and `result-tables.ts` are all lookups.
+  tense, for the in-progress Slack status), `action` (marks a state change worth a task
+  card), `summary` (past tense, for a finished call), and an optional `table`.
+  `server/agent/registry.ts` is the only place a tool name maps back to a tool, so
+  `tool-display.ts` and `result-tables.ts` are lookups over it.
+- **Summaries name the media** — `summary` receives `(args, payload?)`, where the payload is
+  the tool's own JSON result. Most actions take an ID (`remove_movie` gets a `movieId`), so
+  the title only exists in the result — hence "Removed Inception (2010) from Radarr" rather
+  than "Removed movie from Radarr". The payload is absent for a call that never finished, so
+  every summary keeps a generic fallback. The Slack task card and the thread viewer both use
+  it, so they can never drift.
 - **Adding a new tool** — create `api.ts` (over `createApiClient`) + `tools.ts` under
   `server/<service>/`, returning `jsonResult(...)` from `server/agent/tool-result.ts`. Add
   the tool to that module's exported list and the list to `server/agent/registry.ts`, then

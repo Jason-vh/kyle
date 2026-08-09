@@ -2,7 +2,7 @@ import { Type } from "@sinclair/typebox";
 import type { Tool } from "../agent/tool.ts";
 import { jsonResult } from "../agent/tool-result.ts";
 import { buildTable } from "../agent/table.ts";
-import { episodeCode, episodeLabel } from "../../shared/media.ts";
+import { episodeCode, episodeLabel, titleWithYear } from "../../shared/media.ts";
 import * as sonarr from "./api.ts";
 import {
   toPartialSeries,
@@ -32,6 +32,17 @@ interface CalendarEpisode {
   title?: string;
   airDate?: string;
   hasFile?: boolean;
+}
+
+/** "Severance (2022)" from a result payload, or a bare noun when it has no title. */
+function seriesName(payload: unknown, fallback = "series"): string {
+  const { title, year, seriesTitle } = (payload ?? {}) as {
+    title?: string;
+    year?: number;
+    seriesTitle?: string;
+  };
+  const name = title ?? seriesTitle;
+  return name ? titleWithYear(name, year) : fallback;
 }
 
 function seriesQueueTable(payload: unknown) {
@@ -137,8 +148,9 @@ export const addSeriesTool: Tool<typeof addSeriesParams> = {
     "Add a TV series to Sonarr. Requires title, year, TVDB ID, and monitor option. The monitor option determines which episodes to download: 'all' for entire series, 'lastSeason' for only the latest season, 'future' for upcoming episodes only, 'missing' for missing episodes, 'existing' for existing episodes, or 'none' to add without downloading.",
   parameters: addSeriesParams,
   label: "Adding series to Sonarr",
-  completedLabel: "Added series to Sonarr",
-  summary: (args) => (args.title ? `Added '${args.title}' to Sonarr` : "Added series to Sonarr"),
+  action: true,
+  summary: (_args, payload) =>
+    `Added ${seriesName((payload as { series?: unknown })?.series)} to Sonarr`,
   async execute(_toolCallId, params) {
     const series = await sonarr.addSeries(
       params.title,
@@ -165,8 +177,8 @@ export const removeSeriesTool: Tool<typeof removeSeriesParams> = {
   description: "Remove a TV series from Sonarr and delete the files from disk",
   parameters: removeSeriesParams,
   label: "Removing series from Sonarr",
-  completedLabel: "Removed series from Sonarr",
-  summary: "Removed series from Sonarr",
+  action: true,
+  summary: (_args, payload) => `Removed ${seriesName(payload)} from Sonarr`,
   async execute(_toolCallId, params) {
     const series = await sonarr.getSeries(params.seriesId);
     await sonarr.removeSeries(params.seriesId, true);
@@ -174,6 +186,7 @@ export const removeSeriesTool: Tool<typeof removeSeriesParams> = {
       success: true,
       message: `Removed ${series.title} (${series.year}) from Sonarr and deleted files from disk.`,
       title: series.title,
+      year: series.year,
       tvdbId: series.tvdbId,
       tmdbId: series.tmdbId,
       imdbId: series.imdbId,
@@ -196,8 +209,11 @@ export const removeSeasonTool: Tool<typeof removeSeasonParams> = {
     "Remove a specific season from a TV series in Sonarr and delete all episode files from disk",
   parameters: removeSeasonParams,
   label: "Removing season from Sonarr",
-  completedLabel: "Removed season from Sonarr",
-  summary: "Removed season from Sonarr",
+  action: true,
+  summary: (args, payload) => {
+    const season = args.seasonNumber !== undefined ? ` season ${args.seasonNumber}` : "";
+    return `Removed ${seriesName(payload)}${season} from Sonarr`;
+  },
   async execute(_toolCallId, params) {
     const series = await sonarr.getSeries(params.seriesId);
     const episodes = await sonarr.getEpisodes(params.seriesId);
@@ -358,8 +374,13 @@ export const downloadEpisodesTool: Tool<typeof searchEpisodesParams> = {
     "Search indexers and download missing episodes for a series, a specific season, or specific episodes. When seasonNumber is provided with seriesId, automatically monitors unmonitored episodes before searching.",
   parameters: searchEpisodesParams,
   label: "Downloading episodes from Sonarr",
-  completedLabel: "Started episode download",
-  summary: "Searched for missing episodes",
+  action: true,
+  summary: (args, payload) => {
+    const series = seriesName(payload, "missing episodes");
+    return args.seasonNumber !== undefined
+      ? `Started downloading ${series} season ${args.seasonNumber}`
+      : `Started downloading ${series}`;
+  },
   async execute(_toolCallId, params) {
     const monitoringActions: string[] = [];
 
@@ -523,11 +544,16 @@ export const manualImportTool: Tool<typeof manualImportParams> = {
     "Inspect and force-import downloaded files that are stuck in the queue (downloaded but not imported). First call without importAll to see what files are available and any rejections, then call with importAll=true to import them.",
   parameters: manualImportParams,
   label: "Checking manual import candidates",
-  completedLabel: "Imported files into Sonarr",
   // The tool both lists and imports; only the import half is an action.
-  isAction: (args) => args.importAll === true,
-  summary: (args) =>
-    args.importAll ? "Force-importing downloaded files" : "Checking import candidates",
+  action: (args) => args.importAll === true,
+  summary: (args, payload) => {
+    if (!args.importAll) return "Checked import candidates";
+    const files = ((payload ?? {}) as { importedFiles?: { seriesTitle?: string }[] }).importedFiles;
+    if (!files?.length) return "Imported files into Sonarr";
+    const series = files[0]!.seriesTitle;
+    const count = `${files.length} file${files.length === 1 ? "" : "s"}`;
+    return series ? `Imported ${count} for ${series}` : `Imported ${count} into Sonarr`;
+  },
   async execute(_toolCallId, params) {
     const items = await sonarr.getManualImport(params.downloadId, params.seriesId);
 

@@ -5,7 +5,8 @@ import { downloadImages, MAX_IMAGE_SIZE, type RemoteImage } from "../images.ts";
 import { toolPresentation, type AgentContext } from "../agent/index.ts";
 import { EMPTY_REPLY, failureReply } from "../agent/replies.ts";
 import { runConversationTurn } from "../agent/conversation.ts";
-import { isActionTool, completedActionLabel } from "../agent/action-tools.ts";
+import { describeToolCall, isActionTool } from "../agent/tool-display.ts";
+import { parseToolPayload } from "../agent/tool-result.ts";
 import { extractTable, type ResultTable } from "../agent/result-tables.ts";
 import { resolveAppUserId } from "../db/users.ts";
 import { tableBlocks } from "./tables.ts";
@@ -80,13 +81,16 @@ function createProgressReporter(
           return;
         }
 
-        const table = extractTable(event.toolName, event.result);
+        const payload = parseToolPayload(event.result);
+
+        const table = extractTable(event.toolName, payload);
         if (table) tables.set(event.toolName, table);
 
         if (isAction) {
+          // The result names what was acted on; the label only knows the verb.
           stream.updateTask({
             id: event.toolCallId,
-            title: completedActionLabel(event.toolName) ?? label!,
+            title: describeToolCall(event.toolName, args, payload),
             status: "complete",
           });
         }

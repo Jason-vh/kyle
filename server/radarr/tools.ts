@@ -22,6 +22,12 @@ interface QueuedMovie {
   quality?: string;
 }
 
+/** "Inception (2010)" from a result payload, or a bare noun when it has no title. */
+function movieName(payload: unknown): string {
+  const { title, year } = (payload ?? {}) as { title?: string; year?: number };
+  return title ? titleWithYear(title, year) : "movie";
+}
+
 function movieQueueTable(payload: unknown) {
   const items = (payload as { downloads?: QueuedMovie[] })?.downloads ?? [];
   return buildTable(
@@ -94,8 +100,8 @@ export const addMovieTool: Tool<typeof addMovieParams> = {
     "Add a movie to Radarr. Requires TMDB ID. The movie will be monitored and downloaded (if available).",
   parameters: addMovieParams,
   label: "Adding movie to Radarr",
-  completedLabel: "Added movie to Radarr",
-  summary: (args) => (args.title ? `Added '${args.title}' to Radarr` : "Added movie to Radarr"),
+  action: true,
+  summary: (_args, payload) => `Added ${movieName(payload)} to Radarr`,
   async execute(_toolCallId, params) {
     // Lookup canonical metadata via TMDB ID, then add
     const movieLookup = await radarr.lookupMovieByTmdbId(params.tmdbId);
@@ -119,8 +125,8 @@ export const removeMovieTool: Tool<typeof removeMovieParams> = {
   description: "Remove a movie from Radarr and delete files from disk",
   parameters: removeMovieParams,
   label: "Removing movie from Radarr",
-  completedLabel: "Removed movie from Radarr",
-  summary: "Removed movie from Radarr",
+  action: true,
+  summary: (_args, payload) => `Removed ${movieName(payload)} from Radarr`,
   async execute(_toolCallId, params) {
     const movie = await radarr.getMovie(params.movieId);
     await radarr.removeMovie(params.movieId, true);
@@ -128,6 +134,7 @@ export const removeMovieTool: Tool<typeof removeMovieParams> = {
       success: true,
       message: `Removed ${movie.title} (${movie.year}) from Radarr and deleted files from disk.`,
       title: movie.title,
+      year: movie.year,
       tmdbId: movie.tmdbId,
       imdbId: movie.imdbId,
       titleSlug: movie.titleSlug,

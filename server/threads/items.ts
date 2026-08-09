@@ -7,7 +7,8 @@ import type {
 } from "@mariozechner/pi-ai";
 import type { WebhookNotification } from "../db/webhook-notifications.ts";
 import type { ThreadItem, ThreadMessage, ToolCallSummary } from "../../shared/types.ts";
-import { toolSummary } from "./tool-summary.ts";
+import { describeToolCall } from "../agent/tool-display.ts";
+import { parseToolPayload } from "../agent/tool-result.ts";
 import { safeJsonParse } from "../json.ts";
 
 export type StoredMessage = UserMessage | AssistantMessage | ToolResultMessage;
@@ -91,11 +92,16 @@ function buildAssistantMessage(
       if (block.text.trim()) textParts.push(block.text);
     } else if (block.type === "toolCall") {
       const result = results.get(block.id);
+      const args = block.arguments as Record<string, unknown>;
       toolCalls.push({
         id: block.id,
         name: block.name,
-        summaryText: toolSummary(block),
-        arguments: block.arguments,
+        summaryText: describeToolCall(
+          block.name,
+          args,
+          result && !result.isError ? parseToolPayload(result) : undefined,
+        ),
+        arguments: args,
         result: result ? { isError: result.isError ?? false, text: resultText(result) } : undefined,
       });
     }

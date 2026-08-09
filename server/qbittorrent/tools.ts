@@ -67,8 +67,13 @@ export const deleteTorrentsTool: Tool<typeof deleteTorrentsParams> = {
     "Delete one or more torrents from qBittorrent by hash. Deletes files from disk by default.",
   parameters: deleteTorrentsParams,
   label: "Deleting torrents from qBittorrent",
-  completedLabel: "Deleted torrents from qBittorrent",
-  summary: "Deleted torrents",
+  action: true,
+  // Torrent names are not in the result, so a count is the most we can say.
+  summary: (args) => {
+    const count = (args.hashes as string[] | undefined)?.length ?? 0;
+    if (!count) return "Deleted torrents from qBittorrent";
+    return `Deleted ${count} torrent${count === 1 ? "" : "s"} from qBittorrent`;
+  },
   async execute(_toolCallId, params) {
     const deleteFiles = params.deleteFiles ?? true;
     await qbittorrent.deleteTorrents(params.hashes, deleteFiles);
