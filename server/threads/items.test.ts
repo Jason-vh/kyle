@@ -11,7 +11,7 @@ function userRow(text: string, seconds: number, username = "Kyle Fan"): ThreadMe
 
 function assistantRow(msg: Partial<AssistantMessage>, seconds: number): ThreadMessageRow {
   return {
-    msg: { role: "assistant", content: [], stopReason: "endTurn", ...msg } as AssistantMessage,
+    msg: { role: "assistant", content: [], stopReason: "stop", ...msg } as AssistantMessage,
     createdAt: at(seconds),
     username: "Kyle",
   };

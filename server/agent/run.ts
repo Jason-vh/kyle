@@ -87,7 +87,6 @@ export interface RunAgentOptions {
 export interface RunAgentResult {
   messages: AgentMessage[];
   responseText: string;
-  errorMessages: AgentMessage[];
 }
 
 /** Text of the last assistant reply, with any tool calls and thinking stripped out. */
@@ -112,16 +111,8 @@ export async function runAgent(options: RunAgentOptions): Promise<RunAgentResult
 
   await agent.prompt(message, images?.length ? images : undefined);
 
-  // Failed attempts are kept so the thread viewer can show what happened.
-  const errorMessages: AgentMessage[] = [];
-  const keepLastMessage = () => {
-    const last = agent.state.messages[agent.state.messages.length - 1];
-    if (last) errorMessages.push(last);
-  };
-
   for (let attempt = 0; attempt < RETRY_DELAYS.length; attempt++) {
     if (!isOverloadedError(agent.state.error)) break;
-    keepLastMessage();
 
     log.warn("API overloaded, retrying", {
       attempt: attempt + 1,
@@ -131,13 +122,13 @@ export async function runAgent(options: RunAgentOptions): Promise<RunAgentResult
     });
     options.onRetry?.(attempt + 1, RETRY_DELAYS.length);
 
+    // The failed attempt is already persisted; drop it so the retry starts clean.
     agent.replaceMessages(agent.state.messages.slice(0, -1));
     await new Promise((resolve) => setTimeout(resolve, RETRY_DELAYS[attempt]));
     await agent.continue();
   }
 
   if (isOverloadedError(agent.state.error)) {
-    keepLastMessage();
     log.error("API overloaded after all retries", {
       attempts: RETRY_DELAYS.length,
       error: agent.state.error,
@@ -154,6 +145,5 @@ export async function runAgent(options: RunAgentOptions): Promise<RunAgentResult
   return {
     messages: agent.state.messages,
     responseText: lastResponseText(agent.state.messages),
-    errorMessages,
   };
 }

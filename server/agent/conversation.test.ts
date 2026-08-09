@@ -19,7 +19,7 @@ if (!dbReachable) {
 }
 
 // The agent itself is scripted; this suite is about what happens around it.
-let script: (options: RunAgentOptions) => RunAgentResult = () => {
+let script: (options: RunAgentOptions) => RunAgentResult | Promise<RunAgentResult> = () => {
   throw new Error("no script set");
 };
 
@@ -32,17 +32,40 @@ const { runConversationTurn, ConversationNotFoundError } = await import("./conve
 const { db } = await import("../db/index.ts");
 const { conversations, messages, mediaEvents, users } = await import("../db/schema.ts");
 
-/** Mirrors the real agent: the returned history is the replayed messages plus the new turn. */
+type NewMessages = RunAgentResult["messages"];
+
+/**
+ * Mirrors the real agent: every new message is announced with `message_end` as it
+ * is produced, and the returned history is the replayed messages plus the new turn.
+ * Persistence is driven by those events, so a script that skips them stores nothing.
+ */
+function emit(options: RunAgentOptions, newMessages: NewMessages): NewMessages {
+  for (const message of newMessages) {
+    options.onEvent?.({ type: "message_end", message } as AgentEvent);
+  }
+  return [...(options.previousMessages ?? []), ...newMessages];
+}
+
 function assistantText(options: RunAgentOptions, text: string): RunAgentResult {
-  return {
-    messages: [
-      ...(options.previousMessages ?? []),
-      { role: "user", content: options.message },
-      { role: "assistant", content: [{ type: "text", text }], stopReason: "endTurn" },
-    ] as RunAgentResult["messages"],
-    responseText: text,
-    errorMessages: [],
-  };
+  const messages = emit(options, [
+    { role: "user", content: options.message },
+    { role: "assistant", content: [{ type: "text", text }], stopReason: "stop" },
+  ] as NewMessages);
+  return { messages, responseText: text };
+}
+
+/** Writes are queued off the agent's synchronous events, so wait for them to land. */
+async function rolesAfter(conversationId: string, expected: number): Promise<string[]> {
+  for (let attempt = 0; attempt < 100; attempt++) {
+    const rows = await db
+      .select({ role: messages.role })
+      .from(messages)
+      .where(eq(messages.conversationId, conversationId))
+      .orderBy(messages.sequence);
+    if (rows.length >= expected) return rows.map((r) => r.role);
+    await new Promise((resolve) => setTimeout(resolve, 10));
+  }
+  throw new Error(`timed out waiting for ${expected} messages`);
 }
 
 let appUserId: string;
@@ -129,15 +152,21 @@ describe.skipIf(!dbReachable)("runConversationTurn", () => {
       arguments: { tmdbId: 27205 },
     };
 
+    // Ordered as the real agent does it: the tool call is announced before it runs.
     script = (options) => {
-      const emit = options.onEvent!;
-      emit({
+      const fire = options.onEvent!;
+      const messages = emit(options, [
+        { role: "user", content: options.message },
+        { role: "assistant", content: [toolCall], stopReason: "toolUse" },
+      ] as NewMessages);
+
+      fire({
         type: "tool_execution_start",
         toolCallId,
         toolName: "add_movie",
         args: { tmdbId: 27205 },
       } as AgentEvent);
-      emit({
+      fire({
         type: "tool_execution_end",
         toolCallId,
         toolName: "add_movie",
@@ -154,16 +183,16 @@ describe.skipIf(!dbReachable)("runConversationTurn", () => {
 
       return {
         messages: [
-          { role: "user", content: options.message },
-          { role: "assistant", content: [toolCall], stopReason: "toolUse" },
-          {
-            role: "assistant",
-            content: [{ type: "text", text: "Added it." }],
-            stopReason: "endTurn",
-          },
-        ] as RunAgentResult["messages"],
+          ...messages,
+          ...emit({ ...options, previousMessages: [] }, [
+            {
+              role: "assistant",
+              content: [{ type: "text", text: "Added it." }],
+              stopReason: "stop",
+            },
+          ] as NewMessages),
+        ],
         responseText: "Added it.",
-        errorMessages: [],
       };
     };
 
@@ -206,17 +235,18 @@ describe.skipIf(!dbReachable)("runConversationTurn", () => {
     expect([...subscriptions]).toEqual([{ radarr_id: 42, active: true }]);
   });
 
-  test("persists error messages so the thread viewer can show them", async () => {
-    const errorMessage = {
-      role: "assistant",
-      content: [],
-      stopReason: "error",
-      errorMessage: "overloaded",
-    } as unknown as RunAgentResult["errorMessages"][number];
-    script = (options) => ({
-      ...assistantText(options, "recovered"),
-      errorMessages: [errorMessage],
-    });
+  test("persists a failed attempt so the thread viewer can show it", async () => {
+    // A retried turn announces the failed attempt, then the recovery.
+    script = (options) => {
+      const failed = emit(options, [
+        { role: "user", content: options.message },
+        { role: "assistant", content: [], stopReason: "error", errorMessage: "overloaded" },
+      ] as NewMessages);
+      const recovered = emit({ ...options, previousMessages: [] }, [
+        { role: "assistant", content: [{ type: "text", text: "recovered" }], stopReason: "stop" },
+      ] as NewMessages);
+      return { messages: [...failed, ...recovered], responseText: "recovered" };
+    };
 
     const { conversationId } = await runConversationTurn({
       interfaceType: "http",
@@ -229,8 +259,11 @@ describe.skipIf(!dbReachable)("runConversationTurn", () => {
       .from(messages)
       .where(eq(messages.conversationId, conversationId))
       .orderBy(messages.sequence);
+    // Stored in the order they happened, failed attempt included.
     expect(rows).toHaveLength(3);
-    expect(rows[0]!.data).toMatchObject({ stopReason: "error" });
+    expect(rows.map((r) => r.role)).toEqual(["user", "assistant", "assistant"]);
+    expect(rows[1]!.data).toMatchObject({ stopReason: "error" });
+    expect(rows[2]!.data).toMatchObject({ stopReason: "stop" });
   });
 
   test("a prompt the user did not type is replayed but not stored", async () => {
@@ -263,9 +296,65 @@ describe.skipIf(!dbReachable)("runConversationTurn", () => {
     expect(rows.map((r) => r.role)).toEqual(["user", "assistant", "assistant"]);
   });
 
+  test("messages are stored while the turn is still running", async () => {
+    script = (options) => assistantText(options, "hello");
+    const { conversationId } = await runConversationTurn({ interfaceType: "http", text: "first" });
+    createdConversationIds.push(conversationId);
+
+    let midRun: string[] = [];
+    script = async (options) => {
+      const sofar = emit(options, [
+        { role: "user", content: options.message },
+        { role: "assistant", content: [{ type: "text", text: "thinking" }], stopReason: "toolUse" },
+      ] as NewMessages);
+      // The agent has not returned yet, but the turn so far should already be readable.
+      midRun = await rolesAfter(conversationId, 4);
+      return {
+        messages: [
+          ...sofar,
+          ...emit({ ...options, previousMessages: [] }, [
+            { role: "assistant", content: [{ type: "text", text: "done" }], stopReason: "stop" },
+          ] as NewMessages),
+        ],
+        responseText: "done",
+      };
+    };
+
+    await runConversationTurn({ interfaceType: "http", conversationId, text: "second" });
+
+    expect(midRun).toEqual(["user", "assistant", "user", "assistant"]);
+    expect(await rolesAfter(conversationId, 5)).toEqual([
+      "user",
+      "assistant",
+      "user",
+      "assistant",
+      "assistant",
+    ]);
+  });
+
+  test("a turn that fails part-way keeps what already happened", async () => {
+    script = (options) => {
+      emit(options, [
+        { role: "user", content: options.message },
+        { role: "assistant", content: [], stopReason: "error", errorMessage: "overloaded" },
+      ] as NewMessages);
+      throw new Error("API is overloaded after retries");
+    };
+
+    const conversationId = crypto.randomUUID();
+    await db.insert(conversations).values({ id: conversationId, interfaceType: "http" });
+    createdConversationIds.push(conversationId);
+
+    await expect(
+      runConversationTurn({ interfaceType: "http", conversationId, text: "hi" }),
+    ).rejects.toThrow("overloaded");
+
+    expect(await rolesAfter(conversationId, 2)).toEqual(["user", "assistant"]);
+  });
+
   test("rejects an unknown conversation id", async () => {
     script = (options) => assistantText(options, "never runs");
-    expect(
+    await expect(
       runConversationTurn({
         interfaceType: "http",
         conversationId: crypto.randomUUID(),

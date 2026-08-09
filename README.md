@@ -81,6 +81,7 @@ server/
     model.ts                 → Model selection (ANTHROPIC_MODEL)
     run.ts                   → Agent factory + runAgent(), overload retries
     conversation.ts          → runConversationTurn(): the turn pipeline every interface uses
+    turn-writer.ts           → Persists messages + media events as the agent produces them
     tool-result.ts           → jsonResult(): the shape every tool returns
     table.ts                 → buildTable(): capped tables for tools that declare one
     tool-display.ts          → isActionTool() + describeToolCall(): how a call is shown
@@ -143,6 +144,13 @@ web/                         → Vue 3 + Vite + Tailwind CSS 4 SPA
 - **One turn pipeline** — Slack, Discord, and HTTP all call `runConversationTurn()`, which
   resolves the conversation, replays history, persists messages, and records media events.
   Each interface only supplies its own I/O (streaming, replies, thread status).
+- **Incremental persistence** — messages are written on each `message_end` event rather than
+  in one batch at the end, so the thread viewer shows a turn in progress and a turn that
+  fails part-way still keeps what happened. Agent events are synchronous, so `turn-writer.ts`
+  chains its writes: `messages.sequence` is an identity column, and concurrent inserts would
+  order the thread by whichever insert landed first. A media event is queued behind the
+  message whose tool call produced it, since it needs that row's id. Note the viewer fetches
+  once on mount — following a live turn means refreshing.
 - **JSONB messages** — full `AgentMessage` objects stored as JSONB in the `messages` table.
   The `role` and `sequence` columns exist only for querying and ordering.
 - **Interface-agnostic conversations** — the `conversations` table has an `interfaceType`

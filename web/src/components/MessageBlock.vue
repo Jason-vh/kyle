@@ -97,7 +97,7 @@
     </div>
   </details>
 
-  <!-- Assistant text message (endTurn) -->
+  <!-- Assistant text message -->
   <div
     v-else
     :id="msg.id"
