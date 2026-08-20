@@ -1,18 +1,30 @@
 import { parseAuthCookie, clearJwtCookie, isLocalhost } from "../../auth/jwt.ts";
+import { PLEX_PLATFORM } from "../../auth/plex.ts";
+import { isPlexConfigured } from "../../plex/api.ts";
+import { getPlatformIdentity } from "../../db/users.ts";
 import { createLogger } from "../../logger.ts";
 
 const log = createLogger("api-auth");
 
 export async function handleApiAuthStatus(req: Request): Promise<Response> {
   const jwtUser = await parseAuthCookie(req);
+  const plexEnabled = isPlexConfigured();
+
   if (jwtUser) {
+    const plex = await getPlatformIdentity(jwtUser.id, PLEX_PLATFORM);
     return Response.json({
       authenticated: true,
-      user: { id: jwtUser.id, name: jwtUser.name, admin: jwtUser.admin },
+      plexEnabled,
+      user: {
+        id: jwtUser.id,
+        name: jwtUser.name,
+        admin: jwtUser.admin,
+        plexUsername: plex?.platformUsername ?? null,
+      },
     });
   }
 
-  return Response.json({ authenticated: false });
+  return Response.json({ authenticated: false, plexEnabled });
 }
 
 export async function handleApiLogout(req: Request): Promise<Response> {

@@ -153,6 +153,15 @@ export async function getCredentialById(credentialId: string) {
 }
 
 /**
+ * Get a user's identity on one platform, if linked.
+ */
+export async function getPlatformIdentity(userId: string, platform: string) {
+  return db.query.platformIdentities.findFirst({
+    where: and(eq(platformIdentities.userId, userId), eq(platformIdentities.platform, platform)),
+  });
+}
+
+/**
  * Get all users with their platform identities.
  */
 export async function getAllUsersWithIdentities() {

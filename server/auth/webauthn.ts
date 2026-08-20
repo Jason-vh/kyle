@@ -11,19 +11,17 @@ import {
   type PublicKeyCredentialCreationOptionsJSON,
   type PublicKeyCredentialRequestOptionsJSON,
 } from "@simplewebauthn/server";
+import { appOrigin, isDevEnvironment } from "../config.ts";
 
 // Challenge store with 5-minute TTL
 const challengeStore = new Map<string, { challenge: string; expires: number }>();
 const CHALLENGE_TTL_MS = 5 * 60 * 1000;
 
 function getConfig() {
-  const isDev = !process.env.RAILWAY_ENVIRONMENT && !process.env.WEBAUTHN_RP_ID?.includes(".");
-
   return {
     rpName: "Kyle",
-    rpID: process.env.WEBAUTHN_RP_ID ?? (isDev ? "localhost" : "kyle.vhtm.eu"),
-    origin:
-      process.env.WEBAUTHN_ORIGIN ?? (isDev ? "http://localhost:5173" : "https://kyle.vhtm.eu"),
+    rpID: process.env.WEBAUTHN_RP_ID ?? (isDevEnvironment() ? "localhost" : "kyle.vhtm.eu"),
+    origin: appOrigin(),
   };
 }
 

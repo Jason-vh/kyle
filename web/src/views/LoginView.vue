@@ -24,23 +24,58 @@
         >
           {{ loading ? "Authenticating\u2026" : "Sign in with passkey" }}
         </button>
+
+        <template v-if="plexEnabled">
+          <div class="my-4 flex items-center gap-3">
+            <span class="h-px flex-1 bg-border-primary" />
+            <span class="text-xs text-text-muted">or</span>
+            <span class="h-px flex-1 bg-border-primary" />
+          </div>
+          <button
+            :disabled="loading"
+            class="flex w-full items-center justify-center gap-2 rounded-lg border border-border-primary px-4 py-2.5 text-sm font-semibold text-text-primary transition-colors hover:bg-bg-input disabled:opacity-50"
+            @click="onPlexLogin"
+          >
+            <PlexIcon class="text-[#e5a00d]" />
+            Sign in with Plex
+          </button>
+        </template>
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from "vue";
+import { onMounted, ref } from "vue";
 import { useTitle } from "@vueuse/core";
-import { useRouter } from "vue-router";
-import { resetAuthCache } from "../api/auth";
+import { useRoute, useRouter } from "vue-router";
+import { isPlexEnabled, resetAuthCache } from "../api/auth";
 import { passkeyLogin } from "../api/passkey";
+import { plexErrorMessage, startPlexLogin } from "../api/plex";
+import PlexIcon from "../components/PlexIcon.vue";
 
 useTitle("Sign in — Kyle");
 
+const route = useRoute();
 const router = useRouter();
-const error = ref("");
+const error = ref(plexErrorMessage(route.query.error));
 const loading = ref(false);
+const plexEnabled = ref(false);
+
+onMounted(async () => {
+  plexEnabled.value = await isPlexEnabled();
+});
+
+async function onPlexLogin() {
+  error.value = "";
+  loading.value = true;
+  try {
+    await startPlexLogin();
+  } catch (e) {
+    error.value = e instanceof Error ? e.message : "Could not start Plex sign-in";
+    loading.value = false;
+  }
+}
 
 async function onPasskeyLogin() {
   error.value = "";

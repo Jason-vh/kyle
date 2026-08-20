@@ -299,14 +299,24 @@ timestamps. To test streaming, post a real message, then pass its `ts` as `--thr
 ```bash
 bun run scripts/create-admin.ts "Admin Name"   # bootstrap first admin (prints invite link)
 bun run scripts/invite.ts "Display Name"       # create invite for a new user (existing admin required)
+bun run scripts/plex-token.ts                  # obtain a Plex access token by claiming a PIN
 ```
 
-Admin API endpoints (require a JWT with `admin: true`):
+### Signing in with Plex
 
-- `POST /api/invites` — create invite `{ displayName, isAdmin?, expiresInDays? }`
-- `GET /api/users` — list all users with platform identities
-- `POST /api/users/:id/links` — link platform identity `{ platform, platformUserId, platformUsername? }` + run retroactive backfill
-- `DELETE /api/users/:id/links/:linkId` — unlink platform identity
+Set `PLEX_CLIENT_IDENTIFIER` to enable it. Kyle uses the PIN + forwarding flow from the
+[Plex API docs](https://developer.plex.tv/pms/#section/API-Info/Authenticating-with-Plex):
+
+1. `POST /api/auth/plex/login/start` creates a PIN and returns the Auth App URL.
+2. The browser signs in at `app.plex.tv` and is forwarded to `/api/auth/plex/callback?state=…`.
+3. The callback reads the claimed PIN, fetches the Plex account, and issues Kyle's own JWT cookie.
+
+The `state` is single-use with a 10-minute TTL. **The Plex access token is used once to read the
+account identity and then discarded** — Kyle stores no Plex credentials.
+
+A Plex account is stored as a `platform_identities` row with `platform = 'plex'`, keyed on the
+numeric plex.tv account id. Existing users connect Plex from `/account`; the flow refuses an
+account already linked to someone else.
 
 ## Slack app configuration
 
@@ -341,32 +351,34 @@ rather than passed to the agent as an opaque ID.
 
 ## Environment variables
 
-| Variable               | Description                                                                           |
-| ---------------------- | ------------------------------------------------------------------------------------- |
-| `DATABASE_URL`         | Postgres connection string (auto-injected in production)                              |
-| `PORT`                 | Server port (default: 3000)                                                           |
-| `ANTHROPIC_API_KEY`    | Anthropic API key for Claude                                                          |
-| `ANTHROPIC_MODEL`      | Agent model override (default: `claude-sonnet-4-5`); unknown ids fall back to default |
-| `JWT_SECRET`           | High-entropy secret for JWT signing (required)                                        |
-| `WEBAUTHN_RP_ID`       | WebAuthn relying party ID (`localhost` dev / `kyle.vhtm.eu` prod)                     |
-| `WEBAUTHN_ORIGIN`      | WebAuthn origin URL (`http://localhost:5173` dev / `https://kyle.vhtm.eu` prod)       |
-| `SLACK_BOT_TOKEN`      | Slack bot token (`xoxb-...`)                                                          |
-| `SLACK_SIGNING_SECRET` | Slack app signing secret for request verification                                     |
-| `SONARR_HOST`          | Sonarr instance URL                                                                   |
-| `SONARR_API_KEY`       | Sonarr API key                                                                        |
-| `RADARR_HOST`          | Radarr instance URL                                                                   |
-| `RADARR_API_KEY`       | Radarr API key                                                                        |
-| `TMDB_API_TOKEN`       | TMDB API bearer token                                                                 |
-| `ULTRA_HOST`           | Ultra seedbox URL (e.g. `https://user.host.usbx.me`)                                  |
-| `ULTRA_API_TOKEN`      | Ultra API bearer token                                                                |
-| `QBITTORRENT_HOST`     | qBittorrent Web UI URL                                                                |
-| `QBITTORRENT_USERNAME` | qBittorrent username                                                                  |
-| `QBITTORRENT_PASSWORD` | qBittorrent password                                                                  |
-| `BRAVE_API_KEY`        | Brave Search API key                                                                  |
-| `WEBHOOK_AUTH`         | Basic auth credentials for webhook endpoints (`username:password`)                    |
-| `CHAT_API_KEY`         | Bearer token for `/chat` (optional, skipped if unset)                                 |
-| `DISCORD_BOT_TOKEN`    | Discord bot token (optional; skips gracefully if unset)                               |
-| `THREAD_VIEWER_TOKEN`  | Shared secret for `?sig=` thread share links (HMAC-SHA256)                            |
+| Variable                 | Description                                                                                |
+| ------------------------ | ------------------------------------------------------------------------------------------ |
+| `DATABASE_URL`           | Postgres connection string (auto-injected in production)                                   |
+| `PORT`                   | Server port (default: 3000)                                                                |
+| `ANTHROPIC_API_KEY`      | Anthropic API key for Claude                                                               |
+| `ANTHROPIC_MODEL`        | Agent model override (default: `claude-sonnet-4-5`); unknown ids fall back to default      |
+| `JWT_SECRET`             | High-entropy secret for JWT signing (required)                                             |
+| `WEBAUTHN_RP_ID`         | WebAuthn relying party ID (`localhost` dev / `kyle.vhtm.eu` prod)                          |
+| `WEBAUTHN_ORIGIN`        | WebAuthn origin URL (`http://localhost:5173` dev / `https://kyle.vhtm.eu` prod)            |
+| `PUBLIC_ORIGIN`          | Public origin for redirects back from Plex (defaults to `WEBAUTHN_ORIGIN`)                 |
+| `PLEX_CLIENT_IDENTIFIER` | Stable random string identifying Kyle to Plex (optional; disables Plex sign-in when unset) |
+| `SLACK_BOT_TOKEN`        | Slack bot token (`xoxb-...`)                                                               |
+| `SLACK_SIGNING_SECRET`   | Slack app signing secret for request verification                                          |
+| `SONARR_HOST`            | Sonarr instance URL                                                                        |
+| `SONARR_API_KEY`         | Sonarr API key                                                                             |
+| `RADARR_HOST`            | Radarr instance URL                                                                        |
+| `RADARR_API_KEY`         | Radarr API key                                                                             |
+| `TMDB_API_TOKEN`         | TMDB API bearer token                                                                      |
+| `ULTRA_HOST`             | Ultra seedbox URL (e.g. `https://user.host.usbx.me`)                                       |
+| `ULTRA_API_TOKEN`        | Ultra API bearer token                                                                     |
+| `QBITTORRENT_HOST`       | qBittorrent Web UI URL                                                                     |
+| `QBITTORRENT_USERNAME`   | qBittorrent username                                                                       |
+| `QBITTORRENT_PASSWORD`   | qBittorrent password                                                                       |
+| `BRAVE_API_KEY`          | Brave Search API key                                                                       |
+| `WEBHOOK_AUTH`           | Basic auth credentials for webhook endpoints (`username:password`)                         |
+| `CHAT_API_KEY`           | Bearer token for `/chat` (optional, skipped if unset)                                      |
+| `DISCORD_BOT_TOKEN`      | Discord bot token (optional; skips gracefully if unset)                                    |
+| `THREAD_VIEWER_TOKEN`    | Shared secret for `?sig=` thread share links (HMAC-SHA256)                                 |
 
 ## API reference
 
@@ -382,6 +394,10 @@ rather than passed to the agent as an opaque ID.
 | `GET /api/auth/status`                | JWT cookie            | Current user + admin flag                       |
 | `POST /api/auth/logout`               | JWT cookie            | Clear the session cookie                        |
 | `POST /api/auth/passkey/*`            | —                     | WebAuthn registration/authentication            |
+| `POST /api/auth/plex/login/start`     | —                     | Begin Plex sign-in; returns the Auth App URL    |
+| `POST /api/auth/plex/link/start`      | JWT cookie            | Begin connecting Plex to the current account    |
+| `DELETE /api/auth/plex/link`          | JWT cookie            | Disconnect the linked Plex account              |
+| `GET /api/auth/plex/callback`         | `state`               | Where Plex forwards back to; sets the session   |
 | `POST /api/invites`                   | Admin                 | Create an invite link                           |
 | `GET /api/users`                      | Admin                 | List users + platform identities                |
 | `POST /api/users/:id/links`           | Admin                 | Link a platform identity                        |

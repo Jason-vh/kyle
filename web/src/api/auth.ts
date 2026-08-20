@@ -2,10 +2,14 @@ export interface AuthUser {
   id: string;
   name: string;
   admin: boolean;
+  /** Linked Plex account, or null when none is connected. */
+  plexUsername?: string | null;
 }
 
 interface AuthStatus {
   authenticated: boolean;
+  /** False when the server has no Plex client identifier configured. */
+  plexEnabled?: boolean;
   user?: AuthUser;
 }
 
@@ -34,6 +38,10 @@ export async function getAuthStatus(): Promise<AuthStatus> {
 
 export function getCachedUser(): AuthUser | null {
   return authCached?.user ?? null;
+}
+
+export async function isPlexEnabled(): Promise<boolean> {
+  return (await getAuthStatus()).plexEnabled ?? false;
 }
 
 export async function logout(): Promise<void> {

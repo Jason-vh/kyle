@@ -19,6 +19,12 @@ export const router = createRouter({
       redirect: "/threads",
     },
     {
+      path: "/account",
+      name: "account",
+      component: () => import("./views/AccountView.vue"),
+      meta: { requiresAuth: true },
+    },
+    {
       path: "/threads",
       name: "threads",
       component: () => import("./views/ThreadListView.vue"),

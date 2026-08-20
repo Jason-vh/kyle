@@ -11,6 +11,16 @@
           </div>
           <span class="text-base font-semibold text-text-primary">Kyle</span>
         </router-link>
+
+        <router-link
+          v-if="user"
+          to="/account"
+          class="ml-auto flex items-center gap-2 no-underline"
+          :title="`Signed in as ${user.name}`"
+        >
+          <span class="hidden text-sm text-text-muted sm:inline">{{ user.name }}</span>
+          <UserAvatar :name="user.name" />
+        </router-link>
       </div>
     </header>
 
@@ -22,5 +32,20 @@
 </template>
 
 <script setup lang="ts">
-import { RouterView } from "vue-router";
+import { ref, watch } from "vue";
+import { RouterView, useRoute } from "vue-router";
+import { getAuthStatus, type AuthUser } from "./api/auth";
+import UserAvatar from "./components/UserAvatar.vue";
+
+const route = useRoute();
+const user = ref<AuthUser | null>(null);
+
+// Re-read on navigation so the header follows sign-in and sign-out.
+watch(
+  () => route.fullPath,
+  async () => {
+    user.value = (await getAuthStatus()).user ?? null;
+  },
+  { immediate: true },
+);
 </script>

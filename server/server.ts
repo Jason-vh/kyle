@@ -12,6 +12,12 @@ import {
   handlePasskeyRegisterVerify,
 } from "./routes/api/auth-passkey.ts";
 import {
+  handlePlexLoginStart,
+  handlePlexLinkStart,
+  handlePlexUnlink,
+  handlePlexCallback,
+} from "./routes/api/auth-plex.ts";
+import {
   handleGetInvite,
   handleInviteRegisterOptions,
   handleInviteRegisterVerify,
@@ -23,7 +29,7 @@ const log = createLogger("server");
 
 const MAX_BODY_SIZE = 1_000_000; // 1 MB
 
-const SPA_PATHS = new Set(["/", "/threads", "/threads/", "/login"]);
+const SPA_PATHS = new Set(["/", "/threads", "/threads/", "/login", "/account"]);
 const WEB_DIST = "web/dist";
 
 /** Serves a built asset, falling back to index.html for client-routed paths. */
@@ -72,6 +78,10 @@ export function startServer(port: number) {
       "/api/auth/passkey/login/verify": { POST: handlePasskeyLoginVerify },
       "/api/auth/passkey/register/options": { POST: handlePasskeyRegisterOptions },
       "/api/auth/passkey/register/verify": { POST: handlePasskeyRegisterVerify },
+      "/api/auth/plex/login/start": { POST: handlePlexLoginStart },
+      "/api/auth/plex/link/start": { POST: handlePlexLinkStart },
+      "/api/auth/plex/link": { DELETE: handlePlexUnlink },
+      "/api/auth/plex/callback": { GET: handlePlexCallback },
 
       "/api/invites": { POST: handleCreateInvite },
       "/api/invites/:code": { GET: (req) => handleGetInvite(req, req.params.code) },
