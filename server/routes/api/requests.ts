@@ -8,7 +8,7 @@ import {
 import { invalidateLibraryIndex } from "../../requests/library.ts";
 import { getAllMediaRequests, getMediaRequestsForUser } from "../../db/requests.ts";
 import { createLogger } from "../../logger.ts";
-import { errorMessage } from "../../errors.ts";
+import { errorMessage, errorResponse } from "../../errors.ts";
 
 const log = createLogger("api-requests");
 
@@ -27,7 +27,7 @@ export async function handleDiscoverSearch(req: Request): Promise<Response> {
     return Response.json({ results: await searchRequestableMedia(query) });
   } catch (error) {
     log.error("discover search failed", { query, error: errorMessage(error) });
-    return Response.json({ error: "Search is unavailable right now" }, { status: 502 });
+    return errorResponse(error, 502, "Search failed");
   }
 }
 
@@ -85,7 +85,7 @@ export async function handleCreateRequest(req: Request): Promise<Response> {
       tmdbId: body.tmdbId,
       error: errorMessage(error),
     });
-    return Response.json({ error: "Could not add this to the library" }, { status: 502 });
+    return errorResponse(error, 502, "Could not add this to the library");
   }
 }
 

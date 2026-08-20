@@ -573,6 +573,12 @@ This repo is public, so most app config lives in GitHub Actions secrets:
   code should not need casts.
 - **Tests**: `bun test`. Keep them pure where possible; tests that need Postgres must skip
   themselves when `DATABASE_URL` is unreachable so `bun run check` passes without Docker.
+  `mock.module` replaces a module for the whole run, so spread the real one and override only
+  what the test needs.
+- **Errors**: surface the real message rather than a tidy one — `errorResponse(error, status)`
+  from `server/errors.ts`. Kyle sits behind auth and is used by a household, so a reply of
+  "op ANY/ALL (array) requires array on right side" is worth far more than "unavailable right
+  now", which forces a trip to the server logs to learn anything at all.
 - **Git workflow**: push to `main`; the self-hosted runner deploys automatically.
 - **Comments/docstrings**: keep them as short as possible, ideally a single line, and never
   include ticket references.
