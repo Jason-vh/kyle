@@ -318,6 +318,33 @@ A Plex account is stored as a `platform_identities` row with `platform = 'plex'`
 numeric plex.tv account id. Existing users connect Plex from `/account`; the flow refuses an
 account already linked to someone else.
 
+### Reading the Plex server (planned)
+
+`scripts/plex-token.ts` obtains the owner token Kyle would use as its service credential. The
+following was probed against the live server and is recorded because it is not obvious:
+
+- **Who may sign in** — `GET https://plex.tv/api/users`, filtered to the server's
+  `machineIdentifier`, plus the owner from `GET /api/v2/user`. The server's own `/accounts` is
+  _not_ the allowlist: it only lists accounts that have played something, so a newly shared user
+  would be refused. Managed Home users (no `username`) cannot sign in with Plex and must be
+  excluded, though they still need names for attribution.
+- **The owner's history is `accountID` 1** — a server records its owner under a local id, not
+  their plex.tv account id, so lookups need `plexId === ownerPlexId ? 1 : plexId`. Everyone else
+  matches directly.
+- **Who watched an item** — `/status/sessions/history/all?metadataItemID=<ratingKey>` returns one
+  entry per view carrying `accountID`, readable for every user with the owner token.
+- **Matching Kyle's ids to Plex** — `?guid=tmdb://…` matches nothing on current agents; external
+  ids live in a `Guid[]` array that is not filterable. Bulk-list sections with `includeGuids=1`
+  and index `tmdb://` → `ratingKey`. History can also reference items since removed from the
+  library.
+
+Admin API endpoints (require a JWT with `admin: true`):
+
+- `POST /api/invites` — create invite `{ displayName, isAdmin?, expiresInDays? }`
+- `GET /api/users` — list all users with platform identities
+- `POST /api/users/:id/links` — link platform identity `{ platform, platformUserId, platformUsername? }` + run retroactive backfill
+- `DELETE /api/users/:id/links/:linkId` — unlink platform identity
+
 ## Slack app configuration
 
 - **App settings**: managed via manifest at [api.slack.com/apps](https://api.slack.com/apps)
