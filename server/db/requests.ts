@@ -59,6 +59,23 @@ export async function getAllMediaRequests(limit = 100) {
     .limit(limit);
 }
 
+/**
+ * Every request with its requester, for annotating a whole library listing.
+ * A household's request table is small enough that fetching it beats filtering
+ * by a few hundred ids.
+ */
+export async function getAllRequesters() {
+  return db
+    .select({
+      mediaType: mediaRequests.mediaType,
+      tmdbId: mediaRequests.tmdbId,
+      userId: mediaRequests.userId,
+      name: users.displayName,
+    })
+    .from(mediaRequests)
+    .innerJoin(users, eq(mediaRequests.userId, users.id));
+}
+
 /** Who requested each of these titles, for showing alongside search results. */
 export function requestersQuery(mediaType: "movie" | "series", tmdbIds: number[]) {
   return db

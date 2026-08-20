@@ -3,6 +3,7 @@ import type { RadarrMovie } from "../radarr/types.ts";
 import type { SonarrSeries } from "../sonarr/types.ts";
 import * as radarr from "../radarr/api.ts";
 import * as sonarr from "../sonarr/api.ts";
+import { getAllRequesters } from "../db/requests.ts";
 import { createLogger } from "../logger.ts";
 
 const log = createLogger("library");
@@ -26,6 +27,8 @@ function toMovie(movie: RadarrMovie): LibraryItem {
     monitored: movie.monitored,
     sizeOnDisk: movie.sizeOnDisk ?? 0,
     availability: movie.hasFile ? "available" : "missing",
+    requestedBy: [],
+    requestedByMe: false,
   };
 }
 
@@ -50,16 +53,57 @@ function toSeries(series: SonarrSeries): LibraryItem {
     sizeOnDisk: series.statistics?.sizeOnDisk ?? 0,
     availability: seriesAvailability(present, total),
     detail: total > 0 ? `${present}/${total} episodes` : undefined,
+    requestedBy: [],
+    requestedByMe: false,
   };
 }
 
-/** Everything Radarr and Sonarr hold, newest-looking first is left to the caller. */
-export async function listLibrary(): Promise<LibraryItem[]> {
+function requestKey(mediaType: string, tmdbId: number): string {
+  return `${mediaType}:${tmdbId}`;
+}
+
+interface Requester {
+  mediaType: string;
+  tmdbId: number;
+  userId: string;
+  name: string;
+}
+
+/**
+ * Attach who asked for each title. Only media requested through Kyle matches;
+ * anything added before, or by hand, simply has no requester.
+ */
+function annotateRequesters(items: LibraryItem[], viewerId: string, requests: Requester[]): void {
+  if (requests.length === 0) return;
+
+  const byKey = new Map<string, { names: string[]; mine: boolean }>();
+  for (const request of requests) {
+    const key = requestKey(request.mediaType, request.tmdbId);
+    const entry = byKey.get(key) ?? { names: [], mine: false };
+    entry.names.push(request.name);
+    entry.mine ||= request.userId === viewerId;
+    byKey.set(key, entry);
+  }
+
+  for (const item of items) {
+    if (item.tmdbId === undefined) continue;
+    const entry = byKey.get(requestKey(item.mediaType, item.tmdbId));
+    if (!entry) continue;
+    item.requestedBy = entry.names;
+    item.requestedByMe = entry.mine;
+  }
+}
+
+/** Everything Radarr and Sonarr hold, annotated with who asked for it. */
+export async function listLibrary(viewerId: string): Promise<LibraryItem[]> {
   const [movies, series] = await Promise.all([radarr.getMovies(), sonarr.getAllSeries()]);
 
-  return [...movies.map(toMovie), ...series.map(toSeries)].sort((a, b) =>
+  const items = [...movies.map(toMovie), ...series.map(toSeries)].sort((a, b) =>
     a.title.localeCompare(b.title),
   );
+
+  annotateRequesters(items, viewerId, await getAllRequesters());
+  return items;
 }
 
 /** Remove an item from its service, optionally deleting the files with it. */
@@ -77,4 +121,4 @@ export async function removeLibraryItem(
   log.info("removed library item", { mediaType, serviceId, deleteFiles });
 }
 
-export const __testing = { toMovie, toSeries, seriesAvailability };
+export const __testing = { toMovie, toSeries, seriesAvailability, annotateRequesters };

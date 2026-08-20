@@ -70,6 +70,9 @@
             <template v-if="item.sizeOnDisk > 0"> · {{ formatSize(item.sizeOnDisk) }}</template>
             <template v-if="!item.monitored"> · unmonitored</template>
           </p>
+          <p v-if="item.requestedBy.length" class="mt-0.5 truncate text-xs text-text-muted">
+            Requested by {{ formatNames(item.requestedBy) }}
+          </p>
           <p v-if="failures[key(item)]" class="mt-1 text-xs text-accent-red">
             {{ failures[key(item)] }}
           </p>
@@ -100,7 +103,7 @@ import { formatSize, getLibrary, removeLibraryItem, type LibraryItem } from "../
 
 useTitle("Library — Kyle");
 
-type Filter = "all" | "movie" | "series" | "partial" | "missing";
+type Filter = "all" | "movie" | "series" | "partial" | "missing" | "mine";
 
 const FILTERS: { value: Filter; label: string }[] = [
   { value: "all", label: "All" },
@@ -108,7 +111,14 @@ const FILTERS: { value: Filter; label: string }[] = [
   { value: "series", label: "Series" },
   { value: "partial", label: "Incomplete" },
   { value: "missing", label: "Nothing on disk" },
+  { value: "mine", label: "Requested by me" },
 ];
+
+/** "Bob", "Bob and Jane", "Bob, Jane and Sue". */
+function formatNames(names: string[]): string {
+  if (names.length <= 1) return names[0] ?? "";
+  return `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
+}
 
 const LABELS: Record<LibraryItem["availability"], string> = {
   available: "Complete",
@@ -139,6 +149,7 @@ const filtered = computed(() => {
   return items.value.filter((item) => {
     if (term && !item.title.toLowerCase().includes(term)) return false;
     if (filter.value === "all") return true;
+    if (filter.value === "mine") return item.requestedByMe;
     if (filter.value === "movie" || filter.value === "series") {
       return item.mediaType === filter.value;
     }

@@ -89,3 +89,41 @@ describe("toSeries", () => {
     expect(item.sizeOnDisk).toBe(0);
   });
 });
+
+describe("annotateRequesters", () => {
+  const items = () => [
+    { ...toMovie(movie), tmdbId: 454639 },
+    { ...toSeries(series()), tmdbId: 33852 },
+  ];
+
+  test("names requesters and flags the viewer's own", () => {
+    const list = items();
+    __testing.annotateRequesters(list, "me", [
+      { mediaType: "movie", tmdbId: 454639, userId: "me", name: "Jason" },
+      { mediaType: "movie", tmdbId: 454639, userId: "u2", name: "Bonita" },
+    ]);
+
+    expect(list[0]!.requestedBy).toEqual(["Jason", "Bonita"]);
+    expect(list[0]!.requestedByMe).toBe(true);
+    expect(list[1]!.requestedBy).toEqual([]);
+  });
+
+  test("someone else's request is not mine", () => {
+    const list = items();
+    __testing.annotateRequesters(list, "me", [
+      { mediaType: "series", tmdbId: 33852, userId: "u2", name: "Bonita" },
+    ]);
+
+    expect(list[1]!.requestedBy).toEqual(["Bonita"]);
+    expect(list[1]!.requestedByMe).toBe(false);
+  });
+
+  test("a request does not attach to the other media type with the same id", () => {
+    const list = items();
+    __testing.annotateRequesters(list, "me", [
+      { mediaType: "series", tmdbId: 454639, userId: "me", name: "Jason" },
+    ]);
+
+    expect(list[0]!.requestedBy).toEqual([]);
+  });
+});

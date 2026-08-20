@@ -27,6 +27,9 @@ export interface LibraryItem {
   availability: LibraryAvailability;
   /** Episode progress for a series, e.g. "12/90 episodes". */
   detail?: string;
+  /** Names of anyone who requested it through Kyle; empty for older media. */
+  requestedBy: string[];
+  requestedByMe: boolean;
 }
 
 // Thread list
