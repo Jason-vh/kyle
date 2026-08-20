@@ -1,7 +1,10 @@
 import { afterEach, describe, expect, mock, test } from "bun:test";
 
 const saved: unknown[] = [];
+// Spread the real module so replacing one export does not hide the others.
+const realRequests = await import("../db/requests.ts");
 mock.module("../db/requests.ts", () => ({
+  ...realRequests,
   saveMediaRequest: (input: unknown) => {
     saved.push(input);
     return Promise.resolve(input);

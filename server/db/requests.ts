@@ -1,4 +1,4 @@
-import { desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, inArray } from "drizzle-orm";
 import { db } from "./index.ts";
 import { mediaRequests, users } from "./schema.ts";
 
@@ -60,19 +60,21 @@ export async function getAllMediaRequests(limit = 100) {
 }
 
 /** Who requested each of these titles, for showing alongside search results. */
+export function requestersQuery(mediaType: "movie" | "series", tmdbIds: number[]) {
+  return db
+    .select({ tmdbId: mediaRequests.tmdbId, name: users.displayName })
+    .from(mediaRequests)
+    .innerJoin(users, eq(mediaRequests.userId, users.id))
+    .where(and(eq(mediaRequests.mediaType, mediaType), inArray(mediaRequests.tmdbId, tmdbIds)));
+}
+
 export async function getRequestersByTmdbId(
   mediaType: "movie" | "series",
   tmdbIds: number[],
 ): Promise<Map<number, string[]>> {
   if (tmdbIds.length === 0) return new Map();
 
-  const rows = await db
-    .select({ tmdbId: mediaRequests.tmdbId, name: users.displayName })
-    .from(mediaRequests)
-    .innerJoin(users, eq(mediaRequests.userId, users.id))
-    .where(
-      sql`${mediaRequests.mediaType} = ${mediaType} AND ${mediaRequests.tmdbId} = ANY(${tmdbIds})`,
-    );
+  const rows = await requestersQuery(mediaType, tmdbIds);
 
   const byId = new Map<number, string[]>();
   for (const row of rows) {
