@@ -21,7 +21,7 @@ const plexTv = createApiClient({
 });
 
 /** Calls to the Plex Media Server itself. */
-const pms = createApiClient({
+export const pmsRequest = createApiClient({
   service: "plex-pms",
   config: () => {
     const [url, token] = requireEnv("PLEX_SERVER_URL", "PLEX_SERVER_TOKEN");
@@ -55,6 +55,6 @@ interface IdentityResponse {
 
 /** Identifies which of the owner's servers Kyle is configured against. */
 export async function getMachineIdentifier(): Promise<string> {
-  const identity = await pms<IdentityResponse>("/identity");
+  const identity = await pmsRequest<IdentityResponse>("/identity");
   return identity.MediaContainer.machineIdentifier;
 }

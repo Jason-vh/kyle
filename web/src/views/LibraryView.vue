@@ -78,6 +78,8 @@
           </p>
         </div>
 
+        <WatcherAvatars :watchers="item.watchedBy" class="shrink-0" />
+
         <span class="shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold" :class="badge(item)">
           {{ LABELS[item.availability] }}
         </span>
@@ -100,10 +102,11 @@ import { computed, onMounted, ref } from "vue";
 import { useTitle } from "@vueuse/core";
 import { getAuthStatus } from "../api/auth";
 import { formatSize, getLibrary, removeLibraryItem, type LibraryItem } from "../api/library";
+import WatcherAvatars from "../components/WatcherAvatars.vue";
 
 useTitle("Library — Kyle");
 
-type Filter = "all" | "movie" | "series" | "partial" | "missing" | "mine";
+type Filter = "all" | "movie" | "series" | "partial" | "missing" | "mine" | "unwatched";
 
 const FILTERS: { value: Filter; label: string }[] = [
   { value: "all", label: "All" },
@@ -112,6 +115,7 @@ const FILTERS: { value: Filter; label: string }[] = [
   { value: "partial", label: "Incomplete" },
   { value: "missing", label: "Nothing on disk" },
   { value: "mine", label: "Requested by me" },
+  { value: "unwatched", label: "Nobody has watched" },
 ];
 
 /** "Bob", "Bob and Jane", "Bob, Jane and Sue". */
@@ -150,6 +154,10 @@ const filtered = computed(() => {
     if (term && !item.title.toLowerCase().includes(term)) return false;
     if (filter.value === "all") return true;
     if (filter.value === "mine") return item.requestedByMe;
+    // Worth seeing next to size: nobody has watched it and it is taking space.
+    if (filter.value === "unwatched") {
+      return item.watchedBy.length === 0 && item.availability !== "missing";
+    }
     if (filter.value === "movie" || filter.value === "series") {
       return item.mediaType === filter.value;
     }

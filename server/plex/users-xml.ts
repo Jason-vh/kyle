@@ -4,6 +4,8 @@ export interface PlexShareListUser {
   /** Empty for managed Home users, who cannot sign in with their own Plex account. */
   username: string;
   title: string;
+  /** Publicly fetchable avatar URL. */
+  thumb: string;
   /** Machine identifiers of the owner's servers this user has an accepted share on. */
   machineIdentifiers: string[];
 }
@@ -45,6 +47,7 @@ export async function parseShareList(xml: string): Promise<PlexShareListUser[]> 
           accountId: el.getAttribute("id") ?? "",
           username: decodeEntities(el.getAttribute("username") ?? ""),
           title: decodeEntities(el.getAttribute("title") ?? ""),
+          thumb: decodeEntities(el.getAttribute("thumb") ?? ""),
           machineIdentifiers: [],
         };
         if (current.accountId) users.push(current);

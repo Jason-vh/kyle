@@ -4,6 +4,7 @@ import type { SonarrSeries } from "../sonarr/types.ts";
 import * as radarr from "../radarr/api.ts";
 import * as sonarr from "../sonarr/api.ts";
 import { getAllRequesters } from "../db/requests.ts";
+import { getWatchers, watchKey } from "../plex/history.ts";
 import { createLogger } from "../logger.ts";
 
 const log = createLogger("library");
@@ -29,6 +30,7 @@ function toMovie(movie: RadarrMovie): LibraryItem {
     availability: movie.hasFile ? "available" : "missing",
     requestedBy: [],
     requestedByMe: false,
+    watchedBy: [],
   };
 }
 
@@ -55,6 +57,7 @@ function toSeries(series: SonarrSeries): LibraryItem {
     detail: total > 0 ? `${present}/${total} episodes` : undefined,
     requestedBy: [],
     requestedByMe: false,
+    watchedBy: [],
   };
 }
 
@@ -102,7 +105,14 @@ export async function listLibrary(viewerId: string): Promise<LibraryItem[]> {
     a.title.localeCompare(b.title),
   );
 
-  annotateRequesters(items, viewerId, await getAllRequesters());
+  const [requesters, watchers] = await Promise.all([getAllRequesters(), getWatchers()]);
+  annotateRequesters(items, viewerId, requesters);
+
+  for (const item of items) {
+    if (item.tmdbId === undefined) continue;
+    item.watchedBy = watchers.get(watchKey(item.mediaType, item.tmdbId)) ?? [];
+  }
+
   return items;
 }
 

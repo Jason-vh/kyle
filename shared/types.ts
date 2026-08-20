@@ -30,6 +30,13 @@ export interface LibraryItem {
   /** Names of anyone who requested it through Kyle; empty for older media. */
   requestedBy: string[];
   requestedByMe: boolean;
+  /** Anyone who has played it on the Plex server. */
+  watchedBy: Watcher[];
+}
+
+export interface Watcher {
+  name: string;
+  thumb?: string;
 }
 
 // Thread list
