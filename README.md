@@ -41,6 +41,8 @@ Capabilities:
   web viewer, shareable via signed `?sig=` links.
 - **Auth** — Plex sign-in for anyone with access to the Plex server, plus WebAuthn passkeys
   and JWT sessions.
+- **Requests & library** — search TMDB and add straight to Radarr/Sonarr without the agent;
+  browse what the library holds. Anyone signed in can request and browse; only admins remove.
 
 ## Architecture
 
@@ -431,6 +433,11 @@ rather than passed to the agent as an opaque ID.
 | `POST /slack/events`                  | Slack signature       | Slack event ingress; supports `X-Sync-Response` |
 | `POST /webhooks/sonarr`               | `WEBHOOK_AUTH` basic  | Sonarr webhook handler                          |
 | `POST /webhooks/radarr`               | `WEBHOOK_AUTH` basic  | Radarr webhook handler                          |
+| `GET /api/discover?q=`                | JWT                   | Search TMDB for something to request            |
+| `POST /api/requests`                  | JWT                   | Request a title `{ mediaType, tmdbId }`         |
+| `GET /api/requests`                   | JWT                   | Your requests, or all with `?all=true` as admin |
+| `GET /api/library`                    | JWT                   | Everything Radarr and Sonarr hold               |
+| `DELETE /api/library/:type/:id`       | Admin                 | Remove an item, deleting files unless disabled  |
 | `GET /api/threads`                    | JWT                   | List conversation threads                       |
 | `GET /api/threads/:uuid`              | JWT / `?sig=`         | Fetch a single thread's messages                |
 | `GET /api/auth/status`                | JWT cookie            | Current user + admin flag                       |

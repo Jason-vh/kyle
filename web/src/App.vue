@@ -55,6 +55,7 @@ import UserAvatar from "./components/UserAvatar.vue";
 
 const NAV_LINKS = [
   { to: "/discover", label: "Request" },
+  { to: "/library", label: "Library" },
   { to: "/requests", label: "Requests" },
   { to: "/threads", label: "Threads" },
 ];

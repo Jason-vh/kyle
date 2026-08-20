@@ -8,6 +8,27 @@ export interface AuthStatusResponse {
   };
 }
 
+// Library
+export type LibraryMediaType = "movie" | "series";
+
+/** How much of an item is actually on disk. */
+export type LibraryAvailability = "available" | "partial" | "missing";
+
+export interface LibraryItem {
+  mediaType: LibraryMediaType;
+  /** Radarr or Sonarr id, and what management acts on. */
+  serviceId: number;
+  tmdbId?: number;
+  title: string;
+  year?: number;
+  posterUrl?: string;
+  monitored: boolean;
+  sizeOnDisk: number;
+  availability: LibraryAvailability;
+  /** Episode progress for a series, e.g. "12/90 episodes". */
+  detail?: string;
+}
+
 // Thread list
 export interface ThreadListItem {
   id: string;

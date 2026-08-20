@@ -23,6 +23,7 @@ import {
   handleCreateRequest,
   handleGetRequests,
 } from "./routes/api/requests.ts";
+import { handleGetLibrary, handleRemoveLibraryItem } from "./routes/api/library.ts";
 
 const log = createLogger("server");
 
@@ -36,6 +37,7 @@ const SPA_PATHS = new Set([
   "/account",
   "/discover",
   "/requests",
+  "/library",
 ]);
 const WEB_DIST = "web/dist";
 
@@ -88,6 +90,11 @@ export function startServer(port: number) {
       "/api/auth/plex/link/start": { POST: handlePlexLinkStart },
       "/api/auth/plex/link": { DELETE: handlePlexUnlink },
       "/api/auth/plex/callback": { GET: handlePlexCallback },
+
+      "/api/library": { GET: handleGetLibrary },
+      "/api/library/:mediaType/:serviceId": {
+        DELETE: (req) => handleRemoveLibraryItem(req, req.params.mediaType, req.params.serviceId),
+      },
 
       "/api/discover": { GET: handleDiscoverSearch },
       "/api/requests": { GET: handleGetRequests, POST: handleCreateRequest },
