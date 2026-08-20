@@ -11,7 +11,19 @@ export const router = createRouter({
     },
     {
       path: "/",
-      redirect: "/threads",
+      redirect: "/discover",
+    },
+    {
+      path: "/discover",
+      name: "discover",
+      component: () => import("./views/DiscoverView.vue"),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: "/requests",
+      name: "requests",
+      component: () => import("./views/RequestsView.vue"),
+      meta: { requiresAuth: true },
     },
     {
       path: "/account",
