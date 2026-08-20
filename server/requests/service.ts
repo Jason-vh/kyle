@@ -24,21 +24,28 @@ export interface RequestOutcome {
   serviceId: number;
 }
 
-/** Radarr and Sonarr both return their own id on lookup once an item is in the library. */
 async function addMovie(tmdbId: number): Promise<Omit<RequestOutcome, "mediaType" | "tmdbId">> {
+  // Radarr rejects a movie it already holds, and its lookup will not say so.
+  const existing = await radarr.getLibraryMovieByTmdbId(tmdbId);
+  if (existing) {
+    return {
+      status: "existing",
+      title: existing.title,
+      year: existing.year,
+      serviceId: existing.id,
+    };
+  }
+
   const lookup = await radarr.lookupMovieByTmdbId(tmdbId);
   if (!lookup?.title) throw new MediaNotFoundError("movie", tmdbId);
-
-  if (lookup.id) {
-    return { status: "existing", title: lookup.title, year: lookup.year, serviceId: lookup.id };
-  }
 
   const added = await radarr.addMovie(lookup.title, lookup.year, tmdbId);
   return { status: "added", title: added.title, year: added.year, serviceId: added.id };
 }
 
 async function addSeries(tmdbId: number): Promise<Omit<RequestOutcome, "mediaType" | "tmdbId">> {
-  // Sonarr resolves a TMDB id itself, which saves mapping it to a TVDB id here.
+  // Sonarr resolves a TMDB id itself, and reports its own id for a series it
+  // already holds, so one lookup answers both questions.
   const [lookup] = await sonarr.searchSeries(`tmdb:${tmdbId}`);
   if (!lookup?.tvdbId) throw new MediaNotFoundError("series", tmdbId);
 
@@ -70,7 +77,8 @@ export async function requestMedia(input: {
     mediaType,
     tmdbId,
     title: result.title,
-    year: result.year,
+    // Radarr reports 0 for a film with no known release year.
+    year: result.year || undefined,
     posterPath: input.posterPath,
     serviceId: result.serviceId,
   });

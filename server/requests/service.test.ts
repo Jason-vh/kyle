@@ -41,7 +41,8 @@ afterEach(() => {
 describe("requestMedia", () => {
   test("adds a movie that is not in the library", async () => {
     const calls = stubServices({
-      "/movie/lookup/tmdb": { title: "Arrival", year: 2016, id: 0 },
+      "/movie?tmdbId=": [],
+      "/movie/lookup/tmdb": { title: "Arrival", year: 2016, id: null },
       "/qualityprofile": [{ id: 1 }],
       "/rootfolder": [{ path: "/movies" }],
       "/api/v3/movie": { title: "Arrival", year: 2016, id: 77 },
@@ -60,9 +61,13 @@ describe("requestMedia", () => {
     expect(calls.some((c) => c.method === "POST")).toBe(true);
   });
 
+  // Radarr's lookup reports no id for a movie it already holds, and rejects a
+  // second add with "This movie has already been added", so membership has to
+  // come from the library itself.
   test("recognises a movie already in the library without adding it", async () => {
     const calls = stubServices({
-      "/movie/lookup/tmdb": { title: "Arrival", year: 2016, id: 42 },
+      "/movie?tmdbId=": [{ title: "Arrival", year: 2016, id: 42 }],
+      "/movie/lookup/tmdb": { title: "Arrival", year: 2016, id: null },
     });
 
     const outcome = await requestMedia({ userId: "u1", mediaType: "movie", tmdbId: 329865 });
@@ -87,7 +92,7 @@ describe("requestMedia", () => {
   });
 
   test("records who asked for it", async () => {
-    stubServices({ "/movie/lookup/tmdb": { title: "Arrival", year: 2016, id: 42 } });
+    stubServices({ "/movie?tmdbId=": [{ title: "Arrival", year: 2016, id: 42 }] });
 
     await requestMedia({ userId: "u1", mediaType: "movie", tmdbId: 329865, posterPath: "/p.jpg" });
 

@@ -29,6 +29,16 @@ export async function lookupMovieByTmdbId(tmdbId: number): Promise<RadarrMovie> 
   return request<RadarrMovie>(`/movie/lookup/tmdb?tmdbId=${tmdbId}`);
 }
 
+/**
+ * The library entry for a TMDB id, if Radarr already has it. Unlike Sonarr,
+ * Radarr's lookup reports no id for a movie it already holds, so membership
+ * has to be asked of the library itself.
+ */
+export async function getLibraryMovieByTmdbId(tmdbId: number): Promise<RadarrMovie | undefined> {
+  const [movie] = await request<RadarrMovie[]>(`/movie?tmdbId=${tmdbId}`);
+  return movie;
+}
+
 export async function addMovie(title: string, year: number, tmdbId: number): Promise<RadarrMovie> {
   const [qualityProfiles, rootFolders] = await Promise.all([
     request<{ id: number }[]>("/qualityprofile"),
