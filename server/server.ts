@@ -17,12 +17,6 @@ import {
   handlePlexUnlink,
   handlePlexCallback,
 } from "./routes/api/auth-plex.ts";
-import {
-  handleGetInvite,
-  handleInviteRegisterOptions,
-  handleInviteRegisterVerify,
-  handleCreateInvite,
-} from "./routes/api/invites.ts";
 import { handleGetUsers, handleCreateLink, handleDeleteLink } from "./routes/api/users.ts";
 
 const log = createLogger("server");
@@ -45,8 +39,7 @@ async function serveSpaFile(pathname: string): Promise<Response | null> {
     });
   }
 
-  const isSpaRoute =
-    SPA_PATHS.has(pathname) || pathname.startsWith("/threads/") || pathname.startsWith("/invite/");
+  const isSpaRoute = SPA_PATHS.has(pathname) || pathname.startsWith("/threads/");
   if (!isSpaRoute) return null;
 
   const indexFile = Bun.file(`${WEB_DIST}/index.html`);
@@ -82,15 +75,6 @@ export function startServer(port: number) {
       "/api/auth/plex/link/start": { POST: handlePlexLinkStart },
       "/api/auth/plex/link": { DELETE: handlePlexUnlink },
       "/api/auth/plex/callback": { GET: handlePlexCallback },
-
-      "/api/invites": { POST: handleCreateInvite },
-      "/api/invites/:code": { GET: (req) => handleGetInvite(req, req.params.code) },
-      "/api/invites/:code/register/options": {
-        POST: (req) => handleInviteRegisterOptions(req, req.params.code),
-      },
-      "/api/invites/:code/register/verify": {
-        POST: (req) => handleInviteRegisterVerify(req, req.params.code),
-      },
 
       "/api/users": { GET: handleGetUsers },
       "/api/users/:userId/links": { POST: (req) => handleCreateLink(req, req.params.userId) },

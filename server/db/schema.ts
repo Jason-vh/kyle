@@ -83,18 +83,6 @@ export const userCredentials = pgTable(
   (table) => [index("user_credentials_user_id_idx").on(table.userId)],
 );
 
-export const userInvites = pgTable("user_invites", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  code: text("code").notNull().unique(),
-  createdBy: uuid("created_by").references(() => users.id),
-  displayName: text("display_name").notNull(),
-  isAdmin: boolean("is_admin").notNull().default(false),
-  usedBy: uuid("used_by").references(() => users.id),
-  expiresAt: timestamp("expires_at").notNull(),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-  usedAt: timestamp("used_at"),
-});
-
 // ---- Existing tables (userId renamed to platformUserId, new userId FK added) ----
 
 export const mediaEvents = pgTable(

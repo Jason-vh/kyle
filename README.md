@@ -39,15 +39,15 @@ Capabilities:
   subscription tables) and notify them, with AI-generated summaries.
 - **Conversation memory** — full agent messages stored as JSONB; browse past threads in the
   web viewer, shareable via signed `?sig=` links.
-- **Auth** — WebAuthn passkeys + JWT sessions; admin-generated invite links for onboarding.
+- **Auth** — Plex sign-in for anyone with access to the Plex server, plus WebAuthn passkeys
+  and JWT sessions.
 
 ## Architecture
 
 ```text
 index.ts                     → entry point (Bun.serve)
 scripts/cli.ts               → interactive CLI client
-scripts/create-admin.ts      → CLI: bootstrap first admin user + invite link
-scripts/invite.ts            → CLI: create an invite link for an existing admin
+scripts/plex-token.ts        → CLI: obtain a Plex owner token by claiming a PIN
 scripts/test-slack.ts        → Send test messages to /slack/events (sync response by default)
 tsconfig.server.json         → Server TypeScript config (server/ + shared/)
 Dockerfile                   → Multi-stage build: web SPA + Bun runtime
@@ -107,7 +107,7 @@ server/
       threads.ts             → GET /api/threads, GET /api/threads/:uuid
       auth.ts                → GET /api/auth/status, POST /api/auth/logout
       auth-passkey.ts        → Passkey login/register endpoints
-      invites.ts             → Invite validation, redemption, creation (admin)
+      auth-plex.ts           → Plex sign-in, account linking, callback
       users.ts               → User listing, platform link management (admin)
   threads/
     items.ts                 → buildThreadItems(): messages + webhooks as viewer items
@@ -120,6 +120,7 @@ server/
   ultra/                     → api, tools (stats)
   qbittorrent/               → api, tools (torrents)
   brave/                     → types, api, utils, tools (web search)
+  plex/                      → plex.tv client, owner token calls, share list, access policy
   webhooks/
     types.ts                 → Webhook payload types + MediaNotificationInfo
     auth.ts                  → Basic-auth check (WEBHOOK_AUTH)
@@ -130,9 +131,9 @@ server/
 
 web/                         → Vue 3 + Vite + Tailwind CSS 4 SPA
   src/
-    views/                   → ThreadList, ThreadDetail, Login, Invite
+    views/                   → ThreadList, ThreadDetail, Login, Account
     components/              → MessageBlock, ToolCallBlock, WebhookBlock, MarkdownContent, ...
-    api/                     → client, threads, auth, passkey, invites
+    api/                     → client, threads, auth, passkey, plex
     composables/             → useRelativeTime
     utils/                   → markdown
 ```
@@ -164,10 +165,10 @@ web/                         → Vue 3 + Vite + Tailwind CSS 4 SPA
   `movie_subscriptions` / `series_subscriptions` track notification preferences (created on
   add/download, deactivated on remove/unsubscribe). Webhooks query subscriptions — not
   events — to decide who to notify.
-- **Auth: passkeys + JWT** — WebAuthn passkeys; JWT sessions (`jose`, HS256) in an httpOnly
-  `kyle_auth` cookie (30-day expiry, sliding refresh at 15 days). Admin invite links
-  onboard new users. Thread sharing uses separate `?sig=` HMAC signatures
-  (`THREAD_VIEWER_TOKEN`).
+- **Auth: Plex + passkeys + JWT** — access to the Plex server onboards a user on first
+  sign-in; passkeys are added afterwards from `/account`. JWT sessions (`jose`, HS256) in an
+  httpOnly `kyle_auth` cookie (30-day expiry, sliding refresh at 15 days). Thread sharing uses
+  separate `?sig=` HMAC signatures (`THREAD_VIEWER_TOKEN`).
 - **Slack immediate ack** — `/slack/events` returns 200 and processes the message async to
   stay within Slack's 3-second timeout. Responses always post as thread replies.
 - **Slack streaming** — replies stream via `chat.startStream`/`appendStream`/`stopStream`.
@@ -296,9 +297,11 @@ timestamps. To test streaming, post a real message, then pass its `ts` as `--thr
 
 ## User management
 
+Users onboard themselves by signing in with Plex; there is no invite step. The Plex server
+owner becomes an admin on first sign-in, which is also how the first admin is created.
+Passkeys are added afterwards from `/account`, and work as a sign-in method from then on.
+
 ```bash
-bun run scripts/create-admin.ts "Admin Name"   # bootstrap first admin (prints invite link)
-bun run scripts/invite.ts "Display Name"       # create invite for a new user (existing admin required)
 bun run scripts/plex-token.ts                  # obtain a Plex access token by claiming a PIN
 ```
 
@@ -351,7 +354,6 @@ following was probed against the live server and is recorded because it is not o
 
 Admin API endpoints (require a JWT with `admin: true`):
 
-- `POST /api/invites` — create invite `{ displayName, isAdmin?, expiresInDays? }`
 - `GET /api/users` — list all users with platform identities
 - `POST /api/users/:id/links` — link platform identity `{ platform, platformUserId, platformUsername? }` + run retroactive backfill
 - `DELETE /api/users/:id/links/:linkId` — unlink platform identity
@@ -438,7 +440,6 @@ rather than passed to the agent as an opaque ID.
 | `POST /api/auth/plex/link/start`      | JWT cookie            | Begin connecting Plex to the current account    |
 | `DELETE /api/auth/plex/link`          | JWT cookie            | Disconnect the linked Plex account              |
 | `GET /api/auth/plex/callback`         | `state`               | Where Plex forwards back to; sets the session   |
-| `POST /api/invites`                   | Admin                 | Create an invite link                           |
 | `GET /api/users`                      | Admin                 | List users + platform identities                |
 | `POST /api/users/:id/links`           | Admin                 | Link a platform identity                        |
 | `DELETE /api/users/:id/links/:linkId` | Admin                 | Unlink a platform identity                      |
@@ -459,7 +460,7 @@ Omit `conversationId` to start a new conversation; include it to continue an exi
 
 ## Web thread viewer
 
-The Vue SPA (views: `/threads`, `/threads/:id`, `/login`, `/invite/:code`) lets
+The Vue SPA (views: `/threads`, `/threads/:id`, `/login`, `/account`) lets
 authenticated users browse past conversations. It renders user/assistant/tool-use blocks,
 webhook notification cards, media-action summaries, collapsible tool calls, and relative
 timestamps. Threads are shareable via signed `?sig=` links (`THREAD_VIEWER_TOKEN`).
