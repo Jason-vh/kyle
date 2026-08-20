@@ -318,6 +318,17 @@ A Plex account is stored as a `platform_identities` row with `platform = 'plex'`
 numeric plex.tv account id. Existing users connect Plex from `/account`; the flow refuses an
 account already linked to someone else.
 
+Signing in for the first time creates the Kyle user automatically, so access to the Plex server
+is the invitation. Who qualifies is read from plex.tv and cached for five minutes:
+
+- shared on this server's `machineIdentifier`, with the share accepted, and holding a Plex
+  account of their own — managed Home users have no credentials to sign in with;
+- plus the server owner, who becomes a Kyle admin.
+
+The check fails closed: if plex.tv cannot be reached nobody new is admitted, though users who
+have signed in before are unaffected. Set `PLEX_SERVER_URL` and `PLEX_SERVER_TOKEN` to enable
+it; without them Plex sign-in still works, but only for accounts already linked.
+
 ### Reading the Plex server (planned)
 
 `scripts/plex-token.ts` obtains the owner token Kyle would use as its service credential. The
@@ -389,6 +400,8 @@ rather than passed to the agent as an opaque ID.
 | `WEBAUTHN_ORIGIN`        | WebAuthn origin URL (`http://localhost:5173` dev / `https://kyle.vhtm.eu` prod)            |
 | `PUBLIC_ORIGIN`          | Public origin for redirects back from Plex (defaults to `WEBAUTHN_ORIGIN`)                 |
 | `PLEX_CLIENT_IDENTIFIER` | Stable random string identifying Kyle to Plex (optional; disables Plex sign-in when unset) |
+| `PLEX_SERVER_URL`        | Plex Media Server address, used to identify which server grants access                     |
+| `PLEX_SERVER_TOKEN`      | Plex owner token (see `scripts/plex-token.ts`); enables sign-up from server access         |
 | `SLACK_BOT_TOKEN`        | Slack bot token (`xoxb-...`)                                                               |
 | `SLACK_SIGNING_SECRET`   | Slack app signing secret for request verification                                          |
 | `SONARR_HOST`            | Sonarr instance URL                                                                        |

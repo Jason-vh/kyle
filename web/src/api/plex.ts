@@ -22,7 +22,7 @@ const PLEX_ERRORS: Record<string, string> = {
   plex_expired: "That Plex sign-in link expired. Please try again.",
   plex_denied: "Plex sign-in was not completed.",
   plex_failed: "Could not reach Plex. Please try again.",
-  plex_unlinked: "That Plex account is not linked to a Kyle user.",
+  plex_no_access: "That Plex account does not have access to the Plex server.",
   plex_taken: "That Plex account is already linked to another user.",
   plex_exists: "Disconnect your current Plex account first.",
 };

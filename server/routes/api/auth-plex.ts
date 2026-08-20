@@ -5,11 +5,13 @@ import {
   type PlexAuthIntent,
 } from "../../auth/plex.ts";
 import { isPlexConfigured } from "../../plex/api.ts";
+import { checkPlexAccess } from "../../plex/access.ts";
 import type { PlexAccount } from "../../plex/types.ts";
 import { buildJwtCookie, isLocalhost, signJwt } from "../../auth/jwt.ts";
 import { requireAuth } from "../../auth/middleware.ts";
 import {
   createPlatformLink,
+  createUserWithPlatformLink,
   deletePlatformLink,
   getPlatformIdentity,
   getUserById,
@@ -104,13 +106,31 @@ export async function handlePlexCallback(req: Request): Promise<Response> {
     : linkPlexAccount(intent.userId, account);
 }
 
-/** Signs in the Kyle user this Plex account is linked to. */
+/**
+ * Signs in the Kyle user this Plex account is linked to, creating one on first
+ * sign-in for anyone the Plex server is shared with.
+ */
 async function loginWithPlexAccount(req: Request, account: PlexAccount): Promise<Response> {
-  const userId = await resolveAppUserId(PLEX_PLATFORM, plexIdentityKey(account));
-  const user = userId ? await getUserById(userId) : undefined;
+  const identityKey = plexIdentityKey(account);
+  const userId = await resolveAppUserId(PLEX_PLATFORM, identityKey);
+  let user = userId ? await getUserById(userId) : undefined;
+
   if (!user) {
-    log.warn("plex login for unlinked account", { plexUsername: account.username });
-    return redirect("/login?error=plex_unlinked");
+    const access = await checkPlexAccess(identityKey);
+    if (!access.allowed) {
+      log.warn("plex login refused, no access to the server", {
+        plexUsername: account.username,
+      });
+      return redirect("/login?error=plex_no_access");
+    }
+
+    user = await createUserWithPlatformLink({
+      displayName: access.displayName || account.title || account.username,
+      isAdmin: access.isOwner,
+      platform: PLEX_PLATFORM,
+      platformUserId: identityKey,
+      platformUsername: account.username,
+    });
   }
 
   const token = await signJwt({ id: user.id, name: user.displayName, admin: user.isAdmin });

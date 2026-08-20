@@ -198,6 +198,44 @@ export async function createPlatformLink(
 }
 
 /**
+ * Create a user and their first platform identity together, so a failure
+ * cannot leave a user with no way to sign in.
+ */
+export async function createUserWithPlatformLink(input: {
+  displayName: string;
+  isAdmin: boolean;
+  platform: string;
+  platformUserId: string;
+  platformUsername?: string;
+}) {
+  const user = await db.transaction(async (tx) => {
+    const [created] = await tx
+      .insert(users)
+      .values({ displayName: input.displayName, isAdmin: input.isAdmin })
+      .returning();
+
+    await tx.insert(platformIdentities).values({
+      userId: created!.id,
+      platform: input.platform,
+      platformUserId: input.platformUserId,
+      platformUsername: input.platformUsername,
+    });
+
+    return created!;
+  });
+
+  platformCache.set(cacheKey(input.platform, input.platformUserId), user.id);
+
+  log.info("user created from platform identity", {
+    userId: user.id,
+    displayName: user.displayName,
+    platform: input.platform,
+  });
+
+  return user;
+}
+
+/**
  * Delete a platform identity link.
  */
 export async function deletePlatformLink(linkId: string) {
