@@ -83,6 +83,28 @@ export const userCredentials = pgTable(
   (table) => [index("user_credentials_user_id_idx").on(table.userId)],
 );
 
+export const mediaRequests = pgTable(
+  "media_requests",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    mediaType: text("media_type").notNull(), // 'movie' | 'series'
+    tmdbId: integer("tmdb_id").notNull(),
+    title: text("title").notNull(),
+    year: integer("year"),
+    posterPath: text("poster_path"),
+    /** Radarr or Sonarr id, once the media exists there. */
+    serviceId: integer("service_id"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("media_requests_user_media_idx").on(table.userId, table.mediaType, table.tmdbId),
+    index("media_requests_created_at_idx").on(table.createdAt),
+  ],
+);
+
 // ---- Existing tables (userId renamed to platformUserId, new userId FK added) ----
 
 export const mediaEvents = pgTable(

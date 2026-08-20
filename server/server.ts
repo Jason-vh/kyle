@@ -18,12 +18,25 @@ import {
   handlePlexCallback,
 } from "./routes/api/auth-plex.ts";
 import { handleGetUsers, handleCreateLink, handleDeleteLink } from "./routes/api/users.ts";
+import {
+  handleDiscoverSearch,
+  handleCreateRequest,
+  handleGetRequests,
+} from "./routes/api/requests.ts";
 
 const log = createLogger("server");
 
 const MAX_BODY_SIZE = 1_000_000; // 1 MB
 
-const SPA_PATHS = new Set(["/", "/threads", "/threads/", "/login", "/account"]);
+const SPA_PATHS = new Set([
+  "/",
+  "/threads",
+  "/threads/",
+  "/login",
+  "/account",
+  "/discover",
+  "/requests",
+]);
 const WEB_DIST = "web/dist";
 
 /** Serves a built asset, falling back to index.html for client-routed paths. */
@@ -75,6 +88,9 @@ export function startServer(port: number) {
       "/api/auth/plex/link/start": { POST: handlePlexLinkStart },
       "/api/auth/plex/link": { DELETE: handlePlexUnlink },
       "/api/auth/plex/callback": { GET: handlePlexCallback },
+
+      "/api/discover": { GET: handleDiscoverSearch },
+      "/api/requests": { GET: handleGetRequests, POST: handleCreateRequest },
 
       "/api/users": { GET: handleGetUsers },
       "/api/users/:userId/links": { POST: (req) => handleCreateLink(req, req.params.userId) },

@@ -43,9 +43,11 @@ export interface TMDBPerson {
   known_for: (TMDBMovie | TMDBTVShow)[];
 }
 
-export type TMDBMultiResult = (TMDBMovie | TMDBTVShow | TMDBPerson) & {
-  media_type: "movie" | "tv" | "person";
-};
+/** Tagged so `media_type` narrows to the right shape. */
+export type TMDBMultiResult =
+  | (TMDBMovie & { media_type: "movie" })
+  | (TMDBTVShow & { media_type: "tv" })
+  | (TMDBPerson & { media_type: "person" });
 
 export interface TMDBSearchResponse<T> {
   page: number;
