@@ -57,7 +57,6 @@ const NAV_LINKS = [
   { to: "/discover", label: "Request" },
   { to: "/library", label: "Library" },
   { to: "/requests", label: "Requests" },
-  { to: "/threads", label: "Threads" },
 ];
 
 const route = useRoute();
