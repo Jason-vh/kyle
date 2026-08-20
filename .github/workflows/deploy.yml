@@ -47,6 +47,9 @@ jobs:
           QBITTORRENT_PASSWORD=${{ secrets.QBITTORRENT_PASSWORD }}
           ULTRA_HOST=${{ secrets.ULTRA_HOST }}
           ULTRA_API_TOKEN=${{ secrets.ULTRA_API_TOKEN }}
+          PLEX_CLIENT_IDENTIFIER=${{ secrets.PLEX_CLIENT_IDENTIFIER }}
+          PLEX_SERVER_URL=${{ secrets.PLEX_SERVER_URL }}
+          PLEX_SERVER_TOKEN=${{ secrets.PLEX_SERVER_TOKEN }}
           KYLE_APP_HOST_PORT=3003
           COMPOSE_PROJECT_NAME=kyle
           DEPLOY_ID=${{ github.sha }}

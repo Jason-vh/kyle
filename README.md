@@ -528,18 +528,20 @@ confirm a deploy landed.
 
 This repo is public, so most app config lives in GitHub Actions secrets:
 
-| Secret                                                              | Purpose                                  |
-| ------------------------------------------------------------------- | ---------------------------------------- |
-| `KYLE_DB_PASSWORD`                                                  | Password for the `kyle` Postgres role    |
-| `JWT_SECRET`, `CHAT_API_KEY`, `THREAD_VIEWER_TOKEN`, `WEBHOOK_AUTH` | App-level auth tokens / secrets          |
-| `ANTHROPIC_API_KEY`, `BRAVE_API_KEY`                                | LLM + search                             |
-| `SLACK_BOT_TOKEN`, `SLACK_SIGNING_SECRET`                           | Slack bot + event signature verification |
-| `DISCORD_BOT_TOKEN`                                                 | Discord bot login                        |
-| `RADARR_HOST`, `RADARR_API_KEY`                                     | Radarr integration                       |
-| `SONARR_HOST`, `SONARR_API_KEY`                                     | Sonarr integration                       |
-| `TMDB_API_TOKEN`                                                    | TMDB lookups                             |
-| `QBITTORRENT_HOST`, `QBITTORRENT_USERNAME`, `QBITTORRENT_PASSWORD`  | qBittorrent UI                           |
-| `ULTRA_HOST`, `ULTRA_API_TOKEN`                                     | Ultra seedbox                            |
+| Secret                                                              | Purpose                                       |
+| ------------------------------------------------------------------- | --------------------------------------------- |
+| `KYLE_DB_PASSWORD`                                                  | Password for the `kyle` Postgres role         |
+| `JWT_SECRET`, `CHAT_API_KEY`, `THREAD_VIEWER_TOKEN`, `WEBHOOK_AUTH` | App-level auth tokens / secrets               |
+| `ANTHROPIC_API_KEY`, `BRAVE_API_KEY`                                | LLM + search                                  |
+| `SLACK_BOT_TOKEN`, `SLACK_SIGNING_SECRET`                           | Slack bot + event signature verification      |
+| `DISCORD_BOT_TOKEN`                                                 | Discord bot login                             |
+| `RADARR_HOST`, `RADARR_API_KEY`                                     | Radarr integration                            |
+| `SONARR_HOST`, `SONARR_API_KEY`                                     | Sonarr integration                            |
+| `TMDB_API_TOKEN`                                                    | TMDB lookups                                  |
+| `QBITTORRENT_HOST`, `QBITTORRENT_USERNAME`, `QBITTORRENT_PASSWORD`  | qBittorrent UI                                |
+| `ULTRA_HOST`, `ULTRA_API_TOKEN`                                     | Ultra seedbox                                 |
+| `PLEX_CLIENT_IDENTIFIER`                                            | Identifies Kyle to Plex; enables Plex sign-in |
+| `PLEX_SERVER_URL`, `PLEX_SERVER_TOKEN`                              | Plex server address + owner token             |
 
 ## Conventions
 
