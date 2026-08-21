@@ -1,5 +1,5 @@
 import { describe, expect, test, afterEach } from "bun:test";
-import { ApiError, createApiClient } from "./client.ts";
+import { ApiError, createApiClient, summariseBody } from "./client.ts";
 
 const realFetch = globalThis.fetch;
 
@@ -73,5 +73,36 @@ describe("createApiClient", () => {
     });
 
     expect(request("/thing")).rejects.toThrow(ApiError);
+  });
+});
+
+describe("summariseBody", () => {
+  test("prefers an HTML error page's title over its markup", () => {
+    const page = `<!DOCTYPE html><html><head><meta charset="utf-8">
+      <title>Error 502: Application Error | Ultra.cc</title></head>
+      <body><h1>Application Error</h1></body></html>`;
+
+    expect(summariseBody(page)).toBe("Error 502: Application Error | Ultra.cc");
+  });
+
+  test("caps a long body rather than repeating all of it", () => {
+    const summary = summariseBody("x".repeat(500));
+
+    expect(summary.length).toBeLessThanOrEqual(161);
+    expect(summary.endsWith("…")).toBe(true);
+  });
+
+  test("keeps a short JSON error intact", () => {
+    expect(summariseBody({ message: "nope" })).toBe('{"message":"nope"}');
+  });
+
+  test("says so when there is no body", () => {
+    expect(summariseBody(undefined)).toBe("no body");
+  });
+
+  test("an ApiError message stays readable when the body is an HTML page", () => {
+    const error = new ApiError("radarr", 502, "<html><title>Error 502 | Ultra.cc</title></html>");
+
+    expect(error.message).toBe("radarr API error 502: Error 502 | Ultra.cc");
   });
 });

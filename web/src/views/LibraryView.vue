@@ -31,8 +31,18 @@
       </button>
     </div>
 
+    <div
+      v-if="unavailable.length"
+      class="mb-4 rounded-lg bg-accent-amber-light px-3 py-2 text-sm text-accent-amber"
+    >
+      {{ unavailable.join(" and ") }} {{ unavailable.length === 1 ? "is" : "are" }} unreachable, so
+      part of the library is missing here.
+    </div>
+
     <div v-if="loading" class="py-12 text-center text-text-muted">Loading…</div>
-    <div v-else-if="error" class="py-12 text-center text-sm text-accent-red">{{ error }}</div>
+    <div v-else-if="error" class="py-12 text-center text-sm break-words text-accent-red">
+      {{ error }}
+    </div>
     <div v-else-if="filtered.length === 0" class="py-12 text-center text-sm text-text-muted">
       Nothing matches.
     </div>
@@ -137,6 +147,7 @@ const BADGES: Record<LibraryItem["availability"], string> = {
 };
 
 const items = ref<LibraryItem[]>([]);
+const unavailable = ref<string[]>([]);
 const loading = ref(true);
 const error = ref("");
 const isAdmin = ref(false);
@@ -170,7 +181,9 @@ const totalSize = computed(() => filtered.value.reduce((sum, item) => sum + item
 onMounted(async () => {
   isAdmin.value = (await getAuthStatus()).user?.admin ?? false;
   try {
-    items.value = await getLibrary();
+    const listing = await getLibrary();
+    items.value = listing.items;
+    unavailable.value = listing.unavailable;
   } catch (e) {
     error.value = e instanceof Error ? e.message : "Could not load the library";
   } finally {

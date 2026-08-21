@@ -3,9 +3,13 @@ import { apiFetch } from "./client";
 
 export type { LibraryItem, LibraryMediaType };
 
-export async function getLibrary(): Promise<LibraryItem[]> {
-  const { items } = await apiFetch<{ items: LibraryItem[] }>("/api/library");
-  return items;
+export interface LibraryListing {
+  items: LibraryItem[];
+  unavailable: string[];
+}
+
+export async function getLibrary(): Promise<LibraryListing> {
+  return apiFetch<LibraryListing>("/api/library");
 }
 
 export async function removeLibraryItem(item: LibraryItem, deleteFiles: boolean): Promise<void> {

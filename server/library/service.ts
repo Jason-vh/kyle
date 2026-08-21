@@ -6,6 +6,7 @@ import * as sonarr from "../sonarr/api.ts";
 import { getAllRequesters } from "../db/requests.ts";
 import { getWatchers, watchKey } from "../plex/history.ts";
 import { createLogger } from "../logger.ts";
+import { errorMessage } from "../errors.ts";
 
 const log = createLogger("library");
 
@@ -97,9 +98,33 @@ function annotateRequesters(items: LibraryItem[], viewerId: string, requests: Re
   }
 }
 
-/** Everything Radarr and Sonarr hold, annotated with who asked for it. */
-export async function listLibrary(viewerId: string): Promise<LibraryItem[]> {
-  const [movies, series] = await Promise.all([radarr.getMovies(), sonarr.getAllSeries()]);
+export interface LibraryListing {
+  items: LibraryItem[];
+  /** Services that could not be reached, so the listing is incomplete. */
+  unavailable: string[];
+}
+
+/** Resolves to an empty list rather than failing, naming the service if it did. */
+async function tryList<T>(name: string, load: () => Promise<T[]>): Promise<[T[], string?]> {
+  try {
+    return [await load()];
+  } catch (error) {
+    log.error("library source unavailable", { source: name, error: errorMessage(error) });
+    return [[], name];
+  }
+}
+
+/**
+ * Everything Radarr and Sonarr hold, annotated with who asked for it.
+ * One service being down hides its half rather than the whole library.
+ */
+export async function listLibrary(viewerId: string): Promise<LibraryListing> {
+  const [[movies, moviesDown], [series, seriesDown]] = await Promise.all([
+    tryList("Radarr", radarr.getMovies),
+    tryList("Sonarr", sonarr.getAllSeries),
+  ]);
+
+  const unavailable = [moviesDown, seriesDown].filter((name) => name !== undefined);
 
   const items = [...movies.map(toMovie), ...series.map(toSeries)].sort((a, b) =>
     a.title.localeCompare(b.title),
@@ -113,7 +138,7 @@ export async function listLibrary(viewerId: string): Promise<LibraryItem[]> {
     item.watchedBy = watchers.get(watchKey(item.mediaType, item.tmdbId)) ?? [];
   }
 
-  return items;
+  return { items, unavailable };
 }
 
 /** Remove an item from its service, optionally deleting the files with it. */

@@ -20,8 +20,8 @@ export async function handleGetLibrary(req: Request): Promise<Response> {
   if ("error" in auth) return auth.error;
 
   try {
-    const items = await listLibrary(auth.user.id);
-    return Response.json({ items }, { headers: auth.refreshHeaders });
+    const listing = await listLibrary(auth.user.id);
+    return Response.json(listing, { headers: auth.refreshHeaders });
   } catch (error) {
     log.error("could not list the library", { error: errorMessage(error) });
     return errorResponse(error, 502, "Could not read the library");

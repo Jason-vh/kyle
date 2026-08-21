@@ -21,13 +21,32 @@ export interface ApiClientOptions {
   isAuthFailure?: (response: Response) => boolean;
 }
 
+const MAX_BODY_SUMMARY = 160;
+
+/**
+ * A short description of an error body. A failing service often answers with a
+ * whole HTML error page, which is useless in a message and drowns out the
+ * status; its <title> says the same thing in one line.
+ */
+export function summariseBody(body: unknown): string {
+  if (body === undefined || body === null) return "no body";
+
+  const text = typeof body === "string" ? body : JSON.stringify(body);
+  const title = text.match(/<title>([^<]*)<\/title>/i)?.[1];
+  const collapsed = (title ?? text).replace(/\s+/g, " ").trim();
+
+  return collapsed.length > MAX_BODY_SUMMARY
+    ? `${collapsed.slice(0, MAX_BODY_SUMMARY)}…`
+    : collapsed;
+}
+
 export class ApiError extends Error {
   constructor(
     readonly service: string,
     readonly status: number,
     readonly body: unknown,
   ) {
-    super(`${service} API error ${status}: ${JSON.stringify(body)}`);
+    super(`${service} API error ${status}: ${summariseBody(body)}`);
     this.name = "ApiError";
   }
 }
@@ -68,7 +87,11 @@ export function createApiClient(options: ApiClientOptions): ApiRequest {
 
     if (!response.ok) {
       const body = await readBody(response);
-      log.error("request failed", { endpoint, status: response.status, body });
+      log.error("request failed", {
+        endpoint,
+        status: response.status,
+        body: summariseBody(body),
+      });
       throw new ApiError(service, response.status, body);
     }
 
