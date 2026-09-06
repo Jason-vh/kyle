@@ -19,7 +19,7 @@ Everything below is a piece of that. If `check` passes, the commit is good.
 `bun test` is scoped to `server shared` so it does not try to run the web suite,
 which needs a DOM.
 
-## Three gates
+## Two gates
 
 1. **Pre-commit** (`lefthook.yml`) runs all of the above, in parallel. This is what
    normally catches things.
@@ -27,11 +27,9 @@ which needs a DOM.
    against a real Postgres, and **gates the deploy**. It exists because the hook can be
    skipped with `--no-verify` and because ~7 database-backed tests skip themselves when
    `DATABASE_URL` is unreachable — locally that is most of the time, in CI it is never.
-3. **Slack** tells you when CI fails, since pushing straight to `main` means a red build
-   is otherwise something you have to go and look for. Needs a `SLACK_ALERT_CHANNEL`
-   repo secret; without it the step skips quietly.
 
-A failed check means nothing is deployed and the running app is untouched.
+A failed check means nothing is deployed and the running app is untouched. GitHub emails
+the pusher when a run fails.
 
 ## What gets a test
 

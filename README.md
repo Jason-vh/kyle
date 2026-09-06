@@ -617,7 +617,7 @@ This repo is public, so most app config lives in GitHub Actions secrets:
   "op ANY/ALL (array) requires array on right side" is worth far more than "unavailable right
   now", which forces a trip to the server logs to learn anything at all.
 - **Git workflow**: push to `main`. CI runs `bun run check` first and only deploys if it
-  passes; a failure posts to Slack, since nobody is watching a pull request.
+  passes, so a red build stops rather than ships.
 - **Comments/docstrings**: keep them as short as possible, ideally a single line, and never
   include ticket references.
 
