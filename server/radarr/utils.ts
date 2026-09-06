@@ -37,7 +37,7 @@ export const toPartialQueueItem = (item: RadarrQueueItem) => {
     ...(item.errorMessage ? { errorMessage: item.errorMessage } : {}),
     ...(item.outputPath ? { outputPath: item.outputPath } : {}),
     ...(item.downloadId ? { downloadId: item.downloadId } : {}),
-    timeLeft: item.timeLeft,
+    timeLeft: item.timeleft,
     quality: item.quality.quality.name,
   };
 };

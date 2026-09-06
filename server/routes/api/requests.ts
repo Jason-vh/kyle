@@ -8,6 +8,7 @@ import {
   type Requester,
 } from "../../requests/service.ts";
 import { getAllMediaRequests, getMediaRequestsForUser } from "../../db/requests.ts";
+import { withState } from "../../requests/state.ts";
 import { createLogger } from "../../logger.ts";
 import { errorMessage, errorResponse } from "../../errors.ts";
 
@@ -111,7 +112,7 @@ export async function handleGetRequests(req: Request): Promise<Response> {
   if ("error" in auth) return auth.error;
 
   const all = new URL(req.url).searchParams.get("all") === "true" && auth.user.admin;
-  const requests = all ? await getAllMediaRequests() : await getMediaRequestsForUser(auth.user.id);
+  const rows = all ? await getAllMediaRequests() : await getMediaRequestsForUser(auth.user.id);
 
-  return Response.json({ requests }, { headers: auth.refreshHeaders });
+  return Response.json({ requests: await withState(rows) }, { headers: auth.refreshHeaders });
 }

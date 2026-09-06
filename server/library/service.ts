@@ -5,18 +5,11 @@ import * as radarr from "../radarr/api.ts";
 import * as sonarr from "../sonarr/api.ts";
 import { getAllRequesters } from "../db/requests.ts";
 import { getWatchers, watchKey } from "../plex/history.ts";
+import { posterOf } from "../media-images.ts";
 import { createLogger } from "../logger.ts";
 import { errorMessage } from "../errors.ts";
 
 const log = createLogger("library");
-
-interface ImageBearing {
-  images?: { coverType?: string; remoteUrl?: string }[];
-}
-
-function posterOf(item: ImageBearing): string | undefined {
-  return item.images?.find((image) => image.coverType === "poster")?.remoteUrl;
-}
 
 function toMovie(movie: RadarrMovie): LibraryItem {
   return {

@@ -179,6 +179,8 @@ export interface SonarrQueueItem {
   }>;
   customFormatScore?: number;
   size: number;
+  sizeleft: number;
+  timeleft?: string;
   title: string;
   estimatedCompletionTime?: string;
   added?: string;
@@ -245,11 +247,6 @@ export interface SonarrCalendarEpisode extends SonarrEpisode {
   series: SonarrSeries;
 }
 
-export interface SonarrHistoryEventType {
-  id: number;
-  name: string;
-}
-
 export interface SonarrHistoryItem {
   id: number;
   episodeId: number;
@@ -263,7 +260,8 @@ export interface SonarrHistoryItem {
   customFormatScore?: number;
   date: string;
   downloadId?: string;
-  eventType: SonarrHistoryEventType;
+  /** `downloadFolderImported`, `grabbed`, `episodeFileDeleted`, and so on. */
+  eventType: string;
   series: SonarrSeries;
   episode: SonarrEpisode;
 }
@@ -314,4 +312,11 @@ export interface SonarrCommand {
   duration?: string;
   exception?: string;
   trigger: "manual" | "scheduled" | "automatic";
+}
+
+export interface SonarrDiskSpace {
+  path: string;
+  label: string;
+  freeSpace: number;
+  totalSpace: number;
 }

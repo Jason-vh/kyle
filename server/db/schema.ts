@@ -90,7 +90,7 @@ export const mediaRequests = pgTable(
     userId: uuid("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
-    mediaType: text("media_type").notNull(), // 'movie' | 'series'
+    mediaType: text("media_type").$type<"movie" | "series">().notNull(),
     tmdbId: integer("tmdb_id").notNull(),
     title: text("title").notNull(),
     year: integer("year"),

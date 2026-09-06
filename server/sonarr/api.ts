@@ -1,6 +1,7 @@
 import type {
   SonarrCalendarEpisode,
   SonarrCommand,
+  SonarrDiskSpace,
   SonarrEpisode,
   SonarrHistoryItem,
   SonarrHistoryResponse,
@@ -248,4 +249,9 @@ export async function triggerManualImport(
       importMode: "move",
     }),
   });
+}
+
+/** Every mount the service can see, which is where a total size comes from. */
+export async function getDiskSpace(): Promise<SonarrDiskSpace[]> {
+  return request<SonarrDiskSpace[]>("/diskspace");
 }

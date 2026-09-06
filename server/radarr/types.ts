@@ -137,7 +137,7 @@ export interface RadarrQueueItem {
   size: number;
   sizeleft: number;
   title: string;
-  timeLeft?: string;
+  timeleft?: string;
   estimatedCompletionTime?: string;
   status: string;
   trackedDownloadStatus?: string;
@@ -203,4 +203,18 @@ export interface RadarrHistoryResponse {
   sortDirection: string;
   totalRecords: number;
   records: RadarrHistoryRecord[];
+}
+
+export interface RadarrRootFolder {
+  id: number;
+  path: string;
+  accessible: boolean;
+  freeSpace: number;
+}
+
+export interface RadarrDiskSpace {
+  path: string;
+  label: string;
+  freeSpace: number;
+  totalSpace: number;
 }

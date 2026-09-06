@@ -107,7 +107,7 @@ export function toPartialHistoryItem(item: SonarrHistoryItem) {
     sourceTitle: item.sourceTitle,
     quality: item.quality.quality.name,
     date: item.date,
-    eventType: item.eventType.name,
+    eventType: item.eventType,
     series: toPartialSeries(item.series),
     episode: toPartialEpisode(item.episode),
   };

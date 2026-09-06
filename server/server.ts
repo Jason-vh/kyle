@@ -24,6 +24,7 @@ import {
   handleGetRequests,
 } from "./routes/api/requests.ts";
 import { handleGetLibrary, handleRemoveLibraryItem } from "./routes/api/library.ts";
+import { handleGetDashboard } from "./routes/api/dashboard.ts";
 
 const log = createLogger("server");
 
@@ -38,6 +39,7 @@ const SPA_PATHS = new Set([
   "/discover",
   "/requests",
   "/library",
+  "/home",
 ]);
 const WEB_DIST = "web/dist";
 
@@ -95,6 +97,8 @@ export function startServer(port: number) {
       "/api/library/:mediaType/:serviceId": {
         DELETE: (req) => handleRemoveLibraryItem(req, req.params.mediaType, req.params.serviceId),
       },
+
+      "/api/dashboard": { GET: handleGetDashboard },
 
       "/api/discover": { GET: handleDiscoverSearch },
       "/api/requests": { GET: handleGetRequests, POST: handleCreateRequest },
