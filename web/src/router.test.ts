@@ -40,6 +40,26 @@ function stubAuth(authenticated: boolean) {
   return calls;
 }
 
+describe("the media route", () => {
+  test("carries the type and id of the title", async () => {
+    stubAuth(true);
+
+    await router.push("/media/series/95396");
+
+    expect(router.currentRoute.value.name).toBe("media");
+    expect(router.currentRoute.value.params).toEqual({ mediaType: "series", tmdbId: "95396" });
+  });
+
+  // The page can only ask about a movie or a series, by numeric TMDB id.
+  test("does not match anything else", async () => {
+    stubAuth(true);
+
+    await router.push("/media/album/95396");
+
+    expect(router.currentRoute.value.matched).toEqual([]);
+  });
+});
+
 describe("the auth guard", () => {
   test("lets a signed-in visitor through", async () => {
     stubAuth(true);

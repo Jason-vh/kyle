@@ -17,16 +17,17 @@ export interface DiscoverResult {
   requestedBy: string[];
 }
 
+/** The least a request needs; a search hit and a title's own page both have it. */
+export interface RequestInput {
+  mediaType: RequestableMediaType;
+  tmdbId: number;
+  posterPath: string | null;
+}
+
 export interface RequestOutcome {
   status: "added" | "existing";
   title: string;
   year?: number;
-}
-
-const TMDB_IMAGE_BASE = "https://image.tmdb.org/t/p/w342";
-
-export function posterUrl(posterPath: string | null): string | null {
-  return posterPath ? `${TMDB_IMAGE_BASE}${posterPath}` : null;
 }
 
 export async function discover(query: string): Promise<DiscoverResult[]> {
@@ -36,7 +37,7 @@ export async function discover(query: string): Promise<DiscoverResult[]> {
   return results;
 }
 
-export async function requestMedia(item: DiscoverResult): Promise<RequestOutcome> {
+export async function requestMedia(item: RequestInput): Promise<RequestOutcome> {
   return apiFetch<RequestOutcome>("/api/requests", {
     method: "POST",
     body: JSON.stringify({

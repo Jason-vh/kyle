@@ -20,22 +20,23 @@ web/src/
 
 ## Routes
 
-| Path                       | View            | Notes                                     |
-| -------------------------- | --------------- | ----------------------------------------- |
-| `/`                        | —               | redirects to `/home`                      |
-| `/home`                    | `DashboardView` | the default landing page                  |
-| `/discover`                | `DiscoverView`  | search TMDB and request                   |
-| `/library`                 | `LibraryView`   | what the services hold; admins can remove |
-| `/requests`                | `RequestsView`  | your requests, or everyone's for an admin |
-| `/account`                 | `AccountView`   | Plex link, passkeys, sign out             |
-| `/threads`, `/threads/:id` | thread viewer   | debugging the chatbot; not in the nav     |
-| `/login`                   | `LoginView`     | Plex and passkey sign-in                  |
+| Path                        | View            | Notes                                           |
+| --------------------------- | --------------- | ----------------------------------------------- |
+| `/`                         | —               | redirects to `/home`                            |
+| `/home`                     | `DashboardView` | the default landing page                        |
+| `/discover`                 | `DiscoverView`  | search TMDB and request                         |
+| `/library`                  | `LibraryView`   | what the services hold; admins can remove       |
+| `/media/:mediaType/:tmdbId` | `MediaView`     | one title in full, reached from any of its rows |
+| `/requests`                 | `RequestsView`  | your requests, or everyone's for an admin       |
+| `/account`                  | `AccountView`   | Plex link, passkeys, sign out                   |
+| `/threads`, `/threads/:id`  | thread viewer   | debugging the chatbot; not in the nav           |
+| `/login`                    | `LoginView`     | Plex and passkey sign-in                        |
 
 `router.beforeEach` checks `meta.requiresAuth` against `/api/auth/status`, except for a
 thread opened with a `?sig=` share link.
 
-**A new route needs adding to `SPA_PATHS` in `server/server.ts`**, or a hard refresh on
-it returns 404 instead of the app.
+**A new route needs adding to `SPA_PATHS` in `server/server.ts`** — or to `SPA_PREFIXES`
+when it carries an id — or a hard refresh on it returns 404 instead of the app.
 
 ## Fetching data
 

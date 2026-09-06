@@ -24,6 +24,45 @@ interface Progress {
   eta?: string;
 }
 
+interface QueueRecord {
+  size: number;
+  sizeleft: number;
+  timeleft?: string;
+}
+
+/**
+ * The furthest along of a title's downloads, which is the next thing that will
+ * become watchable. A movie only ever has one; a series has one per episode.
+ */
+function furthestAlong(records: QueueRecord[]): Progress | undefined {
+  let best: Progress | undefined;
+
+  for (const record of records) {
+    if (!record.size) continue;
+    const next = { progress: 1 - record.sizeleft / record.size, eta: record.timeleft };
+    if (!best || next.progress > best.progress) best = next;
+  }
+
+  return best;
+}
+
+/** Where one title's download has got to, or nothing if it is not downloading. */
+export async function progressFor(
+  mediaType: LibraryMediaType,
+  serviceId: number,
+): Promise<Progress | undefined> {
+  try {
+    const queue =
+      mediaType === "movie"
+        ? await radarr.getQueue({ movieIds: [serviceId] })
+        : await sonarr.getQueue({ seriesIds: [serviceId] });
+    return furthestAlong(queue.records);
+  } catch (error) {
+    log.warn("queue unavailable", { mediaType, serviceId, error: errorMessage(error) });
+    return undefined;
+  }
+}
+
 function key(mediaType: string, serviceId: number): string {
   return `${mediaType}:${serviceId}`;
 }

@@ -7,6 +7,12 @@ import type {
   TMDBTVShowDetails,
 } from "./types.ts";
 
+/** The year of a TMDB date, which is empty for anything unreleased. */
+export function yearOf(date?: string | null): number | undefined {
+  const year = Number(date?.slice(0, 4));
+  return Number.isFinite(year) && year > 0 ? year : undefined;
+}
+
 export const toPartialMovie = (movie: TMDBMovie) => {
   return {
     id: movie.id,

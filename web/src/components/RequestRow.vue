@@ -5,7 +5,11 @@
 
       <div class="min-w-0 flex-1">
         <div class="flex items-baseline gap-2">
-          <h3 class="truncate text-sm font-semibold text-text-primary">{{ request.title }}</h3>
+          <MediaTitle
+            :media-type="request.mediaType"
+            :tmdb-id="request.tmdbId"
+            :title="request.title"
+          />
           <span v-if="request.year" class="shrink-0 text-xs text-text-muted">
             {{ request.year }}
           </span>
@@ -17,19 +21,12 @@
           · {{ relativeTime(request.createdAt) }}
         </p>
 
-        <div v-if="request.progress !== undefined" class="mt-1.5 flex items-center gap-2">
-          <div class="h-1.5 flex-1 rounded-full bg-bg-elevated">
-            <div
-              class="h-full rounded-full bg-accent-amber transition-[width]"
-              :style="{ width: `${Math.max(2, Math.round(request.progress * 100))}%` }"
-            />
-          </div>
-          <span class="shrink-0 text-xs tabular-nums text-text-muted">
-            {{ Math.round(request.progress * 100) }}%<template v-if="request.eta">
-              · {{ request.eta }}</template
-            >
-          </span>
-        </div>
+        <DownloadProgress
+          v-if="request.progress !== undefined"
+          :progress="request.progress"
+          :eta="request.eta"
+          class="mt-1.5"
+        />
       </div>
 
       <StatusPill :tone="STATES[request.state].tone">{{ STATES[request.state].label }}</StatusPill>
@@ -38,8 +35,11 @@
 </template>
 
 <script setup lang="ts">
-import { posterUrl, type MediaRequest, type RequestState } from "#web/api/requests";
+import type { MediaRequest, RequestState } from "#web/api/requests";
+import { posterUrl } from "#web/utils/images";
 import { relativeTime } from "#web/composables/useRelativeTime";
+import DownloadProgress from "./DownloadProgress.vue";
+import MediaTitle from "./MediaTitle.vue";
 import AppCard from "./ui/AppCard.vue";
 import MediaPoster from "./ui/MediaPoster.vue";
 import StatusPill from "./ui/StatusPill.vue";

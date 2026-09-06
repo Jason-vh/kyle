@@ -76,6 +76,15 @@ export async function getAllRequesters() {
     .innerJoin(users, eq(mediaRequests.userId, users.id));
 }
 
+/** Who requested one title, named and identified so the viewer can be found among them. */
+export async function getRequestersForMedia(mediaType: "movie" | "series", tmdbId: number) {
+  return db
+    .select({ userId: mediaRequests.userId, name: users.displayName })
+    .from(mediaRequests)
+    .innerJoin(users, eq(mediaRequests.userId, users.id))
+    .where(and(eq(mediaRequests.mediaType, mediaType), eq(mediaRequests.tmdbId, tmdbId)));
+}
+
 /** Who requested each of these titles, for showing alongside search results. */
 export function requestersQuery(mediaType: "movie" | "series", tmdbIds: number[]) {
   return db

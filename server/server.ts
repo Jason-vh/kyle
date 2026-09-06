@@ -24,6 +24,7 @@ import {
   handleGetRequests,
 } from "./routes/api/requests.ts";
 import { handleGetLibrary, handleRemoveLibraryItem } from "./routes/api/library.ts";
+import { handleGetMediaDetail } from "./routes/api/media.ts";
 import { handleGetDashboard } from "./routes/api/dashboard.ts";
 import { handleGetNotifications, handleMarkNotificationsRead } from "./routes/api/notifications.ts";
 
@@ -42,6 +43,9 @@ const SPA_PATHS = new Set([
   "/library",
   "/home",
 ]);
+
+/** Client routes carrying an id, matched by their prefix instead. */
+const SPA_PREFIXES = ["/threads/", "/media/"];
 const WEB_DIST = "web/dist";
 
 /** Serves a built asset, falling back to index.html for client-routed paths. */
@@ -57,7 +61,8 @@ async function serveSpaFile(pathname: string): Promise<Response | null> {
     });
   }
 
-  const isSpaRoute = SPA_PATHS.has(pathname) || pathname.startsWith("/threads/");
+  const isSpaRoute =
+    SPA_PATHS.has(pathname) || SPA_PREFIXES.some((prefix) => pathname.startsWith(prefix));
   if (!isSpaRoute) return null;
 
   const indexFile = Bun.file(`${WEB_DIST}/index.html`);
@@ -95,6 +100,9 @@ export function startServer(port: number) {
       "/api/auth/plex/callback": { GET: handlePlexCallback },
 
       "/api/library": { GET: handleGetLibrary },
+      "/api/media/:mediaType/:tmdbId": {
+        GET: (req) => handleGetMediaDetail(req, req.params.mediaType, req.params.tmdbId),
+      },
       "/api/library/:mediaType/:serviceId": {
         DELETE: (req) => handleRemoveLibraryItem(req, req.params.mediaType, req.params.serviceId),
       },

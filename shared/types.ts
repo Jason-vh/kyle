@@ -11,22 +11,30 @@ export interface AuthStatusResponse {
 // Library
 export type LibraryMediaType = "movie" | "series";
 
+export function isLibraryMediaType(value: string): value is LibraryMediaType {
+  return value === "movie" || value === "series";
+}
+
 /** How much of an item is actually on disk. */
 export type LibraryAvailability = "available" | "partial" | "missing";
 
-export interface LibraryItem {
-  mediaType: LibraryMediaType;
+/** What a service holds of one title. */
+export interface LibraryState {
   /** Radarr or Sonarr id, and what management acts on. */
   serviceId: number;
-  tmdbId?: number;
-  title: string;
-  year?: number;
-  posterUrl?: string;
   monitored: boolean;
   sizeOnDisk: number;
   availability: LibraryAvailability;
   /** Episode progress for a series, e.g. "12/90 episodes". */
   detail?: string;
+}
+
+export interface LibraryItem extends LibraryState {
+  mediaType: LibraryMediaType;
+  tmdbId?: number;
+  title: string;
+  year?: number;
+  posterUrl?: string;
   /** Names of anyone who requested it through Kyle; empty for older media. */
   requestedBy: string[];
   requestedByMe: boolean;
@@ -37,6 +45,39 @@ export interface LibraryItem {
 export interface Watcher {
   name: string;
   thumb?: string;
+}
+
+// Media detail
+
+/** One title in full: what TMDB says about it, and what we have of it. */
+export interface MediaDetail {
+  mediaType: LibraryMediaType;
+  tmdbId: number;
+  title: string;
+  year?: number;
+  tagline?: string;
+  overview?: string;
+  /** TMDB image paths, sized by whoever renders them. */
+  posterPath: string | null;
+  backdropPath: string | null;
+  /** Minutes, per film or per episode. */
+  runtime?: number;
+  genres: string[];
+  /** TMDB's average out of 10, absent when nobody has voted. */
+  rating?: number;
+  /** TMDB's own wording: "Released", "Returning Series", … */
+  status?: string;
+  /** Absent when neither Radarr nor Sonarr holds it. */
+  library?: LibraryState;
+  /** 0–1, while downloading. */
+  progress?: number;
+  /** What the download client thinks is left, e.g. "00:12:31". */
+  eta?: string;
+  requestedBy: string[];
+  requestedByMe: boolean;
+  watchedBy: Watcher[];
+  /** Services that could not be reached, so part of this is missing. */
+  unavailable: string[];
 }
 
 // Requests
@@ -99,6 +140,8 @@ export interface DashboardStats {
 export interface ActivityItem {
   id: string;
   mediaType: LibraryMediaType;
+  /** Absent for media the services cannot map to TMDB. */
+  tmdbId?: number;
   title: string;
   year?: number;
   /** "S01E04 · Good News" for an episode. */

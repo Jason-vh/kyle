@@ -1,8 +1,9 @@
-import type { LibraryAvailability, LibraryItem, LibraryMediaType } from "#shared/types.ts";
+import type { LibraryItem, LibraryMediaType } from "#shared/types.ts";
 import type { RadarrMovie } from "#server/radarr/types.ts";
 import type { SonarrSeries } from "#server/sonarr/types.ts";
 import * as radarr from "#server/radarr/api.ts";
 import * as sonarr from "#server/sonarr/api.ts";
+import { movieState, seriesState } from "./item.ts";
 import { getAllRequesters } from "#server/db/requests.ts";
 import { getWatchers, watchKey } from "#server/plex/history.ts";
 import { posterOf } from "#server/media-images.ts";
@@ -14,44 +15,28 @@ const log = createLogger("library");
 function toMovie(movie: RadarrMovie): LibraryItem {
   return {
     mediaType: "movie",
-    serviceId: movie.id,
     tmdbId: movie.tmdbId,
     title: movie.title,
     year: movie.year || undefined,
     posterUrl: posterOf(movie),
-    monitored: movie.monitored,
-    sizeOnDisk: movie.sizeOnDisk ?? 0,
-    availability: movie.hasFile ? "available" : "missing",
     requestedBy: [],
     requestedByMe: false,
     watchedBy: [],
+    ...movieState(movie),
   };
 }
 
-/** A series is partial until every episode Sonarr counts is on disk. */
-function seriesAvailability(present: number, total: number): LibraryAvailability {
-  if (present === 0) return "missing";
-  return present >= total ? "available" : "partial";
-}
-
 function toSeries(series: SonarrSeries): LibraryItem {
-  const present = series.statistics?.episodeFileCount ?? 0;
-  const total = series.statistics?.episodeCount ?? 0;
-
   return {
     mediaType: "series",
-    serviceId: series.id,
     tmdbId: series.tmdbId,
     title: series.title,
     year: series.year || undefined,
     posterUrl: posterOf(series),
-    monitored: series.monitored,
-    sizeOnDisk: series.statistics?.sizeOnDisk ?? 0,
-    availability: seriesAvailability(present, total),
-    detail: total > 0 ? `${present}/${total} episodes` : undefined,
     requestedBy: [],
     requestedByMe: false,
     watchedBy: [],
+    ...seriesState(series),
   };
 }
 
@@ -149,4 +134,4 @@ export async function removeLibraryItem(
   log.info("removed library item", { mediaType, serviceId, deleteFiles });
 }
 
-export const __testing = { toMovie, toSeries, seriesAvailability, annotateRequesters };
+export const __testing = { toMovie, toSeries, annotateRequesters };

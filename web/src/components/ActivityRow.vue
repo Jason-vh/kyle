@@ -5,7 +5,7 @@
 
       <div class="min-w-0 flex-1">
         <div class="flex items-baseline gap-2">
-          <h3 class="truncate text-sm font-semibold text-text-primary">{{ item.title }}</h3>
+          <MediaTitle :media-type="item.mediaType" :tmdb-id="item.tmdbId" :title="item.title" />
           <span v-if="item.year" class="shrink-0 text-xs text-text-muted">{{ item.year }}</span>
         </div>
         <p v-if="item.detail" class="truncate text-xs text-text-muted">{{ item.detail }}</p>
@@ -26,6 +26,7 @@
 import type { ActivityItem } from "#web/api/dashboard";
 import { relativeTime } from "#web/composables/useRelativeTime";
 import { formatNames } from "#web/utils/format";
+import MediaTitle from "./MediaTitle.vue";
 import AppCard from "./ui/AppCard.vue";
 import MediaPoster from "./ui/MediaPoster.vue";
 import StatusPill from "./ui/StatusPill.vue";

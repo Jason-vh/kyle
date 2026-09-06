@@ -5,7 +5,7 @@
 
       <div class="flex min-w-0 flex-1 flex-col">
         <div class="flex items-baseline gap-2">
-          <h3 class="truncate text-sm font-semibold text-text-primary">{{ item.title }}</h3>
+          <MediaTitle :media-type="item.mediaType" :tmdb-id="item.tmdbId" :title="item.title" />
           <span v-if="item.year" class="shrink-0 text-xs text-text-muted">{{ item.year }}</span>
         </div>
 
@@ -49,9 +49,11 @@
 
 <script setup lang="ts">
 import { computed, ref } from "vue";
-import { posterUrl, type DiscoverResult } from "#web/api/requests";
+import type { DiscoverResult } from "#web/api/requests";
+import { posterUrl } from "#web/utils/images";
 import { useRequestMedia } from "#web/queries/media";
 import { formatNames } from "#web/utils/format";
+import MediaTitle from "./MediaTitle.vue";
 import AppButton from "./ui/AppButton.vue";
 import AppCard from "./ui/AppCard.vue";
 import MediaPoster from "./ui/MediaPoster.vue";

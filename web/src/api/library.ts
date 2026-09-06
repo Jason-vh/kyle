@@ -12,7 +12,13 @@ export async function getLibrary(): Promise<LibraryListing> {
   return apiFetch<LibraryListing>("/api/library");
 }
 
-export async function removeLibraryItem(item: LibraryItem, deleteFiles: boolean): Promise<void> {
+/** Anything naming a title in a service can be removed; the listing row is one. */
+export interface RemovableItem {
+  mediaType: LibraryMediaType;
+  serviceId: number;
+}
+
+export async function removeLibraryItem(item: RemovableItem, deleteFiles: boolean): Promise<void> {
   await apiFetch(`/api/library/${item.mediaType}/${item.serviceId}?deleteFiles=${deleteFiles}`, {
     method: "DELETE",
   });

@@ -34,6 +34,12 @@ export const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
+      path: "/media/:mediaType(movie|series)/:tmdbId(\\d+)",
+      name: "media",
+      component: () => import("./views/MediaView.vue"),
+      meta: { requiresAuth: true },
+    },
+    {
       path: "/requests",
       name: "requests",
       component: () => import("./views/RequestsView.vue"),

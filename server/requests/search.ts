@@ -2,6 +2,7 @@ import * as tmdb from "#server/tmdb/api.ts";
 import type { TMDBMultiResult } from "#server/tmdb/types.ts";
 import { getLibraryIndex, type LibraryStatus } from "./library.ts";
 import { getRequestersByTmdbId } from "#server/db/requests.ts";
+import { yearOf } from "#server/tmdb/utils.ts";
 import type { RequestableMediaType } from "./service.ts";
 
 export interface DiscoverResult {
@@ -15,11 +16,6 @@ export interface DiscoverResult {
   libraryStatus?: LibraryStatus;
   /** Display names of everyone who has requested it. */
   requestedBy: string[];
-}
-
-function yearOf(date?: string): number | undefined {
-  const year = Number(date?.slice(0, 4));
-  return Number.isFinite(year) && year > 0 ? year : undefined;
 }
 
 /** TMDB's multi search also returns people, who cannot be requested. */

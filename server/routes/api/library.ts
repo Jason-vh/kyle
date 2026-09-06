@@ -1,4 +1,4 @@
-import type { LibraryMediaType } from "#shared/types.ts";
+import { isLibraryMediaType } from "#shared/types.ts";
 import { requireAdmin, requireAuth } from "#server/auth/middleware.ts";
 import { listLibrary, removeLibraryItem } from "#server/library/service.ts";
 import { invalidateLibraryIndex } from "#server/requests/library.ts";
@@ -6,10 +6,6 @@ import { createLogger } from "#server/logger.ts";
 import { errorMessage, errorResponse } from "#server/errors.ts";
 
 const log = createLogger("api-library");
-
-function isMediaType(value: string): value is LibraryMediaType {
-  return value === "movie" || value === "series";
-}
 
 // ---------------------------------------------------------------------------
 // GET /api/library — everything Radarr and Sonarr hold
@@ -41,7 +37,7 @@ export async function handleRemoveLibraryItem(
   const auth = await requireAdmin(req);
   if ("error" in auth) return auth.error;
 
-  if (!isMediaType(mediaType)) {
+  if (!isLibraryMediaType(mediaType)) {
     return Response.json({ error: "Unknown media type" }, { status: 404 });
   }
 

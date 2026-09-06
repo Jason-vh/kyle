@@ -15,9 +15,6 @@ const IMPORTED = "downloadFolderImported";
 /** Enough history to cover a busy week without paging. */
 const HISTORY_PAGE = 60;
 
-/** An item still carrying the id used to match it to a request. */
-type Attributable = ActivityItem & { tmdbId?: number };
-
 interface Requester {
   mediaType: string;
   tmdbId: number;
@@ -26,7 +23,7 @@ interface Requester {
 }
 
 /** Who had asked for each title; anything added by hand simply has nobody. */
-function annotate(items: Attributable[], viewerId: string, requesters: Requester[]): void {
+function annotate(items: ActivityItem[], viewerId: string, requesters: Requester[]): void {
   const byKey = new Map<string, { names: string[]; mine: boolean }>();
   for (const requester of requesters) {
     const key = `${requester.mediaType}:${requester.tmdbId}`;
@@ -67,7 +64,7 @@ export async function getActivity(viewerId: string, since: Date): Promise<Activi
     getAllRequesters(),
   ]);
 
-  const items: Attributable[] = [];
+  const items: ActivityItem[] = [];
 
   for (const record of movies?.records ?? []) {
     if (record.eventType !== IMPORTED || !record.movie) continue;
@@ -112,7 +109,7 @@ export async function getActivity(viewerId: string, since: Date): Promise<Activi
 
   log.info("built activity feed", { since: since.toISOString(), items: recent.length });
 
-  return recent.map(({ tmdbId: _tmdbId, ...item }) => item);
+  return recent;
 }
 
 export const __testing = { annotate, IMPORTED };

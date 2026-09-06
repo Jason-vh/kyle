@@ -29,7 +29,11 @@
 
             <div class="min-w-0 flex-1">
               <div class="flex items-baseline gap-2">
-                <h3 class="truncate text-sm font-semibold text-text-primary">{{ item.title }}</h3>
+                <MediaTitle
+                  :media-type="item.mediaType"
+                  :tmdb-id="item.tmdbId"
+                  :title="item.title"
+                />
                 <span v-if="item.year" class="shrink-0 text-xs text-text-muted">
                   {{ item.year }}
                 </span>
@@ -85,6 +89,7 @@ import { computed, ref } from "vue";
 import { useTitle } from "@vueuse/core";
 import type { LibraryItem } from "#web/api/library";
 import { formatNames, formatSize } from "#web/utils/format";
+import MediaTitle from "#web/components/MediaTitle.vue";
 import WatcherAvatars from "#web/components/WatcherAvatars.vue";
 import AppButton from "#web/components/ui/AppButton.vue";
 import AppCard from "#web/components/ui/AppCard.vue";

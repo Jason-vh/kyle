@@ -155,12 +155,12 @@ describe("getActivity", () => {
     expect(item?.requestedByMe).toBe(true);
   });
 
-  // The id is only there to match a request; it has no business leaving.
-  test("does not leak the matching id into the response", async () => {
+  // The id both matches a request and links the row to the title's page.
+  test("carries the TMDB id", async () => {
     stubHistory([movieRecord()], []);
 
     const [item] = await getActivity(userId, since);
-    expect(item).not.toHaveProperty("tmdbId");
+    expect(item?.tmdbId).toBe(329865);
   });
 
   test("one service being down costs its half of the feed, not the page", async () => {
