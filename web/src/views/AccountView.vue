@@ -45,15 +45,15 @@
 import { onMounted, ref } from "vue";
 import { useTitle } from "@vueuse/core";
 import { useRoute, useRouter } from "vue-router";
-import { getAuthStatus, logout, resetAuthCache, type AuthUser } from "../api/auth";
-import { passkeyRegisterExisting } from "../api/passkey";
-import { plexErrorMessage, startPlexLink, unlinkPlex } from "../api/plex";
-import PlexIcon from "../components/PlexIcon.vue";
-import AppButton from "../components/ui/AppButton.vue";
-import AppCard from "../components/ui/AppCard.vue";
-import AppNotice from "../components/ui/AppNotice.vue";
-import AppPage from "../components/ui/AppPage.vue";
-import PageHeader from "../components/ui/PageHeader.vue";
+import { getAuthStatus, logout, resetAuthCache, type AuthUser } from "#web/api/auth";
+import { passkeyRegisterExisting } from "#web/api/passkey";
+import { plexErrorMessage, startPlexLink, unlinkPlex } from "#web/api/plex";
+import PlexIcon from "#web/components/PlexIcon.vue";
+import AppButton from "#web/components/ui/AppButton.vue";
+import AppCard from "#web/components/ui/AppCard.vue";
+import AppNotice from "#web/components/ui/AppNotice.vue";
+import AppPage from "#web/components/ui/AppPage.vue";
+import PageHeader from "#web/components/ui/PageHeader.vue";
 
 useTitle("Account — Kyle");
 

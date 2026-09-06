@@ -1,12 +1,12 @@
-import type { RadarrMovie } from "../radarr/types.ts";
-import type { SonarrSeries } from "../sonarr/types.ts";
-import * as radarr from "../radarr/api.ts";
-import * as sonarr from "../sonarr/api.ts";
-import type { MonitorOption } from "../sonarr/api.ts";
-import { saveMediaRequest } from "../db/requests.ts";
-import { upsertMovieSubscription, upsertSeriesSubscription } from "../db/subscriptions.ts";
+import type { RadarrMovie } from "#server/radarr/types.ts";
+import type { SonarrSeries } from "#server/sonarr/types.ts";
+import * as radarr from "#server/radarr/api.ts";
+import * as sonarr from "#server/sonarr/api.ts";
+import type { MonitorOption } from "#server/sonarr/api.ts";
+import { saveMediaRequest } from "#server/db/requests.ts";
+import { upsertMovieSubscription, upsertSeriesSubscription } from "#server/db/subscriptions.ts";
 import { invalidateLibraryIndex } from "./library.ts";
-import { createLogger } from "../logger.ts";
+import { createLogger } from "#server/logger.ts";
 
 const log = createLogger("requests");
 

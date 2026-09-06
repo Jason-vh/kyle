@@ -51,17 +51,17 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
 import { useTitle } from "@vueuse/core";
-import { getAuthStatus } from "../api/auth";
-import { getDashboard, type DashboardResponse } from "../api/dashboard";
-import { formatDuration, formatSize } from "../utils/format";
-import ActivityRow from "../components/ActivityRow.vue";
-import RequestRow from "../components/RequestRow.vue";
-import SectionHeading from "../components/ui/SectionHeading.vue";
-import AppNotice from "../components/ui/AppNotice.vue";
-import AppPage from "../components/ui/AppPage.vue";
-import PageHeader from "../components/ui/PageHeader.vue";
-import QueryState from "../components/ui/QueryState.vue";
-import StatCard from "../components/ui/StatCard.vue";
+import { getAuthStatus } from "#web/api/auth";
+import { getDashboard, type DashboardResponse } from "#web/api/dashboard";
+import { formatDuration, formatSize } from "#web/utils/format";
+import ActivityRow from "#web/components/ActivityRow.vue";
+import RequestRow from "#web/components/RequestRow.vue";
+import SectionHeading from "#web/components/ui/SectionHeading.vue";
+import AppNotice from "#web/components/ui/AppNotice.vue";
+import AppPage from "#web/components/ui/AppPage.vue";
+import PageHeader from "#web/components/ui/PageHeader.vue";
+import QueryState from "#web/components/ui/QueryState.vue";
+import StatCard from "#web/components/ui/StatCard.vue";
 
 useTitle("Kyle");
 

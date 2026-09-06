@@ -38,8 +38,8 @@
 </template>
 
 <script setup lang="ts">
-import { posterUrl, type MediaRequest, type RequestState } from "../api/requests";
-import { relativeTime } from "../composables/useRelativeTime";
+import { posterUrl, type MediaRequest, type RequestState } from "#web/api/requests";
+import { relativeTime } from "#web/composables/useRelativeTime";
 import AppCard from "./ui/AppCard.vue";
 import MediaPoster from "./ui/MediaPoster.vue";
 import StatusPill from "./ui/StatusPill.vue";

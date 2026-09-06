@@ -1,5 +1,5 @@
 import type { AgentToolResult } from "@mariozechner/pi-agent-core";
-import { safeJsonParse } from "../json.ts";
+import { safeJsonParse } from "#server/json.ts";
 
 /** Tool result carrying a JSON payload for the model to read. */
 export function jsonResult(value: unknown): AgentToolResult<undefined> {

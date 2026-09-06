@@ -1,7 +1,7 @@
 import { Type } from "@sinclair/typebox";
 import type { Tool } from "./tool.ts";
 import { jsonResult } from "./tool-result.ts";
-import { getSubscriptionsForUser } from "../db/subscriptions.ts";
+import { getSubscriptionsForUser } from "#server/db/subscriptions.ts";
 
 const params = Type.Object({
   userId: Type.String({

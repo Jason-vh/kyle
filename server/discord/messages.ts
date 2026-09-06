@@ -1,5 +1,5 @@
 import { MessageFlags, type SendableChannels } from "discord.js";
-import { createLogger } from "../logger.ts";
+import { createLogger } from "#server/logger.ts";
 import { getDiscordClient } from "./client.ts";
 
 const log = createLogger("discord");

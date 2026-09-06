@@ -1,4 +1,4 @@
-import { router } from "../router";
+import { router } from "#web/router";
 import { resetAuthCache } from "./auth";
 
 export async function apiFetch<T>(url: string, init?: RequestInit): Promise<T> {

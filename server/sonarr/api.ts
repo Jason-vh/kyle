@@ -11,8 +11,8 @@ import type {
   SonarrRootFolder,
   SonarrSeries,
 } from "./types.ts";
-import { createApiClient } from "../http/client.ts";
-import { requireEnv } from "../config.ts";
+import { createApiClient } from "#server/http/client.ts";
+import { requireEnv } from "#server/config.ts";
 
 const request = createApiClient({
   service: "sonarr",

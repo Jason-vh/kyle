@@ -1,10 +1,10 @@
-import { requireAdmin } from "../../auth/middleware.ts";
+import { requireAdmin } from "#server/auth/middleware.ts";
 import {
   getAllUsersWithIdentities,
   createPlatformLink,
   deletePlatformLink,
-} from "../../db/users.ts";
-import { createLogger } from "../../logger.ts";
+} from "#server/db/users.ts";
+import { createLogger } from "#server/logger.ts";
 
 const log = createLogger("api-users");
 

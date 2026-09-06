@@ -1,9 +1,9 @@
-import { createLogger } from "../logger.ts";
-import { safeJsonParse } from "../json.ts";
-import { errorFields } from "../errors.ts";
-import { verifySlackSignature } from "../slack/verify.ts";
-import { processSlackMessage } from "../slack/handler.ts";
-import { shouldProcess, type SlackEventPayload } from "../slack/events.ts";
+import { createLogger } from "#server/logger.ts";
+import { safeJsonParse } from "#server/json.ts";
+import { errorFields } from "#server/errors.ts";
+import { verifySlackSignature } from "#server/slack/verify.ts";
+import { processSlackMessage } from "#server/slack/handler.ts";
+import { shouldProcess, type SlackEventPayload } from "#server/slack/events.ts";
 
 const log = createLogger("slack:events");
 

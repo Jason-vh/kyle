@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { __testing } from "./service.ts";
-import type { RadarrMovie } from "../radarr/types.ts";
-import type { SonarrSeries } from "../sonarr/types.ts";
+import type { RadarrMovie } from "#server/radarr/types.ts";
+import type { SonarrSeries } from "#server/sonarr/types.ts";
 
 const { toMovie, toSeries, seriesAvailability } = __testing;
 

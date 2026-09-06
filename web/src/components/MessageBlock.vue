@@ -132,8 +132,8 @@
 
 <script setup lang="ts">
 import { computed, inject, ref, type Ref } from "vue";
-import { relativeTime } from "../composables/useRelativeTime";
-import type { ThreadMessage } from "@shared/types";
+import { relativeTime } from "#web/composables/useRelativeTime";
+import type { ThreadMessage } from "#shared/types";
 import UserAvatar from "./UserAvatar.vue";
 import MarkdownContent from "./MarkdownContent.vue";
 import ToolCallBlock from "./ToolCallBlock.vue";

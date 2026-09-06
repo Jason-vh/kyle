@@ -1,10 +1,10 @@
 import { afterEach, describe, expect, mock, test } from "bun:test";
-import type { ActivityItem } from "../../shared/types.ts";
+import type { ActivityItem } from "#shared/types.ts";
 
 const requesters: { mediaType: string; tmdbId: number; userId: string; name: string }[] = [];
 
-const realRequests = await import("../db/requests.ts");
-mock.module("../db/requests.ts", () => ({
+const realRequests = await import("#server/db/requests.ts");
+mock.module("#server/db/requests.ts", () => ({
   ...realRequests,
   getAllRequesters: () => Promise.resolve(requesters),
 }));

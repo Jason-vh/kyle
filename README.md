@@ -605,6 +605,9 @@ This repo is public, so most app config lives in GitHub Actions secrets:
 - **Formatting**: `oxfmt` via `bun run fmt`. Pre-commit hook (`lefthook`) runs
   `oxfmt --check`, `oxlint`, `tsc --noEmit -p tsconfig.server.json`, and `vue-tsc --noEmit`
   (in `web/`). Always run `bun run fmt` before committing.
+- **Imports**: `#` names a source root — `#server/*`, `#shared/*` on the server (resolved
+  by Bun from `package.json` `imports`), `#web/*`, `#shared/*` in `web/` (a Vite alias).
+  Siblings stay relative: `./api.ts` beside `./tools.ts` says something an alias would hide.
 - **Type safety**: type assertions (`as any`) are not allowed unless absolutely necessary —
   use type guards, generics, `WeakMap`, etc. Service clients return `request<T>()`, so tool
   code should not need casts.

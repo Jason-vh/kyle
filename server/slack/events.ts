@@ -1,4 +1,4 @@
-import { SUPPORTED_IMAGE_TYPES } from "../images.ts";
+import { SUPPORTED_IMAGE_TYPES } from "#server/images.ts";
 
 export interface SlackFile {
   id: string;

@@ -1,6 +1,6 @@
 import { Type } from "@sinclair/typebox";
-import type { Tool } from "../agent/tool.ts";
-import { jsonResult } from "../agent/tool-result.ts";
+import type { Tool } from "#server/agent/tool.ts";
+import { jsonResult } from "#server/agent/tool-result.ts";
 
 /** "America/New_York" reads as "New York" in a one-line summary. */
 function cityOf(timezone: unknown): string {

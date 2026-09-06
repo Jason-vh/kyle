@@ -49,10 +49,10 @@
 import { onMounted, ref } from "vue";
 import { useTitle } from "@vueuse/core";
 import { useRoute, useRouter } from "vue-router";
-import { isPlexEnabled, resetAuthCache } from "../api/auth";
-import { passkeyLogin } from "../api/passkey";
-import { plexErrorMessage, startPlexLogin } from "../api/plex";
-import PlexIcon from "../components/PlexIcon.vue";
+import { isPlexEnabled, resetAuthCache } from "#web/api/auth";
+import { passkeyLogin } from "#web/api/passkey";
+import { plexErrorMessage, startPlexLogin } from "#web/api/plex";
+import PlexIcon from "#web/components/PlexIcon.vue";
 
 useTitle("Sign in — Kyle");
 

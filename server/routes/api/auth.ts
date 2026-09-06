@@ -1,8 +1,8 @@
-import { parseAuthCookie, clearJwtCookie, isLocalhost } from "../../auth/jwt.ts";
-import { PLEX_PLATFORM } from "../../auth/plex.ts";
-import { isPlexConfigured } from "../../plex/api.ts";
-import { getPlatformIdentity } from "../../db/users.ts";
-import { createLogger } from "../../logger.ts";
+import { parseAuthCookie, clearJwtCookie, isLocalhost } from "#server/auth/jwt.ts";
+import { PLEX_PLATFORM } from "#server/auth/plex.ts";
+import { isPlexConfigured } from "#server/plex/api.ts";
+import { getPlatformIdentity } from "#server/db/users.ts";
+import { createLogger } from "#server/logger.ts";
 
 const log = createLogger("api-auth");
 

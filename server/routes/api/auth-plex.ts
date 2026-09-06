@@ -3,12 +3,12 @@ import {
   PLEX_PLATFORM,
   startPlexAuth,
   type PlexAuthIntent,
-} from "../../auth/plex.ts";
-import { isPlexConfigured } from "../../plex/api.ts";
-import { checkPlexAccess } from "../../plex/access.ts";
-import type { PlexAccount } from "../../plex/types.ts";
-import { buildJwtCookie, isLocalhost, signJwt } from "../../auth/jwt.ts";
-import { requireAuth } from "../../auth/middleware.ts";
+} from "#server/auth/plex.ts";
+import { isPlexConfigured } from "#server/plex/api.ts";
+import { checkPlexAccess } from "#server/plex/access.ts";
+import type { PlexAccount } from "#server/plex/types.ts";
+import { buildJwtCookie, isLocalhost, signJwt } from "#server/auth/jwt.ts";
+import { requireAuth } from "#server/auth/middleware.ts";
 import {
   createPlatformLink,
   createUserWithPlatformLink,
@@ -16,9 +16,9 @@ import {
   getPlatformIdentity,
   getUserById,
   resolveAppUserId,
-} from "../../db/users.ts";
-import { createLogger } from "../../logger.ts";
-import { errorMessage } from "../../errors.ts";
+} from "#server/db/users.ts";
+import { createLogger } from "#server/logger.ts";
+import { errorMessage } from "#server/errors.ts";
 
 const log = createLogger("api-plex");
 

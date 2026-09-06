@@ -1,12 +1,12 @@
-import type { DashboardResponse } from "../../shared/types.ts";
-import { getMediaRequestsForUser } from "../db/requests.ts";
-import { withState } from "../requests/state.ts";
-import { tryGetAdditions } from "../plex/additions.ts";
-import { tryGetWatchTime } from "../plex/watch-time.ts";
+import type { DashboardResponse } from "#shared/types.ts";
+import { getMediaRequestsForUser } from "#server/db/requests.ts";
+import { withState } from "#server/requests/state.ts";
+import { tryGetAdditions } from "#server/plex/additions.ts";
+import { tryGetWatchTime } from "#server/plex/watch-time.ts";
 import { getActivity } from "./activity.ts";
 import { getStorage } from "./storage.ts";
-import { createLogger } from "../logger.ts";
-import { errorMessage } from "../errors.ts";
+import { createLogger } from "#server/logger.ts";
+import { errorMessage } from "#server/errors.ts";
 
 const log = createLogger("dashboard");
 

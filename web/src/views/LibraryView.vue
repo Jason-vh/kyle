@@ -73,20 +73,20 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
 import { useTitle } from "@vueuse/core";
-import { getAuthStatus } from "../api/auth";
-import { getLibrary, removeLibraryItem, type LibraryItem } from "../api/library";
-import { formatNames, formatSize } from "../utils/format";
-import WatcherAvatars from "../components/WatcherAvatars.vue";
-import AppButton from "../components/ui/AppButton.vue";
-import AppCard from "../components/ui/AppCard.vue";
-import AppInput from "../components/ui/AppInput.vue";
-import AppNotice from "../components/ui/AppNotice.vue";
-import AppPage from "../components/ui/AppPage.vue";
-import FilterChips from "../components/ui/FilterChips.vue";
-import PageHeader from "../components/ui/PageHeader.vue";
-import QueryState from "../components/ui/QueryState.vue";
-import StatusPill from "../components/ui/StatusPill.vue";
-import type { Tone } from "../components/ui/types";
+import { getAuthStatus } from "#web/api/auth";
+import { getLibrary, removeLibraryItem, type LibraryItem } from "#web/api/library";
+import { formatNames, formatSize } from "#web/utils/format";
+import WatcherAvatars from "#web/components/WatcherAvatars.vue";
+import AppButton from "#web/components/ui/AppButton.vue";
+import AppCard from "#web/components/ui/AppCard.vue";
+import AppInput from "#web/components/ui/AppInput.vue";
+import AppNotice from "#web/components/ui/AppNotice.vue";
+import AppPage from "#web/components/ui/AppPage.vue";
+import FilterChips from "#web/components/ui/FilterChips.vue";
+import PageHeader from "#web/components/ui/PageHeader.vue";
+import QueryState from "#web/components/ui/QueryState.vue";
+import StatusPill from "#web/components/ui/StatusPill.vue";
+import type { Tone } from "#web/components/ui/types";
 
 useTitle("Library — Kyle");
 

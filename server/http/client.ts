@@ -1,5 +1,5 @@
-import { createLogger } from "../logger.ts";
-import { safeJsonParse } from "../json.ts";
+import { createLogger } from "#server/logger.ts";
+import { safeJsonParse } from "#server/json.ts";
 
 const DEFAULT_TIMEOUT_MS = 15_000;
 

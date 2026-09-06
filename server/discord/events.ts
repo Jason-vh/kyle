@@ -1,19 +1,19 @@
 import { ChannelType, type Message, type SendableChannels } from "discord.js";
-import { createLogger } from "../logger.ts";
-import { type AgentContext } from "../agent/index.ts";
-import { EMPTY_REPLY, failureReply } from "../agent/replies.ts";
-import { runConversationTurn } from "../agent/conversation.ts";
+import { createLogger } from "#server/logger.ts";
+import { type AgentContext } from "#server/agent/index.ts";
+import { EMPTY_REPLY, failureReply } from "#server/agent/replies.ts";
+import { runConversationTurn } from "#server/agent/conversation.ts";
 import {
   downloadImages,
   MAX_IMAGE_SIZE,
   SUPPORTED_IMAGE_TYPES,
   type RemoteImage,
-} from "../images.ts";
+} from "#server/images.ts";
 import { BOT_USER_ID } from "./client.ts";
 import { resolveDiscordUsername } from "./users.ts";
 import { sendDiscordMessage } from "./messages.ts";
-import { resolveAppUserId } from "../db/users.ts";
-import { errorFields } from "../errors.ts";
+import { resolveAppUserId } from "#server/db/users.ts";
+import { errorFields } from "#server/errors.ts";
 
 const log = createLogger("discord");
 

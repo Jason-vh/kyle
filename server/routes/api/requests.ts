@@ -1,16 +1,16 @@
-import { requireAuth } from "../../auth/middleware.ts";
-import { searchRequestableMedia } from "../../requests/search.ts";
+import { requireAuth } from "#server/auth/middleware.ts";
+import { searchRequestableMedia } from "#server/requests/search.ts";
 import {
   MediaNotFoundError,
   requestMovie,
   requestSeries,
   type RequestableMediaType,
   type Requester,
-} from "../../requests/service.ts";
-import { getAllMediaRequests, getMediaRequestsForUser } from "../../db/requests.ts";
-import { withState } from "../../requests/state.ts";
-import { createLogger } from "../../logger.ts";
-import { errorMessage, errorResponse } from "../../errors.ts";
+} from "#server/requests/service.ts";
+import { getAllMediaRequests, getMediaRequestsForUser } from "#server/db/requests.ts";
+import { withState } from "#server/requests/state.ts";
+import { createLogger } from "#server/logger.ts";
+import { errorMessage, errorResponse } from "#server/errors.ts";
 
 const log = createLogger("api-requests");
 

@@ -1,5 +1,5 @@
-import { createLogger } from "../logger.ts";
-import { errorMessage } from "../errors.ts";
+import { createLogger } from "#server/logger.ts";
+import { errorMessage } from "#server/errors.ts";
 import { checkWebhookAuth } from "./auth.ts";
 import { batchSeriesNotification } from "./batch.ts";
 import { notifyRequesters } from "./notify.ts";

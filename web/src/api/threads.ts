@@ -1,5 +1,5 @@
 import { apiFetch } from "./client";
-import type { ThreadListItem, ThreadDetail } from "@shared/types";
+import type { ThreadListItem, ThreadDetail } from "#shared/types";
 
 export function getThreads(): Promise<ThreadListItem[]> {
   return apiFetch<ThreadListItem[]>("/api/threads");

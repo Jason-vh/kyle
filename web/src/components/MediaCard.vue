@@ -48,8 +48,8 @@
 
 <script setup lang="ts">
 import { computed, ref } from "vue";
-import { posterUrl, requestMedia, type DiscoverResult } from "../api/requests";
-import { formatNames } from "../utils/format";
+import { posterUrl, requestMedia, type DiscoverResult } from "#web/api/requests";
+import { formatNames } from "#web/utils/format";
 import AppButton from "./ui/AppButton.vue";
 import AppCard from "./ui/AppCard.vue";
 import MediaPoster from "./ui/MediaPoster.vue";

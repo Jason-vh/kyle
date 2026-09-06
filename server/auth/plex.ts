@@ -1,6 +1,6 @@
-import type { PlexAccount } from "../plex/types.ts";
-import { buildAuthAppUrl, createPin, getAccount, getPin } from "../plex/api.ts";
-import { appOrigin } from "../config.ts";
+import type { PlexAccount } from "#server/plex/types.ts";
+import { buildAuthAppUrl, createPin, getAccount, getPin } from "#server/plex/api.ts";
+import { appOrigin } from "#server/config.ts";
 
 /** Platform key used for Plex rows in `platform_identities`. */
 export const PLEX_PLATFORM = "plex";

@@ -1,5 +1,5 @@
 import { getModel, getModels } from "@mariozechner/pi-ai";
-import { createLogger } from "../logger.ts";
+import { createLogger } from "#server/logger.ts";
 
 const log = createLogger("agent:model");
 

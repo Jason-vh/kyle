@@ -1,10 +1,10 @@
 import { and, eq } from "drizzle-orm";
 import type { AgentEvent } from "@mariozechner/pi-agent-core";
 import type { ImageContent } from "@mariozechner/pi-ai";
-import { createLogger } from "../logger.ts";
-import { db } from "../db/index.ts";
-import { conversations } from "../db/schema.ts";
-import { loadConversationHistory } from "../db/conversation-history.ts";
+import { createLogger } from "#server/logger.ts";
+import { db } from "#server/db/index.ts";
+import { conversations } from "#server/db/schema.ts";
+import { loadConversationHistory } from "#server/db/conversation-history.ts";
 import { createTurnWriter } from "./turn-writer.ts";
 import { runAgent, type AgentContext } from "./index.ts";
 

@@ -1,7 +1,7 @@
 import { Type } from "@sinclair/typebox";
 import type { Tool, ToolPresentation } from "./tool.ts";
 import { jsonResult } from "./tool-result.ts";
-import { signThreadSig } from "../routes/threads-auth.ts";
+import { signThreadSig } from "#server/routes/threads-auth.ts";
 
 const BASE_URL = "https://kyle.vhtm.eu";
 

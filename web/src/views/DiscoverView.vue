@@ -25,12 +25,12 @@
 <script setup lang="ts">
 import { ref, watch } from "vue";
 import { refDebounced, useTitle } from "@vueuse/core";
-import { discover, type DiscoverResult } from "../api/requests";
-import MediaCard from "../components/MediaCard.vue";
-import AppInput from "../components/ui/AppInput.vue";
-import AppPage from "../components/ui/AppPage.vue";
-import PageHeader from "../components/ui/PageHeader.vue";
-import QueryState from "../components/ui/QueryState.vue";
+import { discover, type DiscoverResult } from "#web/api/requests";
+import MediaCard from "#web/components/MediaCard.vue";
+import AppInput from "#web/components/ui/AppInput.vue";
+import AppPage from "#web/components/ui/AppPage.vue";
+import PageHeader from "#web/components/ui/PageHeader.vue";
+import QueryState from "#web/components/ui/QueryState.vue";
 
 useTitle("Request media — Kyle");
 

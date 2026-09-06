@@ -1,8 +1,8 @@
 import { sql } from "drizzle-orm";
-import { createLogger } from "../logger.ts";
+import { createLogger } from "#server/logger.ts";
 import { db } from "./index.ts";
 import type { MediaEventData } from "./media-events.ts";
-import { errorMessage } from "../errors.ts";
+import { errorMessage } from "#server/errors.ts";
 
 const log = createLogger("subscriptions");
 

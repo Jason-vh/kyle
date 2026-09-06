@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type { AssistantMessage, ToolResultMessage, UserMessage } from "@mariozechner/pi-ai";
 import { buildThreadItems, type ThreadMessageRow } from "./items.ts";
-import type { WebhookNotification } from "../db/webhook-notifications.ts";
+import type { WebhookNotification } from "#server/db/webhook-notifications.ts";
 
 const at = (seconds: number) => new Date(2026, 0, 1, 0, 0, seconds);
 

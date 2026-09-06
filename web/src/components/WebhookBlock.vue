@@ -58,9 +58,9 @@
 
 <script setup lang="ts">
 import { computed, inject, ref, type Ref } from "vue";
-import { relativeTime } from "../composables/useRelativeTime";
-import type { ThreadWebhook } from "@shared/types";
-import { episodeCode } from "@shared/media";
+import { relativeTime } from "#web/composables/useRelativeTime";
+import type { ThreadWebhook } from "#shared/types";
+import { episodeCode } from "#shared/media";
 import DownloadIcon from "./DownloadIcon.vue";
 
 const props = defineProps<{ notification: ThreadWebhook }>();

@@ -32,7 +32,7 @@
 
 <script setup lang="ts">
 import { computed } from "vue";
-import type { Watcher } from "@shared/types";
+import type { Watcher } from "#shared/types";
 
 const props = withDefaults(defineProps<{ watchers: Watcher[]; max?: number }>(), { max: 4 });
 

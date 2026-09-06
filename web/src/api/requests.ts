@@ -1,7 +1,7 @@
-import type { MediaRequest } from "@shared/types";
+import type { MediaRequest } from "#shared/types";
 import { apiFetch } from "./client";
 
-export type { MediaRequest, RequestState } from "@shared/types";
+export type { MediaRequest, RequestState } from "#shared/types";
 
 export type RequestableMediaType = "movie" | "series";
 export type LibraryStatus = "available" | "pending";

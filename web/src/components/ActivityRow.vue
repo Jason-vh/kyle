@@ -23,9 +23,9 @@
 </template>
 
 <script setup lang="ts">
-import type { ActivityItem } from "../api/dashboard";
-import { relativeTime } from "../composables/useRelativeTime";
-import { formatNames } from "../utils/format";
+import type { ActivityItem } from "#web/api/dashboard";
+import { relativeTime } from "#web/composables/useRelativeTime";
+import { formatNames } from "#web/utils/format";
 import AppCard from "./ui/AppCard.vue";
 import MediaPoster from "./ui/MediaPoster.vue";
 import StatusPill from "./ui/StatusPill.vue";

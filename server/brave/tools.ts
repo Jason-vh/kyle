@@ -1,6 +1,6 @@
 import { Type } from "@sinclair/typebox";
-import type { Tool } from "../agent/tool.ts";
-import { jsonResult } from "../agent/tool-result.ts";
+import type { Tool } from "#server/agent/tool.ts";
+import { jsonResult } from "#server/agent/tool-result.ts";
 import * as brave from "./api.ts";
 import { toPartialWebResult } from "./utils.ts";
 

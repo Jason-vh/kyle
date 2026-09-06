@@ -1,5 +1,5 @@
 import type { KnownBlock } from "@slack/web-api";
-import type { ResultTable } from "../agent/result-tables.ts";
+import type { ResultTable } from "#server/agent/result-tables.ts";
 
 /** Render tables as captioned Block Kit tables appended to the reply. */
 export function tableBlocks(tables: ResultTable[]): KnownBlock[] {

@@ -1,23 +1,23 @@
-import { createLogger } from "../../logger.ts";
-import { safeJsonParse } from "../../json.ts";
-import { mediaHref } from "../../media-links.ts";
-import { requireAuth } from "../../auth/middleware.ts";
-import { signThreadSig, verifyThreadSig } from "../threads-auth.ts";
+import { createLogger } from "#server/logger.ts";
+import { safeJsonParse } from "#server/json.ts";
+import { mediaHref } from "#server/media-links.ts";
+import { requireAuth } from "#server/auth/middleware.ts";
+import { signThreadSig, verifyThreadSig } from "#server/routes/threads-auth.ts";
 import {
   findConversation,
   listConversationMessages,
   listThreadSummaries,
-} from "../../db/threads.ts";
-import { getWebhookNotifications } from "../../db/webhook-notifications.ts";
-import { getMediaEventsForConversation } from "../../db/media-events.ts";
-import { createUsernameResolver } from "../../threads/usernames.ts";
+} from "#server/db/threads.ts";
+import { getWebhookNotifications } from "#server/db/webhook-notifications.ts";
+import { getMediaEventsForConversation } from "#server/db/media-events.ts";
+import { createUsernameResolver } from "#server/threads/usernames.ts";
 import {
   buildThreadItems,
   extractTextContent,
   stripMentions,
   type StoredMessage,
-} from "../../threads/items.ts";
-import type { ThreadListItem, ThreadDetail, MediaRef } from "../../../shared/types.ts";
+} from "#server/threads/items.ts";
+import type { ThreadListItem, ThreadDetail, MediaRef } from "#shared/types.ts";
 import type { UserMessage } from "@mariozechner/pi-ai";
 
 const log = createLogger("api-threads");

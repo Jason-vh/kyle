@@ -1,5 +1,5 @@
 import { eq, and, sql } from "drizzle-orm";
-import { createLogger } from "../logger.ts";
+import { createLogger } from "#server/logger.ts";
 import { db } from "./index.ts";
 import { users, platformIdentities, userCredentials } from "./schema.ts";
 

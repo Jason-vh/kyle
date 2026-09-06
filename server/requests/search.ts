@@ -1,7 +1,7 @@
-import * as tmdb from "../tmdb/api.ts";
-import type { TMDBMultiResult } from "../tmdb/types.ts";
+import * as tmdb from "#server/tmdb/api.ts";
+import type { TMDBMultiResult } from "#server/tmdb/types.ts";
 import { getLibraryIndex, type LibraryStatus } from "./library.ts";
-import { getRequestersByTmdbId } from "../db/requests.ts";
+import { getRequestersByTmdbId } from "#server/db/requests.ts";
 import type { RequestableMediaType } from "./service.ts";
 
 export interface DiscoverResult {

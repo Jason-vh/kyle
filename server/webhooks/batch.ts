@@ -1,6 +1,6 @@
-import { createLogger } from "../logger.ts";
-import { errorMessage } from "../errors.ts";
-import { episodeCode } from "../../shared/media.ts";
+import { createLogger } from "#server/logger.ts";
+import { errorMessage } from "#server/errors.ts";
+import { episodeCode } from "#shared/media.ts";
 import { findMediaRequesters } from "./requester.ts";
 import { notifyRequesters } from "./notify.ts";
 import type { MediaNotificationInfo } from "./types.ts";

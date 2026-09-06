@@ -45,7 +45,7 @@
 
 <script setup lang="ts">
 import { computed, ref } from "vue";
-import type { ThreadListItem } from "@shared/types";
+import type { ThreadListItem } from "#shared/types";
 
 const props = defineProps<{ thread: ThreadListItem }>();
 

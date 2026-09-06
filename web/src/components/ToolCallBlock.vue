@@ -18,7 +18,7 @@
 
 <script setup lang="ts">
 import { computed } from "vue";
-import type { ToolCallSummary } from "@shared/types";
+import type { ToolCallSummary } from "#shared/types";
 
 const props = defineProps<{ tc: ToolCallSummary }>();
 

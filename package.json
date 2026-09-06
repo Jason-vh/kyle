@@ -3,6 +3,10 @@
   "private": true,
   "type": "module",
   "module": "index.ts",
+  "imports": {
+    "#server/*": "./server/*",
+    "#shared/*": "./shared/*"
+  },
   "scripts": {
     "dev": "bun run --watch index.ts",
     "db:up": "docker compose -f docker-compose.dev.yml up -d",

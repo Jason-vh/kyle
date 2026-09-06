@@ -1,9 +1,9 @@
 import { Type } from "@sinclair/typebox";
-import type { Tool, ToolPresentation } from "../agent/tool.ts";
-import { jsonResult } from "../agent/tool-result.ts";
-import { buildTable } from "../agent/table.ts";
-import { requestSeries, type Requester } from "../requests/service.ts";
-import { episodeCode, episodeLabel, titleWithYear } from "../../shared/media.ts";
+import type { Tool, ToolPresentation } from "#server/agent/tool.ts";
+import { jsonResult } from "#server/agent/tool-result.ts";
+import { buildTable } from "#server/agent/table.ts";
+import { requestSeries, type Requester } from "#server/requests/service.ts";
+import { episodeCode, episodeLabel, titleWithYear } from "#shared/media.ts";
 import * as sonarr from "./api.ts";
 import {
   toPartialSeries,

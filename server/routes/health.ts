@@ -1,4 +1,4 @@
-import { checkDatabaseHealth } from "../db/index.ts";
+import { checkDatabaseHealth } from "#server/db/index.ts";
 
 /** Commit SHA of the running build, set by the deploy workflow. */
 const DEPLOY_ID = process.env.DEPLOY_ID?.trim() || "dev";

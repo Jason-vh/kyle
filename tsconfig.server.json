@@ -24,7 +24,14 @@
     // Some stricter flags (disabled by default)
     "noUnusedLocals": false,
     "noUnusedParameters": false,
-    "noPropertyAccessFromIndexSignature": false
+    "noPropertyAccessFromIndexSignature": false,
+
+    // `#` is this package's source root; Bun resolves it from package.json.
+    "baseUrl": ".",
+    "paths": {
+      "#server/*": ["./server/*"],
+      "#shared/*": ["./shared/*"]
+    }
   },
   "include": ["index.ts", "scripts/**/*", "server/**/*", "shared/**/*", "drizzle.config.ts"]
 }

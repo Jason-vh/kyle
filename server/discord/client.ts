@@ -1,7 +1,7 @@
 import { Client, GatewayIntentBits, Partials } from "discord.js";
-import { createLogger } from "../logger.ts";
+import { createLogger } from "#server/logger.ts";
 import { handleDiscordMessage } from "./events.ts";
-import { errorFields, errorMessage } from "../errors.ts";
+import { errorFields, errorMessage } from "#server/errors.ts";
 
 const log = createLogger("discord");
 

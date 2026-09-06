@@ -10,7 +10,7 @@ import type { RunAgentOptions, RunAgentResult } from "./index.ts";
 
 const dbReachable = await (async () => {
   if (!process.env.DATABASE_URL) return false;
-  const { checkDatabaseHealth } = await import("../db/index.ts");
+  const { checkDatabaseHealth } = await import("#server/db/index.ts");
   return checkDatabaseHealth();
 })();
 
@@ -29,8 +29,8 @@ mock.module("./index.ts", () => ({
 }));
 
 const { runConversationTurn, ConversationNotFoundError } = await import("./conversation.ts");
-const { db } = await import("../db/index.ts");
-const { conversations, messages, mediaEvents, users } = await import("../db/schema.ts");
+const { db } = await import("#server/db/index.ts");
+const { conversations, messages, mediaEvents, users } = await import("#server/db/schema.ts");
 
 type NewMessages = RunAgentResult["messages"];
 

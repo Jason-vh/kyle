@@ -1,7 +1,7 @@
 import type { PlexAccount } from "./types.ts";
 import { parseShareList, type PlexShareListUser } from "./users-xml.ts";
-import { createApiClient } from "../http/client.ts";
-import { optionalEnv, requireEnv } from "../config.ts";
+import { createApiClient } from "#server/http/client.ts";
+import { optionalEnv, requireEnv } from "#server/config.ts";
 
 /** Calls to plex.tv made as the server owner rather than as the signing-in user. */
 const plexTv = createApiClient({

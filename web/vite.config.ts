@@ -7,8 +7,9 @@ export default defineConfig({
   plugins: [vue(), tailwindcss()],
   resolve: {
     alias: {
-      "@": path.resolve(__dirname, "./src"),
-      "@shared": path.resolve(__dirname, "../shared"),
+      // `#` names a source root, matching the server's package.json imports.
+      "#web": path.resolve(__dirname, "./src"),
+      "#shared": path.resolve(__dirname, "../shared"),
     },
   },
   server: {

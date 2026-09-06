@@ -1,5 +1,5 @@
-import { createApiClient } from "../http/client.ts";
-import { requireEnv } from "../config.ts";
+import { createApiClient } from "#server/http/client.ts";
+import { requireEnv } from "#server/config.ts";
 
 export interface UltraStats {
   free_storage_bytes: number;

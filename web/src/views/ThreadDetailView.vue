@@ -57,13 +57,13 @@
 import { ref, computed, provide, onMounted, nextTick } from "vue";
 import { useTitle } from "@vueuse/core";
 import { useRoute } from "vue-router";
-import { getThread } from "../api/threads";
-import { relativeTime } from "../composables/useRelativeTime";
-import type { ThreadDetail, ThreadItem } from "@shared/types";
-import MediaRefsSummary from "../components/MediaRefsSummary.vue";
-import MessageBlock from "../components/MessageBlock.vue";
-import WebhookBlock from "../components/WebhookBlock.vue";
-import DateSeparator from "../components/DateSeparator.vue";
+import { getThread } from "#web/api/threads";
+import { relativeTime } from "#web/composables/useRelativeTime";
+import type { ThreadDetail, ThreadItem } from "#shared/types";
+import MediaRefsSummary from "#web/components/MediaRefsSummary.vue";
+import MessageBlock from "#web/components/MessageBlock.vue";
+import WebhookBlock from "#web/components/WebhookBlock.vue";
+import DateSeparator from "#web/components/DateSeparator.vue";
 
 const route = useRoute();
 const thread = ref<ThreadDetail | null>(null);

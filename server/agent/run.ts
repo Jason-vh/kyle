@@ -6,7 +6,7 @@ import {
   type Message,
   type TextContent,
 } from "@mariozechner/pi-ai";
-import { createLogger } from "../logger.ts";
+import { createLogger } from "#server/logger.ts";
 import { model } from "./model.ts";
 import { toolsForTurn } from "./registry.ts";
 import { getSystemPrompt, type AgentContext } from "./system-prompt.ts";

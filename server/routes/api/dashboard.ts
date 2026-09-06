@@ -1,7 +1,7 @@
-import { requireAuth } from "../../auth/middleware.ts";
-import { getDashboard } from "../../dashboard/service.ts";
-import { createLogger } from "../../logger.ts";
-import { errorMessage, errorResponse } from "../../errors.ts";
+import { requireAuth } from "#server/auth/middleware.ts";
+import { getDashboard } from "#server/dashboard/service.ts";
+import { createLogger } from "#server/logger.ts";
+import { errorMessage, errorResponse } from "#server/errors.ts";
 
 const log = createLogger("api-dashboard");
 

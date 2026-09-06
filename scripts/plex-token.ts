@@ -2,7 +2,7 @@
  * Obtains a Plex access token for the server owner by polling a PIN.
  * Kyle uses this token as its service credential for reading the Plex server.
  */
-import { buildAuthAppUrl, createPin, getAccount, getPin } from "../server/plex/api.ts";
+import { buildAuthAppUrl, createPin, getAccount, getPin } from "#server/plex/api.ts";
 
 const POLL_INTERVAL_MS = 2000;
 const POLL_TIMEOUT_MS = 5 * 60 * 1000;

@@ -4,8 +4,8 @@ const saved: unknown[] = [];
 const subscribed: unknown[] = [];
 
 // Spread the real modules so replacing one export does not hide the others.
-const realRequests = await import("../db/requests.ts");
-mock.module("../db/requests.ts", () => ({
+const realRequests = await import("#server/db/requests.ts");
+mock.module("#server/db/requests.ts", () => ({
   ...realRequests,
   saveMediaRequest: (input: unknown) => {
     saved.push(input);
@@ -13,8 +13,8 @@ mock.module("../db/requests.ts", () => ({
   },
 }));
 
-const realSubscriptions = await import("../db/subscriptions.ts");
-mock.module("../db/subscriptions.ts", () => ({
+const realSubscriptions = await import("#server/db/subscriptions.ts");
+mock.module("#server/db/subscriptions.ts", () => ({
   ...realSubscriptions,
   upsertMovieSubscription: (userId: string, radarrId: number, conversationId: string | null) => {
     subscribed.push({ userId, radarrId, conversationId });

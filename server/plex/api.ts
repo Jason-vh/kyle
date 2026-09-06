@@ -1,6 +1,6 @@
 import type { PlexAccount, PlexPin } from "./types.ts";
-import { createApiClient } from "../http/client.ts";
-import { optionalEnv, requireEnv } from "../config.ts";
+import { createApiClient } from "#server/http/client.ts";
+import { optionalEnv, requireEnv } from "#server/config.ts";
 
 /** Shown in the user's Plex "Authorized Devices" view. */
 const PRODUCT = "Kyle";

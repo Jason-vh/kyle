@@ -1,4 +1,4 @@
-import type { LibraryItem, LibraryMediaType } from "@shared/types";
+import type { LibraryItem, LibraryMediaType } from "#shared/types";
 import { apiFetch } from "./client";
 
 export type { LibraryItem, LibraryMediaType };

@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
-import { db } from "../../db/index.ts";
-import { userCredentials } from "../../db/schema.ts";
-import { getUserById, getUserCredentials, getCredentialById } from "../../db/users.ts";
+import { db } from "#server/db/index.ts";
+import { userCredentials } from "#server/db/schema.ts";
+import { getUserById, getUserCredentials, getCredentialById } from "#server/db/users.ts";
 import {
   generateRegOptions,
   verifyRegResponse,
@@ -12,10 +12,10 @@ import {
   type RegistrationResponseJSON,
   type AuthenticationResponseJSON,
   type StoredCredential,
-} from "../../auth/webauthn.ts";
-import { signJwt, buildJwtCookie, isLocalhost, parseAuthCookie } from "../../auth/jwt.ts";
-import { createLogger } from "../../logger.ts";
-import { errorMessage } from "../../errors.ts";
+} from "#server/auth/webauthn.ts";
+import { signJwt, buildJwtCookie, isLocalhost, parseAuthCookie } from "#server/auth/jwt.ts";
+import { createLogger } from "#server/logger.ts";
+import { errorMessage } from "#server/errors.ts";
 
 const log = createLogger("api-passkey");
 

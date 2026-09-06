@@ -26,13 +26,13 @@
 <script setup lang="ts">
 import { onMounted, ref } from "vue";
 import { useTitle } from "@vueuse/core";
-import { getAuthStatus } from "../api/auth";
-import { getRequests, type MediaRequest } from "../api/requests";
-import RequestRow from "../components/RequestRow.vue";
-import AppButton from "../components/ui/AppButton.vue";
-import AppPage from "../components/ui/AppPage.vue";
-import PageHeader from "../components/ui/PageHeader.vue";
-import QueryState from "../components/ui/QueryState.vue";
+import { getAuthStatus } from "#web/api/auth";
+import { getRequests, type MediaRequest } from "#web/api/requests";
+import RequestRow from "#web/components/RequestRow.vue";
+import AppButton from "#web/components/ui/AppButton.vue";
+import AppPage from "#web/components/ui/AppPage.vue";
+import PageHeader from "#web/components/ui/PageHeader.vue";
+import QueryState from "#web/components/ui/QueryState.vue";
 
 useTitle("Requests — Kyle");
 

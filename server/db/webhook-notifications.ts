@@ -2,8 +2,8 @@ import { eq, asc } from "drizzle-orm";
 import { db } from "./index.ts";
 import { webhookNotifications } from "./schema.ts";
 import type { WebhookNotificationPayload } from "./schema.ts";
-import { createLogger } from "../logger.ts";
-import { errorMessage } from "../errors.ts";
+import { createLogger } from "#server/logger.ts";
+import { errorMessage } from "#server/errors.ts";
 
 const log = createLogger("webhook-notifications");
 

@@ -1,7 +1,10 @@
 import { Type } from "@sinclair/typebox";
 import type { Tool } from "./tool.ts";
 import { jsonResult } from "./tool-result.ts";
-import { deactivateMovieSubscription, deactivateSeriesSubscriptions } from "../db/subscriptions.ts";
+import {
+  deactivateMovieSubscription,
+  deactivateSeriesSubscriptions,
+} from "#server/db/subscriptions.ts";
 
 const params = Type.Object({
   userId: Type.String({

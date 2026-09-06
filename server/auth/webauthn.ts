@@ -11,7 +11,7 @@ import {
   type PublicKeyCredentialCreationOptionsJSON,
   type PublicKeyCredentialRequestOptionsJSON,
 } from "@simplewebauthn/server";
-import { appOrigin, isDevEnvironment } from "../config.ts";
+import { appOrigin, isDevEnvironment } from "#server/config.ts";
 
 // Challenge store with 5-minute TTL
 const challengeStore = new Map<string, { challenge: string; expires: number }>();

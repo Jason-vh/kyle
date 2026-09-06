@@ -53,6 +53,7 @@ machinery than it would cost to avoid, and every page is a single request.
 
 ## Conventions
 
+- **Imports use `#web/` and `#shared/`**, never `../..`. Siblings stay relative.
 - **Formatting helpers live in `utils/format.ts`** — `formatNames`, `formatSize`,
   `formatDuration`. They were duplicated across views before.
 - **`useTitle` on every view**, so the tab says where you are.

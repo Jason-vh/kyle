@@ -1,9 +1,9 @@
 import { Type } from "@sinclair/typebox";
-import type { Tool, ToolPresentation } from "../agent/tool.ts";
-import { jsonResult } from "../agent/tool-result.ts";
-import { buildTable } from "../agent/table.ts";
-import { requestMovie, type Requester } from "../requests/service.ts";
-import { titleWithYear } from "../../shared/media.ts";
+import type { Tool, ToolPresentation } from "#server/agent/tool.ts";
+import { jsonResult } from "#server/agent/tool-result.ts";
+import { buildTable } from "#server/agent/table.ts";
+import { requestMovie, type Requester } from "#server/requests/service.ts";
+import { titleWithYear } from "#shared/media.ts";
 import * as radarr from "./api.ts";
 import {
   toPartialMovie,

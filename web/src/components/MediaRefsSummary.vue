@@ -34,7 +34,7 @@
 </template>
 
 <script setup lang="ts">
-import type { MediaRef } from "@shared/types";
+import type { MediaRef } from "#shared/types";
 
 defineProps<{ refs: MediaRef[] }>();
 

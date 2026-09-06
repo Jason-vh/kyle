@@ -1,9 +1,9 @@
-import type { LibraryMediaType } from "../../../shared/types.ts";
-import { requireAdmin, requireAuth } from "../../auth/middleware.ts";
-import { listLibrary, removeLibraryItem } from "../../library/service.ts";
-import { invalidateLibraryIndex } from "../../requests/library.ts";
-import { createLogger } from "../../logger.ts";
-import { errorMessage, errorResponse } from "../../errors.ts";
+import type { LibraryMediaType } from "#shared/types.ts";
+import { requireAdmin, requireAuth } from "#server/auth/middleware.ts";
+import { listLibrary, removeLibraryItem } from "#server/library/service.ts";
+import { invalidateLibraryIndex } from "#server/requests/library.ts";
+import { createLogger } from "#server/logger.ts";
+import { errorMessage, errorResponse } from "#server/errors.ts";
 
 const log = createLogger("api-library");
 

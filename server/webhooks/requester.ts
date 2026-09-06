@@ -1,6 +1,6 @@
 import { sql } from "drizzle-orm";
-import { createLogger } from "../logger.ts";
-import { db } from "../db/index.ts";
+import { createLogger } from "#server/logger.ts";
+import { db } from "#server/db/index.ts";
 import type { MediaRequester } from "./types.ts";
 
 const log = createLogger("webhooks:requester");
