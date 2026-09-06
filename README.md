@@ -7,6 +7,10 @@ from Slack, Discord, a web SPA, a CLI, or plain HTTP.
 Built with [pi-agent-core](https://github.com/badlogic/pi-mono) + Anthropic Claude,
 persisted in Postgres via Drizzle ORM, running on Bun. Live at <https://kyle.vhtm.eu>.
 
+The web app has its own docs in [`docs/`](docs/): the
+[design system](docs/design-system.md), the [frontend](docs/frontend.md), and where every
+figure on the [dashboard](docs/dashboard.md) comes from.
+
 ## Table of contents
 
 - [Overview](#overview)
@@ -113,12 +117,18 @@ server/
       users.ts               → User listing, platform link management (admin)
       requests.ts            → GET /api/discover, GET/POST /api/requests
       library.ts             → GET /api/library, DELETE /api/library/:type/:id
+      dashboard.ts           → GET /api/dashboard
   requests/
     service.ts               → requestMovie()/requestSeries(): the one write path
     search.ts                → TMDB search annotated with library status + requesters
     library.ts               → Cached index of what Radarr and Sonarr already hold
+    state.ts                 → Where a request has got to, derived from library + queues
   library/
     service.ts               → listLibrary()/removeLibraryItem() behind /api/library
+  dashboard/
+    service.ts               → getDashboard(): the home screen, source by source
+    activity.ts              → What landed recently, and who asked for it
+    storage.ts               → Space left where the media lives
   threads/
     items.ts                 → buildThreadItems(): messages + webhooks as viewer items
     usernames.ts             → Batch display-name resolution across app + platform users
@@ -130,7 +140,8 @@ server/
   ultra/                     → api, tools (stats)
   qbittorrent/               → api, tools (torrents)
   brave/                     → types, api, utils, tools (web search)
-  plex/                      → plex.tv client, owner token calls, share list, access policy
+  plex/                      → plex.tv client, owner token, share list, access policy,
+                               watch history, watch time, addition counts
   webhooks/
     types.ts                 → Webhook payload types + MediaNotificationInfo
     auth.ts                  → Basic-auth check (WEBHOOK_AUTH)
