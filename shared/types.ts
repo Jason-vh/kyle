@@ -69,6 +69,8 @@ export interface MediaDetail {
   status?: string;
   /** Absent when neither Radarr nor Sonarr holds it. */
   library?: LibraryState;
+  /** Only for a series in the library, newest concern first: specials last. */
+  seasons?: SeasonSummary[];
   /** 0–1, while downloading. */
   progress?: number;
   /** What the download client thinks is left, e.g. "00:12:31". */
@@ -78,6 +80,26 @@ export interface MediaDetail {
   watchedBy: Watcher[];
   /** Services that could not be reached, so part of this is missing. */
   unavailable: string[];
+}
+
+/** A season as Sonarr holds it, with the episodes it is made of. */
+export interface SeasonSummary {
+  /** 0 is Sonarr's specials season. */
+  seasonNumber: number;
+  monitored: boolean;
+  episodeCount: number;
+  episodeFileCount: number;
+  sizeOnDisk: number;
+  episodes: EpisodeSummary[];
+}
+
+export interface EpisodeSummary {
+  episodeNumber: number;
+  title: string;
+  /** ISO 8601; absent for an episode with no date yet. */
+  airDate?: string;
+  hasFile: boolean;
+  monitored: boolean;
 }
 
 // Requests

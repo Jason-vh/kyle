@@ -58,6 +58,34 @@ const HELD_MOVIE = {
   sizeOnDisk: 8_000_000_000,
 };
 
+const HELD_SERIES = {
+  "/tv/95396": SERIES,
+  "/api/v3/series": [
+    {
+      id: 9,
+      tmdbId: 95396,
+      title: "Severance",
+      monitored: true,
+      statistics: { episodeFileCount: 9, episodeCount: 18, sizeOnDisk: 30 },
+      seasons: [
+        { seasonNumber: 1, monitored: true, statistics: { episodeCount: 9, episodeFileCount: 9 } },
+        { seasonNumber: 2, monitored: true, statistics: { episodeCount: 9, episodeFileCount: 0 } },
+      ],
+    },
+  ],
+  "/api/v3/episode?seriesId=9": [
+    { seasonNumber: 1, episodeNumber: 2, title: "Half Loop", hasFile: true, monitored: true },
+    {
+      seasonNumber: 1,
+      episodeNumber: 1,
+      title: "Good News About Hell",
+      hasFile: true,
+      monitored: true,
+    },
+  ],
+  "/queue": { records: [] },
+};
+
 /** Answers whichever upstream the URL names; anything else is a test bug. */
 function stubServices(handlers: Record<string, unknown>): string[] {
   const urls: string[] = [];
@@ -141,25 +169,37 @@ describe("GET /api/media/:mediaType/:tmdbId", () => {
 
   // Sonarr cannot look a series up by TMDB id, so the listing is searched.
   test("finds a series by TMDB id in Sonarr's own listing", async () => {
-    stubServices({
-      "/tv/95396": SERIES,
-      "/api/v3/series": [
-        {
-          id: 9,
-          tmdbId: 95396,
-          title: "Severance",
-          monitored: true,
-          statistics: { episodeFileCount: 9, episodeCount: 18, sizeOnDisk: 30 },
-        },
-      ],
-      "/queue": { records: [] },
-    });
+    stubServices(HELD_SERIES);
 
     const body = (await (await get("series", "95396")).json()) as MediaDetail;
 
     expect(body.library?.availability).toBe("partial");
     expect(body.library?.detail).toBe("9/18 episodes");
     expect(body.runtime).toBe(50);
+  });
+
+  test("breaks a series down into its seasons and episodes", async () => {
+    stubServices(HELD_SERIES);
+
+    const body = (await (await get("series", "95396")).json()) as MediaDetail;
+
+    expect(body.seasons?.map((season) => season.seasonNumber)).toEqual([1, 2]);
+    expect(body.seasons?.[0]?.episodes.map((episode) => episode.title)).toEqual([
+      "Good News About Hell",
+      "Half Loop",
+    ]);
+  });
+
+  test("a movie has no seasons", async () => {
+    stubServices({
+      "/movie/27205": MOVIE,
+      "/api/v3/movie?tmdbId": [HELD_MOVIE],
+      "/queue": { records: [] },
+    });
+
+    const body = (await (await get("movie", "27205")).json()) as MediaDetail;
+
+    expect(body.seasons).toBeUndefined();
   });
 
   test("says how far along a download is", async () => {

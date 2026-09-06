@@ -1,9 +1,10 @@
-import type { LibraryMediaType, LibraryState, MediaDetail } from "#shared/types.ts";
+import type { LibraryMediaType, LibraryState, MediaDetail, SeasonSummary } from "#shared/types.ts";
 import * as radarr from "#server/radarr/api.ts";
 import * as sonarr from "#server/sonarr/api.ts";
 import * as tmdb from "#server/tmdb/api.ts";
 import { yearOf } from "#server/tmdb/utils.ts";
 import { movieState, seriesState } from "#server/library/item.ts";
+import { buildSeasons } from "./seasons.ts";
 import { progressFor } from "#server/requests/state.ts";
 import { getRequestersForMedia } from "#server/db/requests.ts";
 import { getWatchers, watchKey } from "#server/plex/history.ts";
@@ -60,23 +61,28 @@ async function describe(mediaType: LibraryMediaType, tmdbId: number): Promise<De
   };
 }
 
+interface Held {
+  state: LibraryState;
+  seasons?: SeasonSummary[];
+}
+
 /**
  * What the service holds of this title, or nothing when it holds none. Asked of
  * the service directly rather than the cached index, so a service being down
  * can be said out loud instead of reading as "not in the library".
  */
-async function heldState(
-  mediaType: LibraryMediaType,
-  tmdbId: number,
-): Promise<LibraryState | undefined> {
+async function heldState(mediaType: LibraryMediaType, tmdbId: number): Promise<Held | undefined> {
   if (mediaType === "movie") {
     const movie = await radarr.getLibraryMovieByTmdbId(tmdbId);
-    return movie ? movieState(movie) : undefined;
+    return movie ? { state: movieState(movie) } : undefined;
   }
 
   // Sonarr cannot look a series up by TMDB id, so its own listing is the index.
   const series = (await sonarr.getAllSeries()).find((show) => show.tmdbId === tmdbId);
-  return series ? seriesState(series) : undefined;
+  if (!series) return undefined;
+
+  const episodes = await sonarr.getEpisodes(series.id);
+  return { state: seriesState(series), seasons: buildSeasons(series, episodes) };
 }
 
 function serviceName(mediaType: LibraryMediaType): string {
@@ -107,7 +113,7 @@ export async function getMediaDetail(
     getWatchers(),
   ]);
 
-  const library = held ?? undefined;
+  const library = held?.state;
   const download = library ? await progressFor(mediaType, library.serviceId) : undefined;
 
   return {
@@ -115,6 +121,7 @@ export async function getMediaDetail(
     tmdbId,
     ...description,
     library,
+    seasons: held?.seasons,
     progress: download?.progress,
     eta: download?.eta,
     requestedBy: requesters.map((requester) => requester.name),

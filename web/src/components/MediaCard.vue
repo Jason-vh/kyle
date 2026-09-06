@@ -27,60 +27,30 @@
             Downloading
           </StatusPill>
 
-          <AppButton
-            v-if="!requested"
-            variant="primary"
+          <RequestAction
+            :item="item"
+            :held="item.libraryStatus !== undefined"
             size="sm"
             class="ml-auto"
-            :loading="busy"
-            @click="onRequest"
-          >
-            {{ busy ? "Requesting…" : item.libraryStatus ? "Request anyway" : "Request" }}
-          </AppButton>
-
-          <span v-else class="ml-auto text-xs font-semibold text-accent-green">Requested</span>
+          />
         </div>
-
-        <p v-if="error" class="mt-1 text-xs text-accent-red">{{ error }}</p>
       </div>
     </div>
   </AppCard>
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed } from "vue";
 import type { DiscoverResult } from "#web/api/requests";
 import { posterUrl } from "#web/utils/images";
-import { useRequestMedia } from "#web/queries/media";
 import { formatNames } from "#web/utils/format";
 import MediaTitle from "./MediaTitle.vue";
-import AppButton from "./ui/AppButton.vue";
+import RequestAction from "./RequestAction.vue";
 import AppCard from "./ui/AppCard.vue";
 import MediaPoster from "./ui/MediaPoster.vue";
 import StatusPill from "./ui/StatusPill.vue";
 
 const props = defineProps<{ item: DiscoverResult }>();
 
-const busy = ref(false);
-const requested = ref(false);
-const error = ref("");
-
 const poster = computed(() => posterUrl(props.item.posterPath));
-
-// Requesting changes the library, so the mutation refreshes everything that
-// shows it — this card's own search results included.
-const request = useRequestMedia();
-
-async function onRequest() {
-  error.value = "";
-  busy.value = true;
-  try {
-    await request.mutateAsync(props.item);
-    requested.value = true;
-  } catch (e) {
-    error.value = e instanceof Error ? e.message : "Could not request this";
-  } finally {
-    busy.value = false;
-  }
-}
 </script>

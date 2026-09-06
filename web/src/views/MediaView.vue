@@ -74,15 +74,8 @@
           </dl>
         </AppCard>
 
-        <div class="mt-4 flex flex-wrap gap-2">
-          <AppButton
-            v-if="!media.library"
-            variant="primary"
-            :loading="requesting"
-            @click="onRequest"
-          >
-            {{ requesting ? "Requesting…" : "Request" }}
-          </AppButton>
+        <div class="mt-4 flex flex-wrap items-start gap-2">
+          <RequestAction v-if="!media.library" :item="media" />
 
           <AppButton
             v-if="isAdmin && media.library"
@@ -95,6 +88,11 @@
         </div>
 
         <p v-if="actionError" class="mt-2 text-sm text-accent-red">{{ actionError }}</p>
+
+        <template v-if="media.seasons?.length">
+          <SectionHeading title="Seasons" class="mt-6" />
+          <SeasonList :seasons="media.seasons" />
+        </template>
 
         <ConfirmDialog
           v-model:open="confirming"
@@ -118,6 +116,8 @@ import type { LibraryMediaType } from "#shared/types";
 import { backdropUrl, posterUrl } from "#web/utils/images";
 import { formatDuration, formatNames, formatSize } from "#web/utils/format";
 import DownloadProgress from "#web/components/DownloadProgress.vue";
+import RequestAction from "#web/components/RequestAction.vue";
+import SeasonList from "#web/components/SeasonList.vue";
 import WatcherAvatars from "#web/components/WatcherAvatars.vue";
 import AppButton from "#web/components/ui/AppButton.vue";
 import AppCard from "#web/components/ui/AppCard.vue";
@@ -126,9 +126,10 @@ import AppPage from "#web/components/ui/AppPage.vue";
 import ConfirmDialog from "#web/components/ui/ConfirmDialog.vue";
 import MediaPoster from "#web/components/ui/MediaPoster.vue";
 import QueryState from "#web/components/ui/QueryState.vue";
+import SectionHeading from "#web/components/ui/SectionHeading.vue";
 import StatusPill from "#web/components/ui/StatusPill.vue";
 import type { Tone } from "#web/components/ui/types";
-import { useMediaDetail, useRemoveLibraryItem, useRequestMedia } from "#web/queries/media";
+import { useMediaDetail, useRemoveLibraryItem } from "#web/queries/media";
 import { useSession } from "#web/queries/session";
 
 const route = useRoute();
@@ -176,29 +177,12 @@ const confirmText = computed(() => {
   return `This removes “${item.title}” from the library${size}.`;
 });
 
-const requesting = ref(false);
 const removing = ref(false);
 const confirming = ref(false);
 const actionError = ref("");
 
-// Both mutations refresh this page's own query when they settle.
-const request = useRequestMedia();
+// Removing changes the library, so the mutation refreshes this page with it.
 const remove = useRemoveLibraryItem();
-
-async function onRequest() {
-  const item = media.value;
-  if (!item) return;
-
-  actionError.value = "";
-  requesting.value = true;
-  try {
-    await request.mutateAsync(item);
-  } catch (e) {
-    actionError.value = e instanceof Error ? e.message : "Could not request this";
-  } finally {
-    requesting.value = false;
-  }
-}
 
 async function onRemove() {
   const library = media.value?.library;

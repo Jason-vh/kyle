@@ -1,6 +1,5 @@
 import { afterAll, afterEach, beforeAll, describe, expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
-import type { ActivityItem } from "#shared/types.ts";
 import { getActivity } from "./activity.ts";
 import { db } from "#server/db/index.ts";
 import { mediaRequests } from "#server/db/schema.ts";
