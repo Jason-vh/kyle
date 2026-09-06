@@ -17,7 +17,7 @@ beforeEach(async () => {
     .use(PiniaColada, {});
 
   const cache = useQueryCache(pinia);
-  for (const entry of [...cache.caches.values()]) cache.remove(entry);
+  for (const entry of Array.from(cache.caches.values())) cache.remove(entry);
 
   await router.push("/login");
 });

@@ -29,6 +29,48 @@ export async function findMediaRequesters(
   return [];
 }
 
+/**
+ * Everyone subscribed to this media, whether or not there is anywhere to reply.
+ * `findMediaRequesters` joins conversations and so only finds the chat ones; a
+ * request made in a browser has no thread, and is exactly who this is for.
+ */
+export async function findSubscribedUserIds(
+  mediaType: "movie" | "series",
+  ids: { radarr?: number; sonarr?: number },
+  episodes?: Array<{ seasonNumber: number; episodeNumber: number }>,
+): Promise<string[]> {
+  if (mediaType === "movie" && ids.radarr != null) {
+    const rows = await db.execute<{ user_id: string }>(sql`
+      SELECT DISTINCT user_id FROM movie_subscriptions
+      WHERE radarr_id = ${ids.radarr} AND active = true
+    `);
+    return rows.map((row) => row.user_id);
+  }
+
+  if (mediaType === "series" && ids.sonarr != null) {
+    const rows = await db.execute<{
+      user_id: string;
+      season_number: number | null;
+      episode_number: number | null;
+    }>(sql`
+      SELECT user_id, season_number, episode_number FROM series_subscriptions
+      WHERE sonarr_id = ${ids.sonarr} AND active = true
+    `);
+
+    const matching =
+      episodes && episodes.length > 0
+        ? rows.filter((r) =>
+            subscriptionMatchesEpisodes(r.season_number, r.episode_number, episodes),
+          )
+        : rows;
+
+    return [...new Set(matching.map((row) => row.user_id))];
+  }
+
+  log.warn("no usable IDs for subscriber lookup", { mediaType, ids });
+  return [];
+}
+
 async function findMovieSubscribers(radarrId: number): Promise<MediaRequester[]> {
   const rows = await db.execute<{
     conversation_id: string;

@@ -30,10 +30,14 @@
           </router-link>
         </nav>
 
+        <div v-if="user" class="ml-auto flex items-center gap-1">
+          <NotificationBell />
+        </div>
+
         <router-link
           v-if="user"
           to="/account"
-          class="ml-auto flex items-center gap-2 no-underline"
+          class="flex items-center gap-2 no-underline"
           :title="`Signed in as ${user.name}`"
         >
           <span class="hidden text-sm text-text-muted sm:inline">{{ user.name }}</span>
@@ -68,6 +72,7 @@
 
 <script setup lang="ts">
 import { RouterView, useRoute } from "vue-router";
+import NotificationBell from "./components/NotificationBell.vue";
 import UserAvatar from "./components/UserAvatar.vue";
 import NavIcon from "./components/ui/NavIcon.vue";
 import { NAV_LINKS } from "./nav";

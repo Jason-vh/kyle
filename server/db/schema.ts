@@ -187,6 +187,35 @@ export const seriesSubscriptions = pgTable(
   ],
 );
 
+/**
+ * What Kyle has to tell someone. Chat requesters get a reply in their thread;
+ * this is where it lands for everyone, including anyone who asked in a browser
+ * and so has no thread to be answered in.
+ */
+export const notifications = pgTable(
+  "notifications",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id),
+    mediaType: text("media_type").$type<"movie" | "series">().notNull(),
+    /** "Severance (2022)" — the media, named as a person would say it. */
+    title: text("title").notNull(),
+    body: text("body").notNull(),
+    tmdbId: integer("tmdb_id"),
+    serviceId: integer("service_id"),
+    readAt: timestamp("read_at"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (table) => [
+    index("notifications_user_created_idx").on(table.userId, table.createdAt),
+    index("notifications_user_unread_idx")
+      .on(table.userId)
+      .where(sql`read_at IS NULL`),
+  ],
+);
+
 export const conversations = pgTable(
   "conversations",
   {

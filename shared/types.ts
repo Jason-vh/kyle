@@ -61,6 +61,24 @@ export interface MediaRequest {
   eta?: string;
 }
 
+// Notifications
+
+/** Something Kyle has to tell you, whichever interface you asked through. */
+export interface AppNotification {
+  id: string;
+  mediaType: LibraryMediaType;
+  /** "Severance (2022)" */
+  title: string;
+  body: string;
+  read: boolean;
+  createdAt: string;
+}
+
+export interface NotificationsResponse {
+  notifications: AppNotification[];
+  unread: number;
+}
+
 // Dashboard
 
 export interface StorageStat {

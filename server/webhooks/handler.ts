@@ -2,8 +2,7 @@ import { createLogger } from "#server/logger.ts";
 import { errorMessage } from "#server/errors.ts";
 import { checkWebhookAuth } from "./auth.ts";
 import { batchSeriesNotification } from "./batch.ts";
-import { notifyRequesters } from "./notify.ts";
-import { findMediaRequesters } from "./requester.ts";
+import { announce } from "./announce.ts";
 import type { MediaNotificationInfo, RadarrWebhookPayload, SonarrWebhookPayload } from "./types.ts";
 
 const log = createLogger("webhooks");
@@ -35,11 +34,6 @@ export async function handleRadarrWebhook(req: Request): Promise<Response> {
 
   log.info("radarr webhook received", { movie: payload.movie?.title });
 
-  const requesters = await findMediaRequesters("movie", {
-    radarr: payload.movie.id,
-    tmdb: payload.movie.tmdbId,
-  });
-
   const media: MediaNotificationInfo = {
     mediaType: "movie",
     title: payload.movie.title,
@@ -48,15 +42,15 @@ export async function handleRadarrWebhook(req: Request): Promise<Response> {
     releaseGroup: payload.release?.releaseGroup,
   };
 
-  // Radarr does not wait for a reply, so notify in the background.
-  notifyRequesters(requesters, media).catch((error) => {
+  // Radarr does not wait for a reply, so announce it in the background.
+  announce({ radarr: payload.movie.id, tmdb: payload.movie.tmdbId }, media).catch((error) => {
     log.error("radarr notification failed", {
       title: payload.movie.title,
       error: errorMessage(error),
     });
   });
 
-  return Response.json({ ok: true, requesters: requesters.length });
+  return Response.json({ ok: true });
 }
 
 export async function handleSonarrWebhook(req: Request): Promise<Response> {

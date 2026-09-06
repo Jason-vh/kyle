@@ -40,7 +40,8 @@ Capabilities:
   search TMDB, inspect queues/history/calendars, trigger downloads, manual imports.
 - **Downloads** — qBittorrent torrent listing/removal, Ultra seedbox stats.
 - **Notifications** — Sonarr/Radarr webhooks resolve who requested a title (via
-  subscription tables) and notify them, with AI-generated summaries.
+  subscription tables) and tell them in the app; anyone who asked in Slack or Discord
+  also gets an AI-written reply in the thread they asked in.
 - **Conversation memory** — full agent messages stored as JSONB; browse past threads in the
   web viewer, shareable via signed `?sig=` links.
 - **Auth** — Plex sign-in for anyone with access to the Plex server, plus WebAuthn passkeys
@@ -103,6 +104,7 @@ server/
     threads.ts               → Queries behind the thread viewer
     media-events.ts          → Media event extraction + persistence
     subscriptions.ts         → Movie/series subscription CRUD, processMediaEvent
+    notifications.ts         → What Kyle has to tell someone, and whether they read it
     migrate.ts               → Migration runner
   routes/
     chat.ts                  → POST /chat
@@ -118,6 +120,7 @@ server/
       requests.ts            → GET /api/discover, GET/POST /api/requests
       library.ts             → GET /api/library, DELETE /api/library/:type/:id
       dashboard.ts           → GET /api/dashboard
+      notifications.ts       → GET /api/notifications, POST /api/notifications/read
   requests/
     service.ts               → requestMovie()/requestSeries(): the one write path
     search.ts                → TMDB search annotated with library status + requesters
@@ -143,6 +146,7 @@ server/
   plex/                      → plex.tv client, owner token, share list, access policy,
                                watch history, watch time, addition counts
   webhooks/
+    announce.ts              → announce(): tells everyone who asked, however they asked
     types.ts                 → Webhook payload types + MediaNotificationInfo
     auth.ts                  → Basic-auth check (WEBHOOK_AUTH)
     requester.ts             → Find who requested media
@@ -188,6 +192,12 @@ web/                         → Vue 3 + Vite + Tailwind CSS 4 SPA
   and a subscription for whoever asked, and invalidates the library index. `add_movie` /
   `add_series` are built per turn (`createAddMovieTool(requester)`) so the tool knows who it
   is adding for; a turn with no app user still adds, but attributes nothing.
+- **Everyone hears, however they asked** — `announce()` in `server/webhooks/announce.ts`
+  is the one place media arriving turns into someone being told. It records an in-app
+  notification for every subscriber, and additionally replies in Slack or Discord where
+  the subscription has a conversation. A request made in a browser has none, which is
+  precisely why the in-app half exists: the chat lookup joins `conversations` and would
+  find nobody. A failed chat reply never loses the notification already recorded.
 - **Media events + subscriptions** — `media_events` is an append-only log of tool actions.
   `movie_subscriptions` / `series_subscriptions` track notification preferences (created on
   add by the request service, on download by `processMediaEvent`, deactivated on

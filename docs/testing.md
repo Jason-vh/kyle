@@ -107,11 +107,11 @@ CI always runs them.
 Honest list, so nobody assumes coverage that is not there:
 
 - `server/dashboard/service.ts` — the per-source `tolerate` fallback is untested.
-- `server/agent/` — `turn-writer.ts` and `conversation.ts` are covered only by the
-  database-backed tests; `run.ts`'s overload retry is not covered at all.
-- `web/` — only `format`, `RequestRow`, `AppButton` and `QueryState` have tests. The
-  other primitives do not.
-- No end-to-end test of any kind.
+- `server/agent/` — `run.ts`'s overload retry is not covered.
+- `server/slack/`, `server/discord/` — only the stream buffering is covered.
+- `web/` — the views have no tests, by choice; the primitives are covered where they
+  carry behaviour or wording, not where they are markup.
+- No browser-level end-to-end test.
 
 ## Linting
 

@@ -1,8 +1,7 @@
 import { createLogger } from "#server/logger.ts";
 import { errorMessage } from "#server/errors.ts";
 import { episodeCode } from "#shared/media.ts";
-import { findMediaRequesters } from "./requester.ts";
-import { notifyRequesters } from "./notify.ts";
+import { announce } from "./announce.ts";
 import type { MediaNotificationInfo } from "./types.ts";
 
 const log = createLogger("webhooks:batch");
@@ -23,8 +22,7 @@ async function flush(sonarrId: number): Promise<void> {
   if (!media) return;
   pending.delete(sonarrId);
 
-  const requesters = await findMediaRequesters("series", { sonarr: sonarrId }, media.episodes);
-  await notifyRequesters(requesters, media);
+  await announce({ sonarr: sonarrId }, media);
 }
 
 /**

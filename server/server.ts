@@ -25,6 +25,7 @@ import {
 } from "./routes/api/requests.ts";
 import { handleGetLibrary, handleRemoveLibraryItem } from "./routes/api/library.ts";
 import { handleGetDashboard } from "./routes/api/dashboard.ts";
+import { handleGetNotifications, handleMarkNotificationsRead } from "./routes/api/notifications.ts";
 
 const log = createLogger("server");
 
@@ -99,6 +100,9 @@ export function startServer(port: number) {
       },
 
       "/api/dashboard": { GET: handleGetDashboard },
+
+      "/api/notifications": { GET: handleGetNotifications },
+      "/api/notifications/read": { POST: handleMarkNotificationsRead },
 
       "/api/discover": { GET: handleDiscoverSearch },
       "/api/requests": { GET: handleGetRequests, POST: handleCreateRequest },
