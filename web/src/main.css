@@ -1,31 +1,98 @@
 @import "tailwindcss";
 
+/*
+ * Every colour is semantic: components name the role, never the hue, so a
+ * palette change happens here and nowhere else. The dark scheme below
+ * re-points the same names, which is why no component knows it exists.
+ */
 @theme {
   /* Typography */
   --font-family-sans: "Inter", system-ui, sans-serif;
   --font-family-mono: "JetBrains Mono", Menlo, monospace;
 
-  /* Color palette */
-  --color-bg-base: #f9fafb;
+  /* Surfaces */
+  --color-bg-base: #f7f7f9;
   --color-bg-surface: #ffffff;
-  --color-bg-elevated: #f3f4f6;
+  --color-bg-elevated: #f1f2f4;
   --color-bg-input: #ffffff;
+  --color-bg-overlay: rgb(17 24 39 / 0.45);
+
+  /* Lines */
   --color-border-primary: #e5e7eb;
   --color-border-secondary: #d1d5db;
+
+  /* Text */
   --color-text-primary: #111827;
   --color-text-secondary: #4b5563;
-  --color-text-muted: #9ca3af;
+  --color-text-muted: #8b93a1;
   --color-text-inverse: #ffffff;
+
+  /* Accents. `-light` is a tint to sit behind text of the same name. */
   --color-accent-purple: #7c3aed;
   --color-accent-purple-light: #ede9fe;
   --color-accent-blue: #2563eb;
-  --color-accent-green: #16a34a;
+  --color-accent-blue-light: #dbeafe;
+  --color-accent-green: #15803d;
   --color-accent-green-light: #dcfce7;
   --color-accent-red: #dc2626;
   --color-accent-red-light: #fee2e2;
-  --color-accent-amber: #d97706;
+  --color-accent-amber: #b45309;
   --color-accent-amber-light: #fef3c7;
   --color-accent-cyan: #0891b2;
+  --color-accent-cyan-light: #cffafe;
+
+  /* Shape */
+  --radius-card: 0.875rem;
+  --radius-control: 0.625rem;
+
+  /* Depth. Deliberately shallow; borders carry most of the separation. */
+  --shadow-card: 0 1px 2px rgb(17 24 39 / 0.05);
+  --shadow-raised: 0 4px 16px rgb(17 24 39 / 0.08);
+
+  /* The reading column every page shares. */
+  --container-page: 46rem;
+}
+
+/*
+ * Unlayered, so it overrides the theme layer. Tints become dark enough to
+ * carry light text, since that is what the `-light` pairs are for.
+ */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-bg-base: #0e1117;
+    --color-bg-surface: #161a22;
+    --color-bg-elevated: #1f242e;
+    --color-bg-input: #1a1f28;
+    --color-bg-overlay: rgb(0 0 0 / 0.6);
+
+    --color-border-primary: #262c37;
+    --color-border-secondary: #333b48;
+
+    --color-text-primary: #e8eaed;
+    --color-text-secondary: #a8b0bd;
+    --color-text-muted: #6f7887;
+    --color-text-inverse: #0e1117;
+
+    --color-accent-purple: #a78bfa;
+    --color-accent-purple-light: #2c2350;
+    --color-accent-blue: #60a5fa;
+    --color-accent-blue-light: #16294a;
+    --color-accent-green: #4ade80;
+    --color-accent-green-light: #10331f;
+    --color-accent-red: #f87171;
+    --color-accent-red-light: #3d1a1a;
+    --color-accent-amber: #fbbf24;
+    --color-accent-amber-light: #3a2a0c;
+    --color-accent-cyan: #22d3ee;
+    --color-accent-cyan-light: #0e3038;
+
+    --shadow-card: 0 1px 2px rgb(0 0 0 / 0.4);
+    --shadow-raised: 0 4px 16px rgb(0 0 0 / 0.5);
+  }
+}
+
+html {
+  color-scheme: light dark;
 }
 
 body {
@@ -35,13 +102,14 @@ body {
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  /* Phones: keep content clear of the home indicator and the bottom nav. */
+  padding-bottom: env(safe-area-inset-bottom);
 }
 
 ::selection {
-  background: color-mix(in srgb, var(--color-accent-purple) 20%, transparent);
+  background: color-mix(in srgb, var(--color-accent-purple) 25%, transparent);
 }
 
-/* Fade-in animation */
 @keyframes fade-in {
   from {
     opacity: 0;
@@ -55,4 +123,10 @@ body {
 
 .fade-in {
   animation: fade-in 0.3s ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fade-in {
+    animation: none;
+  }
 }

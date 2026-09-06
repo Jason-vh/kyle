@@ -1,41 +1,36 @@
 <template>
-  <div class="mx-auto max-w-[700px] p-4 sm:p-8">
-    <header class="mb-5">
-      <h1 class="text-xl font-semibold text-text-primary">Request media</h1>
-      <p class="mt-1 text-sm text-text-muted">
-        Search for a movie or series and add it to the library.
-      </p>
-    </header>
+  <AppPage>
+    <PageHeader title="Request media" subtitle="Search for a movie or series and add it." />
 
-    <input
-      v-model="query"
-      type="search"
-      placeholder="Search for a movie or series…"
-      autocomplete="off"
-      autofocus
-      class="mb-5 w-full rounded-lg border border-border-primary bg-bg-input px-3 py-2 text-sm text-text-primary placeholder-text-muted focus:border-accent-purple focus:outline-none focus:ring-2 focus:ring-accent-purple/20"
-    />
+    <AppInput v-model="query" placeholder="Search for a movie or series…" class="mb-5" autofocus />
 
-    <div v-if="error" class="py-8 text-center text-sm text-accent-red">{{ error }}</div>
-    <div v-else-if="loading" class="py-8 text-center text-sm text-text-muted">Searching…</div>
-    <div v-else-if="!query.trim()" class="py-8 text-center text-sm text-text-muted">
+    <p v-if="!query.trim()" class="py-12 text-center text-sm text-text-muted">
       Start typing to find something.
-    </div>
-    <div v-else-if="results.length === 0" class="py-8 text-center text-sm text-text-muted">
-      Nothing found for “{{ query }}”.
-    </div>
-    <div v-else class="flex flex-col gap-2">
-      <MediaCard v-for="item in results" :key="`${item.mediaType}-${item.tmdbId}`" :item="item" />
-    </div>
-  </div>
+    </p>
+    <QueryState
+      v-else
+      :loading="loading"
+      :error="error"
+      :empty="results.length === 0"
+      loading-text="Searching…"
+      :empty-text="`Nothing found for “${query}”.`"
+    >
+      <div class="flex flex-col gap-2">
+        <MediaCard v-for="item in results" :key="`${item.mediaType}-${item.tmdbId}`" :item="item" />
+      </div>
+    </QueryState>
+  </AppPage>
 </template>
 
 <script setup lang="ts">
 import { ref, watch } from "vue";
-import { useTitle } from "@vueuse/core";
-import { refDebounced } from "@vueuse/core";
+import { refDebounced, useTitle } from "@vueuse/core";
 import { discover, type DiscoverResult } from "../api/requests";
 import MediaCard from "../components/MediaCard.vue";
+import AppInput from "../components/ui/AppInput.vue";
+import AppPage from "../components/ui/AppPage.vue";
+import PageHeader from "../components/ui/PageHeader.vue";
+import QueryState from "../components/ui/QueryState.vue";
 
 useTitle("Request media — Kyle");
 

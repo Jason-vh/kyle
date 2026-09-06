@@ -1,55 +1,47 @@
 <template>
-  <div class="mx-auto max-w-[700px] p-4 sm:p-8">
-    <header class="mb-5 flex items-baseline justify-between gap-4">
-      <h1 class="text-xl font-semibold text-text-primary">Requests</h1>
-      <button
-        v-if="isAdmin"
-        class="text-sm text-accent-purple hover:underline"
-        @click="toggleScope"
-      >
-        {{ showAll ? "Show only mine" : "Show everyone's" }}
-      </button>
-    </header>
+  <AppPage>
+    <PageHeader title="Requests">
+      <template #aside>
+        <AppButton v-if="isAdmin" variant="ghost" size="sm" @click="toggleScope">
+          {{ showAll ? "Only mine" : "Everyone's" }}
+        </AppButton>
+      </template>
+    </PageHeader>
 
-    <div v-if="loading" class="py-12 text-center text-text-muted">Loading…</div>
-    <div v-else-if="error" class="py-12 text-center text-accent-red">{{ error }}</div>
-    <div v-else-if="requests.length === 0" class="py-12 text-center text-sm text-text-muted">
-      Nothing requested yet.
-      <router-link to="/discover" class="text-accent-purple hover:underline">
-        Request something
-      </router-link>
-    </div>
-    <div v-else class="flex flex-col gap-2">
-      <div
-        v-for="request in requests"
-        :key="request.id"
-        class="flex items-center gap-3 rounded-lg border border-border-primary bg-bg-surface p-3"
-      >
-        <div class="h-[72px] w-[48px] shrink-0 overflow-hidden rounded-md bg-bg-input">
-          <img
-            v-if="posterUrl(request.posterPath)"
-            :src="posterUrl(request.posterPath)!"
-            :alt="request.title"
-            loading="lazy"
-            class="size-full object-cover"
-          />
-        </div>
-        <div class="min-w-0 flex-1">
-          <div class="flex items-baseline gap-2">
-            <h3 class="truncate text-sm font-semibold text-text-primary">{{ request.title }}</h3>
-            <span v-if="request.year" class="shrink-0 text-xs text-text-muted">
-              {{ request.year }}
+    <QueryState :loading="loading" :error="error" :empty="requests.length === 0">
+      <template #empty>
+        Nothing requested yet.
+        <router-link to="/discover" class="text-accent-purple hover:underline">
+          Request something
+        </router-link>
+      </template>
+
+      <div class="flex flex-col gap-2">
+        <AppCard v-for="request in requests" :key="request.id">
+          <div class="flex items-center gap-3">
+            <MediaPoster :src="posterUrl(request.posterPath)" :alt="request.title" />
+            <div class="min-w-0 flex-1">
+              <div class="flex items-baseline gap-2">
+                <h3 class="truncate text-sm font-semibold text-text-primary">
+                  {{ request.title }}
+                </h3>
+                <span v-if="request.year" class="shrink-0 text-xs text-text-muted">
+                  {{ request.year }}
+                </span>
+              </div>
+              <p class="mt-0.5 text-xs text-text-muted">
+                {{ request.mediaType === "movie" ? "Movie" : "Series" }}
+                <template v-if="request.requestedBy"> · {{ request.requestedBy }}</template>
+              </p>
+            </div>
+            <span class="shrink-0 text-xs text-text-muted">
+              {{ relativeTime(request.createdAt) }}
             </span>
           </div>
-          <p class="mt-0.5 text-xs text-text-muted">
-            {{ request.mediaType === "movie" ? "Movie" : "Series" }}
-            <template v-if="request.requestedBy"> · {{ request.requestedBy }}</template>
-          </p>
-        </div>
-        <span class="shrink-0 text-xs text-text-muted">{{ relativeTime(request.createdAt) }}</span>
+        </AppCard>
       </div>
-    </div>
-  </div>
+    </QueryState>
+  </AppPage>
 </template>
 
 <script setup lang="ts">
@@ -58,6 +50,12 @@ import { useTitle } from "@vueuse/core";
 import { getAuthStatus } from "../api/auth";
 import { getRequests, posterUrl, type MediaRequest } from "../api/requests";
 import { relativeTime } from "../composables/useRelativeTime";
+import AppButton from "../components/ui/AppButton.vue";
+import AppCard from "../components/ui/AppCard.vue";
+import AppPage from "../components/ui/AppPage.vue";
+import MediaPoster from "../components/ui/MediaPoster.vue";
+import PageHeader from "../components/ui/PageHeader.vue";
+import QueryState from "../components/ui/QueryState.vue";
 
 useTitle("Requests — Kyle");
 

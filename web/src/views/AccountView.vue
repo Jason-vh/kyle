@@ -1,23 +1,12 @@
 <template>
-  <div class="mx-auto max-w-[700px] p-4 sm:p-8">
-    <header class="mb-6">
-      <h1 class="text-xl font-semibold text-text-primary">Account</h1>
-      <p class="mt-1 text-sm text-text-muted">{{ user?.name }}</p>
-    </header>
+  <AppPage>
+    <PageHeader title="Account" :subtitle="user?.name" />
 
-    <div
-      v-if="message"
-      class="mb-4 rounded-lg px-3 py-2 text-sm"
-      :class="
-        message.kind === 'error'
-          ? 'bg-accent-red-light text-accent-red'
-          : 'bg-accent-green-light text-accent-green'
-      "
-    >
+    <AppNotice v-if="message" :tone="message.kind === 'error' ? 'red' : 'green'" class="mb-4">
       {{ message.text }}
-    </div>
+    </AppNotice>
 
-    <div class="divide-y divide-border-primary rounded-lg border border-border-primary">
+    <AppCard :padded="false" class="divide-y divide-border-primary">
       <section v-if="plexEnabled" class="flex items-center justify-between gap-4 p-4">
         <div class="flex items-center gap-3">
           <PlexIcon class="text-[#e5a00d]" />
@@ -28,9 +17,9 @@
             </p>
           </div>
         </div>
-        <button :disabled="busy" :class="buttonClass" @click="onTogglePlex">
+        <AppButton :disabled="busy" @click="onTogglePlex">
           {{ user?.plexUsername ? "Disconnect" : "Connect" }}
-        </button>
+        </AppButton>
       </section>
 
       <section class="flex items-center justify-between gap-4 p-4">
@@ -38,7 +27,7 @@
           <p class="text-sm font-medium text-text-primary">Passkey</p>
           <p class="text-sm text-text-muted">Add another device to sign in with</p>
         </div>
-        <button :disabled="busy" :class="buttonClass" @click="onAddPasskey">Add passkey</button>
+        <AppButton :disabled="busy" @click="onAddPasskey">Add passkey</AppButton>
       </section>
 
       <section class="flex items-center justify-between gap-4 p-4">
@@ -46,10 +35,10 @@
           <p class="text-sm font-medium text-text-primary">Session</p>
           <p class="text-sm text-text-muted">Sign out of Kyle on this device</p>
         </div>
-        <button :disabled="busy" :class="buttonClass" @click="onLogout">Sign out</button>
+        <AppButton :disabled="busy" @click="onLogout">Sign out</AppButton>
       </section>
-    </div>
-  </div>
+    </AppCard>
+  </AppPage>
 </template>
 
 <script setup lang="ts">
@@ -60,11 +49,13 @@ import { getAuthStatus, logout, resetAuthCache, type AuthUser } from "../api/aut
 import { passkeyRegisterExisting } from "../api/passkey";
 import { plexErrorMessage, startPlexLink, unlinkPlex } from "../api/plex";
 import PlexIcon from "../components/PlexIcon.vue";
+import AppButton from "../components/ui/AppButton.vue";
+import AppCard from "../components/ui/AppCard.vue";
+import AppNotice from "../components/ui/AppNotice.vue";
+import AppPage from "../components/ui/AppPage.vue";
+import PageHeader from "../components/ui/PageHeader.vue";
 
 useTitle("Account — Kyle");
-
-const buttonClass =
-  "rounded-lg border border-border-primary px-3 py-1.5 text-sm font-semibold text-text-primary transition-colors hover:bg-bg-input disabled:opacity-50";
 
 const route = useRoute();
 const router = useRouter();
