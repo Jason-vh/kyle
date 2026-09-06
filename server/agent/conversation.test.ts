@@ -143,7 +143,7 @@ describe.skipIf(!dbReachable)("runConversationTurn", () => {
     expect(rows[1]).toMatchObject({ platformUserId: null, userId: null });
   });
 
-  test("links a media event to the message that made the tool call and subscribes the user", async () => {
+  test("links a media event to the message that made the tool call", async () => {
     const toolCallId = `call-${crypto.randomUUID().slice(0, 8)}`;
     const toolCall = {
       type: "toolCall" as const,
@@ -228,11 +228,6 @@ describe.skipIf(!dbReachable)("runConversationTurn", () => {
     const toolCallMessage = rows.find((r) => JSON.stringify(r.data).includes(`"${toolCallId}"`));
     expect(toolCallMessage).toBeDefined();
     expect(event!.messageId).toBe(toolCallMessage!.id);
-
-    const subscriptions = await db.execute(
-      sql`SELECT radarr_id, active FROM movie_subscriptions WHERE user_id = ${appUserId}`,
-    );
-    expect([...subscriptions]).toEqual([{ radarr_id: 42, active: true }]);
   });
 
   test("persists a failed attempt so the thread viewer can show it", async () => {

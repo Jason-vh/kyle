@@ -2,10 +2,11 @@ import { requireAuth } from "../../auth/middleware.ts";
 import { searchRequestableMedia } from "../../requests/search.ts";
 import {
   MediaNotFoundError,
-  requestMedia,
+  requestMovie,
+  requestSeries,
   type RequestableMediaType,
+  type Requester,
 } from "../../requests/service.ts";
-import { invalidateLibraryIndex } from "../../requests/library.ts";
 import { getAllMediaRequests, getMediaRequestsForUser } from "../../db/requests.ts";
 import { createLogger } from "../../logger.ts";
 import { errorMessage, errorResponse } from "../../errors.ts";
@@ -45,6 +46,22 @@ function isRequestableType(value: unknown): value is RequestableMediaType {
   return value === "movie" || value === "series";
 }
 
+/** What the browser needs to know about a request it just made. */
+async function addForUser(
+  mediaType: RequestableMediaType,
+  tmdbId: number,
+  requestedBy: Requester,
+  posterPath?: string,
+) {
+  if (mediaType === "movie") {
+    const { status, movie } = await requestMovie({ tmdbId, requestedBy, posterPath });
+    return { status, title: movie.title, year: movie.year || undefined };
+  }
+
+  const { status, series } = await requestSeries({ tmdbId, requestedBy, posterPath });
+  return { status, title: series.title, year: series.year || undefined };
+}
+
 export async function handleCreateRequest(req: Request): Promise<Response> {
   const auth = await requireAuth(req);
   if ("error" in auth) return auth.error;
@@ -64,16 +81,12 @@ export async function handleCreateRequest(req: Request): Promise<Response> {
   }
 
   try {
-    const outcome = await requestMedia({
-      userId: auth.user.id,
-      mediaType: body.mediaType,
-      tmdbId: body.tmdbId,
-      posterPath: body.posterPath,
-    });
-
-    // The library gained a title, so the cached view of it is stale.
-    if (outcome.status === "added") invalidateLibraryIndex();
-
+    const outcome = await addForUser(
+      body.mediaType,
+      body.tmdbId,
+      { userId: auth.user.id },
+      body.posterPath,
+    );
     return Response.json(outcome, { headers: auth.refreshHeaders });
   } catch (error) {
     if (error instanceof MediaNotFoundError) {

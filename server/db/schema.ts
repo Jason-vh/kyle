@@ -142,9 +142,8 @@ export const movieSubscriptions = pgTable(
       .notNull()
       .references(() => users.id),
     radarrId: integer("radarr_id").notNull(),
-    conversationId: uuid("conversation_id")
-      .notNull()
-      .references(() => conversations.id),
+    // Where to answer when it lands; a request made in the browser has nowhere.
+    conversationId: uuid("conversation_id").references(() => conversations.id),
     active: boolean("active").notNull().default(true),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
@@ -167,9 +166,7 @@ export const seriesSubscriptions = pgTable(
     sonarrId: integer("sonarr_id").notNull(),
     seasonNumber: integer("season_number"),
     episodeNumber: integer("episode_number"),
-    conversationId: uuid("conversation_id")
-      .notNull()
-      .references(() => conversations.id),
+    conversationId: uuid("conversation_id").references(() => conversations.id),
     active: boolean("active").notNull().default(true),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),

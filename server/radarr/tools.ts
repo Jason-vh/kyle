@@ -1,7 +1,8 @@
 import { Type } from "@sinclair/typebox";
-import type { Tool } from "../agent/tool.ts";
+import type { Tool, ToolPresentation } from "../agent/tool.ts";
 import { jsonResult } from "../agent/tool-result.ts";
 import { buildTable } from "../agent/table.ts";
+import { requestMovie, type Requester } from "../requests/service.ts";
 import { titleWithYear } from "../../shared/media.ts";
 import * as radarr from "./api.ts";
 import {
@@ -94,27 +95,36 @@ const addMovieParams = Type.Object({
   tmdbId: Type.Number({ description: "The TMDB ID of the movie to add" }),
 });
 
-export const addMovieTool: Tool<typeof addMovieParams> = {
+/** Bound to the requester at call time, so the registry indexes it separately. */
+export const addMoviePresentation: ToolPresentation = {
   name: "add_movie",
-  description:
-    "Add a movie to Radarr. Requires TMDB ID. The movie will be monitored and downloaded (if available).",
-  parameters: addMovieParams,
   label: "Adding movie to Radarr",
   action: true,
   summary: (_args, payload) => `Added ${movieName(payload)} to Radarr`,
-  async execute(_toolCallId, params) {
-    // Lookup canonical metadata via TMDB ID, then add
-    const movieLookup = await radarr.lookupMovieByTmdbId(params.tmdbId);
-    const result = await radarr.addMovie(movieLookup.title, movieLookup.year, params.tmdbId);
-    return jsonResult({
-      title: result.title,
-      year: result.year,
-      id: result.id,
-      titleSlug: result.titleSlug,
-      message: `Added "${result.title}" (${result.year}) to Radarr. If the movie is available, it will start downloading shortly.`,
-    });
-  },
 };
+
+export function createAddMovieTool(requestedBy?: Requester): Tool<typeof addMovieParams> {
+  return {
+    ...addMoviePresentation,
+    description:
+      "Add a movie to Radarr. Requires TMDB ID. The movie will be monitored and downloaded (if available). Adding one already in the library is safe and changes nothing.",
+    parameters: addMovieParams,
+    async execute(_toolCallId, params) {
+      const { status, movie } = await requestMovie({ tmdbId: params.tmdbId, requestedBy });
+      const name = titleWithYear(movie.title, movie.year);
+      return jsonResult({
+        title: movie.title,
+        year: movie.year,
+        id: movie.id,
+        titleSlug: movie.titleSlug,
+        message:
+          status === "existing"
+            ? `${name} is already in Radarr.`
+            : `Added ${name} to Radarr. If the movie is available, it will start downloading shortly.`,
+      });
+    },
+  };
+}
 
 const removeMovieParams = Type.Object({
   movieId: Type.Number({ description: "The Radarr ID of the movie to remove" }),
@@ -190,7 +200,6 @@ export const radarrTools = [
   getRadarrMovieTool,
   getAllMoviesTool,
   searchMoviesTool,
-  addMovieTool,
   removeMovieTool,
   getMovieQueueTool,
   getMovieHistoryTool,

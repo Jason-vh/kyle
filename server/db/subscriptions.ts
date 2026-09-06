@@ -17,18 +17,19 @@ export interface UserSubscription {
 }
 
 /**
- * Upsert a movie subscription. Re-activates if previously deactivated.
+ * Upsert a movie subscription. Re-activates if previously deactivated. A later
+ * request from the browser keeps any conversation already there to answer in.
  */
 export async function upsertMovieSubscription(
   userId: string,
   radarrId: number,
-  conversationId: string,
+  conversationId: string | null,
 ): Promise<void> {
   await db.execute(sql`
     INSERT INTO movie_subscriptions (user_id, radarr_id, conversation_id, active)
     VALUES (${userId}, ${radarrId}, ${conversationId}, true)
     ON CONFLICT (user_id, radarr_id)
-    DO UPDATE SET conversation_id = EXCLUDED.conversation_id, active = true, updated_at = NOW()
+    DO UPDATE SET conversation_id = COALESCE(EXCLUDED.conversation_id, movie_subscriptions.conversation_id), active = true, updated_at = NOW()
   `);
   log.info("upserted movie subscription", { userId, radarrId, conversationId });
 }
@@ -39,7 +40,7 @@ export async function upsertMovieSubscription(
 export async function upsertSeriesSubscription(
   userId: string,
   sonarrId: number,
-  conversationId: string,
+  conversationId: string | null,
   seasonNumber?: number,
   episodeNumber?: number,
 ): Promise<void> {
@@ -48,21 +49,21 @@ export async function upsertSeriesSubscription(
       INSERT INTO series_subscriptions (user_id, sonarr_id, conversation_id, active)
       VALUES (${userId}, ${sonarrId}, ${conversationId}, true)
       ON CONFLICT (user_id, sonarr_id) WHERE season_number IS NULL AND episode_number IS NULL
-      DO UPDATE SET conversation_id = EXCLUDED.conversation_id, active = true, updated_at = NOW()
+      DO UPDATE SET conversation_id = COALESCE(EXCLUDED.conversation_id, series_subscriptions.conversation_id), active = true, updated_at = NOW()
     `);
   } else if (episodeNumber === undefined) {
     await db.execute(sql`
       INSERT INTO series_subscriptions (user_id, sonarr_id, season_number, conversation_id, active)
       VALUES (${userId}, ${sonarrId}, ${seasonNumber}, ${conversationId}, true)
       ON CONFLICT (user_id, sonarr_id, season_number) WHERE season_number IS NOT NULL AND episode_number IS NULL
-      DO UPDATE SET conversation_id = EXCLUDED.conversation_id, active = true, updated_at = NOW()
+      DO UPDATE SET conversation_id = COALESCE(EXCLUDED.conversation_id, series_subscriptions.conversation_id), active = true, updated_at = NOW()
     `);
   } else {
     await db.execute(sql`
       INSERT INTO series_subscriptions (user_id, sonarr_id, season_number, episode_number, conversation_id, active)
       VALUES (${userId}, ${sonarrId}, ${seasonNumber}, ${episodeNumber}, ${conversationId}, true)
       ON CONFLICT (user_id, sonarr_id, season_number, episode_number) WHERE season_number IS NOT NULL AND episode_number IS NOT NULL
-      DO UPDATE SET conversation_id = EXCLUDED.conversation_id, active = true, updated_at = NOW()
+      DO UPDATE SET conversation_id = COALESCE(EXCLUDED.conversation_id, series_subscriptions.conversation_id), active = true, updated_at = NOW()
     `);
   }
   log.info("upserted series subscription", {
@@ -216,14 +217,7 @@ export async function processMediaEvent(
 
   try {
     switch (event.action) {
-      case "add":
-        if (event.mediaType === "movie" && event.ids.radarr) {
-          await upsertMovieSubscription(userId, event.ids.radarr, conversationId);
-        } else if (event.mediaType === "series" && event.ids.sonarr) {
-          await upsertSeriesSubscription(userId, event.ids.sonarr, conversationId);
-        }
-        break;
-
+      // An add subscribes where it happens, in requests/service.ts.
       case "download":
         if (event.mediaType === "series" && event.ids.sonarr) {
           await upsertSeriesSubscription(

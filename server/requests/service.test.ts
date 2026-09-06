@@ -1,7 +1,9 @@
 import { afterEach, describe, expect, mock, test } from "bun:test";
 
 const saved: unknown[] = [];
-// Spread the real module so replacing one export does not hide the others.
+const subscribed: unknown[] = [];
+
+// Spread the real modules so replacing one export does not hide the others.
 const realRequests = await import("../db/requests.ts");
 mock.module("../db/requests.ts", () => ({
   ...realRequests,
@@ -11,7 +13,20 @@ mock.module("../db/requests.ts", () => ({
   },
 }));
 
-const { MediaNotFoundError, requestMedia } = await import("./service.ts");
+const realSubscriptions = await import("../db/subscriptions.ts");
+mock.module("../db/subscriptions.ts", () => ({
+  ...realSubscriptions,
+  upsertMovieSubscription: (userId: string, radarrId: number, conversationId: string | null) => {
+    subscribed.push({ userId, radarrId, conversationId });
+    return Promise.resolve();
+  },
+  upsertSeriesSubscription: (userId: string, sonarrId: number, conversationId: string | null) => {
+    subscribed.push({ userId, sonarrId, conversationId });
+    return Promise.resolve();
+  },
+}));
+
+const { MediaNotFoundError, requestMovie, requestSeries } = await import("./service.ts");
 
 const realFetch = globalThis.fetch;
 
@@ -36,9 +51,10 @@ process.env.SONARR_API_KEY = "k";
 afterEach(() => {
   globalThis.fetch = realFetch;
   saved.length = 0;
+  subscribed.length = 0;
 });
 
-describe("requestMedia", () => {
+describe("requestMovie", () => {
   test("adds a movie that is not in the library", async () => {
     const calls = stubServices({
       "/movie?tmdbId=": [],
@@ -48,16 +64,10 @@ describe("requestMedia", () => {
       "/api/v3/movie": { title: "Arrival", year: 2016, id: 77 },
     });
 
-    const outcome = await requestMedia({ userId: "u1", mediaType: "movie", tmdbId: 329865 });
+    const { status, movie } = await requestMovie({ tmdbId: 329865 });
 
-    expect(outcome).toEqual({
-      status: "added",
-      mediaType: "movie",
-      tmdbId: 329865,
-      title: "Arrival",
-      year: 2016,
-      serviceId: 77,
-    });
+    expect(status).toBe("added");
+    expect(movie.id).toBe(77);
     expect(calls.some((c) => c.method === "POST")).toBe(true);
   });
 
@@ -70,31 +80,21 @@ describe("requestMedia", () => {
       "/movie/lookup/tmdb": { title: "Arrival", year: 2016, id: null },
     });
 
-    const outcome = await requestMedia({ userId: "u1", mediaType: "movie", tmdbId: 329865 });
+    const { status, movie } = await requestMovie({ tmdbId: 329865 });
 
-    expect(outcome.status).toBe("existing");
-    expect(outcome.serviceId).toBe(42);
+    expect(status).toBe("existing");
+    expect(movie.id).toBe(42);
     expect(calls.every((c) => c.method === "GET")).toBe(true);
   });
 
-  test("resolves a series through Sonarr's own TMDB lookup", async () => {
-    const calls = stubServices({
-      "/series/lookup": [{ title: "Severance", year: 2022, tvdbId: 371980, id: null }],
-      "/qualityprofile": [{ id: 1 }],
-      "/rootfolder": [{ path: "/tv" }],
-      "/api/v3/series": { title: "Severance", year: 2022, id: 9 },
-    });
-
-    const outcome = await requestMedia({ userId: "u1", mediaType: "series", tmdbId: 95396 });
-
-    expect(outcome).toMatchObject({ status: "added", title: "Severance", serviceId: 9 });
-    expect(calls[0]!.url).toContain("term=tmdb%3A95396");
-  });
-
-  test("records who asked for it", async () => {
+  test("records who asked for it and subscribes them", async () => {
     stubServices({ "/movie?tmdbId=": [{ title: "Arrival", year: 2016, id: 42 }] });
 
-    await requestMedia({ userId: "u1", mediaType: "movie", tmdbId: 329865, posterPath: "/p.jpg" });
+    await requestMovie({
+      tmdbId: 329865,
+      posterPath: "/p.jpg",
+      requestedBy: { userId: "u1", conversationId: "c1" },
+    });
 
     expect(saved).toEqual([
       {
@@ -107,13 +107,69 @@ describe("requestMedia", () => {
         serviceId: 42,
       },
     ]);
+    expect(subscribed).toEqual([{ userId: "u1", radarrId: 42, conversationId: "c1" }]);
   });
 
-  test("reports a TMDB id neither service can resolve", async () => {
+  test("records nothing when nobody can be attributed", async () => {
+    stubServices({ "/movie?tmdbId=": [{ title: "Arrival", year: 2016, id: 42 }] });
+
+    await requestMovie({ tmdbId: 329865 });
+
+    expect(saved).toEqual([]);
+    expect(subscribed).toEqual([]);
+  });
+
+  test("reports a TMDB id Radarr cannot resolve", () => {
+    stubServices({ "/movie?tmdbId=": [], "/movie/lookup/tmdb": {} });
+
+    expect(requestMovie({ tmdbId: 1 })).rejects.toThrow(MediaNotFoundError);
+  });
+});
+
+describe("requestSeries", () => {
+  test("resolves a series through Sonarr's own TMDB lookup", async () => {
+    const calls = stubServices({
+      "/series/lookup": [{ title: "Severance", year: 2022, tvdbId: 371980, id: null }],
+      "/qualityprofile": [{ id: 1 }],
+      "/rootfolder": [{ path: "/tv" }],
+      "/api/v3/series": { title: "Severance", year: 2022, id: 9, tmdbId: 95396 },
+    });
+
+    const { status, series } = await requestSeries({ tmdbId: 95396 });
+
+    expect(status).toBe("added");
+    expect(series.id).toBe(9);
+    expect(calls[0]!.url).toContain("term=tmdb%3A95396");
+  });
+
+  // The agent searches Sonarr, which is TVDB-native, so it identifies a series
+  // that way; the TMDB id to record against comes back off the series itself.
+  test("resolves a series by TVDB id", async () => {
+    const calls = stubServices({
+      "/series/lookup": [{ title: "Severance", year: 2022, tvdbId: 371980, id: 9 }],
+      "/api/v3/series/9": { title: "Severance", year: 2022, id: 9, tmdbId: 95396 },
+    });
+
+    await requestSeries({ tvdbId: 371980, requestedBy: { userId: "u1" } });
+
+    expect(calls[0]!.url).toContain("term=tvdb%3A371980");
+    expect(saved).toMatchObject([{ tmdbId: 95396, serviceId: 9 }]);
+  });
+
+  test("subscribes a browser request with no conversation to answer in", async () => {
+    stubServices({
+      "/series/lookup": [{ title: "Severance", year: 2022, tvdbId: 371980, id: 9 }],
+      "/api/v3/series/9": { title: "Severance", year: 2022, id: 9, tmdbId: 95396 },
+    });
+
+    await requestSeries({ tmdbId: 95396, requestedBy: { userId: "u1" } });
+
+    expect(subscribed).toEqual([{ userId: "u1", sonarrId: 9, conversationId: null }]);
+  });
+
+  test("reports a TMDB id Sonarr cannot resolve", () => {
     stubServices({ "/series/lookup": [] });
 
-    expect(requestMedia({ userId: "u1", mediaType: "series", tmdbId: 1 })).rejects.toThrow(
-      MediaNotFoundError,
-    );
+    expect(requestSeries({ tmdbId: 1 })).rejects.toThrow(MediaNotFoundError);
   });
 });

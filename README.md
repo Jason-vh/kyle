@@ -111,6 +111,14 @@ server/
       auth-passkey.ts        → Passkey login/register endpoints
       auth-plex.ts           → Plex sign-in, account linking, callback
       users.ts               → User listing, platform link management (admin)
+      requests.ts            → GET /api/discover, GET/POST /api/requests
+      library.ts             → GET /api/library, DELETE /api/library/:type/:id
+  requests/
+    service.ts               → requestMovie()/requestSeries(): the one write path
+    search.ts                → TMDB search annotated with library status + requesters
+    library.ts               → Cached index of what Radarr and Sonarr already hold
+  library/
+    service.ts               → listLibrary()/removeLibraryItem() behind /api/library
   threads/
     items.ts                 → buildThreadItems(): messages + webhooks as viewer items
     usernames.ts             → Batch display-name resolution across app + platform users
@@ -163,10 +171,17 @@ web/                         → Vue 3 + Vite + Tailwind CSS 4 SPA
   (Slack/Discord) via `platform_identities`. Each row carries both a `platformUserId` (raw
   Slack/Discord ID) and a `userId` (uuid FK). The agent only ever sees app user UUIDs and
   display names — never platform-specific IDs.
+- **One write path for adds** — nothing reaches Radarr or Sonarr except through
+  `requestMovie()` / `requestSeries()` in `server/requests/service.ts`, whichever interface
+  asked. Each detects a title already held, adds it if not, records a `media_requests` row
+  and a subscription for whoever asked, and invalidates the library index. `add_movie` /
+  `add_series` are built per turn (`createAddMovieTool(requester)`) so the tool knows who it
+  is adding for; a turn with no app user still adds, but attributes nothing.
 - **Media events + subscriptions** — `media_events` is an append-only log of tool actions.
   `movie_subscriptions` / `series_subscriptions` track notification preferences (created on
-  add/download, deactivated on remove/unsubscribe). Webhooks query subscriptions — not
-  events — to decide who to notify.
+  add by the request service, on download by `processMediaEvent`, deactivated on
+  remove/unsubscribe). Their `conversation_id` is where to answer, and is null for a request
+  made in the browser. Webhooks query subscriptions — not events — to decide who to notify.
 - **Auth: Plex + passkeys + JWT** — access to the Plex server onboards a user on first
   sign-in; passkeys are added afterwards from `/account`. JWT sessions (`jose`, HS256) in an
   httpOnly `kyle_auth` cookie (30-day expiry, sliding refresh at 15 days). Thread sharing uses
@@ -198,7 +213,8 @@ web/                         → Vue 3 + Vite + Tailwind CSS 4 SPA
   tense, for the in-progress Slack status), `action` (marks a state change worth a task
   card), `summary` (past tense, for a finished call), and an optional `table`.
   `server/agent/registry.ts` is the only place a tool name maps back to a tool, so
-  `tool-display.ts` and `result-tables.ts` are lookups over it.
+  `tool-display.ts` and `result-tables.ts` are lookups over it. A tool built per turn exports
+  its `ToolPresentation` separately, so old threads still render it.
 - **Summaries name the media** — `summary` receives `(args, payload?)`, where the payload is
   the tool's own JSON result. Most actions take an ID (`remove_movie` gets a `movieId`), so
   the title only exists in the result — hence "Removed Inception (2010) from Radarr" rather

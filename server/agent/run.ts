@@ -8,7 +8,7 @@ import {
 } from "@mariozechner/pi-ai";
 import { createLogger } from "../logger.ts";
 import { model } from "./model.ts";
-import { toolsForConversation } from "./registry.ts";
+import { toolsForTurn } from "./registry.ts";
 import { getSystemPrompt, type AgentContext } from "./system-prompt.ts";
 
 const log = createLogger("agent");
@@ -68,7 +68,7 @@ export function createAgent(
       systemPrompt: getSystemPrompt(context),
       model,
       thinkingLevel: "off",
-      tools: toolsForConversation(context?.conversationId),
+      tools: toolsForTurn(context),
     },
     convertToLlm: (messages) => withTimestamps(messages, messageTimestamps),
   });

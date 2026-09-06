@@ -1,27 +1,33 @@
 import { expect, test } from "bun:test";
-import { allTools, toolPresentation, toolsForConversation } from "./registry.ts";
+import { toolPresentation, toolsForTurn } from "./registry.ts";
 import { describeToolCall } from "./tool-display.ts";
 
+const everyTool = toolsForTurn({ conversationId: "conv-1", userId: "user-1" });
+
 test("tool names are unique", () => {
-  const names = allTools.map((t) => t.name);
+  const names = everyTool.map((t) => t.name);
   expect(new Set(names).size).toBe(names.length);
 });
 
 test("every tool describes itself for the thread viewer", () => {
-  for (const tool of allTools) {
+  for (const tool of everyTool) {
     expect(tool.label).toBeTruthy();
     expect(tool.summary).toBeDefined();
+    expect(toolPresentation(tool.name)).toBeDefined();
   }
 });
 
 test("the share tool is offered only when there is a conversation to share", () => {
-  const names = (conversationId?: string) =>
-    toolsForConversation(conversationId).map((t) => t.name);
-
-  expect(names()).not.toContain("share_conversation");
-  expect(names("conv-1")).toContain("share_conversation");
+  expect(toolsForTurn().map((t) => t.name)).not.toContain("share_conversation");
+  expect(everyTool.map((t) => t.name)).toContain("share_conversation");
   // Its presentation is always known, so old threads still render.
   expect(toolPresentation("share_conversation")?.label).toBe("Generating share link");
+});
+
+test("adding is offered even when nobody can be attributed", () => {
+  const names = toolsForTurn().map((t) => t.name);
+  expect(names).toContain("add_movie");
+  expect(names).toContain("add_series");
 });
 
 test("summaries read in the past tense, including for renamed tools", () => {

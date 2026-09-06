@@ -1,7 +1,8 @@
 import { Type } from "@sinclair/typebox";
-import type { Tool } from "../agent/tool.ts";
+import type { Tool, ToolPresentation } from "../agent/tool.ts";
 import { jsonResult } from "../agent/tool-result.ts";
 import { buildTable } from "../agent/table.ts";
+import { requestSeries, type Requester } from "../requests/service.ts";
 import { episodeCode, episodeLabel, titleWithYear } from "../../shared/media.ts";
 import * as sonarr from "./api.ts";
 import {
@@ -120,8 +121,6 @@ export const searchSeriesTool: Tool<typeof searchSeriesParams> = {
 };
 
 const addSeriesParams = Type.Object({
-  title: Type.String({ description: "The title of the series to add" }),
-  year: Type.Number({ description: "The year the series started" }),
   tvdbId: Type.Number({ description: "The TVDB ID of the series to add" }),
   monitorOption: Type.Union(
     [
@@ -142,29 +141,36 @@ const addSeriesParams = Type.Object({
   ),
 });
 
-export const addSeriesTool: Tool<typeof addSeriesParams> = {
+/** Bound to the requester at call time, so the registry indexes it separately. */
+export const addSeriesPresentation: ToolPresentation = {
   name: "add_series",
-  description:
-    "Add a TV series to Sonarr. Requires title, year, TVDB ID, and monitor option. The monitor option determines which episodes to download: 'all' for entire series, 'lastSeason' for only the latest season, 'future' for upcoming episodes only, 'missing' for missing episodes, 'existing' for existing episodes, or 'none' to add without downloading.",
-  parameters: addSeriesParams,
   label: "Adding series to Sonarr",
   action: true,
   summary: (_args, payload) =>
     `Added ${seriesName((payload as { series?: unknown })?.series)} to Sonarr`,
-  async execute(_toolCallId, params) {
-    const series = await sonarr.addSeries(
-      params.title,
-      params.year,
-      params.tvdbId,
-      params.monitorOption,
-    );
-    const result = toPartialSeries(series);
-    return jsonResult({
-      series: result,
-      message: `Added "${params.title}" (${params.year}) to Sonarr.`,
-    });
-  },
 };
+
+export function createAddSeriesTool(requestedBy?: Requester): Tool<typeof addSeriesParams> {
+  return {
+    ...addSeriesPresentation,
+    description:
+      "Add a TV series to Sonarr. Requires TVDB ID and a monitor option, which determines which episodes to download: 'all' for entire series, 'lastSeason' for only the latest season, 'future' for upcoming episodes only, 'missing' for missing episodes, 'existing' for existing episodes, or 'none' to add without downloading. Adding a series already in the library is safe and changes nothing.",
+    parameters: addSeriesParams,
+    async execute(_toolCallId, params) {
+      const { status, series } = await requestSeries({
+        tvdbId: params.tvdbId,
+        monitorOption: params.monitorOption,
+        requestedBy,
+      });
+      const name = titleWithYear(series.title, series.year);
+      return jsonResult({
+        series: toPartialSeries(series),
+        message:
+          status === "existing" ? `${name} is already in Sonarr.` : `Added ${name} to Sonarr.`,
+      });
+    },
+  };
+}
 
 const removeSeriesParams = Type.Object({
   seriesId: Type.Number({
@@ -627,7 +633,6 @@ export const sonarrTools = [
   getAllSeriesTool,
   getSeriesByIdTool,
   searchSeriesTool,
-  addSeriesTool,
   removeSeriesTool,
   removeSeasonTool,
   getEpisodesTool,
