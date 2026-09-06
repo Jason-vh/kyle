@@ -1,4 +1,7 @@
+import type { MediaRequest } from "@shared/types";
 import { apiFetch } from "./client";
+
+export type { MediaRequest, RequestState } from "@shared/types";
 
 export type RequestableMediaType = "movie" | "series";
 export type LibraryStatus = "available" | "pending";
@@ -12,17 +15,6 @@ export interface DiscoverResult {
   posterPath: string | null;
   libraryStatus?: LibraryStatus;
   requestedBy: string[];
-}
-
-export interface MediaRequest {
-  id: string;
-  mediaType: RequestableMediaType;
-  tmdbId: number;
-  title: string;
-  year: number | null;
-  posterPath: string | null;
-  requestedBy?: string;
-  createdAt: string;
 }
 
 export interface RequestOutcome {

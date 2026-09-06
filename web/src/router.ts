@@ -11,7 +11,13 @@ export const router = createRouter({
     },
     {
       path: "/",
-      redirect: "/discover",
+      redirect: "/home",
+    },
+    {
+      path: "/home",
+      name: "home",
+      component: () => import("./views/DashboardView.vue"),
+      meta: { requiresAuth: true },
     },
     {
       path: "/discover",
