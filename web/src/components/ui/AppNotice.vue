@@ -1,10 +1,12 @@
 <template>
-  <p class="rounded-card px-3.5 py-2.5 text-sm" :class="TONES[tone]">
+  <Primitive :as="as" role="status" class="rounded-card px-3.5 py-2.5 text-sm" :class="TONES[tone]">
     <slot />
-  </p>
+  </Primitive>
 </template>
 
 <script setup lang="ts">
+import type { Component } from "vue";
+import { Primitive } from "reka-ui";
 import type { Tone } from "./types";
 
 const TONES: Record<Tone, string> = {
@@ -16,5 +18,5 @@ const TONES: Record<Tone, string> = {
   blue: "bg-accent-blue-light text-accent-blue",
 };
 
-withDefaults(defineProps<{ tone?: Tone }>(), { tone: "neutral" });
+withDefaults(defineProps<{ tone?: Tone; as?: string | Component }>(), { tone: "neutral", as: "p" });
 </script>

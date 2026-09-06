@@ -5,18 +5,26 @@
       {{ value }}
     </p>
     <p v-if="hint" class="mt-0.5 truncate text-xs text-text-muted">{{ hint }}</p>
+
     <!-- A bar only appears where a figure is genuinely a proportion. -->
-    <div v-if="fraction !== undefined" class="mt-2.5 h-1.5 rounded-full bg-bg-elevated">
-      <div
+    <ProgressRoot
+      v-if="percent !== undefined"
+      :model-value="percent"
+      :aria-label="label"
+      class="mt-2.5 h-1.5 overflow-hidden rounded-full bg-bg-elevated"
+    >
+      <ProgressIndicator
         class="h-full rounded-full transition-[width]"
         :class="BAR_TONES[tone]"
-        :style="{ width: `${Math.min(100, Math.max(2, fraction * 100))}%` }"
+        :style="{ width: `${Math.max(2, percent)}%` }"
       />
-    </div>
+    </ProgressRoot>
   </AppCard>
 </template>
 
 <script setup lang="ts">
+import { computed } from "vue";
+import { ProgressIndicator, ProgressRoot } from "reka-ui";
 import AppCard from "./AppCard.vue";
 
 type Tone = "neutral" | "green" | "amber" | "red";
@@ -35,8 +43,13 @@ const BAR_TONES: Record<Tone, string> = {
   red: "bg-accent-red",
 };
 
-withDefaults(
+const props = withDefaults(
   defineProps<{ label: string; value: string; hint?: string; tone?: Tone; fraction?: number }>(),
   { tone: "neutral" },
 );
+
+const percent = computed(() => {
+  if (props.fraction === undefined) return undefined;
+  return Math.round(Math.min(1, Math.max(0, props.fraction)) * 100);
+});
 </script>

@@ -63,6 +63,25 @@ Two things to keep in mind when adding a token:
 `Tone` and `IconName` live in `web/src/components/ui/types.ts`, because `<script setup>`
 cannot export a type itself.
 
+### What Reka is doing under each
+
+| Component                                         | Reka                       | What it buys                                                                                                   |
+| ------------------------------------------------- | -------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `FilterChips`                                     | `ToggleGroup`              | `role="group"`, `aria-pressed`, arrow-key movement, and one tab stop for the whole row instead of one per chip |
+| `ConfirmDialog`                                   | `AlertDialog`              | focus trap, Escape to cancel, `aria-labelledby`/`describedby`, portal                                          |
+| `MediaPoster`                                     | `AspectRatio`              | 2:3 from the ratio rather than a hardcoded height per width                                                    |
+| `StatCard`                                        | `Progress`                 | `role="progressbar"` with real aria values on the fill bar                                                     |
+| `AppInput`                                        | `Label` + `VisuallyHidden` | a real label, since a placeholder is not one                                                                   |
+| `AppButton`, `AppCard`, `AppNotice`, `StatusPill` | `Primitive`                | `as` and `asChild`, so a card can be an `<li>` or wrap a link                                                  |
+
+`AppPage`, `PageHeader`, `SectionHeading`, `NavIcon` and `QueryState` use no Reka: there
+is no behaviour to borrow, and wrapping a `<div>` in `Primitive` to render a `<div>`
+would be consistency for its own sake.
+
+**`ConfirmDialog` does not use `AlertDialogAction`**, which closes the dialog the moment
+it is clicked. The caller closes it when the work is actually finished, which is what
+makes its `busy` state mean anything.
+
 ### QueryState
 
 Views used to repeat the same three states by hand and drift apart. Now:

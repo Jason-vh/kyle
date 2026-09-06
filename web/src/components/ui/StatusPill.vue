@@ -1,13 +1,16 @@
 <template>
-  <span
+  <Primitive
+    :as="as"
     class="inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold"
     :class="TONES[tone]"
   >
     <slot />
-  </span>
+  </Primitive>
 </template>
 
 <script setup lang="ts">
+import type { Component } from "vue";
+import { Primitive } from "reka-ui";
 import type { Tone } from "./types";
 
 const TONES: Record<Tone, string> = {
@@ -19,5 +22,8 @@ const TONES: Record<Tone, string> = {
   blue: "bg-accent-blue-light text-accent-blue",
 };
 
-withDefaults(defineProps<{ tone?: Tone }>(), { tone: "neutral" });
+withDefaults(defineProps<{ tone?: Tone; as?: string | Component }>(), {
+  tone: "neutral",
+  as: "span",
+});
 </script>

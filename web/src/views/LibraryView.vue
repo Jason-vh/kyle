@@ -9,7 +9,7 @@
     </PageHeader>
 
     <AppInput v-model="search" placeholder="Filter by title…" class="mb-3" />
-    <FilterChips v-model="filter" :options="FILTERS" class="mb-5" />
+    <FilterChips v-model="filter" :options="FILTERS" label="Filter the library" class="mb-5" />
 
     <AppNotice v-if="unavailable.length" tone="amber" class="mb-4">
       {{ unavailable.join(" and ") }} {{ unavailable.length === 1 ? "is" : "are" }} unreachable, so
@@ -67,6 +67,16 @@
         </AppCard>
       </div>
     </QueryState>
+
+    <ConfirmDialog
+      v-model:open="confirming"
+      title="Remove from the library?"
+      :description="confirmText"
+      confirm-label="Remove"
+      busy-label="Removing…"
+      :busy="removing !== ''"
+      @confirm="confirmRemove"
+    />
   </AppPage>
 </template>
 
@@ -81,6 +91,7 @@ import AppCard from "#web/components/ui/AppCard.vue";
 import AppInput from "#web/components/ui/AppInput.vue";
 import AppNotice from "#web/components/ui/AppNotice.vue";
 import AppPage from "#web/components/ui/AppPage.vue";
+import ConfirmDialog from "#web/components/ui/ConfirmDialog.vue";
 import FilterChips from "#web/components/ui/FilterChips.vue";
 import PageHeader from "#web/components/ui/PageHeader.vue";
 import QueryState from "#web/components/ui/QueryState.vue";
@@ -126,6 +137,18 @@ const filter = ref<Filter>("all");
 const removing = ref("");
 const failures = ref<Record<string, string>>({});
 
+// The item awaiting confirmation, held apart from the one being removed so the
+// dialog can say what it is about to do.
+const pending = ref<LibraryItem | null>(null);
+const confirming = ref(false);
+
+const confirmText = computed(() => {
+  const item = pending.value;
+  if (!item) return "";
+  const size = item.sizeOnDisk > 0 ? ` and delete ${formatSize(item.sizeOnDisk)} from disk` : "";
+  return `This removes “${item.title}” from the library${size}.`;
+});
+
 const key = (item: LibraryItem) => `${item.mediaType}-${item.serviceId}`;
 
 const filtered = computed(() => {
@@ -147,19 +170,24 @@ const filtered = computed(() => {
 
 const totalSize = computed(() => filtered.value.reduce((sum, item) => sum + item.sizeOnDisk, 0));
 
-async function onRemove(item: LibraryItem) {
-  // One decision only: cancelling must leave everything alone.
-  const sizeNote =
-    item.sizeOnDisk > 0 ? ` and delete ${formatSize(item.sizeOnDisk)} from disk` : "";
-  if (!window.confirm(`Remove “${item.title}”${sizeNote}?`)) return;
+function onRemove(item: LibraryItem) {
+  pending.value = item;
+  confirming.value = true;
+}
+
+async function confirmRemove() {
+  const item = pending.value;
+  if (!item) return;
 
   removing.value = key(item);
   delete failures.value[key(item)];
   try {
     // The listing refreshes itself once the mutation settles.
     await remove.mutateAsync(item);
+    confirming.value = false;
   } catch (e) {
     failures.value[key(item)] = e instanceof Error ? e.message : "Could not remove this";
+    confirming.value = false;
   } finally {
     removing.value = "";
   }

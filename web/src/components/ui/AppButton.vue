@@ -1,15 +1,21 @@
 <template>
-  <button
-    :type="type"
-    :disabled="disabled || loading"
-    class="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-control font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+  <Primitive
+    :as="as"
+    :as-child="asChild"
+    :type="as === 'button' && !asChild ? type : undefined"
+    :disabled="disabled || loading || undefined"
+    :aria-busy="loading || undefined"
+    class="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-control font-semibold no-underline transition-colors disabled:cursor-not-allowed disabled:opacity-50"
     :class="[VARIANTS[variant], SIZES[size], block ? 'w-full' : '']"
   >
     <slot />
-  </button>
+  </Primitive>
 </template>
 
 <script setup lang="ts">
+import type { Component } from "vue";
+import { Primitive } from "reka-ui";
+
 type Variant = "primary" | "secondary" | "ghost" | "danger";
 type Size = "sm" | "md";
 
@@ -35,7 +41,11 @@ withDefaults(
     disabled?: boolean;
     loading?: boolean;
     block?: boolean;
+    /** Render as something else — a link, say. */
+    as?: string | Component;
+    /** Style the single child element instead of rendering a wrapper. */
+    asChild?: boolean;
   }>(),
-  { variant: "secondary", size: "md", type: "button" },
+  { variant: "secondary", size: "md", type: "button", as: "button" },
 );
 </script>
