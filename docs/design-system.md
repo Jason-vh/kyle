@@ -97,6 +97,14 @@ Views used to repeat the same three states by hand and drift apart. Now:
 `error` is a string, and it is the real upstream message — see the error convention in
 the root README. A household would rather read what actually broke.
 
+### Clickable rows
+
+A media row is clickable everywhere, but a card is not an anchor: Library and Discover
+rows hold a button, and a button inside a link is invalid. `MediaTitle` instead stretches
+its link across the card with `after:absolute after:inset-0`. So a card holding one needs
+`relative` and `interactive`, and **anything else clickable in it needs `relative`** or
+the overlay swallows it.
+
 ### Loading
 
 `QueryState` crossfades between its states, so **no view animates by hand** and every

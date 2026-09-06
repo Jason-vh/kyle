@@ -1,5 +1,5 @@
 <template>
-  <AppCard>
+  <AppCard interactive class="relative">
     <div class="flex gap-3">
       <MediaPoster :src="poster" :alt="item.title" size="lg" />
 
@@ -31,7 +31,7 @@
             :item="item"
             :held="item.libraryStatus !== undefined"
             size="sm"
-            class="ml-auto"
+            class="relative ml-auto"
           />
         </div>
       </div>

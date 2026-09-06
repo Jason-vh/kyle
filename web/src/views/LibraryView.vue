@@ -25,7 +25,12 @@
       <template #loading><MediaRowSkeleton :count="6" /></template>
 
       <div class="flex flex-col gap-2">
-        <AppCard v-for="item in filtered" :key="key(item)">
+        <AppCard
+          v-for="item in filtered"
+          :key="key(item)"
+          :interactive="!!item.tmdbId"
+          class="relative"
+        >
           <div class="flex items-center gap-3">
             <MediaPoster :src="item.posterUrl" :alt="item.title" />
 
@@ -54,7 +59,8 @@
               </p>
             </div>
 
-            <WatcherAvatars :watchers="item.watchedBy" class="shrink-0" />
+            <!-- `relative` keeps its tooltip reachable above the card's link. -->
+            <WatcherAvatars :watchers="item.watchedBy" class="relative shrink-0" />
 
             <StatusPill :tone="TONES[item.availability]">
               {{ LABELS[item.availability] }}
@@ -64,6 +70,7 @@
               v-if="isAdmin"
               variant="danger"
               size="sm"
+              class="relative"
               :loading="removing === key(item)"
               @click="onRemove(item)"
             >

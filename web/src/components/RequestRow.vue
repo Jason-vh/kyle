@@ -1,5 +1,5 @@
 <template>
-  <AppCard>
+  <AppCard interactive class="relative">
     <div class="flex items-center gap-3">
       <MediaPoster :src="posterUrl(request.posterPath)" :alt="request.title" />
 
