@@ -9,6 +9,8 @@
     </PageHeader>
 
     <QueryState :loading="isPending" :error="error" :empty="requests.length === 0">
+      <template #loading><MediaRowSkeleton :count="4" /></template>
+
       <template #empty>
         Nothing requested yet.
         <router-link to="/discover" class="text-accent-purple hover:underline">
@@ -26,6 +28,7 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
 import { useTitle } from "@vueuse/core";
+import MediaRowSkeleton from "#web/components/MediaRowSkeleton.vue";
 import RequestRow from "#web/components/RequestRow.vue";
 import AppButton from "#web/components/ui/AppButton.vue";
 import AppPage from "#web/components/ui/AppPage.vue";

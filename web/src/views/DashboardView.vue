@@ -3,6 +3,22 @@
     <PageHeader :title="greeting" :subtitle="`The last ${data?.windowDays ?? 7} days`" />
 
     <QueryState :loading="isPending" :error="error">
+      <template #loading>
+        <section class="mb-8 grid grid-cols-2 gap-2 sm:grid-cols-3">
+          <AppCard
+            v-for="stat in 3"
+            :key="stat"
+            :class="stat === 3 ? 'col-span-2 sm:col-span-1' : ''"
+          >
+            <Skeleton class="h-3 w-16" />
+            <Skeleton class="mt-2 h-7 w-24" />
+            <Skeleton class="mt-1.5 h-3 w-20" />
+          </AppCard>
+        </section>
+
+        <MediaRowSkeleton :count="3" size="sm" />
+      </template>
+
       <AppNotice v-if="data?.unavailable.length" tone="amber" class="mb-4">
         {{ data.unavailable.join(" and ") }} could not be reached, so part of this is missing.
       </AppNotice>
@@ -53,9 +69,12 @@ import { computed } from "vue";
 import { useTitle } from "@vueuse/core";
 import { formatDuration, formatSize } from "#web/utils/format";
 import ActivityRow from "#web/components/ActivityRow.vue";
+import MediaRowSkeleton from "#web/components/MediaRowSkeleton.vue";
 import RequestRow from "#web/components/RequestRow.vue";
 import SectionHeading from "#web/components/ui/SectionHeading.vue";
+import AppCard from "#web/components/ui/AppCard.vue";
 import AppNotice from "#web/components/ui/AppNotice.vue";
+import Skeleton from "#web/components/ui/Skeleton.vue";
 import AppPage from "#web/components/ui/AppPage.vue";
 import PageHeader from "#web/components/ui/PageHeader.vue";
 import QueryState from "#web/components/ui/QueryState.vue";

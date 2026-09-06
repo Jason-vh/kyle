@@ -126,7 +126,9 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .fade-in {
+  .fade-in,
+  /* Tailwind's pulse, which every skeleton uses. */
+  .animate-pulse {
     animation: none;
   }
 }

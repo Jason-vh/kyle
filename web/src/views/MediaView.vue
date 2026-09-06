@@ -3,6 +3,19 @@
     <AppButton variant="ghost" size="sm" class="mb-3 -ml-2.5" @click="goBack">← Back</AppButton>
 
     <QueryState :loading="isPending" :error="error">
+      <template #loading>
+        <Skeleton class="mb-4 h-40 w-full rounded-card sm:h-56" />
+        <div class="flex gap-4">
+          <Skeleton class="h-27 w-18 shrink-0 rounded-lg" />
+          <div class="min-w-0 flex-1 space-y-2.5">
+            <Skeleton class="h-6 w-2/3" />
+            <Skeleton class="h-3.5 w-1/2" />
+            <Skeleton class="h-5 w-24 rounded-full" />
+          </div>
+        </div>
+        <Skeleton class="mt-4 h-16 w-full" />
+      </template>
+
       <article v-if="media">
         <div
           v-if="backdrop"
@@ -127,6 +140,7 @@ import ConfirmDialog from "#web/components/ui/ConfirmDialog.vue";
 import MediaPoster from "#web/components/ui/MediaPoster.vue";
 import QueryState from "#web/components/ui/QueryState.vue";
 import SectionHeading from "#web/components/ui/SectionHeading.vue";
+import Skeleton from "#web/components/ui/Skeleton.vue";
 import StatusPill from "#web/components/ui/StatusPill.vue";
 import type { Tone } from "#web/components/ui/types";
 import { useMediaDetail, useRemoveLibraryItem } from "#web/queries/media";

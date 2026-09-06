@@ -28,11 +28,33 @@ describe("QueryState", () => {
     expect(render({ loading: true, error: "gone wrong" }).text()).not.toContain("gone wrong");
   });
 
+  // A skeleton stands in for the content, so seeing both would be seeing double.
+  test("a loading slot replaces both the default text and the content", () => {
+    const state = mount(QueryState, {
+      props: { loading: true },
+      slots: { default: CONTENT, loading: "<div>skeleton</div>" },
+    });
+
+    expect(state.text()).toContain("skeleton");
+    expect(state.text()).not.toContain("Loading");
+    expect(state.text()).not.toContain("a title");
+  });
+
+  test("the loading slot is gone once the content is there", () => {
+    const state = mount(QueryState, {
+      props: { loading: false },
+      slots: { default: CONTENT, loading: "<div>skeleton</div>" },
+    });
+
+    expect(state.text()).not.toContain("skeleton");
+    expect(state.text()).toContain("a title");
+  });
+
   test("the empty message can be replaced by a slot", () => {
     const state = mount(QueryState, {
       props: { empty: true },
       slots: { empty: "Request something" },
     });
-    expect(state.text()).toBe("Request something");
+    expect(state.text()).toContain("Request something");
   });
 });

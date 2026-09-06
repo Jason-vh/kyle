@@ -38,6 +38,13 @@
           :empty="items.length === 0"
           empty-text="Nothing yet. You will hear when something you asked for arrives."
         >
+          <template #loading>
+            <div v-for="row in 3" :key="row" class="space-y-1.5 px-3.5 py-2.5">
+              <Skeleton class="h-3.5 w-2/3" />
+              <Skeleton class="h-3 w-full" />
+            </div>
+          </template>
+
           <ul class="divide-y divide-border-primary">
             <li
               v-for="item in items"
@@ -63,6 +70,7 @@ import { relativeTime } from "#web/composables/useRelativeTime";
 import { useMarkNotificationsRead, useNotifications } from "#web/queries/notifications";
 import AppButton from "#web/components/ui/AppButton.vue";
 import QueryState from "#web/components/ui/QueryState.vue";
+import Skeleton from "#web/components/ui/Skeleton.vue";
 
 const open = ref(false);
 

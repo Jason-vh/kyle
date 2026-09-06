@@ -15,6 +15,8 @@
       loading-text="Searching…"
       :empty-text="`Nothing found for “${term}”.`"
     >
+      <template #loading><MediaRowSkeleton :count="4" size="lg" /></template>
+
       <div class="flex flex-col gap-2">
         <MediaCard v-for="item in results" :key="`${item.mediaType}-${item.tmdbId}`" :item="item" />
       </div>
@@ -26,6 +28,7 @@
 import { computed, ref } from "vue";
 import { refDebounced, useTitle } from "@vueuse/core";
 import MediaCard from "#web/components/MediaCard.vue";
+import MediaRowSkeleton from "#web/components/MediaRowSkeleton.vue";
 import AppInput from "#web/components/ui/AppInput.vue";
 import AppPage from "#web/components/ui/AppPage.vue";
 import PageHeader from "#web/components/ui/PageHeader.vue";

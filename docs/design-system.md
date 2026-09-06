@@ -56,6 +56,7 @@ Two things to keep in mind when adding a token:
 | `StatusPill`     | a small badge, by `tone`                                                  |
 | `AppNotice`      | an inline message block, by `tone`                                        |
 | `QueryState`     | the loading / failed / empty triple every list needs                      |
+| `Skeleton`       | a pulsing block standing in for content that has not arrived              |
 | `MediaPoster`    | poster art at `sm`, `md` or `lg`, with a fallback                         |
 | `StatCard`       | a labelled figure, optionally with a proportion bar                       |
 | `NavIcon`        | the tab bar glyphs                                                        |
@@ -95,6 +96,26 @@ Views used to repeat the same three states by hand and drift apart. Now:
 
 `error` is a string, and it is the real upstream message — see the error convention in
 the root README. A household would rather read what actually broke.
+
+### Loading
+
+`QueryState` crossfades between its states, so **no view animates by hand** and every
+list in the app appears the same way. `prefers-reduced-motion` turns the transition off.
+
+Its `#loading` slot takes a skeleton; without one it falls back to "Loading…". A skeleton
+is only worth it when it has **the shape of what arrives** — same poster ratio, same
+number of lines — otherwise it is a spinner with extra steps. `MediaRowSkeleton` is that
+shape for the four views that list media:
+
+```vue
+<QueryState :loading="isPending" :error="error">
+  <template #loading><MediaRowSkeleton :count="6" /></template>
+  …
+</QueryState>
+```
+
+`isPending` is first-load only. A background refresh deliberately shows nothing: it
+happens on every revisit, and a bar flickering each time is worse than silence.
 
 ## Adding a primitive
 

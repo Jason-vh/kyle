@@ -2,12 +2,15 @@
   <div class="shrink-0 overflow-hidden rounded-lg bg-bg-elevated" :class="WIDTHS[size]">
     <!-- 2:3 is fixed by the artwork, so only the width is a decision. -->
     <AspectRatio :ratio="2 / 3">
+      <!-- Fades up out of the placeholder rather than popping in when it decodes. -->
       <img
         v-if="src && !broken"
         :src="src"
         :alt="alt"
         loading="lazy"
-        class="size-full object-cover"
+        class="size-full object-cover transition-opacity duration-300"
+        :class="loaded ? 'opacity-100' : 'opacity-0'"
+        @load="loaded = true"
         @error="broken = true"
       />
       <div
@@ -36,4 +39,5 @@ const WIDTHS: Record<Size, string> = {
 withDefaults(defineProps<{ src?: string | null; alt: string; size?: Size }>(), { size: "md" });
 
 const broken = ref(false);
+const loaded = ref(false);
 </script>

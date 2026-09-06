@@ -22,6 +22,8 @@
       :empty="filtered.length === 0"
       empty-text="Nothing matches."
     >
+      <template #loading><MediaRowSkeleton :count="6" /></template>
+
       <div class="flex flex-col gap-2">
         <AppCard v-for="item in filtered" :key="key(item)">
           <div class="flex items-center gap-3">
@@ -89,6 +91,7 @@ import { computed, ref } from "vue";
 import { useTitle } from "@vueuse/core";
 import type { LibraryItem } from "#web/api/library";
 import { formatNames, formatSize } from "#web/utils/format";
+import MediaRowSkeleton from "#web/components/MediaRowSkeleton.vue";
 import MediaTitle from "#web/components/MediaTitle.vue";
 import WatcherAvatars from "#web/components/WatcherAvatars.vue";
 import AppButton from "#web/components/ui/AppButton.vue";
