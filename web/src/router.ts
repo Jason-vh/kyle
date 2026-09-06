@@ -5,6 +5,8 @@ import { sessionQuery } from "./queries/session";
 
 export const router = createRouter({
   history: createWebHistory(),
+  // A new page starts at the top; going back returns to where you left off.
+  scrollBehavior: (_to, _from, savedPosition) => savedPosition ?? { top: 0 },
   routes: [
     {
       path: "/login",

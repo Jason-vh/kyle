@@ -40,6 +40,19 @@ function stubAuth(authenticated: boolean) {
   return calls;
 }
 
+describe("scrolling", () => {
+  // Opening a title from halfway down the library used to land halfway down it.
+  test("a new page starts at the top", () => {
+    expect(router.options.scrollBehavior?.({} as never, {} as never, null)).toEqual({ top: 0 });
+  });
+
+  test("going back returns to where you left off", () => {
+    const saved = { left: 0, top: 640 };
+
+    expect(router.options.scrollBehavior?.({} as never, {} as never, saved)).toBe(saved);
+  });
+});
+
 describe("the media route", () => {
   test("carries the type and id of the title", async () => {
     stubAuth(true);
