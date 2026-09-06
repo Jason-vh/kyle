@@ -1,5 +1,5 @@
 <template>
-  <div class="flex flex-col gap-2">
+  <div class="stagger flex flex-col gap-2">
     <AppCard v-for="row in count" :key="row">
       <div class="flex items-center gap-3">
         <!-- 2:3, the same shape the poster will take when it arrives. -->

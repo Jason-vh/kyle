@@ -1,5 +1,5 @@
 <template>
-  <AccordionRoot type="multiple" class="flex flex-col gap-2">
+  <AccordionRoot type="multiple" class="stagger flex flex-col gap-2">
     <AccordionItem
       v-for="season in seasons"
       :key="season.seasonNumber"

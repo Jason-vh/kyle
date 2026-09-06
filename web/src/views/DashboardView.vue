@@ -4,7 +4,7 @@
 
     <QueryState :loading="isPending" :error="error">
       <template #loading>
-        <section class="mb-8 grid grid-cols-2 gap-2 sm:grid-cols-3">
+        <section class="stagger mb-8 grid grid-cols-2 gap-2 sm:grid-cols-3">
           <AppCard
             v-for="stat in 3"
             :key="stat"
@@ -24,7 +24,7 @@
       </AppNotice>
 
       <!-- Storage takes the full width on a phone; it is the one that needs a bar. -->
-      <section class="mb-8 grid grid-cols-2 gap-2 sm:grid-cols-3">
+      <section class="stagger mb-8 grid grid-cols-2 gap-2 sm:grid-cols-3">
         <StatCard label="Watched" :value="watched" hint="across everyone" />
         <StatCard label="Arrived" :value="arrived" :hint="arrivedHint" />
         <StatCard
@@ -46,7 +46,7 @@
               Request something
             </router-link>
           </template>
-          <div class="flex flex-col gap-2">
+          <div class="stagger flex flex-col gap-2">
             <RequestRow v-for="request in requests" :key="request.id" :request="request" />
           </div>
         </QueryState>
@@ -55,7 +55,7 @@
       <section>
         <SectionHeading title="Just landed" />
         <QueryState :empty="activity.length === 0" empty-text="Nothing has arrived this week.">
-          <div class="flex flex-col gap-2">
+          <div class="stagger flex flex-col gap-2">
             <ActivityRow v-for="item in activity" :key="item.id" :item="item" />
           </div>
         </QueryState>

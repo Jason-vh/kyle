@@ -35,17 +35,15 @@ withDefaults(
 </script>
 
 <style scoped>
+/* Opacity only: the movement belongs to `stagger`, and two of them fight. */
 .query-state-enter-active,
 .query-state-leave-active {
-  transition:
-    opacity 0.2s ease-out,
-    transform 0.2s ease-out;
+  transition: opacity 0.2s ease-out;
 }
 
 .query-state-enter-from,
 .query-state-leave-to {
   opacity: 0;
-  transform: translateY(4px);
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -24,7 +24,7 @@
     >
       <template #loading><MediaRowSkeleton :count="6" /></template>
 
-      <div class="flex flex-col gap-2">
+      <div class="stagger flex flex-col gap-2">
         <AppCard
           v-for="item in filtered"
           :key="key(item)"

@@ -39,13 +39,15 @@
           empty-text="Nothing yet. You will hear when something you asked for arrives."
         >
           <template #loading>
-            <div v-for="row in 3" :key="row" class="space-y-1.5 px-3.5 py-2.5">
-              <Skeleton class="h-3.5 w-2/3" />
-              <Skeleton class="h-3 w-full" />
+            <div class="stagger">
+              <div v-for="row in 3" :key="row" class="space-y-1.5 px-3.5 py-2.5">
+                <Skeleton class="h-3.5 w-2/3" />
+                <Skeleton class="h-3 w-full" />
+              </div>
             </div>
           </template>
 
-          <ul class="divide-y divide-border-primary">
+          <ul class="stagger divide-y divide-border-primary">
             <li
               v-for="item in items"
               :key="item.id"

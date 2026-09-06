@@ -18,7 +18,7 @@
         </router-link>
       </template>
 
-      <div class="flex flex-col gap-2">
+      <div class="stagger flex flex-col gap-2">
         <RequestRow v-for="request in requests" :key="request.id" :request="request" />
       </div>
     </QueryState>

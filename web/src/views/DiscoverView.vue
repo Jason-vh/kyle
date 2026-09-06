@@ -17,7 +17,7 @@
     >
       <template #loading><MediaRowSkeleton :count="4" size="lg" /></template>
 
-      <div class="flex flex-col gap-2">
+      <div class="stagger flex flex-col gap-2">
         <MediaCard v-for="item in results" :key="`${item.mediaType}-${item.tmdbId}`" :item="item" />
       </div>
     </QueryState>

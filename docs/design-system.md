@@ -125,6 +125,23 @@ shape for the four views that list media:
 `isPending` is first-load only. A background refresh deliberately shows nothing: it
 happens on every revisit, and a bar flickering each time is worse than silence.
 
+### Stagger
+
+Put `stagger` on a container and its direct children arrive one after another, top to
+bottom: up from 8px, out of a 6px blur, 45ms apart. The blur is what makes it read as
+settling into place rather than sliding.
+
+```vue
+<div class="stagger flex flex-col gap-2">
+  <RequestRow v-for="request in requests" … />
+</div>
+```
+
+Skeletons carry it too, so the placeholders and the rows that replace them appear the
+same way. Delays stop at the eighth child — past that the wait outlasts the patience, and
+a long library would be animating rows nobody has scrolled to. `prefers-reduced-motion`
+turns it off.
+
 ## Adding a primitive
 
 It earns its place when the same markup appears in **three** views, or when two views
