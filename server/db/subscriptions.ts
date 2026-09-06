@@ -1,6 +1,6 @@
 import { sql } from "drizzle-orm";
 import { createLogger } from "#server/logger.ts";
-import { db } from "./index.ts";
+import { query } from "./index.ts";
 import type { MediaEventData } from "./media-events.ts";
 import { errorMessage } from "#server/errors.ts";
 
@@ -25,7 +25,7 @@ export async function upsertMovieSubscription(
   radarrId: number,
   conversationId: string | null,
 ): Promise<void> {
-  await db.execute(sql`
+  await query(sql`
     INSERT INTO movie_subscriptions (user_id, radarr_id, conversation_id, active)
     VALUES (${userId}, ${radarrId}, ${conversationId}, true)
     ON CONFLICT (user_id, radarr_id)
@@ -45,21 +45,21 @@ export async function upsertSeriesSubscription(
   episodeNumber?: number,
 ): Promise<void> {
   if (seasonNumber === undefined) {
-    await db.execute(sql`
+    await query(sql`
       INSERT INTO series_subscriptions (user_id, sonarr_id, conversation_id, active)
       VALUES (${userId}, ${sonarrId}, ${conversationId}, true)
       ON CONFLICT (user_id, sonarr_id) WHERE season_number IS NULL AND episode_number IS NULL
       DO UPDATE SET conversation_id = COALESCE(EXCLUDED.conversation_id, series_subscriptions.conversation_id), active = true, updated_at = NOW()
     `);
   } else if (episodeNumber === undefined) {
-    await db.execute(sql`
+    await query(sql`
       INSERT INTO series_subscriptions (user_id, sonarr_id, season_number, conversation_id, active)
       VALUES (${userId}, ${sonarrId}, ${seasonNumber}, ${conversationId}, true)
       ON CONFLICT (user_id, sonarr_id, season_number) WHERE season_number IS NOT NULL AND episode_number IS NULL
       DO UPDATE SET conversation_id = COALESCE(EXCLUDED.conversation_id, series_subscriptions.conversation_id), active = true, updated_at = NOW()
     `);
   } else {
-    await db.execute(sql`
+    await query(sql`
       INSERT INTO series_subscriptions (user_id, sonarr_id, season_number, episode_number, conversation_id, active)
       VALUES (${userId}, ${sonarrId}, ${seasonNumber}, ${episodeNumber}, ${conversationId}, true)
       ON CONFLICT (user_id, sonarr_id, season_number, episode_number) WHERE season_number IS NOT NULL AND episode_number IS NOT NULL
@@ -82,7 +82,7 @@ export async function deactivateMovieSubscription(
   userId: string,
   radarrId: number,
 ): Promise<number> {
-  const result = await db.execute<{ id: string }>(sql`
+  const result = await query<{ id: string }>(sql`
     UPDATE movie_subscriptions
     SET active = false, updated_at = NOW()
     WHERE user_id = ${userId} AND radarr_id = ${radarrId} AND active = true
@@ -107,14 +107,14 @@ export async function deactivateSeriesSubscriptions(
 ): Promise<number> {
   let result: { id: string }[];
   if (seasonNumber === undefined) {
-    result = await db.execute<{ id: string }>(sql`
+    result = await query<{ id: string }>(sql`
       UPDATE series_subscriptions
       SET active = false, updated_at = NOW()
       WHERE user_id = ${userId} AND sonarr_id = ${sonarrId} AND active = true
       RETURNING id
     `);
   } else {
-    result = await db.execute<{ id: string }>(sql`
+    result = await query<{ id: string }>(sql`
       UPDATE series_subscriptions
       SET active = false, updated_at = NOW()
       WHERE user_id = ${userId} AND sonarr_id = ${sonarrId}
@@ -133,7 +133,7 @@ export async function deactivateSeriesSubscriptions(
  * Get all subscriptions for a user (both active and inactive).
  */
 export async function getSubscriptionsForUser(userId: string): Promise<UserSubscription[]> {
-  const movies = await db.execute<{
+  const movies = await query<{
     title: string;
     radarr_id: number;
     active: boolean;
@@ -156,7 +156,7 @@ export async function getSubscriptionsForUser(userId: string): Promise<UserSubsc
     ORDER BY ms.created_at DESC
   `);
 
-  const series = await db.execute<{
+  const series = await query<{
     title: string;
     sonarr_id: number;
     season_number: number | null;

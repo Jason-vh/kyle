@@ -3,20 +3,7 @@ import { eq, sql } from "drizzle-orm";
 import type { AgentEvent } from "@mariozechner/pi-agent-core";
 import type { RunAgentOptions, RunAgentResult } from "./index.ts";
 
-/**
- * Exercises the real persistence path against a live database.
- * Run `bun run db:up && bun run db:migrate` first; skipped when unreachable.
- */
-
-const dbReachable = await (async () => {
-  if (!process.env.DATABASE_URL) return false;
-  const { checkDatabaseHealth } = await import("#server/db/index.ts");
-  return checkDatabaseHealth();
-})();
-
-if (!dbReachable) {
-  console.warn("skipping conversation integration tests: DATABASE_URL is unset or unreachable");
-}
+/** Exercises the real persistence path against a real database. */
 
 // The agent itself is scripted; this suite is about what happens around it.
 let script: (options: RunAgentOptions) => RunAgentResult | Promise<RunAgentResult> = () => {
@@ -73,7 +60,6 @@ const externalId = `test:${crypto.randomUUID()}`;
 const createdConversationIds: string[] = [];
 
 beforeAll(async () => {
-  if (!dbReachable) return;
   const [user] = await db
     .insert(users)
     .values({ displayName: `test-${crypto.randomUUID().slice(0, 8)}` })
@@ -82,7 +68,6 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  if (!dbReachable) return;
   await db.execute(sql`DELETE FROM movie_subscriptions WHERE user_id = ${appUserId}`);
   for (const id of createdConversationIds) {
     await db.delete(conversations).where(eq(conversations.id, id));
@@ -90,7 +75,7 @@ afterAll(async () => {
   await db.delete(users).where(eq(users.id, appUserId));
 });
 
-describe.skipIf(!dbReachable)("runConversationTurn", () => {
+describe("runConversationTurn", () => {
   test("creates a conversation, then continues the same one by externalId", async () => {
     script = (options) => assistantText(options, "first reply");
     const first = await runConversationTurn({

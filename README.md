@@ -98,7 +98,9 @@ server/
     requests-tool.ts         → get_requests_for_user tool
     unsubscribe-tool.ts      → unsubscribe_notifications tool
   db/
-    index.ts                 → Drizzle + postgres connection
+    index.ts                 → Drizzle connection + query(): raw rows, either driver
+    test-env.ts              → Points tests at an in-process database, before anything connects
+    testing.ts               → Fixtures for tests that use the database rather than mock it
     schema.ts                → All tables
     users.ts                 → Platform identity resolution (cached), backfill, user CRUD
     threads.ts               → Queries behind the thread viewer
@@ -272,9 +274,9 @@ bun run check        # everything: fmt, lint, tsc, vue-tsc, both test suites
 ```
 
 `bun run check` is what the pre-commit hook and CI both run — see
-[docs/testing.md](docs/testing.md). Tests that need a database skip themselves unless
-`DATABASE_URL` is reachable, so run `bun run db:up && bun run db:migrate` first to
-include them; CI always does.
+[docs/testing.md](docs/testing.md). Tests bring their own database: `bunfig.toml`
+preloads a Postgres compiled to WASM, so the suite needs nothing running and can never
+touch the development database. CI runs the same tests against a real Postgres.
 
 Open <http://localhost:5173> for development. Production serves everything from `:3000`.
 
@@ -615,6 +617,9 @@ This repo is public, so most app config lives in GitHub Actions secrets:
 - **Formatting**: `oxfmt` via `bun run fmt`. Pre-commit hook (`lefthook`) runs
   `oxfmt --check`, `oxlint`, `tsc --noEmit -p tsconfig.server.json`, and `vue-tsc --noEmit`
   (in `web/`). Always run `bun run fmt` before committing.
+- **Raw SQL**: use `query<T>()` from `server/db/index.ts`, never `db.execute` — it
+  resolves to an array on postgres-js and to `{ rows }` on pglite, and `query` is the one
+  place that difference is absorbed.
 - **Imports**: `#` names a source root — `#server/*`, `#shared/*` on the server (resolved
   by Bun from `package.json` `imports`), `#web/*`, `#shared/*` in `web/` (a Vite alias).
   Siblings stay relative: `./api.ts` beside `./tools.ts` says something an alias would hide.

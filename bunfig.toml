@@ -1,0 +1,2 @@
+[test]
+preload = ["./server/db/test-env.ts"]

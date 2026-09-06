@@ -1,21 +1,10 @@
-import { afterEach, describe, expect, mock, test } from "bun:test";
+import { afterEach, describe, expect, test } from "bun:test";
+import { createAddMovieTool, removeMovieTool } from "#server/radarr/tools.ts";
+import { createAddSeriesTool, removeSeriesTool } from "#server/sonarr/tools.ts";
+import { extractMediaEvent } from "#server/db/media-events.ts";
 
-// The write path records the request itself; here only its Radarr/Sonarr calls matter.
-const realRequests = await import("#server/db/requests.ts");
-mock.module("#server/db/requests.ts", () => ({
-  ...realRequests,
-  saveMediaRequest: () => Promise.resolve({}),
-}));
-const realSubscriptions = await import("#server/db/subscriptions.ts");
-mock.module("#server/db/subscriptions.ts", () => ({
-  ...realSubscriptions,
-  upsertMovieSubscription: () => Promise.resolve(),
-  upsertSeriesSubscription: () => Promise.resolve(),
-}));
-
-const { createAddMovieTool, removeMovieTool } = await import("#server/radarr/tools.ts");
-const { createAddSeriesTool, removeSeriesTool } = await import("#server/sonarr/tools.ts");
-const { extractMediaEvent } = await import("#server/db/media-events.ts");
+// The tools are built with no requester, so nothing is attributed and nothing
+// is written; only what they return matters here.
 
 process.env.RADARR_HOST = "http://radarr.test";
 process.env.RADARR_API_KEY = "k";

@@ -1,6 +1,6 @@
 import { sql } from "drizzle-orm";
 import { createLogger } from "#server/logger.ts";
-import { db } from "#server/db/index.ts";
+import { query } from "#server/db/index.ts";
 import type { MediaRequester } from "./types.ts";
 
 const log = createLogger("webhooks:requester");
@@ -40,7 +40,7 @@ export async function findSubscribedUserIds(
   episodes?: Array<{ seasonNumber: number; episodeNumber: number }>,
 ): Promise<string[]> {
   if (mediaType === "movie" && ids.radarr != null) {
-    const rows = await db.execute<{ user_id: string }>(sql`
+    const rows = await query<{ user_id: string }>(sql`
       SELECT DISTINCT user_id FROM movie_subscriptions
       WHERE radarr_id = ${ids.radarr} AND active = true
     `);
@@ -48,7 +48,7 @@ export async function findSubscribedUserIds(
   }
 
   if (mediaType === "series" && ids.sonarr != null) {
-    const rows = await db.execute<{
+    const rows = await query<{
       user_id: string;
       season_number: number | null;
       episode_number: number | null;
@@ -72,7 +72,7 @@ export async function findSubscribedUserIds(
 }
 
 async function findMovieSubscribers(radarrId: number): Promise<MediaRequester[]> {
-  const rows = await db.execute<{
+  const rows = await query<{
     conversation_id: string;
     interface_type: string;
     metadata: Record<string, unknown>;
@@ -122,7 +122,7 @@ async function findSeriesSubscribers(
   sonarrId: number,
   episodes?: Array<{ seasonNumber: number; episodeNumber: number }>,
 ): Promise<MediaRequester[]> {
-  const rows = await db.execute<{
+  const rows = await query<{
     conversation_id: string;
     interface_type: string;
     metadata: Record<string, unknown>;

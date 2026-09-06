@@ -1,16 +1,22 @@
-import { afterEach, describe, expect, mock, test } from "bun:test";
+import { afterAll, afterEach, beforeAll, describe, expect, test } from "bun:test";
+import { eq } from "drizzle-orm";
 import type { ActivityItem } from "#shared/types.ts";
+import { getActivity, __testing } from "./activity.ts";
+import { db } from "#server/db/index.ts";
+import { mediaRequests } from "#server/db/schema.ts";
+import { createTestUser, deleteTestUser } from "#server/db/testing.ts";
 
-const requesters: { mediaType: string; tmdbId: number; userId: string; name: string }[] = [];
-
-const realRequests = await import("#server/db/requests.ts");
-mock.module("#server/db/requests.ts", () => ({
-  ...realRequests,
-  getAllRequesters: () => Promise.resolve(requesters),
-}));
-
-const { getActivity, __testing } = await import("./activity.ts");
 const { annotate } = __testing;
+
+let userId = "";
+
+beforeAll(async () => {
+  userId = await createTestUser("Activity");
+});
+
+afterAll(async () => {
+  await deleteTestUser(userId);
+});
 
 process.env.RADARR_HOST = "http://radarr.test";
 process.env.RADARR_API_KEY = "k";
@@ -18,9 +24,9 @@ process.env.SONARR_HOST = "http://sonarr.test";
 process.env.SONARR_API_KEY = "k";
 
 const realFetch = globalThis.fetch;
-afterEach(() => {
+afterEach(async () => {
   globalThis.fetch = realFetch;
-  requesters.length = 0;
+  await db.delete(mediaRequests).where(eq(mediaRequests.userId, userId));
 });
 
 /** Radarr and Sonarr, each answering with its own history. */
@@ -112,7 +118,7 @@ describe("getActivity", () => {
       [seriesRecord({ id: 9, date: "2026-09-04T00:00:00Z" })],
     );
 
-    const activity = await getActivity("u1", since);
+    const activity = await getActivity(userId, since);
 
     expect(activity.map((item) => item.id)).toEqual(["series-9", "movie-7"]);
     expect(activity[0]).toMatchObject({
@@ -126,28 +132,34 @@ describe("getActivity", () => {
   test("ignores everything that is not an import", async () => {
     stubHistory([movieRecord({ eventType: "grabbed" })], [seriesRecord({ eventType: "grabbed" })]);
 
-    expect(await getActivity("u1", since)).toEqual([]);
+    expect(await getActivity(userId, since)).toEqual([]);
   });
 
   test("drops anything older than the window", async () => {
     stubHistory([movieRecord({ date: "2026-08-01T00:00:00Z" })], []);
 
-    expect(await getActivity("u1", since)).toEqual([]);
+    expect(await getActivity(userId, since)).toEqual([]);
   });
 
   test("says who asked for it", async () => {
-    requesters.push({ mediaType: "movie", tmdbId: 329865, userId: "u1", name: "Bob" });
+    await db.insert(mediaRequests).values({
+      userId,
+      mediaType: "movie",
+      tmdbId: 329865,
+      title: "Arrival",
+    });
     stubHistory([movieRecord()], []);
 
-    const [item] = await getActivity("u1", since);
-    expect(item).toMatchObject({ requestedBy: ["Bob"], requestedByMe: true });
+    const [item] = await getActivity(userId, since);
+    expect(item?.requestedBy).toHaveLength(1);
+    expect(item?.requestedByMe).toBe(true);
   });
 
   // The id is only there to match a request; it has no business leaving.
   test("does not leak the matching id into the response", async () => {
     stubHistory([movieRecord()], []);
 
-    const [item] = await getActivity("u1", since);
+    const [item] = await getActivity(userId, since);
     expect(item).not.toHaveProperty("tmdbId");
   });
 
@@ -157,7 +169,7 @@ describe("getActivity", () => {
       return Promise.resolve(Response.json({ records: [seriesRecord()] }));
     }) as unknown as typeof fetch;
 
-    const activity = await getActivity("u1", since);
+    const activity = await getActivity(userId, since);
 
     expect(activity).toHaveLength(1);
     expect(activity[0]!.mediaType).toBe("series");

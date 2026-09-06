@@ -19,14 +19,30 @@ Everything below is a piece of that. If `check` passes, the commit is good.
 `bun test` is scoped to `server shared` so it does not try to run the web suite,
 which needs a DOM.
 
+### The database is part of the test environment
+
+There is no "tests that need a database" any more. `bunfig.toml` preloads
+`server/db/test-env.ts`, which points every run at **pglite** — Postgres compiled to
+WASM, running in this process, migrated and empty. No Docker, nothing to start, and the
+suite passes on a laptop with nothing installed.
+
+It deliberately ignores `DATABASE_URL` from `.env`, so a test run can never delete rows
+from the development database. To run against a real server instead:
+
+```bash
+TEST_DATABASE_URL=postgresql://kyle:kyle@localhost:5433/kyle bun run test
+```
+
+which is exactly what CI does, so every test is checked against both.
+
 ## Two gates
 
 1. **Pre-commit** (`lefthook.yml`) runs all of the above, in parallel. This is what
    normally catches things.
 2. **CI** (`.github/workflows/deploy.yml`) runs the same checks on a clean checkout,
-   against a real Postgres, and **gates the deploy**. It exists because the hook can be
-   skipped with `--no-verify` and because ~7 database-backed tests skip themselves when
-   `DATABASE_URL` is unreachable — locally that is most of the time, in CI it is never.
+   against **a real Postgres** rather than pglite, and **gates the deploy**. It exists
+   because the hook can be skipped with `--no-verify`, and because the in-process
+   database is close to Postgres but not identical to it.
 
 A failed check means nothing is deployed and the running app is untouched. GitHub emails
 the pusher when a run fails.
@@ -48,6 +64,8 @@ a test on a wrong-but-plausible output is worth ten on a crash.
 
 In practice:
 
+- **Writes are checked by reading them back.** Assert on the row in the database, not on
+  the arguments a mock was called with — the second cannot tell you the upsert worked.
 - **Pure functions get tests, always.** `mountFor`, `resolveState`, `annotate`,
   `formatSize`. Export them through an `__testing` object if they are not part of the
   module's public surface.
@@ -91,22 +109,19 @@ mock.module("../db/requests.ts", () => ({ ...real, saveMediaRequest: … }));
 
 Import the module under test _after_ the mock, with a top-level `await import`.
 
-### Tests that need Postgres
+### Database fixtures
 
-They must skip themselves when `DATABASE_URL` is unreachable, so `bun run check` passes
-without Docker. `server/agent/conversation.test.ts` is the example. To run them:
-
-```bash
-bun run db:up && bun run db:migrate && bun test
-```
-
-CI always runs them.
+`server/db/testing.ts` has `createTestUser` and `deleteTestUser`. Everything hangs off a
+user, so deleting one is enough to clean up. Give rows a `beforeAll` user and an
+`afterAll` delete; the in-process database starts empty on every run regardless.
 
 ## Current gaps
 
 Honest list, so nobody assumes coverage that is not there:
 
 - `server/dashboard/service.ts` — the per-source `tolerate` fallback is untested.
+- pglite is single-connection, so nothing about locking or concurrent writes is covered.
+  CI runs the same suite against a real Postgres, which at least catches dialect drift.
 - `server/agent/` — `run.ts`'s overload retry is not covered.
 - `server/slack/`, `server/discord/` — only the stream buffering is covered.
 - `web/` — the views have no tests, by choice; the primitives are covered where they

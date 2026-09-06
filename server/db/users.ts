@@ -1,6 +1,6 @@
 import { eq, and, sql } from "drizzle-orm";
 import { createLogger } from "#server/logger.ts";
-import { db } from "./index.ts";
+import { db, query } from "./index.ts";
 import { users, platformIdentities, userCredentials } from "./schema.ts";
 
 const log = createLogger("db-users");
@@ -73,20 +73,17 @@ export async function backfillUserFromPlatformLink(
 ): Promise<{ conversations: number; messages: number; mediaEvents: number }> {
   const interfaceType = platformToInterfaceType(platform);
 
-  const [convResult] = await db
-    .execute<{ count: string }>(sql`
+  const [convResult] = await query<{ count: string }>(sql`
     UPDATE conversations
     SET user_id = ${appUserId}
     WHERE platform_user_id = ${platformUserId}
       AND interface_type = ${interfaceType}
       AND user_id IS NULL
     RETURNING count(*)::text AS count
-  `)
-    .catch(() => [{ count: "0" }]);
+  `).catch(() => [{ count: "0" }]);
 
   // For messages/media_events, scope by conversations of the right interface type
-  const [msgResult] = await db
-    .execute<{ count: string }>(sql`
+  const [msgResult] = await query<{ count: string }>(sql`
     WITH updated AS (
       UPDATE messages
       SET user_id = ${appUserId}
@@ -98,11 +95,9 @@ export async function backfillUserFromPlatformLink(
       RETURNING 1
     )
     SELECT count(*)::text AS count FROM updated
-  `)
-    .catch(() => [{ count: "0" }]);
+  `).catch(() => [{ count: "0" }]);
 
-  const [refResult] = await db
-    .execute<{ count: string }>(sql`
+  const [refResult] = await query<{ count: string }>(sql`
     WITH updated AS (
       UPDATE media_events
       SET user_id = ${appUserId}
@@ -114,8 +109,7 @@ export async function backfillUserFromPlatformLink(
       RETURNING 1
     )
     SELECT count(*)::text AS count FROM updated
-  `)
-    .catch(() => [{ count: "0" }]);
+  `).catch(() => [{ count: "0" }]);
 
   const counts = {
     conversations: parseInt(convResult?.count ?? "0", 10),

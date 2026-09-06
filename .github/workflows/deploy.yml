@@ -14,9 +14,9 @@ env:
   DEPLOY_DIR: /home/exedev/apps/kyle
 
 jobs:
-  # The pre-commit hook runs the same checks, but can be skipped, and skips the
-  # tests that need a database. Here they always run, and a failure stops the
-  # deploy rather than shipping.
+  # The pre-commit hook runs the same checks but can be skipped, and runs the
+  # database tests against pglite. Here they run against the Postgres the app
+  # actually uses, and a failure stops the deploy rather than shipping.
   check:
     name: Check
     runs-on: ubuntu-latest
@@ -31,6 +31,9 @@ jobs:
         options: >-
           --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
     env:
+      # Tests read this rather than DATABASE_URL, so they can never be pointed
+      # at a real database by accident.
+      TEST_DATABASE_URL: postgresql://kyle:kyle@localhost:5432/kyle
       DATABASE_URL: postgresql://kyle:kyle@localhost:5432/kyle
     steps:
       - uses: actions/checkout@v4

@@ -2,26 +2,13 @@ import { afterAll, beforeAll, describe, expect, mock, test } from "bun:test";
 import { eq } from "drizzle-orm";
 
 /**
- * The seam a browser request falls through, against a live database: a
- * subscription with no conversation to be answered in, and whether the person
- * behind it is actually told. Run `bun run db:up && bun run db:migrate` first;
- * skipped when unreachable.
+ * The seam a browser request falls through: a subscription with no
+ * conversation to be answered in, and whether the person behind it is told.
  *
  * The subscription is inserted directly rather than through `requestMovie`,
- * because another suite mocks the subscription module and `mock.module` lasts
- * the whole run. That `requestMovie` writes this row is covered in
- * `server/requests/service.test.ts`.
+ * which keeps this about delivery. That a browser request writes exactly this
+ * row is covered in `server/requests/service.test.ts`.
  */
-const dbReachable = await (async () => {
-  if (!process.env.DATABASE_URL) return false;
-  const { checkDatabaseHealth } = await import("#server/db/index.ts");
-  return checkDatabaseHealth();
-})();
-
-if (!dbReachable) {
-  console.warn("skipping announce integration tests: DATABASE_URL is unset or unreachable");
-}
-
 // Chat delivery needs Slack; this suite is about what reaches the app.
 let chatFails = false;
 const realNotify = await import("./notify.ts");
@@ -49,8 +36,6 @@ async function unreadCount(): Promise<number> {
 }
 
 beforeAll(async () => {
-  if (!dbReachable) return;
-
   const [user] = await db
     .insert(users)
     .values({ displayName: `Announce Test ${crypto.randomUUID().slice(0, 8)}` })
@@ -68,7 +53,7 @@ afterAll(async () => {
   await db.delete(users).where(eq(users.id, userId));
 });
 
-describe.if(dbReachable)("a request made in the browser", () => {
+describe("a request made in the browser", () => {
   test("is told when the media arrives, despite having no conversation", async () => {
     const result = await announce({ radarr: RADARR_ID, tmdb: TMDB_ID }, ARRIVED);
 
