@@ -66,9 +66,8 @@ In practice:
 
 - **Writes are checked by reading them back.** Assert on the row in the database, not on
   the arguments a mock was called with — the second cannot tell you the upsert worked.
-- **Pure functions get tests, always.** `mountFor`, `resolveState`, `annotate`,
-  `formatSize`. Export them through an `__testing` object if they are not part of the
-  module's public surface.
+- **Pure functions get tests, always.** `mountFor`, `resolveState`, `annotateRequesters`,
+  `formatSize`. **Export them normally** — there is no `__testing` object.
 - **Anything that talks to a service gets fetch stubbed**, and the test asserts the
   _request_ as well as the response handling — see the `>=` regression tests in
   `server/plex/`.
@@ -108,6 +107,21 @@ mock.module("../db/requests.ts", () => ({ ...real, saveMediaRequest: … }));
 ```
 
 Import the module under test _after_ the mock, with a top-level `await import`.
+
+### Do not hide exports behind `__testing`
+
+It exports the function anyway; the name is the only guard, and nothing enforces it. Worse,
+it makes a second API surface with no rules about what belongs in it — a constant ended up
+in one — and it lets a module keep logic that has outgrown it.
+
+That is not hypothetical. `annotateRequesters` in `library/service.ts` and `annotate` in
+`dashboard/activity.ts` were the same function, character for character, each behind its own
+`__testing` block, each with the same three tests. The second was written without anyone
+noticing the first, because both looked tested. They are now one module,
+`server/requests/requesters.ts`, with one plain export and one set of tests.
+
+**If a function deserves a test, export it. If exporting it feels wrong, it wants its own
+module** — which is the same conclusion, reached honestly.
 
 ### Database fixtures
 

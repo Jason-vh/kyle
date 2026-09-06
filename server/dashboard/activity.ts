@@ -2,6 +2,7 @@ import type { ActivityItem } from "#shared/types.ts";
 import * as radarr from "#server/radarr/api.ts";
 import * as sonarr from "#server/sonarr/api.ts";
 import { getAllRequesters } from "#server/db/requests.ts";
+import { annotateRequesters } from "#server/requests/requesters.ts";
 import { posterOf } from "#server/media-images.ts";
 import { episodeLabel } from "#shared/media.ts";
 import { createLogger } from "#server/logger.ts";
@@ -14,33 +15,6 @@ const IMPORTED = "downloadFolderImported";
 
 /** Enough history to cover a busy week without paging. */
 const HISTORY_PAGE = 60;
-
-interface Requester {
-  mediaType: string;
-  tmdbId: number;
-  userId: string;
-  name: string;
-}
-
-/** Who had asked for each title; anything added by hand simply has nobody. */
-function annotate(items: ActivityItem[], viewerId: string, requesters: Requester[]): void {
-  const byKey = new Map<string, { names: string[]; mine: boolean }>();
-  for (const requester of requesters) {
-    const key = `${requester.mediaType}:${requester.tmdbId}`;
-    const entry = byKey.get(key) ?? { names: [], mine: false };
-    entry.names.push(requester.name);
-    entry.mine ||= requester.userId === viewerId;
-    byKey.set(key, entry);
-  }
-
-  for (const item of items) {
-    if (item.tmdbId === undefined) continue;
-    const entry = byKey.get(`${item.mediaType}:${item.tmdbId}`);
-    if (!entry) continue;
-    item.requestedBy = entry.names;
-    item.requestedByMe = entry.mine;
-  }
-}
 
 /** One service being down costs its half of the feed, not the whole page. */
 async function settle<T>(name: string, load: () => Promise<T>): Promise<T | undefined> {
@@ -101,7 +75,7 @@ export async function getActivity(viewerId: string, since: Date): Promise<Activi
     });
   }
 
-  annotate(items, viewerId, requesters);
+  annotateRequesters(items, viewerId, requesters);
 
   const recent = items
     .filter((item) => new Date(item.at) >= since)
@@ -111,5 +85,3 @@ export async function getActivity(viewerId: string, since: Date): Promise<Activi
 
   return recent;
 }
-
-export const __testing = { annotate, IMPORTED };

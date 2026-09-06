@@ -17,7 +17,7 @@ interface Mount {
  * matches `/home/x` over `/`, which is the difference between the media disk
  * and the root filesystem.
  */
-function mountFor(path: string, mounts: Mount[]): Mount | undefined {
+export function mountFor(path: string, mounts: Mount[]): Mount | undefined {
   return mounts
     .filter((mount) => {
       // `/` is already its own separator; every other mount needs one adding,
@@ -63,5 +63,3 @@ export async function getStorage(): Promise<StorageStat | undefined> {
     return undefined;
   }
 }
-
-export const __testing = { mountFor };

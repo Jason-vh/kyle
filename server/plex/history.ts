@@ -39,18 +39,18 @@ export function watchKey(mediaType: string, tmdbId: number): string {
   return `${mediaType}:${tmdbId}`;
 }
 
-function titleKey(sectionKey: string, title: string): string {
+export function titleKey(sectionKey: string, title: string): string {
   return `${sectionKey}:${title.toLowerCase()}`;
 }
 
-function tmdbIdOf(item: SectionItem): number | undefined {
+export function tmdbIdOf(item: SectionItem): number | undefined {
   const guid = item.Guid?.find((g) => g.id.startsWith("tmdb://"));
   const id = Number(guid?.id.slice("tmdb://".length));
   return Number.isInteger(id) && id > 0 ? id : undefined;
 }
 
 /** The last path segment of `/library/metadata/14026`. */
-function ratingKeyOfPath(path: string | null | undefined): string | undefined {
+export function ratingKeyOfPath(path: string | null | undefined): string | undefined {
   return path?.split("/").pop() || undefined;
 }
 
@@ -164,5 +164,3 @@ export async function getWatchers(): Promise<Map<string, PlexPerson[]>> {
 export function invalidateWatchers(): void {
   cached = null;
 }
-
-export const __testing = { tmdbIdOf, ratingKeyOfPath, titleKey };

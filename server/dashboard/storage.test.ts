@@ -1,7 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { __testing } from "./storage.ts";
-
-const { mountFor } = __testing;
+import { mountFor } from "./storage.ts";
 
 const MOUNTS = [
   { path: "/", freeSpace: 400_000, totalSpace: 890_000 },

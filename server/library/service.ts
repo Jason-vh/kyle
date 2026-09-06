@@ -5,6 +5,7 @@ import * as radarr from "#server/radarr/api.ts";
 import * as sonarr from "#server/sonarr/api.ts";
 import { movieState, seriesState } from "./item.ts";
 import { getAllRequesters } from "#server/db/requests.ts";
+import { annotateRequesters } from "#server/requests/requesters.ts";
 import { getWatchers, watchKey } from "#server/plex/history.ts";
 import { posterOf } from "#server/media-images.ts";
 import { createLogger } from "#server/logger.ts";
@@ -12,7 +13,7 @@ import { errorMessage } from "#server/errors.ts";
 
 const log = createLogger("library");
 
-function toMovie(movie: RadarrMovie): LibraryItem {
+export function toMovie(movie: RadarrMovie): LibraryItem {
   return {
     mediaType: "movie",
     tmdbId: movie.tmdbId,
@@ -26,7 +27,7 @@ function toMovie(movie: RadarrMovie): LibraryItem {
   };
 }
 
-function toSeries(series: SonarrSeries): LibraryItem {
+export function toSeries(series: SonarrSeries): LibraryItem {
   return {
     mediaType: "series",
     tmdbId: series.tmdbId,
@@ -38,42 +39,6 @@ function toSeries(series: SonarrSeries): LibraryItem {
     watchedBy: [],
     ...seriesState(series),
   };
-}
-
-function requestKey(mediaType: string, tmdbId: number): string {
-  return `${mediaType}:${tmdbId}`;
-}
-
-interface Requester {
-  mediaType: string;
-  tmdbId: number;
-  userId: string;
-  name: string;
-}
-
-/**
- * Attach who asked for each title. Only media requested through Kyle matches;
- * anything added before, or by hand, simply has no requester.
- */
-function annotateRequesters(items: LibraryItem[], viewerId: string, requests: Requester[]): void {
-  if (requests.length === 0) return;
-
-  const byKey = new Map<string, { names: string[]; mine: boolean }>();
-  for (const request of requests) {
-    const key = requestKey(request.mediaType, request.tmdbId);
-    const entry = byKey.get(key) ?? { names: [], mine: false };
-    entry.names.push(request.name);
-    entry.mine ||= request.userId === viewerId;
-    byKey.set(key, entry);
-  }
-
-  for (const item of items) {
-    if (item.tmdbId === undefined) continue;
-    const entry = byKey.get(requestKey(item.mediaType, item.tmdbId));
-    if (!entry) continue;
-    item.requestedBy = entry.names;
-    item.requestedByMe = entry.mine;
-  }
 }
 
 export interface LibraryListing {
@@ -133,5 +98,3 @@ export async function removeLibraryItem(
 
   log.info("removed library item", { mediaType, serviceId, deleteFiles });
 }
-
-export const __testing = { toMovie, toSeries, annotateRequesters };

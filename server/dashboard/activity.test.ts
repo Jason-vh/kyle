@@ -1,12 +1,10 @@
 import { afterAll, afterEach, beforeAll, describe, expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
 import type { ActivityItem } from "#shared/types.ts";
-import { getActivity, __testing } from "./activity.ts";
+import { getActivity } from "./activity.ts";
 import { db } from "#server/db/index.ts";
 import { mediaRequests } from "#server/db/schema.ts";
 import { createTestUser, deleteTestUser } from "#server/db/testing.ts";
-
-const { annotate } = __testing;
 
 let userId = "";
 
@@ -61,55 +59,6 @@ function seriesRecord(overrides: Record<string, unknown> = {}) {
 }
 
 const since = new Date("2026-09-01T00:00:00Z");
-
-describe("annotate", () => {
-  function item(overrides: Partial<ActivityItem & { tmdbId?: number }> = {}) {
-    return {
-      id: "movie-1",
-      mediaType: "movie" as const,
-      title: "Arrival",
-      at: "2026-09-05T12:00:00Z",
-      requestedBy: [],
-      requestedByMe: false,
-      tmdbId: 329865,
-      ...overrides,
-    };
-  }
-
-  test("names everyone who asked, and flags the viewer's own", () => {
-    const items = [item()];
-    annotate(items, "u1", [
-      { mediaType: "movie", tmdbId: 329865, userId: "u1", name: "Bob" },
-      { mediaType: "movie", tmdbId: 329865, userId: "u2", name: "Jane" },
-    ]);
-
-    expect(items[0]).toMatchObject({ requestedBy: ["Bob", "Jane"], requestedByMe: true });
-  });
-
-  test("someone else's request is not mine", () => {
-    const items = [item()];
-    annotate(items, "u1", [{ mediaType: "movie", tmdbId: 329865, userId: "u2", name: "Jane" }]);
-
-    expect(items[0]).toMatchObject({ requestedBy: ["Jane"], requestedByMe: false });
-  });
-
-  // The two services number their ids independently, so a movie and a series
-  // can share one.
-  test("a request does not attach to the other media type with the same id", () => {
-    const items = [item()];
-    annotate(items, "u1", [{ mediaType: "series", tmdbId: 329865, userId: "u1", name: "Bob" }]);
-
-    expect(items[0]!.requestedBy).toEqual([]);
-  });
-
-  // A library that predates Kyle has plenty of these.
-  test("leaves anything nobody asked for alone", () => {
-    const items = [item({ tmdbId: undefined })];
-    annotate(items, "u1", [{ mediaType: "movie", tmdbId: 329865, userId: "u1", name: "Bob" }]);
-
-    expect(items[0]).toMatchObject({ requestedBy: [], requestedByMe: false });
-  });
-});
 
 describe("getActivity", () => {
   test("reports what landed, newest first", async () => {
