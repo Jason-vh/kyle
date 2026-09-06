@@ -1,4 +1,4 @@
-name: Deploy
+name: Check and deploy
 
 on:
   push:
@@ -14,8 +14,48 @@ env:
   DEPLOY_DIR: /home/exedev/apps/kyle
 
 jobs:
+  # The pre-commit hook runs the same checks, but can be skipped, and skips the
+  # tests that need a database. Here they always run, and a failure stops the
+  # deploy rather than shipping.
+  check:
+    name: Check
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: kyle
+          POSTGRES_PASSWORD: kyle
+          POSTGRES_DB: kyle
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgresql://kyle:kyle@localhost:5432/kyle
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: |
+          bun install --frozen-lockfile
+          cd web && bun install --frozen-lockfile
+
+      - name: Apply migrations
+        run: bun run db:migrate
+
+      - name: Format, lint, types and tests
+        run: bun run check
+
+      - name: Build the web app
+        run: bun run build:web
+
   deploy:
     name: Deploy to exe.dev VM
+    needs: check
     runs-on: [self-hosted, linux, kyle-prod]
     steps:
       - name: Check out repository
@@ -83,3 +123,32 @@ jobs:
         run: |
           sudo /usr/bin/caddy validate --config /etc/caddy/Caddyfile
           sudo /usr/bin/systemctl reload caddy
+
+  # Pushing straight to main means a red build is the first anyone hears of it,
+  # so Kyle says so in Slack rather than leaving it to an email nobody reads.
+  notify:
+    name: Report a failure
+    needs: [check, deploy]
+    if: failure()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Post to Slack
+        env:
+          TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          CHANNEL: ${{ secrets.SLACK_ALERT_CHANNEL }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          COMMIT: ${{ github.event.head_commit.message }}
+          WHO: ${{ github.actor }}
+        run: |
+          if [ -z "$CHANNEL" ] || [ -z "$TOKEN" ]; then
+            echo "No Slack channel configured; skipping."
+            exit 0
+          fi
+          SUMMARY=$(printf '%s' "$COMMIT" | head -n 1)
+          TEXT=":rotating_light: *main is broken* — \`${SUMMARY}\` by ${WHO}. <${RUN_URL}|See the run>. Nothing was deployed."
+          jq -n --arg channel "$CHANNEL" --arg text "$TEXT" \
+            '{channel: $channel, text: $text, unfurl_links: false}' \
+          | curl -sS -X POST https://slack.com/api/chat.postMessage \
+              -H "Authorization: Bearer $TOKEN" \
+              -H "Content-Type: application/json; charset=utf-8" \
+              --data @-

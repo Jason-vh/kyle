@@ -9,3 +9,5 @@ services, auth and deployment. These pages cover the web app and the data behind
   "mobile first" actually constrains here.
 - [Dashboard](dashboard.md) — where every figure on the home screen comes from, what
   it approximates, and the Plex behaviour that will bite you.
+- [Testing and tooling](testing.md) — the one command, the three gates, what earns a
+  test, and where the gaps are.

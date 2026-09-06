@@ -7,9 +7,9 @@ from Slack, Discord, a web SPA, a CLI, or plain HTTP.
 Built with [pi-agent-core](https://github.com/badlogic/pi-mono) + Anthropic Claude,
 persisted in Postgres via Drizzle ORM, running on Bun. Live at <https://kyle.vhtm.eu>.
 
-The web app has its own docs in [`docs/`](docs/): the
-[design system](docs/design-system.md), the [frontend](docs/frontend.md), and where every
-figure on the [dashboard](docs/dashboard.md) comes from.
+More in [`docs/`](docs/): the [design system](docs/design-system.md), the
+[frontend](docs/frontend.md), where every figure on the [dashboard](docs/dashboard.md)
+comes from, and how [testing and tooling](docs/testing.md) hang together.
 
 ## Table of contents
 
@@ -255,13 +255,16 @@ bun run db:studio    # open Drizzle Studio GUI
 bun run dev          # backend with hot reload (:3000)
 bun run dev:web      # Vite dev server (:5173, proxies /api → :3000)
 bun run cli          # interactive CLI client
-bun test             # run tests
-bun run fmt          # format (oxfmt); bun run check runs fmt + lint + tsc + tests
+bun test             # server + shared tests
+bun run test:web     # web tests (Vitest)
+bun run fmt          # format (oxfmt)
+bun run check        # everything: fmt, lint, tsc, vue-tsc, both test suites
 ```
 
-Most tests are pure unit tests. `server/agent/conversation.test.ts` exercises the real
-persistence path and needs a database — it skips itself unless `DATABASE_URL` is reachable,
-so run `bun run db:up && bun run db:migrate` first to include it.
+`bun run check` is what the pre-commit hook and CI both run — see
+[docs/testing.md](docs/testing.md). Tests that need a database skip themselves unless
+`DATABASE_URL` is reachable, so run `bun run db:up && bun run db:migrate` first to
+include them; CI always does.
 
 Open <http://localhost:5173> for development. Production serves everything from `:3000`.
 
@@ -605,15 +608,16 @@ This repo is public, so most app config lives in GitHub Actions secrets:
 - **Type safety**: type assertions (`as any`) are not allowed unless absolutely necessary —
   use type guards, generics, `WeakMap`, etc. Service clients return `request<T>()`, so tool
   code should not need casts.
-- **Tests**: `bun test`. Keep them pure where possible; tests that need Postgres must skip
-  themselves when `DATABASE_URL` is unreachable so `bun run check` passes without Docker.
-  `mock.module` replaces a module for the whole run, so spread the real one and override only
-  what the test needs.
+- **Tests**: anything that can be wrong without anything failing gets a test — see
+  [docs/testing.md](docs/testing.md). Keep them pure where possible; tests that need
+  Postgres must skip themselves when `DATABASE_URL` is unreachable so `bun run check`
+  passes without Docker.
 - **Errors**: surface the real message rather than a tidy one — `errorResponse(error, status)`
   from `server/errors.ts`. Kyle sits behind auth and is used by a household, so a reply of
   "op ANY/ALL (array) requires array on right side" is worth far more than "unavailable right
   now", which forces a trip to the server logs to learn anything at all.
-- **Git workflow**: push to `main`; the self-hosted runner deploys automatically.
+- **Git workflow**: push to `main`. CI runs `bun run check` first and only deploys if it
+  passes; a failure posts to Slack, since nobody is watching a pull request.
 - **Comments/docstrings**: keep them as short as possible, ideally a single line, and never
   include ticket references.
 

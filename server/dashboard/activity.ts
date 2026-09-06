@@ -114,3 +114,5 @@ export async function getActivity(viewerId: string, since: Date): Promise<Activi
 
   return recent.map(({ tmdbId: _tmdbId, ...item }) => item);
 }
+
+export const __testing = { annotate, IMPORTED };
