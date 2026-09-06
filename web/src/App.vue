@@ -67,24 +67,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from "vue";
 import { RouterView, useRoute } from "vue-router";
-import { getAuthStatus, type AuthUser } from "./api/auth";
 import UserAvatar from "./components/UserAvatar.vue";
 import NavIcon from "./components/ui/NavIcon.vue";
 import { NAV_LINKS } from "./nav";
+import { useSession } from "./queries/session";
 
 const route = useRoute();
-const user = ref<AuthUser | null>(null);
+const { user } = useSession();
 
 const isActive = (to: string) => route.path.startsWith(to);
-
-// Re-read on navigation so the header follows sign-in and sign-out.
-watch(
-  () => route.fullPath,
-  async () => {
-    user.value = (await getAuthStatus()).user ?? null;
-  },
-  { immediate: true },
-);
 </script>

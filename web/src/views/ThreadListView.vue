@@ -31,17 +31,15 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from "vue";
+import { ref, computed } from "vue";
 import { useTitle } from "@vueuse/core";
-import { getThreads } from "#web/api/threads";
-import type { ThreadListItem } from "#shared/types";
 import ThreadCard from "#web/components/ThreadCard.vue";
+import { useThreads } from "#web/queries/threads";
 
 useTitle("Conversations — Kyle");
 
-const threads = ref<ThreadListItem[]>([]);
-const loading = ref(true);
-const error = ref("");
+const { data, error, isPending: loading } = useThreads();
+const threads = computed(() => data.value ?? []);
 const search = ref("");
 
 const filteredThreads = computed(() => {
@@ -51,15 +49,5 @@ const filteredThreads = computed(() => {
     const text = [t.preview, ...t.mediaRefs.map((r) => r.title)].join(" ").toLowerCase();
     return text.includes(q);
   });
-});
-
-onMounted(async () => {
-  try {
-    threads.value = await getThreads();
-  } catch (e) {
-    error.value = e instanceof Error ? e.message : "Failed to load threads";
-  } finally {
-    loading.value = false;
-  }
 });
 </script>

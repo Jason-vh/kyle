@@ -1,5 +1,6 @@
+import { useQueryCache } from "@pinia/colada";
+import { pinia } from "#web/pinia";
 import { router } from "#web/router";
-import { resetAuthCache } from "./auth";
 
 export async function apiFetch<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(url, {
@@ -11,7 +12,8 @@ export async function apiFetch<T>(url: string, init?: RequestInit): Promise<T> {
   });
 
   if (res.status === 401) {
-    resetAuthCache();
+    // The session the whole app reads is now wrong, whatever it says.
+    useQueryCache(pinia).invalidateQueries({ key: ["session"] });
     await router.push({ name: "login" });
     throw new Error("Unauthorized");
   }

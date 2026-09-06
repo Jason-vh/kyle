@@ -8,7 +8,7 @@
       </template>
     </PageHeader>
 
-    <QueryState :loading="loading" :error="error" :empty="requests.length === 0">
+    <QueryState :loading="isPending" :error="error" :empty="requests.length === 0">
       <template #empty>
         Nothing requested yet.
         <router-link to="/discover" class="text-accent-purple hover:underline">
@@ -24,43 +24,27 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from "vue";
+import { computed, ref } from "vue";
 import { useTitle } from "@vueuse/core";
-import { getAuthStatus } from "#web/api/auth";
-import { getRequests, type MediaRequest } from "#web/api/requests";
 import RequestRow from "#web/components/RequestRow.vue";
 import AppButton from "#web/components/ui/AppButton.vue";
 import AppPage from "#web/components/ui/AppPage.vue";
 import PageHeader from "#web/components/ui/PageHeader.vue";
 import QueryState from "#web/components/ui/QueryState.vue";
+import { useRequests } from "#web/queries/media";
+import { useSession } from "#web/queries/session";
 
 useTitle("Requests — Kyle");
 
-const requests = ref<MediaRequest[]>([]);
-const loading = ref(true);
-const error = ref("");
-const isAdmin = ref(false);
 const showAll = ref(false);
 
-async function load() {
-  loading.value = true;
-  error.value = "";
-  try {
-    requests.value = await getRequests(showAll.value);
-  } catch (e) {
-    error.value = e instanceof Error ? e.message : "Could not load requests";
-  } finally {
-    loading.value = false;
-  }
-}
+const { isAdmin } = useSession();
+// Switching scope is a different query, not a refetch of this one.
+const { data, error, isPending } = useRequests(showAll);
+
+const requests = computed(() => data.value ?? []);
 
 function toggleScope() {
   showAll.value = !showAll.value;
-  void load();
 }
-
-onMounted(async () => {
-  isAdmin.value = (await getAuthStatus()).user?.admin ?? false;
-  await load();
-});
 </script>

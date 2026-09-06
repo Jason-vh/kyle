@@ -2,7 +2,7 @@
   <AppPage>
     <PageHeader :title="greeting" :subtitle="`The last ${data?.windowDays ?? 7} days`" />
 
-    <QueryState :loading="loading" :error="error">
+    <QueryState :loading="isPending" :error="error">
       <AppNotice v-if="data?.unavailable.length" tone="amber" class="mb-4">
         {{ data.unavailable.join(" and ") }} could not be reached, so part of this is missing.
       </AppNotice>
@@ -49,10 +49,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from "vue";
+import { computed } from "vue";
 import { useTitle } from "@vueuse/core";
-import { getAuthStatus } from "#web/api/auth";
-import { getDashboard, type DashboardResponse } from "#web/api/dashboard";
 import { formatDuration, formatSize } from "#web/utils/format";
 import ActivityRow from "#web/components/ActivityRow.vue";
 import RequestRow from "#web/components/RequestRow.vue";
@@ -62,18 +60,21 @@ import AppPage from "#web/components/ui/AppPage.vue";
 import PageHeader from "#web/components/ui/PageHeader.vue";
 import QueryState from "#web/components/ui/QueryState.vue";
 import StatCard from "#web/components/ui/StatCard.vue";
+import { useDashboard } from "#web/queries/media";
+import { useSession } from "#web/queries/session";
 
 useTitle("Kyle");
 
 /** Requests worth glancing at; the rest live on their own page. */
 const REQUEST_PREVIEW = 4;
 
-const data = ref<DashboardResponse | null>(null);
-const name = ref("");
-const loading = ref(true);
-const error = ref("");
+const { data, error, isPending } = useDashboard();
+const { user } = useSession();
 
-const greeting = computed(() => (name.value ? `Hey ${name.value.split(" ")[0]}` : "Home"));
+const greeting = computed(() => {
+  const first = user.value?.name.split(" ")[0];
+  return first ? `Hey ${first}` : "Home";
+});
 
 const requests = computed(() => (data.value?.requests ?? []).slice(0, REQUEST_PREVIEW));
 const activity = computed(() => data.value?.activity ?? []);
@@ -115,16 +116,5 @@ const spaceTone = computed(() => {
   if (used >= 0.95) return "red";
   if (used >= 0.85) return "amber";
   return "green";
-});
-
-onMounted(async () => {
-  name.value = (await getAuthStatus()).user?.name ?? "";
-  try {
-    data.value = await getDashboard();
-  } catch (e) {
-    error.value = e instanceof Error ? e.message : "Could not load the dashboard";
-  } finally {
-    loading.value = false;
-  }
 });
 </script>

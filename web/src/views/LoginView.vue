@@ -46,13 +46,14 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from "vue";
+import { ref } from "vue";
 import { useTitle } from "@vueuse/core";
 import { useRoute, useRouter } from "vue-router";
-import { isPlexEnabled, resetAuthCache } from "#web/api/auth";
+
 import { passkeyLogin } from "#web/api/passkey";
 import { plexErrorMessage, startPlexLogin } from "#web/api/plex";
 import PlexIcon from "#web/components/PlexIcon.vue";
+import { useSession, useSessionRefresh } from "#web/queries/session";
 
 useTitle("Sign in — Kyle");
 
@@ -60,11 +61,9 @@ const route = useRoute();
 const router = useRouter();
 const error = ref(plexErrorMessage(route.query.error));
 const loading = ref(false);
-const plexEnabled = ref(false);
 
-onMounted(async () => {
-  plexEnabled.value = await isPlexEnabled();
-});
+const { plexEnabled } = useSession();
+const refreshSession = useSessionRefresh();
 
 async function onPlexLogin() {
   error.value = "";
@@ -81,9 +80,9 @@ async function onPasskeyLogin() {
   error.value = "";
   loading.value = true;
   try {
-    resetAuthCache();
     await passkeyLogin();
-    await router.push("/threads");
+    await refreshSession();
+    await router.push("/home");
   } catch (e) {
     // User cancelled the passkey popup — just reset, don't show an error
     if (e instanceof DOMException && e.name === "NotAllowedError") return;

@@ -42,10 +42,10 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from "vue";
+import { ref } from "vue";
 import { useTitle } from "@vueuse/core";
 import { useRoute, useRouter } from "vue-router";
-import { getAuthStatus, logout, resetAuthCache, type AuthUser } from "#web/api/auth";
+import { logout } from "#web/api/auth";
 import { passkeyRegisterExisting } from "#web/api/passkey";
 import { plexErrorMessage, startPlexLink, unlinkPlex } from "#web/api/plex";
 import PlexIcon from "#web/components/PlexIcon.vue";
@@ -54,14 +54,15 @@ import AppCard from "#web/components/ui/AppCard.vue";
 import AppNotice from "#web/components/ui/AppNotice.vue";
 import AppPage from "#web/components/ui/AppPage.vue";
 import PageHeader from "#web/components/ui/PageHeader.vue";
+import { useSession, useSessionRefresh } from "#web/queries/session";
 
 useTitle("Account — Kyle");
 
 const route = useRoute();
 const router = useRouter();
 
-const user = ref<AuthUser | null>(null);
-const plexEnabled = ref(false);
+const { user, plexEnabled } = useSession();
+const refreshSession = useSessionRefresh();
 const busy = ref(false);
 const message = ref<{ kind: "error" | "success"; text: string } | null>(null);
 
@@ -70,15 +71,6 @@ if (route.query.error) {
 } else if (route.query.linked === "plex") {
   message.value = { kind: "success", text: "Plex account connected." };
 }
-
-async function refresh() {
-  resetAuthCache();
-  const status = await getAuthStatus();
-  user.value = status.user ?? null;
-  plexEnabled.value = status.plexEnabled ?? false;
-}
-
-onMounted(refresh);
 
 /** Wraps an action so failures surface as a message and the view stays consistent. */
 async function run(action: () => Promise<void>, fallback: string) {
@@ -100,7 +92,7 @@ async function onTogglePlex() {
   }
   return run(async () => {
     await unlinkPlex();
-    await refresh();
+    await refreshSession();
     message.value = { kind: "success", text: "Plex account disconnected." };
   }, "Could not disconnect Plex");
 }
@@ -115,6 +107,7 @@ async function onAddPasskey() {
 async function onLogout() {
   return run(async () => {
     await logout();
+    await refreshSession();
     await router.push("/login");
   }, "Could not sign out");
 }

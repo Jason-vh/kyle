@@ -2,7 +2,7 @@
   <AppPage>
     <PageHeader title="Library">
       <template #aside>
-        <span v-if="!loading" class="text-sm text-text-muted">
+        <span v-if="!isPending" class="text-sm text-text-muted">
           {{ filtered.length }} of {{ items.length }} · {{ formatSize(totalSize) }}
         </span>
       </template>
@@ -17,7 +17,7 @@
     </AppNotice>
 
     <QueryState
-      :loading="loading"
+      :loading="isPending"
       :error="error"
       :empty="filtered.length === 0"
       empty-text="Nothing matches."
@@ -71,10 +71,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from "vue";
+import { computed, ref } from "vue";
 import { useTitle } from "@vueuse/core";
-import { getAuthStatus } from "#web/api/auth";
-import { getLibrary, removeLibraryItem, type LibraryItem } from "#web/api/library";
+import type { LibraryItem } from "#web/api/library";
 import { formatNames, formatSize } from "#web/utils/format";
 import WatcherAvatars from "#web/components/WatcherAvatars.vue";
 import AppButton from "#web/components/ui/AppButton.vue";
@@ -87,6 +86,8 @@ import PageHeader from "#web/components/ui/PageHeader.vue";
 import QueryState from "#web/components/ui/QueryState.vue";
 import StatusPill from "#web/components/ui/StatusPill.vue";
 import type { Tone } from "#web/components/ui/types";
+import { useLibrary, useRemoveLibraryItem } from "#web/queries/media";
+import { useSession } from "#web/queries/session";
 
 useTitle("Library — Kyle");
 
@@ -114,11 +115,12 @@ const TONES: Record<LibraryItem["availability"], Tone> = {
   missing: "red",
 };
 
-const items = ref<LibraryItem[]>([]);
-const unavailable = ref<string[]>([]);
-const loading = ref(true);
-const error = ref("");
-const isAdmin = ref(false);
+const { data, error, isPending } = useLibrary();
+const { isAdmin } = useSession();
+const remove = useRemoveLibraryItem();
+
+const items = computed(() => data.value?.items ?? []);
+const unavailable = computed(() => data.value?.unavailable ?? []);
 const search = ref("");
 const filter = ref<Filter>("all");
 const removing = ref("");
@@ -145,19 +147,6 @@ const filtered = computed(() => {
 
 const totalSize = computed(() => filtered.value.reduce((sum, item) => sum + item.sizeOnDisk, 0));
 
-onMounted(async () => {
-  isAdmin.value = (await getAuthStatus()).user?.admin ?? false;
-  try {
-    const listing = await getLibrary();
-    items.value = listing.items;
-    unavailable.value = listing.unavailable;
-  } catch (e) {
-    error.value = e instanceof Error ? e.message : "Could not load the library";
-  } finally {
-    loading.value = false;
-  }
-});
-
 async function onRemove(item: LibraryItem) {
   // One decision only: cancelling must leave everything alone.
   const sizeNote =
@@ -167,8 +156,8 @@ async function onRemove(item: LibraryItem) {
   removing.value = key(item);
   delete failures.value[key(item)];
   try {
-    await removeLibraryItem(item, true);
-    items.value = items.value.filter((i) => key(i) !== key(item));
+    // The listing refreshes itself once the mutation settles.
+    await remove.mutateAsync(item);
   } catch (e) {
     failures.value[key(item)] = e instanceof Error ? e.message : "Could not remove this";
   } finally {

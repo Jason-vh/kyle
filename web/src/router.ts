@@ -1,5 +1,7 @@
 import { createRouter, createWebHistory } from "vue-router";
-import { checkAuth } from "./api/auth";
+import { useQueryCache } from "@pinia/colada";
+import { pinia } from "./pinia";
+import { sessionQuery } from "./queries/session";
 
 export const router = createRouter({
   history: createWebHistory(),
@@ -62,10 +64,12 @@ router.beforeEach(async (to) => {
   // Allow shared links with ?sig= without auth (thread detail only)
   if (to.name === "thread" && to.query.sig) return;
 
-  if (to.meta.requiresAuth) {
-    const authenticated = await checkAuth();
-    if (!authenticated) {
-      return { name: "login" };
-    }
-  }
+  if (!to.meta.requiresAuth) return;
+
+  // The same cache entry the views read, so navigating costs one request in
+  // total rather than one per guard and one per page.
+  const cache = useQueryCache(pinia);
+  const { data } = await cache.refresh(cache.ensure(sessionQuery));
+
+  if (!data?.authenticated) return { name: "login" };
 });

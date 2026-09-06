@@ -4,16 +4,16 @@
 
     <AppInput v-model="query" placeholder="Search for a movie or series…" class="mb-5" autofocus />
 
-    <p v-if="!query.trim()" class="py-12 text-center text-sm text-text-muted">
+    <p v-if="!term" class="py-12 text-center text-sm text-text-muted">
       Start typing to find something.
     </p>
     <QueryState
       v-else
-      :loading="loading"
+      :loading="isPending"
       :error="error"
       :empty="results.length === 0"
       loading-text="Searching…"
-      :empty-text="`Nothing found for “${query}”.`"
+      :empty-text="`Nothing found for “${term}”.`"
     >
       <div class="flex flex-col gap-2">
         <MediaCard v-for="item in results" :key="`${item.mediaType}-${item.tmdbId}`" :item="item" />
@@ -23,47 +23,24 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from "vue";
+import { computed, ref } from "vue";
 import { refDebounced, useTitle } from "@vueuse/core";
-import { discover, type DiscoverResult } from "#web/api/requests";
 import MediaCard from "#web/components/MediaCard.vue";
 import AppInput from "#web/components/ui/AppInput.vue";
 import AppPage from "#web/components/ui/AppPage.vue";
 import PageHeader from "#web/components/ui/PageHeader.vue";
 import QueryState from "#web/components/ui/QueryState.vue";
+import { useDiscover } from "#web/queries/media";
 
 useTitle("Request media — Kyle");
 
 const query = ref("");
-const debouncedQuery = refDebounced(query, 300);
-const results = ref<DiscoverResult[]>([]);
-const loading = ref(false);
-const error = ref("");
+const debounced = refDebounced(query, 300);
+const term = computed(() => debounced.value.trim());
 
-// A slower reply must not overwrite the results of a later search.
-let latestSearch = 0;
+// Results are cached per term, so a slower reply for an earlier search cannot
+// land on top of a later one.
+const { data, error, isPending } = useDiscover(term);
 
-watch(debouncedQuery, async (value) => {
-  const term = value.trim();
-  const search = ++latestSearch;
-
-  if (!term) {
-    results.value = [];
-    loading.value = false;
-    return;
-  }
-
-  loading.value = true;
-  error.value = "";
-  try {
-    const found = await discover(term);
-    if (search !== latestSearch) return;
-    results.value = found;
-  } catch (e) {
-    if (search !== latestSearch) return;
-    error.value = e instanceof Error ? e.message : "Search failed";
-  } finally {
-    if (search === latestSearch) loading.value = false;
-  }
-});
+const results = computed(() => data.value ?? []);
 </script>

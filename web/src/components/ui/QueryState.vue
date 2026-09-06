@@ -1,7 +1,7 @@
 <template>
   <p v-if="loading" class="py-12 text-center text-sm text-text-muted">{{ loadingText }}</p>
   <p v-else-if="error" class="py-12 text-center text-sm break-words text-accent-red">
-    {{ error }}
+    {{ typeof error === "string" ? error : error.message }}
   </p>
   <div v-else-if="empty" class="py-12 text-center text-sm text-text-muted">
     <slot name="empty">{{ emptyText }}</slot>
@@ -14,7 +14,8 @@
 withDefaults(
   defineProps<{
     loading?: boolean;
-    error?: string;
+    /** A caught `Error` or a message; both end up as its text. */
+    error?: Error | string | null;
     empty?: boolean;
     loadingText?: string;
     emptyText?: string;

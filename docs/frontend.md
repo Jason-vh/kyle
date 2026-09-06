@@ -37,19 +37,48 @@ thread opened with a `?sig=` share link.
 **A new route needs adding to `SPA_PATHS` in `server/server.ts`**, or a hard refresh on
 it returns 404 instead of the app.
 
-## The API layer
+## Fetching data
 
-`web/src/api/client.ts` owns `apiFetch`: credentials, JSON, and turning a failed
-response into an `Error` carrying the server's own message. Nothing else calls `fetch`.
+Two layers, and views touch only the second.
+
+`web/src/api/` owns the requests. `client.ts` provides `apiFetch`: credentials, JSON, and
+turning a failed response into an `Error` carrying the server's own message. Nothing else
+calls `fetch`.
+
+`web/src/queries/` wraps those in [Pinia Colada](https://pinia-colada.esm.dev) queries and
+mutations. **A view never calls an `api/` function directly** — it calls a composable:
+
+```ts
+const { data, error, isPending } = useLibrary();
+const { isAdmin } = useSession();
+```
+
+Why it earns its place:
+
+- **One request per answer.** The header, the router guard and three views all want the
+  session; they get one `/api/auth/status` call between them.
+- **Going back is instant.** The library listing is a multi-service call; `staleTime`
+  means returning to it renders from cache and refreshes behind you.
+- **A change invalidates what shows it.** `useRequestMedia()` invalidates library,
+  requests, dashboard and discover, so requesting something updates every page that
+  displays it. Before this, it updated none of them.
+- **Races become impossible.** `discoverQuery` is keyed by the search term, so a slow
+  reply for an earlier term is a different cache entry rather than something to guard
+  against.
+
+Pinia is only there because Colada needs it. **There are no stores** — if you find
+yourself writing one, check the state is not really server state with a query missing.
+
+Adding a query: put the options in `web/src/queries/`, export a `useX()` composable, and
+if it changes media, add its key to `MEDIA_KEYS` in `queries/media.ts`.
 
 Each module re-exports the types it needs from `@shared/types`, which is the same file
 the server responds with — so a shape change is a type error on both sides rather than a
 runtime surprise. When adding a response type, put it in `shared/types.ts`, not in the
 API module.
 
-Views own their loading and error state and hand it to `QueryState`. There is no store;
-each view fetches what it needs on mount. For a household-sized app this is less
-machinery than it would cost to avoid, and every page is a single request.
+Views hand a query's `isPending` and `error` straight to `QueryState`. `isPending` is
+first-load only, so a background refresh keeps showing the data it already has.
 
 ## Conventions
 
@@ -57,8 +86,8 @@ machinery than it would cost to avoid, and every page is a single request.
 - **Formatting helpers live in `utils/format.ts`** — `formatNames`, `formatSize`,
   `formatDuration`. They were duplicated across views before.
 - **`useTitle` on every view**, so the tab says where you are.
-- **A slower reply must not overwrite a faster one.** `DiscoverView` numbers its
-  searches and drops stale results; do the same anywhere input drives a fetch.
+- **No `watch` for fetching.** Key the query on what it depends on and let Colada do it.
+  There are no `watch` calls left in the app.
 - **Type-check with `vue-tsc`** — `bun run check` at the repo root runs it, and so does
   the pre-commit hook.
 

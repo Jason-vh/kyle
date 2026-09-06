@@ -54,21 +54,26 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, provide, onMounted, nextTick } from "vue";
+import { ref, computed, provide, watchEffect, nextTick } from "vue";
 import { useTitle } from "@vueuse/core";
 import { useRoute } from "vue-router";
-import { getThread } from "#web/api/threads";
 import { relativeTime } from "#web/composables/useRelativeTime";
-import type { ThreadDetail, ThreadItem } from "#shared/types";
+import { useThread } from "#web/queries/threads";
+import type { ThreadItem } from "#shared/types";
 import MediaRefsSummary from "#web/components/MediaRefsSummary.vue";
 import MessageBlock from "#web/components/MessageBlock.vue";
 import WebhookBlock from "#web/components/WebhookBlock.vue";
 import DateSeparator from "#web/components/DateSeparator.vue";
 
 const route = useRoute();
-const thread = ref<ThreadDetail | null>(null);
-const loading = ref(true);
-const error = ref("");
+const {
+  data: thread,
+  error,
+  isPending: loading,
+} = useThread(() => ({
+  id: route.params.id as string,
+  sig: (route.query.sig as string) ?? undefined,
+}));
 
 useTitle(computed(() => (thread.value ? `${thread.value.pageTitle} — Kyle` : "Kyle")));
 const copied = ref(false);
@@ -122,27 +127,20 @@ function copyShareUrl() {
   }
 }
 
-onMounted(async () => {
-  try {
-    const id = route.params.id as string;
-    const sig = (route.query.sig as string) ?? undefined;
-    thread.value = await getThread(id, sig);
-  } catch (e) {
-    error.value = e instanceof Error ? e.message : "Failed to load thread";
-  } finally {
-    loading.value = false;
-  }
-
+// Jump to a linked message once the thread it lives in has rendered.
+watchEffect(async () => {
+  if (!thread.value) return;
   await nextTick();
+
   const hash = window.location.hash.slice(1);
-  if (hash) {
-    const el = document.getElementById(hash);
-    if (el) {
-      const details = el.closest("details");
-      if (details && !details.open) details.open = true;
-      requestAnimationFrame(() => el.scrollIntoView({ behavior: "smooth", block: "start" }));
-    }
-  }
+  if (!hash) return;
+
+  const el = document.getElementById(hash);
+  if (!el) return;
+
+  const details = el.closest("details");
+  if (details && !details.open) details.open = true;
+  requestAnimationFrame(() => el.scrollIntoView({ behavior: "smooth", block: "start" }));
 });
 
 const shareIcon = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>`;
