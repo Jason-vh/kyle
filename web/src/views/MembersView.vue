@@ -1,6 +1,6 @@
 <template>
   <AppPage>
-    <PageHeader title="Plex access" subtitle="Who can watch, and who has been asked" />
+    <PageHeader title="Plex access" :subtitle="subtitle" />
 
     <form class="mb-3 flex gap-2" @submit.prevent="onInvite">
       <AppInput
@@ -34,7 +34,9 @@
           </AppCard>
         </div>
       </template>
-      <template #empty>Nobody has access yet.</template>
+      <template #empty>
+        {{ isAdmin ? "Nobody has access yet." : "You have not invited anyone yet." }}
+      </template>
 
       <div class="stagger flex flex-col gap-2">
         <MemberRow
@@ -74,8 +76,15 @@ import PageHeader from "#web/components/ui/PageHeader.vue";
 import QueryState from "#web/components/ui/QueryState.vue";
 import Skeleton from "#web/components/ui/Skeleton.vue";
 import { useInviteMember, useMembers, useRemoveMember } from "#web/queries/members";
+import { useSession } from "#web/queries/session";
 
 useTitle("Plex access — Kyle");
+
+const { isAdmin } = useSession();
+
+const subtitle = computed(() =>
+  isAdmin.value ? "Who can watch, and who has been asked" : "The people you have invited",
+);
 
 const { data, error, isPending } = useMembers();
 const { mutateAsync: sendInvite, isLoading: inviting } = useInviteMember();

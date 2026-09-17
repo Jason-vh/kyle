@@ -9,6 +9,7 @@ function memberWith(overrides: Partial<PlexMember> = {}): PlexMember {
     name: "Colin",
     thumb: "",
     status: "member",
+    email: "colin@plex.test",
     canRemove: false,
     ...overrides,
   };
@@ -30,13 +31,17 @@ describe("MemberRow", () => {
     expect(render().text()).not.toContain("Member");
   });
 
-  test("says who to ask about an invitation", () => {
+  test("says who brought someone in, whether or not they have accepted", () => {
     expect(render({ status: "pending", invitedBy: "Jane" }).text()).toContain("Invited by Jane");
+    expect(render({ invitedBy: "Jane" }).text()).toContain("Invited by Jane");
   });
 
-  test("shows an address only when there is one to show", () => {
-    expect(render({ email: "colin@plex.test" }).text()).toContain("colin@plex.test");
-    expect(render().text()).not.toContain("@");
+  test("says nothing of an invitation nobody here sent", () => {
+    expect(render().text()).not.toContain("Invited by");
+  });
+
+  test("shows the address", () => {
+    expect(render().text()).toContain("colin@plex.test");
   });
 
   test("offers nothing to anyone who may not remove", () => {

@@ -45,7 +45,6 @@ const props = defineProps<{ member: PlexMember }>();
 
 const emit = defineEmits<{ remove: [] }>();
 
-/** The address when it is ours to show, otherwise who to ask about them. */
 const detail = computed(() => {
   const invitedBy = props.member.invitedBy ? `Invited by ${props.member.invitedBy}` : "";
   return [props.member.email, invitedBy].filter(Boolean).join(" · ");

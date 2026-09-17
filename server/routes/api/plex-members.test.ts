@@ -176,42 +176,52 @@ describe("GET /api/plex/members", () => {
     expect((await handleGetPlexMembers(get())).status).toBe(401);
   });
 
-  test("anyone signed in sees who is on the server", async () => {
+  test("an admin sees the whole server, and may remove all but the owner", async () => {
     stubPlex();
 
-    expect(await members(asMember)).toMatchObject([
+    expect(await members(asAdmin)).toMatchObject([
       { id: "owner", name: "Jason", status: "owner", canRemove: false },
-      { id: "share:501", name: "Colin", status: "member", canRemove: false },
-      { id: "share:502", name: "Pete", status: "pending", canRemove: false },
+      { id: "share:501", name: "Colin", status: "member", canRemove: true },
+      { id: "share:502", name: "Pete", status: "pending", canRemove: true },
     ]);
   });
 
-  test("an admin may remove anyone but the owner", async () => {
-    stubPlex();
-
-    expect((await members(asAdmin)).map((m) => m.canRemove)).toEqual([false, true, true]);
-  });
-
-  test("names who invited someone still waiting, and lets them take it back", async () => {
+  test("anyone else sees only the people they invited", async () => {
     stubPlex();
     await invite("pete@plex.test", asMember);
 
-    const pete = (await members(asMember)).find((m) => m.id === "share:502")!;
-
-    expect(pete.invitedBy).toStartWith("Member");
-    expect(pete.canRemove).toBe(true);
-    expect(pete.email).toBe("pete@plex.test");
+    expect(await members(asMember)).toMatchObject([
+      { id: "share:502", name: "Pete", email: "pete@plex.test", canRemove: true },
+    ]);
+    expect(await members(asOther)).toEqual([]);
   });
 
-  test("keeps an address from everyone but the admin and whoever typed it", async () => {
+  test("says who invited whom, to whoever can see them", async () => {
     stubPlex();
     await invite("pete@plex.test", asMember);
 
-    const asSeenByOther = (await members(asOther)).find((m) => m.id === "share:502")!;
+    const seenByAdmin = (await members(asAdmin)).find((m) => m.id === "share:502")!;
+    const seenByInviter = (await members(asMember))[0]!;
 
-    expect(asSeenByOther.email).toBeUndefined();
-    expect(asSeenByOther.canRemove).toBe(false);
-    expect(asSeenByOther.invitedBy).toStartWith("Member");
+    expect(seenByAdmin.invitedBy).toStartWith("Member");
+    expect(seenByInviter.invitedBy).toStartWith("Member");
+  });
+
+  test("someone invited outside Kyle is nobody's doing", async () => {
+    stubPlex();
+
+    const colin = (await members(asAdmin)).find((m) => m.id === "share:501")!;
+
+    expect(colin.invitedBy).toBeUndefined();
+  });
+
+  test("still lets go of someone the inviter brought in, once they accept", async () => {
+    stubPlex();
+    await invite("colin@plex.test", asMember);
+
+    expect(await members(asMember)).toMatchObject([
+      { id: "share:501", status: "member", canRemove: true },
+    ]);
   });
 
   test("an unreachable Plex is a bad gateway, not an empty list", async () => {
@@ -297,13 +307,23 @@ describe("DELETE /api/plex/members/:handle", () => {
     expect(deletes).toEqual([`https://plex.tv/api/servers/${MACHINE}/shared_servers/501`]);
   });
 
-  test("a member may not remove someone who is already watching", async () => {
+  test("a member cannot remove someone they did not invite", async () => {
     stubPlex();
 
     const res = await handleRemovePlexMember(remove("share:501", asMember), "share:501");
 
-    expect(res.status).toBe(403);
+    expect(res.status).toBe(404);
     expect(deletes).toEqual([]);
+  });
+
+  test("whoever invited someone may still remove them once they accept", async () => {
+    stubPlex();
+    await invite("colin@plex.test", asMember);
+
+    const res = await handleRemovePlexMember(remove("share:501", asMember), "share:501");
+
+    expect(res.status).toBe(200);
+    expect(deletes).toEqual([`https://plex.tv/api/servers/${MACHINE}/shared_servers/501`]);
   });
 
   test("whoever sent an invitation may take it back", async () => {
@@ -316,13 +336,13 @@ describe("DELETE /api/plex/members/:handle", () => {
     expect(deletes).toEqual([`https://plex.tv/api/servers/${MACHINE}/shared_servers/502`]);
   });
 
-  test("somebody else's invitation is not theirs to take back", async () => {
+  test("somebody else's invitation is not theirs to take back, nor to know of", async () => {
     stubPlex();
     await invite("pete@plex.test", asMember);
 
     const res = await handleRemovePlexMember(remove("share:502", asOther), "share:502");
 
-    expect(res.status).toBe(403);
+    expect(res.status).toBe(404);
     expect(deletes).toEqual([]);
   });
 

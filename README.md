@@ -419,9 +419,11 @@ against the live account:
   unaccepted invitation; `DELETE /api/invites/requested/{id}?friend=0&home=0&server=1` withdraws an
   invitation with no share behind it.
 
-Anyone signed in may invite, and may cancel an invitation they sent; only an admin may remove
-someone already watching, and nobody may remove the owner. Every invitation is sent in the owner's
-name, so `plex_invites` records who spent it and each person is held to five outstanding at a time.
+Anyone signed in may invite. They then see the people they brought in, and may remove any of them,
+before or after the invitation is accepted. An admin sees the whole server and may remove anyone
+but the owner, who cannot be removed at all. Every invitation is sent in the owner's name, so
+`plex_invites` records who spent it — which is both how the page says who invited whom, and how
+each person is held to five outstanding invitations at a time.
 
 Admin API endpoints (require a JWT with `admin: true`):
 
@@ -516,9 +518,9 @@ rather than passed to the agent as an opaque ID.
 | `POST /api/auth/plex/link/start`      | JWT cookie            | Begin connecting Plex to the current account    |
 | `DELETE /api/auth/plex/link`          | JWT cookie            | Disconnect the linked Plex account              |
 | `GET /api/auth/plex/callback`         | `state`               | Where Plex forwards back to; sets the session   |
-| `GET /api/plex/members`               | JWT                   | Who can watch, and who has been invited         |
+| `GET /api/plex/members`               | JWT                   | People you invited; the whole server as admin   |
 | `POST /api/plex/invites`              | JWT                   | Invite someone by email `{ email }`             |
-| `DELETE /api/plex/members/:handle`    | JWT                   | Your own invitation, or anyone as admin         |
+| `DELETE /api/plex/members/:handle`    | JWT                   | Someone you invited, or anyone as admin         |
 | `GET /api/users`                      | Admin                 | List users + platform identities                |
 | `POST /api/users/:id/links`           | Admin                 | Link a platform identity                        |
 | `DELETE /api/users/:id/links/:linkId` | Admin                 | Unlink a platform identity                      |

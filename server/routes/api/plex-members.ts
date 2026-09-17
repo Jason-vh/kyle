@@ -30,8 +30,8 @@ interface MemberView {
   name: string;
   thumb: string;
   status: PlexMember["status"];
-  /** Only for someone the viewer invited, or to an admin. */
-  email?: string;
+  email: string;
+  /** Absent for anyone invited outside Kyle. */
   invitedBy?: string;
   canRemove: boolean;
 }
@@ -40,11 +40,25 @@ function inviterOf(member: PlexMember, inviters: Map<string, PlexInviter>) {
   return inviters.get(member.email.toLowerCase());
 }
 
+function invitedBy(member: PlexMember, viewer: JwtUser, inviters: Map<string, PlexInviter>) {
+  return inviterOf(member, inviters)?.userId === viewer.id;
+}
+
+/**
+ * Whom a viewer is shown at all.
+ *
+ * An admin answers for the whole server, so they see all of it. Everyone else
+ * sees the people they brought in, which is the part that is theirs.
+ */
+function visibleTo(viewer: JwtUser, inviters: Map<string, PlexInviter>) {
+  return (member: PlexMember) => viewer.admin || invitedBy(member, viewer, inviters);
+}
+
 /**
  * What one viewer may see and do about one member.
  *
- * Anyone may invite, so anyone may take back what they sent; removing someone
- * who is already watching is the owner's business.
+ * Whoever spent an invitation may take it back, before or after it is
+ * accepted; everyone else on the server is the owner's business.
  */
 function memberView(
   member: PlexMember,
@@ -52,17 +66,15 @@ function memberView(
   inviters: Map<string, PlexInviter>,
 ): MemberView {
   const inviter = inviterOf(member, inviters);
-  const invitedByViewer = inviter?.userId === viewer.id;
-  const isPending = member.status === "pending";
 
   return {
     id: member.handle,
     name: member.name,
     thumb: member.thumb,
     status: member.status,
-    email: viewer.admin || invitedByViewer ? member.email : undefined,
-    invitedBy: isPending ? inviter?.name : undefined,
-    canRemove: member.status !== "owner" && (viewer.admin || (isPending && invitedByViewer)),
+    email: member.email,
+    invitedBy: inviter?.name,
+    canRemove: member.status !== "owner" && (viewer.admin || inviter?.userId === viewer.id),
   };
 }
 
@@ -85,8 +97,9 @@ export async function handleGetPlexMembers(req: Request): Promise<Response> {
 
   try {
     const [members, inviters] = await Promise.all([listPlexMembers(), getPlexInviters()]);
+    const visible = members.filter(visibleTo(auth.user, inviters));
     return Response.json(
-      { members: members.map((member) => memberView(member, auth.user, inviters)) },
+      { members: visible.map((member) => memberView(member, auth.user, inviters)) },
       { headers: auth.refreshHeaders },
     );
   } catch (error) {
@@ -113,8 +126,7 @@ export async function handleCreatePlexInvite(req: Request): Promise<Response> {
     const [members, inviters] = await Promise.all([listPlexMembers(), getPlexInviters()]);
 
     const outstanding = members.filter(
-      (member) =>
-        member.status === "pending" && inviterOf(member, inviters)?.userId === auth.user.id,
+      (member) => member.status === "pending" && invitedBy(member, auth.user, inviters),
     );
     if (!auth.user.admin && outstanding.length >= PENDING_PER_USER) {
       return Response.json(
@@ -148,7 +160,9 @@ export async function handleRemovePlexMember(req: Request, handle: string): Prom
   try {
     const [members, inviters] = await Promise.all([listPlexMembers(), getPlexInviters()]);
 
-    const member = members.find((candidate) => candidate.handle === handle);
+    const member = members
+      .filter(visibleTo(auth.user, inviters))
+      .find((candidate) => candidate.handle === handle);
     if (!member) return Response.json({ error: "Not found" }, { status: 404 });
 
     if (!memberView(member, auth.user, inviters).canRemove) {

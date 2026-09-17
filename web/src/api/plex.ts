@@ -7,8 +7,8 @@ export interface PlexMember {
   name: string;
   thumb: string;
   status: PlexMemberStatus;
-  /** Withheld unless the viewer invited them, or is an admin. */
-  email?: string;
+  email: string;
+  /** Absent for anyone invited outside Kyle. */
   invitedBy?: string;
   canRemove: boolean;
 }
