@@ -95,9 +95,15 @@ export async function deleteShare(machineIdentifier: string, shareId: string): P
   await plexTv(`/servers/${machineIdentifier}/shared_servers/${shareId}`, { method: "DELETE" });
 }
 
-/** Withdraws an invitation plex.tv holds no share against. */
+/**
+ * Withdraws an invitation plex.tv holds no share against.
+ *
+ * An invitation to someone with no Plex account is identified by the address
+ * it was sent to, which has to survive being put in a path.
+ */
 export async function deleteSentInvite(inviteId: string): Promise<void> {
-  await plexTv(`/invites/requested/${inviteId}?friend=0&home=0&server=1`, { method: "DELETE" });
+  const id = encodeURIComponent(inviteId);
+  await plexTv(`/invites/requested/${id}?friend=0&home=0&server=1`, { method: "DELETE" });
 }
 
 /** The account the server token belongs to. */

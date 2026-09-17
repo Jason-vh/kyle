@@ -35,10 +35,12 @@ const SHARE_LIST = `<MediaContainer>
   </User>
 </MediaContainer>`;
 
+// An invitation is filed under the address it was sent to, and someone with no
+// Plex account has nothing else to be known by.
 const SENT_INVITES = `<MediaContainer>
-  <Invite id="601" email="pete@plex.test" username="pete" friendlyName="Pending Pete" server="1"/>
-  <Invite id="602" email="nobody@plex.test" username="" friendlyName="" server="1"/>
-  <Invite id="603" email="justafriend@plex.test" username="friend" server="0"/>
+  <Invite id="pete@plex.test" email="pete@plex.test" username="pete" friendlyName="Pending Pete" server="1"/>
+  <Invite id="nobody@plex.test" email="nobody@plex.test" username="" friendlyName="" server="1"/>
+  <Invite id="justafriend@plex.test" email="justafriend@plex.test" username="friend" server="0"/>
 </MediaContainer>`;
 
 const SERVERS = `<MediaContainer>
@@ -136,7 +138,7 @@ describe("listPlexMembers", () => {
         status: "member",
       },
       {
-        handle: "invite:602",
+        handle: "invite:nobody@plex.test",
         name: "nobody@plex.test",
         email: "nobody@plex.test",
         thumb: "",
@@ -231,11 +233,11 @@ describe("removePlexMember", () => {
   test("withdraws an invitation that has no share behind it", async () => {
     stubPlex();
 
-    await removePlexMember(member("invite:602"));
+    await removePlexMember(member("invite:nobody@plex.test"));
 
     expect(calls).toContainEqual({
       method: "DELETE",
-      url: "https://plex.tv/api/invites/requested/602?friend=0&home=0&server=1",
+      url: "https://plex.tv/api/invites/requested/nobody%40plex.test?friend=0&home=0&server=1",
       body: undefined,
     });
   });

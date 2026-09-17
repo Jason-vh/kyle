@@ -160,6 +160,15 @@ async function invite(email: string, cookie: string) {
   return handleCreatePlexInvite(post({ email }, cookie));
 }
 
+/** Invitations plex.tv has on file, each filed under the address it went to. */
+function waiting(count: number): string {
+  const invites = Array.from(
+    { length: count },
+    (_, i) => `<Invite id="waiting${i}@plex.test" email="waiting${i}@plex.test" server="1"/>`,
+  ).join("");
+  return `<MediaContainer>${invites}</MediaContainer>`;
+}
+
 describe("GET /api/plex/members", () => {
   test("a signed-out visitor is refused", async () => {
     stubPlex();
@@ -253,11 +262,7 @@ describe("POST /api/plex/invites", () => {
   });
 
   test("caps how many invitations one person may have waiting", async () => {
-    const pending = Array.from(
-      { length: 5 },
-      (_, i) => `<Invite id="${i}" email="waiting${i}@plex.test" server="1"/>`,
-    ).join("");
-    stubPlex({ sentInvites: `<MediaContainer>${pending}</MediaContainer>` });
+    stubPlex({ sentInvites: waiting(5) });
     for (let i = 0; i < 5; i++) await invite(`waiting${i}@plex.test`, asMember);
     posts = [];
 
@@ -268,11 +273,7 @@ describe("POST /api/plex/invites", () => {
   });
 
   test("the cap is on each person, not on the server", async () => {
-    const pending = Array.from(
-      { length: 5 },
-      (_, i) => `<Invite id="${i}" email="waiting${i}@plex.test" server="1"/>`,
-    ).join("");
-    stubPlex({ sentInvites: `<MediaContainer>${pending}</MediaContainer>` });
+    stubPlex({ sentInvites: waiting(5) });
     for (let i = 0; i < 5; i++) await invite(`waiting${i}@plex.test`, asMember);
 
     expect((await invite("onemore@plex.test", asOther)).status).toBe(200);
