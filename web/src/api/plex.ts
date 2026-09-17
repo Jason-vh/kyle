@@ -1,5 +1,31 @@
 import { apiFetch } from "./client";
 
+export type PlexMemberStatus = "owner" | "member" | "pending";
+
+export interface PlexMember {
+  id: string;
+  name: string;
+  thumb: string;
+  status: PlexMemberStatus;
+  /** Withheld unless the viewer invited them, or is an admin. */
+  email?: string;
+  invitedBy?: string;
+  canRemove: boolean;
+}
+
+export async function getPlexMembers(): Promise<PlexMember[]> {
+  const { members } = await apiFetch<{ members: PlexMember[] }>("/api/plex/members");
+  return members;
+}
+
+export async function invitePlexMember(email: string): Promise<void> {
+  await apiFetch("/api/plex/invites", { method: "POST", body: JSON.stringify({ email }) });
+}
+
+export async function removePlexMember(id: string): Promise<void> {
+  await apiFetch(`/api/plex/members/${encodeURIComponent(id)}`, { method: "DELETE" });
+}
+
 /** Hands the browser to the Plex Auth App; it returns via /api/auth/plex/callback. */
 async function startPlexFlow(endpoint: string): Promise<void> {
   const { authUrl } = await apiFetch<{ authUrl: string }>(endpoint, { method: "POST" });

@@ -119,6 +119,7 @@ server/
       auth-passkey.ts        → Passkey login/register endpoints
       auth-plex.ts           → Plex sign-in, account linking, callback
       users.ts               → User listing, platform link management (admin)
+      plex-members.ts        → Who the Plex server is shared with; invites and removals
       requests.ts            → GET /api/discover, GET/POST /api/requests
       library.ts             → GET /api/library, DELETE /api/library/:type/:id
       dashboard.ts           → GET /api/dashboard
@@ -396,6 +397,32 @@ following was probed against the live server and is recorded because it is not o
   and index `tmdb://` → `ratingKey`. History can also reference items since removed from the
   library.
 
+### Inviting people to the server
+
+Sharing lives on plex.tv, which — unlike the Plex Media Server API at
+[developer.plex.tv](https://developer.plex.tv/pms) — is undocumented. What Kyle uses was probed
+against the live account:
+
+- **Invite** — `POST https://plex.tv/api/v2/shared_servers` with
+  `{ machineIdentifier, invitedEmail, librarySectionIds, settings }`. Plex sends the email; Kyle
+  sends none. A refusal comes back as `422` with an `errors[].message` worth showing verbatim
+  ("You cannot send an invitation to yourself", "The username or email entered appears to be
+  invalid"), which is why the v2 endpoint is preferred over the older
+  `POST /api/servers/{machineId}/shared_servers`.
+- **Library ids** — `GET /api/servers/{machineId}` lists `<Section id>`, which is what sharing is
+  expressed in. It is _not_ the section key the server itself uses: `Movies` is key `1` locally and
+  id `134763213` on plex.tv.
+- **Who has been asked** — a pending share appears in `/api/users` with `pending="1"`; someone
+  invited who has no Plex account yet only appears in `GET /api/invites/requested`. Both are read
+  and matched up by address.
+- **Taking it back** — `DELETE /api/servers/{machineId}/shared_servers/{id}` ends a share or an
+  unaccepted invitation; `DELETE /api/invites/requested/{id}?friend=0&home=0&server=1` withdraws an
+  invitation with no share behind it.
+
+Anyone signed in may invite, and may cancel an invitation they sent; only an admin may remove
+someone already watching, and nobody may remove the owner. Every invitation is sent in the owner's
+name, so `plex_invites` records who spent it and each person is held to five outstanding at a time.
+
 Admin API endpoints (require a JWT with `admin: true`):
 
 - `GET /api/users` — list all users with platform identities
@@ -489,6 +516,9 @@ rather than passed to the agent as an opaque ID.
 | `POST /api/auth/plex/link/start`      | JWT cookie            | Begin connecting Plex to the current account    |
 | `DELETE /api/auth/plex/link`          | JWT cookie            | Disconnect the linked Plex account              |
 | `GET /api/auth/plex/callback`         | `state`               | Where Plex forwards back to; sets the session   |
+| `GET /api/plex/members`               | JWT                   | Who can watch, and who has been invited         |
+| `POST /api/plex/invites`              | JWT                   | Invite someone by email `{ email }`             |
+| `DELETE /api/plex/members/:handle`    | JWT                   | Your own invitation, or anyone as admin         |
 | `GET /api/users`                      | Admin                 | List users + platform identities                |
 | `POST /api/users/:id/links`           | Admin                 | Link a platform identity                        |
 | `DELETE /api/users/:id/links/:linkId` | Admin                 | Unlink a platform identity                      |

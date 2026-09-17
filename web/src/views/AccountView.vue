@@ -22,6 +22,16 @@
         </AppButton>
       </section>
 
+      <section v-if="plexEnabled" class="flex items-center justify-between gap-4 p-4">
+        <div>
+          <p class="text-sm font-medium text-text-primary">Plex access</p>
+          <p class="text-sm text-text-muted">Invite someone, and see who can watch</p>
+        </div>
+        <AppButton as-child>
+          <router-link to="/members">Manage</router-link>
+        </AppButton>
+      </section>
+
       <section class="flex items-center justify-between gap-4 p-4">
         <div>
           <p class="text-sm font-medium text-text-primary">Passkey</p>
