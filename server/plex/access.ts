@@ -4,6 +4,7 @@ import {
   getShareList,
   isPlexServerConfigured,
 } from "./server.ts";
+import { shareOn } from "./users-xml.ts";
 import { createLogger } from "#server/logger.ts";
 import { errorMessage } from "#server/errors.ts";
 
@@ -51,7 +52,8 @@ async function loadAccess(): Promise<ServerAccess> {
 
   const members = new Map<string, Member>();
   for (const user of shareList) {
-    if (!user.machineIdentifiers.includes(machineIdentifier)) continue;
+    const share = shareOn(user, machineIdentifier);
+    if (!share || share.pending) continue;
     members.set(user.accountId, {
       displayName: user.title || user.username,
       thumb: user.thumb,

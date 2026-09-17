@@ -1,4 +1,6 @@
 import type { PlexAccount } from "./types.ts";
+import { parseSentInvites, type PlexSentInvite } from "./invites-xml.ts";
+import { parseLibrarySectionIds } from "./sections-xml.ts";
 import { parseShareList, type PlexShareListUser } from "./users-xml.ts";
 import { createApiClient } from "#server/http/client.ts";
 import { optionalEnv, requireEnv } from "#server/config.ts";
@@ -42,6 +44,60 @@ export function isPlexServerConfigured(): boolean {
 /** Everyone the owner's servers are shared with, across all of their servers. */
 export async function getShareList(): Promise<PlexShareListUser[]> {
   return parseShareList(await plexTv<string>("/users"));
+}
+
+/** Invitations the owner has sent that are still outstanding. */
+export async function getSentInvites(): Promise<PlexSentInvite[]> {
+  return parseSentInvites(await plexTv<string>("/invites/requested"));
+}
+
+/** The ids plex.tv knows a server's libraries by, which sharing is expressed in. */
+export async function getLibrarySectionIds(machineIdentifier: string): Promise<number[]> {
+  return parseLibrarySectionIds(
+    await plexTv<string>(`/servers/${machineIdentifier}`),
+    machineIdentifier,
+  );
+}
+
+/** What an invited person may do besides watch. Plex reads these as flags. */
+const SHARE_SETTINGS = {
+  allowSync: "1",
+  allowCameraUpload: "0",
+  allowChannels: "0",
+  allowSubtitleAdmin: "0",
+};
+
+/**
+ * Invites an email address onto the server.
+ *
+ * The v2 endpoint is the one Plex's own web app uses, and it answers a refusal
+ * in words worth showing to whoever typed the address.
+ */
+export async function createShare(
+  machineIdentifier: string,
+  invitedEmail: string,
+  librarySectionIds: number[],
+): Promise<void> {
+  await plexTv("/v2/shared_servers", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      machineIdentifier,
+      invitedEmail,
+      librarySectionIds,
+      settings: SHARE_SETTINGS,
+    }),
+  });
+}
+
+/** Ends a share, whether it was taken up or is still an outstanding invitation. */
+export async function deleteShare(machineIdentifier: string, shareId: string): Promise<void> {
+  await plexTv(`/servers/${machineIdentifier}/shared_servers/${shareId}`, { method: "DELETE" });
+}
+
+/** Withdraws an invitation plex.tv holds no share against. */
+export async function deleteSentInvite(inviteId: string): Promise<void> {
+  await plexTv(`/invites/requested/${inviteId}?friend=0&home=0&server=1`, { method: "DELETE" });
 }
 
 /** The account the server token belongs to. */

@@ -1,41 +1,35 @@
+import { decodeEntities } from "./xml.ts";
+
+/** One of the owner's servers, shared with a user. */
+export interface PlexServerShare {
+  /** Identifies the share itself, which is what revoking one is addressed to. */
+  id: string;
+  machineIdentifier: string;
+  /** Invited, but not yet taken up. */
+  pending: boolean;
+}
+
 /** A user plex.tv reports as having a share on one of the owner's servers. */
 export interface PlexShareListUser {
   accountId: string;
   /** Empty for managed Home users, who cannot sign in with their own Plex account. */
   username: string;
   title: string;
+  email: string;
   /** Publicly fetchable avatar URL. */
   thumb: string;
-  /** Machine identifiers of the owner's servers this user has an accepted share on. */
-  machineIdentifiers: string[];
+  shares: PlexServerShare[];
 }
 
-const XML_ENTITIES: Record<string, string> = {
-  amp: "&",
-  lt: "<",
-  gt: ">",
-  quot: '"',
-  apos: "'",
-};
-
-/** XML defines only five named entities, so this covers the whole grammar. */
-function decodeEntities(value: string): string {
-  return value.replace(/&(#x?[0-9a-fA-F]+|\w+);/g, (match, ref: string) => {
-    if (ref.startsWith("#x") || ref.startsWith("#X")) {
-      return String.fromCodePoint(parseInt(ref.slice(2), 16));
-    }
-    if (ref.startsWith("#")) return String.fromCodePoint(parseInt(ref.slice(1), 10));
-    return XML_ENTITIES[ref] ?? match;
-  });
+/** How a user stands on one particular server, if they are on it at all. */
+export function shareOn(
+  user: PlexShareListUser,
+  machineIdentifier: string,
+): PlexServerShare | undefined {
+  return user.shares.find((share) => share.machineIdentifier === machineIdentifier);
 }
 
-/**
- * Parses plex.tv's `/api/users` share list.
- *
- * The response is XML and Bun ships no XML parser, but the document is flat
- * attribute data, so HTMLRewriter reads it correctly. It lowercases attribute
- * names and leaves entities encoded, both of which are handled here.
- */
+/** Parses plex.tv's `/api/users` share list. */
 export async function parseShareList(xml: string): Promise<PlexShareListUser[]> {
   const users: PlexShareListUser[] = [];
   let current: PlexShareListUser | null = null;
@@ -47,8 +41,9 @@ export async function parseShareList(xml: string): Promise<PlexShareListUser[]> 
           accountId: el.getAttribute("id") ?? "",
           username: decodeEntities(el.getAttribute("username") ?? ""),
           title: decodeEntities(el.getAttribute("title") ?? ""),
+          email: decodeEntities(el.getAttribute("email") ?? ""),
           thumb: decodeEntities(el.getAttribute("thumb") ?? ""),
-          machineIdentifiers: [],
+          shares: [],
         };
         if (current.accountId) users.push(current);
       },
@@ -56,9 +51,14 @@ export async function parseShareList(xml: string): Promise<PlexShareListUser[]> 
     .on("server", {
       element(el) {
         // Servers follow their parent user in document order.
-        const machineId = el.getAttribute("machineidentifier");
-        const accepted = el.getAttribute("pending") !== "1";
-        if (current && machineId && accepted) current.machineIdentifiers.push(machineId);
+        const machineIdentifier = el.getAttribute("machineidentifier");
+        const id = el.getAttribute("id");
+        if (!current || !machineIdentifier || !id) return;
+        current.shares.push({
+          id,
+          machineIdentifier,
+          pending: el.getAttribute("pending") === "1",
+        });
       },
     })
     .transform(new Response(xml))

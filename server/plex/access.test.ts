@@ -16,19 +16,19 @@ const OWNER = {
 
 const SHARE_LIST = `<MediaContainer>
   <User id="211227001" title="Colin" username="colin.va6">
-    <Server machineIdentifier="${MACHINE}" pending="0"/>
+    <Server id="101" machineIdentifier="${MACHINE}" pending="0"/>
   </User>
   <User id="248153810" title="joshua.ci" username="joshua.ci">
-    <Server machineIdentifier="${MACHINE}" pending="0"/>
+    <Server id="102" machineIdentifier="${MACHINE}" pending="0"/>
   </User>
   <User id="535008446" title="Victor" username="">
-    <Server machineIdentifier="${MACHINE}" pending="0"/>
+    <Server id="103" machineIdentifier="${MACHINE}" pending="0"/>
   </User>
   <User id="999" title="Pending Pete" username="pete">
-    <Server machineIdentifier="${MACHINE}" pending="1"/>
+    <Server id="104" machineIdentifier="${MACHINE}" pending="1"/>
   </User>
   <User id="888" title="Other Server Olly" username="olly">
-    <Server machineIdentifier="${OTHER}" pending="0"/>
+    <Server id="105" machineIdentifier="${OTHER}" pending="0"/>
   </User>
 </MediaContainer>`;
 

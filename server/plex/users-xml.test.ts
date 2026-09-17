@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { parseShareList } from "./users-xml.ts";
+import { parseShareList, shareOn } from "./users-xml.ts";
 
 const MACHINE = "78ee2e1158f735ad25c46adae45e886c332d4be8";
 const OTHER = "ddb7ef97532d1ac8f33a4cc6e7abd8cfa19c3338";
@@ -13,7 +13,7 @@ const xml = `<?xml version="1.0" encoding="UTF-8"?>
   <User id="535008446" title="Victor" username="" restricted="1">
     <Server id="3" machineIdentifier="${MACHINE}" pending="0"/>
   </User>
-  <User id="777" title="Ben &amp; Jerry&apos;s" username="ben">
+  <User id="777" title="Ben &amp; Jerry&apos;s" username="ben" email="ben@jerry.test">
     <Server id="4" machineIdentifier="${MACHINE}" pending="1"/>
   </User>
   <User id="888" title="Elsewhere" username="elsewhere">
@@ -26,7 +26,10 @@ describe("parseShareList", () => {
     const users = await parseShareList(xml);
 
     expect(users.map((u) => u.accountId)).toEqual(["135927761", "535008446", "777", "888"]);
-    expect(users[0]!.machineIdentifiers).toEqual([OTHER, MACHINE]);
+    expect(users[0]!.shares).toEqual([
+      { id: "1", machineIdentifier: OTHER, pending: false },
+      { id: "2", machineIdentifier: MACHINE, pending: false },
+    ]);
   });
 
   test("decodes XML entities in names", async () => {
@@ -43,10 +46,18 @@ describe("parseShareList", () => {
     expect(victor.title).toBe("Victor");
   });
 
-  test("omits shares the user has not accepted", async () => {
+  test("keeps an invitation that has not been taken up, and says so", async () => {
     const users = await parseShareList(xml);
 
-    expect(users.find((u) => u.accountId === "777")!.machineIdentifiers).toEqual([]);
+    const ben = users.find((u) => u.accountId === "777")!;
+    expect(ben.email).toBe("ben@jerry.test");
+    expect(shareOn(ben, MACHINE)).toEqual({ id: "4", machineIdentifier: MACHINE, pending: true });
+  });
+
+  test("reports nothing for a server the user is not on", async () => {
+    const users = await parseShareList(xml);
+
+    expect(shareOn(users.find((u) => u.accountId === "888")!, MACHINE)).toBeUndefined();
   });
 
   test("ignores an empty document", async () => {
