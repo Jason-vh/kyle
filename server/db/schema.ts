@@ -105,6 +105,26 @@ export const mediaRequests = pgTable(
   ],
 );
 
+/**
+ * Who invited whom onto the Plex server.
+ *
+ * Plex holds the truth about who has access; this holds the one thing it
+ * cannot know, which is which Kyle user spent the owner's invitation. Rows
+ * outlive the invitations they describe, and are matched back up by address.
+ */
+export const plexInvites = pgTable(
+  "plex_invites",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    email: text("email").notNull(),
+    invitedByUserId: uuid("invited_by_user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (table) => [uniqueIndex("plex_invites_email_idx").on(table.email)],
+);
+
 // ---- Existing tables (userId renamed to platformUserId, new userId FK added) ----
 
 export const mediaEvents = pgTable(

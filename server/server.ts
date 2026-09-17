@@ -19,6 +19,11 @@ import {
 } from "./routes/api/auth-plex.ts";
 import { handleGetUsers, handleCreateLink, handleDeleteLink } from "./routes/api/users.ts";
 import {
+  handleCreatePlexInvite,
+  handleGetPlexMembers,
+  handleRemovePlexMember,
+} from "./routes/api/plex-members.ts";
+import {
   handleDiscoverSearch,
   handleCreateRequest,
   handleGetRequests,
@@ -38,6 +43,7 @@ const SPA_PATHS = new Set([
   "/threads/",
   "/login",
   "/account",
+  "/members",
   "/discover",
   "/requests",
   "/library",
@@ -114,6 +120,12 @@ export function startServer(port: number) {
 
       "/api/discover": { GET: handleDiscoverSearch },
       "/api/requests": { GET: handleGetRequests, POST: handleCreateRequest },
+
+      "/api/plex/members": { GET: handleGetPlexMembers },
+      "/api/plex/members/:handle": {
+        DELETE: (req) => handleRemovePlexMember(req, req.params.handle),
+      },
+      "/api/plex/invites": { POST: handleCreatePlexInvite },
 
       "/api/users": { GET: handleGetUsers },
       "/api/users/:userId/links": { POST: (req) => handleCreateLink(req, req.params.userId) },
