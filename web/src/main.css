@@ -111,6 +111,16 @@ body {
 }
 
 /*
+ * Tailwind v4 leaves buttons at the browser's own `default` cursor, which
+ * makes everything clickable that is not a link feel inert. Anything disabled
+ * says so itself and is left alone.
+ */
+button:not(:disabled),
+[role="button"]:not(:disabled) {
+  cursor: pointer;
+}
+
+/*
  * Things arrive from slightly below and slightly out of focus. The blur is
  * what makes it read as settling rather than sliding.
  */
