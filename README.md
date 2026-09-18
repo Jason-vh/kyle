@@ -404,8 +404,11 @@ Sharing lives on plex.tv, which — unlike the Plex Media Server API at
 against the live account:
 
 - **Invite** — `POST https://plex.tv/api/v2/shared_servers` with
-  `{ machineIdentifier, invitedEmail, librarySectionIds, settings }`. Plex sends the email; Kyle
-  sends none. A refusal comes back as `422` with an `errors[].message` worth showing verbatim
+  `{ machineIdentifier, invitedEmail, librarySectionIds, settings, skipFriendship }`. Plex sends the
+  email; Kyle sends none. Without `skipFriendship`, sharing with an address that already has a Plex
+  account also makes that person a friend of the owner — an address with no account gets
+  `friend="0"` either way, so the difference only shows on existing accounts. Plex's own web app
+  passes it on every share. A refusal comes back as `422` with an `errors[].message` worth showing verbatim
   ("You cannot send an invitation to yourself", "The username or email entered appears to be
   invalid"), which is why the v2 endpoint is preferred over the older
   `POST /api/servers/{machineId}/shared_servers`.

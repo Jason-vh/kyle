@@ -188,7 +188,17 @@ describe("invitePlexMember", () => {
         allowChannels: "0",
         allowSubtitleAdmin: "0",
       },
+      skipFriendship: true,
     });
+  });
+
+  test("shares the server without making the owner friends with them", async () => {
+    stubPlex();
+
+    await invitePlexMember("new@plex.test");
+
+    const invite = calls.find((call) => call.method === "POST")!;
+    expect((invite.body as { skipFriendship: boolean }).skipFriendship).toBe(true);
   });
 
   test("passes on what Plex says when it refuses", async () => {

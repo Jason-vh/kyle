@@ -72,6 +72,10 @@ const SHARE_SETTINGS = {
  *
  * The v2 endpoint is the one Plex's own web app uses, and it answers a refusal
  * in words worth showing to whoever typed the address.
+ *
+ * Sharing with an address that already has a Plex account otherwise makes that
+ * person a friend of the owner as well, which is not what anyone asked for.
+ * Plex's own sharing UI passes `skipFriendship` for the same reason.
  */
 export async function createShare(
   machineIdentifier: string,
@@ -86,6 +90,7 @@ export async function createShare(
       invitedEmail,
       librarySectionIds,
       settings: SHARE_SETTINGS,
+      skipFriendship: true,
     }),
   });
 }
