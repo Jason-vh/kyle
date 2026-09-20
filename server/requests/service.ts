@@ -4,6 +4,7 @@ import * as radarr from "#server/radarr/api.ts";
 import * as sonarr from "#server/sonarr/api.ts";
 import type { MonitorOption } from "#server/sonarr/api.ts";
 import { saveMediaRequest } from "#server/db/requests.ts";
+import { clearRemoval } from "#server/db/removals.ts";
 import { upsertMovieSubscription, upsertSeriesSubscription } from "#server/db/subscriptions.ts";
 import { invalidateLibraryIndex } from "./library.ts";
 import { createLogger } from "#server/logger.ts";
@@ -92,7 +93,11 @@ export async function requestMovie(input: {
   const movie = held ?? (await addToRadarr(input.tmdbId));
   const status: RequestStatus = held ? "existing" : "added";
 
-  if (status === "added") invalidateLibraryIndex();
+  // It is back, so how it once left stops being the answer to where it is.
+  if (status === "added") {
+    invalidateLibraryIndex();
+    await clearRemoval("movie", input.tmdbId);
+  }
 
   if (input.requestedBy) {
     await recordRequest({
@@ -148,7 +153,11 @@ export async function requestSeries(input: {
         input.monitorOption ?? "all",
       );
 
-  if (status === "added") invalidateLibraryIndex();
+  const tmdbId = series.tmdbId ?? input.tmdbId;
+  if (status === "added") {
+    invalidateLibraryIndex();
+    if (tmdbId !== undefined) await clearRemoval("series", tmdbId);
+  }
 
   if (input.requestedBy) {
     await recordRequest({

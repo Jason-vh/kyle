@@ -84,4 +84,25 @@ describe("resolveState", () => {
   test("a title no longer in the library is removed", () => {
     expect(resolveState(undefined, undefined)).toEqual({ state: "removed" });
   });
+
+  // Absence cannot say who took it out; what we wrote down when it left can.
+  test("a removal we recorded says who did it and when", () => {
+    const at = new Date("2026-09-01T10:00:00Z");
+
+    expect(
+      resolveState(undefined, undefined, { removedBy: "Jason", deletedFiles: true, at }),
+    ).toEqual({
+      state: "removed",
+      detail: "Removed by Jason",
+      since: at.toISOString(),
+    });
+  });
+
+  test("a removal nobody was named for still says when it happened", () => {
+    const at = new Date("2026-09-01T10:00:00Z");
+
+    expect(
+      resolveState(undefined, undefined, { removedBy: null, deletedFiles: false, at }),
+    ).toEqual({ state: "removed", detail: undefined, since: at.toISOString() });
+  });
 });

@@ -129,9 +129,18 @@ describe("DELETE /api/library/:type/:id", () => {
 
     expect((await remove(asAdmin)).status).toBe(200);
 
-    const [call] = calls;
-    expect(call?.method).toBe("DELETE");
-    expect(call?.url).toContain("deleteFiles=true");
+    const deletion = calls.find((call) => call.method === "DELETE");
+    expect(deletion?.url).toContain("deleteFiles=true");
+  });
+
+  // The service forgets the title on deletion, so it is read while it is there.
+  test("reads the title before removing it, so the removal can be recorded", async () => {
+    const calls = stubServices({ "/api/v3/movie/42": {} });
+
+    await remove(asAdmin);
+
+    expect(calls[0]?.method).toBe("GET");
+    expect(calls[0]?.url).toContain("/movie/42");
   });
 
   test("the files stay when the caller says so", async () => {
@@ -139,7 +148,8 @@ describe("DELETE /api/library/:type/:id", () => {
 
     await remove(asAdmin, "series", "9", "?deleteFiles=false");
 
-    expect(calls[0]?.url).toContain("deleteFiles=false");
+    const deletion = calls.find((call) => call.method === "DELETE");
+    expect(deletion?.url).toContain("deleteFiles=false");
   });
 
   test("an unknown media type is a miss, not a bad request", async () => {

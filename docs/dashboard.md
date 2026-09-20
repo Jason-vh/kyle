@@ -87,7 +87,7 @@ Each one says what the requester should expect next, not where the file is:
 | `unreleased`  | not out anywhere yet; `expectedAt` says when                         |
 | `waiting`     | out, but not in a form we can fetch — in cinemas, digital date ahead |
 | `searching`   | obtainable, monitored, nothing to show for it yet                    |
-| `removed`     | not in the library — it was removed after being asked for            |
+| `removed`     | not in the library; `detail` says who took it out, when Kyle saw it  |
 
 The queue (`server/requests/queue.ts`) speaks first, since it is the only thing moving —
 except for a title already complete on disk, whose queue can only be an upgrade nobody is
@@ -96,6 +96,11 @@ among equals the furthest along.
 
 A state carries `detail` (what the service said: a stall, a rejection, a bad file),
 `expectedAt`, and `since`. `RequestRow.vue` is the one place they are put into words.
+
+Radarr and Sonarr forget a title the moment it is removed, so `media_removals`
+(`server/db/removals.ts`) records who took it out and when, written by the one removal path
+in `server/library/service.ts` and by the agent's remove tools. Requesting the title again
+forgets the row, since how it once left stops being the answer.
 
 A series is read season by season, from the statistics Sonarr already returns with the
 listing: monitored seasons only, specials excluded. So 28 of 30 episodes is still `ready`

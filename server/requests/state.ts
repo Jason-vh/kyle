@@ -2,6 +2,7 @@ import type { LibraryMediaType, MediaRequest, MissingSeason, RequestState } from
 import * as radarr from "#server/radarr/api.ts";
 import * as sonarr from "#server/sonarr/api.ts";
 import { getLibraryIndex, type LibraryEntry } from "./library.ts";
+import { getRemovals, type Removal } from "#server/db/removals.ts";
 import { summarise, type QueueRecord, type QueueStatus } from "./queue.ts";
 import { createLogger } from "#server/logger.ts";
 import { errorMessage } from "#server/errors.ts";
@@ -50,6 +51,20 @@ export async function queueStatusFor(
 
 function key(mediaType: string, serviceId: number): string {
   return `${mediaType}:${serviceId}`;
+}
+
+/**
+ * Absence alone cannot say whether a title was taken out on purpose, so what
+ * we recorded when it left is the answer, and silence is its own answer.
+ */
+function removedState(removal: Removal | undefined): RequestStatus {
+  if (!removal) return { state: "removed" };
+
+  return {
+    state: "removed",
+    detail: removal.removedBy ? `Removed by ${removal.removedBy}` : undefined,
+    since: removal.at.toISOString(),
+  };
 }
 
 function collect(records: Map<string, QueueRecord[]>, at: string, record: QueueRecord): void {
@@ -101,8 +116,9 @@ async function queuesByService(): Promise<Map<string, QueueStatus>> {
 export function resolveState(
   entry: LibraryEntry | undefined,
   queue: QueueStatus | undefined,
+  removal?: Removal,
 ): RequestStatus {
-  if (!entry) return { state: "removed" };
+  if (!entry) return removedState(removal);
   if (queue && !entry.complete) return { ...queue, missing: entry.missing };
   if (entry.hasFiles) return { state: "ready", missing: entry.missing };
   if (!entry.monitored) return { state: "paused" };
@@ -120,16 +136,21 @@ export function resolveState(
 export async function withState(requests: StatelessRequest[]): Promise<MediaRequest[]> {
   if (requests.length === 0) return [];
 
-  const [library, queues] = await Promise.all([getLibraryIndex(), queuesByService()]);
+  const [library, queues, removals] = await Promise.all([
+    getLibraryIndex(),
+    queuesByService(),
+    getRemovals(),
+  ]);
 
   return requests.map((request) => {
     const entry = library[request.mediaType].get(request.tmdbId);
     const queue = entry ? queues.get(key(request.mediaType, entry.serviceId)) : undefined;
+    const removal = removals.get(key(request.mediaType, request.tmdbId));
 
     return {
       ...request,
       createdAt: new Date(request.createdAt).toISOString(),
-      ...resolveState(entry, queue),
+      ...resolveState(entry, queue, removal),
     };
   });
 }

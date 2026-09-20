@@ -84,7 +84,7 @@ function describeMissing(missing: MissingSeason[]): string {
 }
 
 /** States whose age is worth saying: something has been stuck that long. */
-const TIMED = new Set<RequestState>(["found", "stalled", "blocked", "importing"]);
+const TIMED = new Set<RequestState>(["found", "stalled", "blocked", "importing", "removed"]);
 
 /** What the state means for the person who asked, in one line. */
 function explain(request: MediaRequest): string | undefined {
@@ -107,7 +107,7 @@ function explain(request: MediaRequest): string | undefined {
   if (state === "blocked") return detail ?? "Downloaded, but it could not be imported";
   if (state === "importing") return "Downloaded — adding it to Plex";
   if (state === "paused") return "Nobody is looking for this";
-  if (state === "removed") return "No longer in the library";
+  if (state === "removed") return detail ?? "No longer in the library";
 
   return undefined;
 }

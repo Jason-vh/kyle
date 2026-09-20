@@ -107,6 +107,7 @@ server/
     media-events.ts          → Media event extraction + persistence
     subscriptions.ts         → Movie/series subscription CRUD, processMediaEvent
     notifications.ts         → What Kyle has to tell someone, and whether they read it
+    removals.ts              → Why a title left the library, since the services forget
     migrate.ts               → Migration runner
   routes/
     chat.ts                  → POST /chat

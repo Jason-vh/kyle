@@ -3,6 +3,7 @@ import type { Tool, ToolPresentation } from "#server/agent/tool.ts";
 import { jsonResult } from "#server/agent/tool-result.ts";
 import { buildTable } from "#server/agent/table.ts";
 import { requestMovie, type Requester } from "#server/requests/service.ts";
+import { recordRemoval } from "#server/db/removals.ts";
 import { titleWithYear } from "#shared/media.ts";
 import * as radarr from "./api.ts";
 import {
@@ -140,6 +141,13 @@ export const removeMovieTool: Tool<typeof removeMovieParams> = {
   async execute(_toolCallId, params) {
     const movie = await radarr.getMovie(params.movieId);
     await radarr.removeMovie(params.movieId, true);
+    await recordRemoval({
+      mediaType: "movie",
+      tmdbId: movie.tmdbId,
+      title: movie.title,
+      removedBy: "Kyle",
+      deletedFiles: true,
+    });
     return jsonResult({
       success: true,
       message: `Removed ${movie.title} (${movie.year}) from Radarr and deleted files from disk.`,

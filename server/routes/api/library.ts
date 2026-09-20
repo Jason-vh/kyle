@@ -49,7 +49,7 @@ export async function handleRemoveLibraryItem(
   const deleteFiles = new URL(req.url).searchParams.get("deleteFiles") !== "false";
 
   try {
-    await removeLibraryItem(mediaType, serviceId, deleteFiles);
+    await removeLibraryItem(mediaType, serviceId, deleteFiles, auth.user.name);
     invalidateLibraryIndex();
 
     log.info("library item removed", { by: auth.user.id, mediaType, serviceId, deleteFiles });

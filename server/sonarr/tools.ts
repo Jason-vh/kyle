@@ -3,6 +3,7 @@ import type { Tool, ToolPresentation } from "#server/agent/tool.ts";
 import { jsonResult } from "#server/agent/tool-result.ts";
 import { buildTable } from "#server/agent/table.ts";
 import { requestSeries, type Requester } from "#server/requests/service.ts";
+import { recordRemoval } from "#server/db/removals.ts";
 import { episodeCode, episodeLabel, titleWithYear } from "#shared/media.ts";
 import * as sonarr from "./api.ts";
 import {
@@ -188,6 +189,15 @@ export const removeSeriesTool: Tool<typeof removeSeriesParams> = {
   async execute(_toolCallId, params) {
     const series = await sonarr.getSeries(params.seriesId);
     await sonarr.removeSeries(params.seriesId, true);
+    if (series.tmdbId) {
+      await recordRemoval({
+        mediaType: "series",
+        tmdbId: series.tmdbId,
+        title: series.title,
+        removedBy: "Kyle",
+        deletedFiles: true,
+      });
+    }
     return jsonResult({
       success: true,
       message: `Removed ${series.title} (${series.year}) from Sonarr and deleted files from disk.`,

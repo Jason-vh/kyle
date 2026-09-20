@@ -212,6 +212,28 @@ export const seriesSubscriptions = pgTable(
  * this is where it lands for everyone, including anyone who asked in a browser
  * and so has no thread to be answered in.
  */
+/**
+ * Why a title is no longer in the library.
+ *
+ * Radarr and Sonarr forget a title the moment it is removed, so absence alone
+ * cannot tell a requester whether it was taken out on purpose or lost. One row
+ * per title, replaced if it is removed again.
+ */
+export const mediaRemovals = pgTable(
+  "media_removals",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    mediaType: text("media_type").$type<"movie" | "series">().notNull(),
+    tmdbId: integer("tmdb_id").notNull(),
+    title: text("title").notNull(),
+    /** Who did it, named as a person would say it; absent when done outside Kyle. */
+    removedBy: text("removed_by"),
+    deletedFiles: boolean("deleted_files").notNull().default(true),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (table) => [uniqueIndex("media_removals_media_idx").on(table.mediaType, table.tmdbId)],
+);
+
 export const notifications = pgTable(
   "notifications",
   {

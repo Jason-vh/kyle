@@ -5,6 +5,7 @@ import * as radarr from "#server/radarr/api.ts";
 import * as sonarr from "#server/sonarr/api.ts";
 import { movieState, seriesState } from "./item.ts";
 import { getAllRequesters } from "#server/db/requests.ts";
+import { recordRemoval } from "#server/db/removals.ts";
 import { annotateRequesters } from "#server/requests/requesters.ts";
 import { getWatchers, watchKey } from "#server/plex/history.ts";
 import { posterOf } from "#server/media-images.ts";
@@ -84,17 +85,40 @@ export async function listLibrary(viewerId: string): Promise<LibraryListing> {
   return { items, unavailable };
 }
 
-/** Remove an item from its service, optionally deleting the files with it. */
+/**
+ * Remove an item from its service, optionally deleting the files with it. The
+ * title is read first and kept, since the service forgets it immediately and a
+ * requester is still owed an answer about where it went.
+ */
 export async function removeLibraryItem(
   mediaType: LibraryMediaType,
   serviceId: number,
   deleteFiles: boolean,
+  removedBy?: string,
 ): Promise<void> {
   if (mediaType === "movie") {
+    const movie = await radarr.getMovie(serviceId);
     await radarr.removeMovie(serviceId, deleteFiles);
+    await recordRemoval({
+      mediaType,
+      tmdbId: movie.tmdbId,
+      title: movie.title,
+      removedBy,
+      deletedFiles: deleteFiles,
+    });
   } else {
+    const series = await sonarr.getSeries(serviceId);
     await sonarr.removeSeries(serviceId, deleteFiles);
+    if (series.tmdbId) {
+      await recordRemoval({
+        mediaType,
+        tmdbId: series.tmdbId,
+        title: series.title,
+        removedBy,
+        deletedFiles: deleteFiles,
+      });
+    }
   }
 
-  log.info("removed library item", { mediaType, serviceId, deleteFiles });
+  log.info("removed library item", { mediaType, serviceId, deleteFiles, removedBy });
 }
