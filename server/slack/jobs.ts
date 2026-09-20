@@ -15,7 +15,10 @@ export async function enqueueSlackEvent(
   event: SlackEvent,
   teamId?: string,
 ): Promise<void> {
-  await db.insert(slackEventJobs).values({ eventId, event, teamId }).onConflictDoNothing();
+  await db
+    .insert(slackEventJobs)
+    .values({ eventId, event, teamId, availableAt: new Date() })
+    .onConflictDoNothing();
 }
 
 export async function processSlackEvent(
