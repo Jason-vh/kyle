@@ -115,8 +115,8 @@ export async function processSlackMessage(
   const usernameMap = mentionedIds.length > 0 ? await resolveUsernames(mentionedIds) : undefined;
   const messageText = cleanMessageText(rawText, usernameMap);
 
-  const images = await downloadImages("slack", toRemoteImages(slackEvent));
-  if (!messageText && images.length === 0) return "";
+  const remoteImages = toRemoteImages(slackEvent);
+  if (!messageText && remoteImages.length === 0) return "";
 
   const appUserId = userId ? await resolveAppUserId("slack", userId) : null;
   if (!appUserId || !(await getActiveUser(appUserId))) {
@@ -125,6 +125,9 @@ export async function processSlackMessage(
     await postSlackReply(slackEvent, text);
     return text;
   }
+
+  const images = await downloadImages("slack", remoteImages);
+  if (!messageText && images.length === 0) return "";
 
   let agentContext: AgentContext | undefined;
   if (userId) {
