@@ -37,19 +37,11 @@
         />
       </section>
 
-      <section class="mb-8">
+      <section v-if="requests.length" class="mb-8">
         <SectionHeading title="Your requests" to="/requests" :count="requests.length" />
-        <QueryState :empty="requests.length === 0">
-          <template #empty>
-            Nothing on the way.
-            <router-link to="/discover" class="text-accent-purple hover:underline">
-              Request something
-            </router-link>
-          </template>
-          <div class="stagger flex flex-col gap-2">
-            <RequestRow v-for="request in requests" :key="request.id" :request="request" />
-          </div>
-        </QueryState>
+        <div class="stagger flex flex-col gap-2">
+          <RequestRow v-for="request in requests" :key="request.id" :request="request" />
+        </div>
       </section>
 
       <section>
@@ -122,8 +114,8 @@ const spaceLeft = computed(() => (storage.value ? formatSize(storage.value.freeB
 const spaceHint = computed(() => {
   if (!storage.value) return undefined;
   const parts = [`of ${formatSize(storage.value.totalBytes)}`];
-  const requested = storage.value.requestedBytes;
-  if (requested !== undefined) parts.push(`${formatSize(requested)} requested`);
+  if (storage.value.requestedBytes)
+    parts.push(`${formatSize(storage.value.requestedBytes)} requested`);
   return parts.join(" \u00b7 ");
 });
 
