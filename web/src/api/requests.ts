@@ -65,6 +65,17 @@ export async function retryRequest(item: RetryInput): Promise<RetryOutcome> {
   });
 }
 
+/** How many admins were told, so the UI can say whether anyone heard. */
+export interface ReportOutcome {
+  notified: number;
+}
+
+export async function reportRequest(item: RetryInput): Promise<ReportOutcome> {
+  return apiFetch<ReportOutcome>(`/api/requests/${item.mediaType}/${item.tmdbId}/report`, {
+    method: "POST",
+  });
+}
+
 export async function getRequests(all = false): Promise<MediaRequest[]> {
   const { requests } = await apiFetch<{ requests: MediaRequest[] }>(
     `/api/requests${all ? "?all=true" : ""}`,

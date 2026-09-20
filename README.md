@@ -130,6 +130,7 @@ server/
     state.ts                 → Where a request has got to, derived from library + queues
     queue.ts                 → A queue record read as downloading/stalled/blocked/importing
     retry.ts                 → Search again, dropping a stalled release first
+    report.ts                → Hand a stuck request to whoever can act on it
   library/
     service.ts               → listLibrary()/removeLibraryItem() behind /api/library
   dashboard/
@@ -511,6 +512,7 @@ rather than passed to the agent as an opaque ID.
 | `POST /api/requests`                  | JWT                   | Request a title `{ mediaType, tmdbId }`         |
 | `GET /api/requests`                   | JWT                   | Your requests, or all with `?all=true` as admin |
 | `POST /api/requests/:type/:id/retry`  | JWT                   | Search again; drops a stalled release first     |
+| `POST /api/requests/:type/:id/report` | JWT                   | Tell every admin a request is stuck             |
 | `GET /api/library`                    | JWT                   | Everything Radarr and Sonarr hold               |
 | `DELETE /api/library/:type/:id`       | Admin                 | Remove an item, deleting files unless disabled  |
 | `GET /api/threads`                    | JWT                   | List conversation threads                       |

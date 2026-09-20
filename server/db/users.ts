@@ -155,6 +155,12 @@ export async function getPlatformIdentity(userId: string, platform: string) {
   });
 }
 
+/** Whoever can act on a blocked download, so a report reaches someone. */
+export async function getAdminUserIds(): Promise<string[]> {
+  const rows = await db.select({ id: users.id }).from(users).where(eq(users.isAdmin, true));
+  return rows.map((row) => row.id);
+}
+
 /**
  * Get all users with their platform identities.
  */

@@ -8,6 +8,7 @@ import { getMediaDetail } from "#web/api/media";
 import {
   discover,
   getRequests,
+  reportRequest,
   requestMedia,
   retryRequest,
   type RequestInput,
@@ -105,6 +106,10 @@ export function useRetryRequest() {
     mutation: (item: RetryInput) => retryRequest(item),
     onSettled: invalidate,
   });
+}
+
+export function useReportRequest() {
+  return useMutation({ mutation: (item: RetryInput) => reportRequest(item) });
 }
 
 export function useRemoveLibraryItem() {

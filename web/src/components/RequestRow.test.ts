@@ -20,7 +20,7 @@ function requestWith(overrides: Partial<MediaRequest> = {}): MediaRequest {
 const render = (overrides: Partial<MediaRequest> = {}) =>
   mount(RequestRow, {
     props: { request: requestWith(overrides) },
-    global: { stubs: { RouterLink: true, RequestRetry: true } },
+    global: { stubs: { RouterLink: true, RequestActions: true } },
   });
 
 describe("RequestRow", () => {
@@ -118,19 +118,10 @@ describe("RequestRow", () => {
     expect(render({ state: "searching" }).find(".bg-accent-amber").exists()).toBe(false);
   });
 
-  // Only a search can move these; the rest wait on time or on a person.
-  test.each(["searching", "stalled"])("offers another search for a %s request", (state) => {
-    const row = render({ state: state as RequestState });
-    expect(row.findComponent({ name: "RequestRetry" }).exists()).toBe(true);
+  // Which action each state deserves is pinned in RequestActions.test.ts.
+  test("hands every request its actions", () => {
+    expect(render().findComponent({ name: "RequestActions" }).exists()).toBe(true);
   });
-
-  test.each(["ready", "downloading", "blocked", "unreleased", "paused"])(
-    "offers nothing to press for a %s request",
-    (state) => {
-      const row = render({ state: state as RequestState });
-      expect(row.findComponent({ name: "RequestRetry" }).exists()).toBe(false);
-    },
-  );
 
   test("names the requester only when there is one to name", () => {
     expect(render({ requestedBy: "Jane" }).text()).toContain("Jane");
