@@ -155,6 +155,11 @@ server/
   jobs/
     schedule.ts              → every(name, interval, task): the daily/hourly tick
     index.ts                 → startJobs(): the one list of what runs on its own
+  janitor/
+    plan.ts                  → planSweep(): what the sweep would do, decided from state alone
+    gather.ts                → Torrents traced through *arr history to files that may be gone
+    apply.ts                 → Does one decided thing
+    run.ts                   → sweep(): read, decide, then apply or report
   webhooks/
     announce.ts              → announce(): tells everyone who asked, however they asked
     types.ts                 → Webhook payload types + MediaNotificationInfo
@@ -225,6 +230,18 @@ web/                         → Vue 3 + Vite + Tailwind CSS 4 SPA
   a Slack message that may never have gone out, or lose one that did when the container
   stops in between. Send, then write — a failed write costs a duplicate alert, and the
   alternative costs a silent one.
+- **The janitor deletes only what it can prove** — the daily sweep (`server/janitor/`)
+  resolves every torrent through Radarr/Sonarr history to the files it imported, and asks
+  each service whether it still holds them. A file that 404s was upgraded or removed, and
+  the torrent seeding it is deleting 60 GB of nothing. It also retries downloads stalled
+  past half a day — blocklist, then search again — drops imports blocked by releases that
+  can never import (`.exe` bait, sample packs), and only ever _flags_ what it cannot
+  prove: a torrent with no history was added by hand. Restraint is structural, not a flag
+  somebody remembers: a service that fails to answer aborts the whole sweep, because
+  unreachable looks like unknown and unknown is a reason to delete; torrents still in a
+  queue are exempt; nothing settled less than two days ago is touched; a sweep wanting
+  more than 40 deletions or 2 TB has misread something and deletes nothing instead.
+  `bun run scripts/janitor.ts` is the dry run that says what tonight would do.
 - **Media events + subscriptions** — `media_events` is an append-only log of tool actions.
   `movie_subscriptions` / `series_subscriptions` track notification preferences (created on
   add by the request service, on download by `processMediaEvent`, deactivated on

@@ -55,7 +55,9 @@ async function resolve(torrent: QBittorrentTorrent, queued: Set<string>): Promis
     hash: torrent.hash,
     name: torrent.name,
     bytes: torrent.size,
-    completedAt: torrent.completion_on,
+    // A grab the service gave up on never completed, so its added date is the
+    // honest clock: both say it has had its chance.
+    completedAt: torrent.completion_on || torrent.added_on,
     known,
     imports,
     queued: queued.has(torrent.hash.toLowerCase()),

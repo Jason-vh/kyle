@@ -1,5 +1,6 @@
 import { checkSeedbox } from "#server/ultra/health.ts";
-import { every, HOUR_MS } from "./schedule.ts";
+import { sweep } from "#server/janitor/run.ts";
+import { DAY_MS, every, HOUR_MS } from "./schedule.ts";
 import { createLogger } from "#server/logger.ts";
 import { errorMessage } from "#server/errors.ts";
 
@@ -9,6 +10,7 @@ const log = createLogger("jobs");
 export async function startJobs(): Promise<void> {
   try {
     await every("seedbox-health", HOUR_MS, checkSeedbox);
+    await every("janitor", DAY_MS, () => sweep(true));
   } catch (error) {
     log.error("could not start jobs", { error: errorMessage(error) });
   }
