@@ -44,8 +44,16 @@ async function render() {
 }
 
 describe("NotificationBell", () => {
-  test("says nothing when there is nothing unread", async () => {
+  // An empty bell is a button that does nothing, so there is no bell at all.
+  test("stays away until something has arrived", async () => {
     stub(0, []);
+    const bell = await render();
+
+    expect(bell.find("button").exists()).toBe(false);
+  });
+
+  test("appears once something has arrived, read or not", async () => {
+    stub(0, [notification({ read: true })]);
     const bell = await render();
 
     expect(bell.get("button").attributes("aria-label")).toBe("Notifications");

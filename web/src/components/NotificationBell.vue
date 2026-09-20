@@ -1,5 +1,5 @@
 <template>
-  <PopoverRoot v-model:open="open">
+  <PopoverRoot v-if="items.length" v-model:open="open">
     <PopoverTrigger
       class="relative flex size-9 items-center justify-center rounded-control text-text-muted transition-colors hover:bg-bg-elevated hover:text-text-primary"
       :aria-label="unread > 0 ? `Notifications, ${unread} unread` : 'Notifications'"
@@ -32,34 +32,18 @@
           </AppButton>
         </div>
 
-        <QueryState
-          :loading="isPending"
-          :error="error"
-          :empty="items.length === 0"
-          empty-text="Nothing yet. You will hear when something you asked for arrives."
-        >
-          <template #loading>
-            <div class="stagger">
-              <div v-for="row in 3" :key="row" class="space-y-1.5 px-3.5 py-2.5">
-                <Skeleton class="h-3.5 w-2/3" />
-                <Skeleton class="h-3 w-full" />
-              </div>
-            </div>
-          </template>
-
-          <ul class="stagger divide-y divide-border-primary">
-            <li
-              v-for="item in items"
-              :key="item.id"
-              class="px-3.5 py-2.5"
-              :class="item.read ? '' : 'bg-accent-purple-light/40'"
-            >
-              <p class="text-sm font-semibold text-text-primary">{{ item.title }}</p>
-              <p class="text-xs text-text-secondary">{{ item.body }}</p>
-              <p class="mt-0.5 text-xs text-text-muted">{{ relativeTime(item.createdAt) }}</p>
-            </li>
-          </ul>
-        </QueryState>
+        <ul class="stagger divide-y divide-border-primary">
+          <li
+            v-for="item in items"
+            :key="item.id"
+            class="px-3.5 py-2.5"
+            :class="item.read ? '' : 'bg-accent-purple-light/40'"
+          >
+            <p class="text-sm font-semibold text-text-primary">{{ item.title }}</p>
+            <p class="text-xs text-text-secondary">{{ item.body }}</p>
+            <p class="mt-0.5 text-xs text-text-muted">{{ relativeTime(item.createdAt) }}</p>
+          </li>
+        </ul>
       </PopoverContent>
     </PopoverPortal>
   </PopoverRoot>
@@ -71,12 +55,10 @@ import { PopoverContent, PopoverPortal, PopoverRoot, PopoverTrigger } from "reka
 import { relativeTime } from "#web/composables/useRelativeTime";
 import { useMarkNotificationsRead, useNotifications } from "#web/queries/notifications";
 import AppButton from "#web/components/ui/AppButton.vue";
-import QueryState from "#web/components/ui/QueryState.vue";
-import Skeleton from "#web/components/ui/Skeleton.vue";
 
 const open = ref(false);
 
-const { data, error, isPending } = useNotifications();
+const { data } = useNotifications();
 const markRead = useMarkNotificationsRead();
 
 const items = computed(() => data.value?.notifications ?? []);
