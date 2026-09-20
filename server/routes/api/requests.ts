@@ -2,7 +2,9 @@ import { requireAuth } from "#server/auth/middleware.ts";
 import { searchRequestableMedia } from "#server/requests/search.ts";
 import {
   MediaNotFoundError,
+  requestEpisode,
   requestMovie,
+  requestSeason,
   requestSeries,
   type RequestableMediaType,
   type Requester,
@@ -45,10 +47,18 @@ interface RequestBody {
   mediaType?: string;
   tmdbId?: number;
   posterPath?: string;
+  /** A series only: which season is wanted, and which episode of it. */
+  seasonNumber?: number;
+  episodeNumber?: number;
 }
 
 function isRequestableType(value: unknown): value is RequestableMediaType {
   return value === "movie" || value === "series";
+}
+
+interface Scope {
+  seasonNumber?: number;
+  episodeNumber?: number;
 }
 
 /** What the browser needs to know about a request it just made. */
@@ -56,15 +66,46 @@ async function addForUser(
   mediaType: RequestableMediaType,
   tmdbId: number,
   requestedBy: Requester,
-  posterPath?: string,
+  posterPath: string | undefined,
+  scope: Scope,
 ) {
   if (mediaType === "movie") {
     const { status, movie } = await requestMovie({ tmdbId, requestedBy, posterPath });
     return { status, title: movie.title, year: movie.year || undefined };
   }
 
-  const { status, series } = await requestSeries({ tmdbId, requestedBy, posterPath });
+  const common = { tmdbId, requestedBy, posterPath };
+  const { seasonNumber, episodeNumber } = scope;
+
+  if (seasonNumber !== undefined && episodeNumber !== undefined) {
+    const { status, series } = await requestEpisode({ ...common, seasonNumber, episodeNumber });
+    return { status, title: series.title, year: series.year || undefined, seasonNumber };
+  }
+
+  if (seasonNumber !== undefined) {
+    const { status, series } = await requestSeason({ ...common, seasonNumber });
+    return { status, title: series.title, year: series.year || undefined, seasonNumber };
+  }
+
+  const { status, series } = await requestSeries(common);
   return { status, title: series.title, year: series.year || undefined };
+}
+
+/** A season is 0 or more (0 is Sonarr's specials); an episode is 1 or more. */
+function scopeError(body: RequestBody): string | undefined {
+  const { mediaType, seasonNumber, episodeNumber } = body;
+
+  if (seasonNumber === undefined && episodeNumber === undefined) return undefined;
+  if (mediaType !== "series") return "Only a series has seasons";
+  if (seasonNumber !== undefined && (!Number.isInteger(seasonNumber) || seasonNumber < 0)) {
+    return "seasonNumber must be a non-negative integer";
+  }
+  if (episodeNumber === undefined) return undefined;
+  if (seasonNumber === undefined) return "episodeNumber needs a seasonNumber";
+  if (!Number.isInteger(episodeNumber) || episodeNumber < 1) {
+    return "episodeNumber must be a positive integer";
+  }
+  return undefined;
 }
 
 export async function handleCreateRequest(req: Request): Promise<Response> {
@@ -84,6 +125,10 @@ export async function handleCreateRequest(req: Request): Promise<Response> {
   if (typeof body.tmdbId !== "number" || !Number.isInteger(body.tmdbId)) {
     return Response.json({ error: "tmdbId must be an integer" }, { status: 400 });
   }
+  const invalidScope = scopeError(body);
+  if (invalidScope) {
+    return Response.json({ error: invalidScope }, { status: 400 });
+  }
 
   try {
     const outcome = await addForUser(
@@ -91,6 +136,7 @@ export async function handleCreateRequest(req: Request): Promise<Response> {
       body.tmdbId,
       { userId: auth.user.id },
       body.posterPath,
+      { seasonNumber: body.seasonNumber, episodeNumber: body.episodeNumber },
     );
     return Response.json(outcome, { headers: auth.refreshHeaders });
   } catch (error) {
@@ -101,6 +147,8 @@ export async function handleCreateRequest(req: Request): Promise<Response> {
       userId: auth.user.id,
       mediaType: body.mediaType,
       tmdbId: body.tmdbId,
+      seasonNumber: body.seasonNumber,
+      episodeNumber: body.episodeNumber,
       error: errorMessage(error),
     });
     return errorResponse(error, 502, "Could not add this to the library");

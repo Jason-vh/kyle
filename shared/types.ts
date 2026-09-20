@@ -144,6 +144,8 @@ export interface MediaRequest {
   posterPath: string | null;
   /** Only present when looking at everyone's requests. */
   requestedBy?: string;
+  /** Which season was asked for; null is the series as a whole. */
+  seasonNumber: number | null;
   createdAt: string;
   state: RequestState;
   /** What the service says about the state: a stall, a rejection, a bad file. */

@@ -1,6 +1,7 @@
 import { isLibraryMediaType } from "#shared/types.ts";
 import { requireAdmin, requireAuth } from "#server/auth/middleware.ts";
 import { listLibrary, removeLibraryItem } from "#server/library/service.ts";
+import { MediaNotFoundError, releaseSeason } from "#server/requests/service.ts";
 import { invalidateLibraryIndex } from "#server/requests/library.ts";
 import { createLogger } from "#server/logger.ts";
 import { errorMessage, errorResponse } from "#server/errors.ts";
@@ -61,5 +62,41 @@ export async function handleRemoveLibraryItem(
       error: errorMessage(error),
     });
     return errorResponse(error, 502, "Could not remove this");
+  }
+}
+
+// ---------------------------------------------------------------------------
+// DELETE /api/library/series/:serviceId/seasons/:seasonNumber — admin only
+// ---------------------------------------------------------------------------
+
+export async function handleReleaseSeason(
+  req: Request,
+  rawServiceId: string,
+  rawSeasonNumber: string,
+): Promise<Response> {
+  const auth = await requireAdmin(req);
+  if ("error" in auth) return auth.error;
+
+  const serviceId = Number(rawServiceId);
+  const seasonNumber = Number(rawSeasonNumber);
+  if (!Number.isInteger(serviceId) || !Number.isInteger(seasonNumber) || seasonNumber < 0) {
+    return Response.json({ error: "Invalid id" }, { status: 400 });
+  }
+
+  try {
+    const { filesDeleted } = await releaseSeason(serviceId, seasonNumber);
+
+    log.info("season released", { by: auth.user.id, serviceId, seasonNumber, filesDeleted });
+    return Response.json({ success: true, filesDeleted }, { headers: auth.refreshHeaders });
+  } catch (error) {
+    if (error instanceof MediaNotFoundError) {
+      return Response.json({ error: error.message }, { status: 404 });
+    }
+    log.error("could not release season", {
+      serviceId,
+      seasonNumber,
+      error: errorMessage(error),
+    });
+    return errorResponse(error, 502, "Could not release this season");
   }
 }

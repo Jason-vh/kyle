@@ -121,11 +121,13 @@ server/
       users.ts               → User listing, platform link management (admin)
       plex-members.ts        → Who the Plex server is shared with; invites and removals
       requests.ts            → GET /api/discover, GET/POST /api/requests, retry
-      library.ts             → GET /api/library, DELETE /api/library/:type/:id
+      library.ts             → GET /api/library, DELETE /api/library/:type/:id,
+                               DELETE /api/library/series/:id/seasons/:n
       dashboard.ts           → GET /api/dashboard
       notifications.ts       → GET /api/notifications, POST /api/notifications/read
   requests/
-    service.ts               → requestMovie()/requestSeries(): the one write path
+    service.ts               → requestMovie()/requestSeries()/requestSeason(): the one
+                               write path, plus releaseSeason() as its inverse
     search.ts                → TMDB search annotated with library status + requesters
     library.ts               → Cached index of what Radarr and Sonarr already hold
     state.ts                 → Where a request has got to, derived from library + queues
@@ -194,11 +196,22 @@ web/                         → Vue 3 + Vite + Tailwind CSS 4 SPA
   Slack/Discord ID) and a `userId` (uuid FK). The agent only ever sees app user UUIDs and
   display names — never platform-specific IDs.
 - **One write path for adds** — nothing reaches Radarr or Sonarr except through
-  `requestMovie()` / `requestSeries()` in `server/requests/service.ts`, whichever interface
-  asked. Each detects a title already held, adds it if not, records a `media_requests` row
-  and a subscription for whoever asked, and invalidates the library index. `add_movie` /
-  `add_series` are built per turn (`createAddMovieTool(requester)`) so the tool knows who it
-  is adding for; a turn with no app user still adds, but attributes nothing.
+  `requestMovie()` / `requestSeries()` / `requestSeason()` in `server/requests/service.ts`,
+  whichever interface asked. Each detects a title already held, adds it if not, records a
+  `media_requests` row and a subscription for whoever asked, and invalidates the library
+  index. `add_movie` / `add_series` / `request_season` are built per turn
+  (`createAddMovieTool(requester)`) so the tool knows who it is adding for; a turn with no
+  app user still adds, but attributes nothing.
+- **A season is the unit** — `media_requests.season_number` (null = the series as a whole)
+  makes "I want season 3" recordable, and ownership is per season: two people on S1–S3 and
+  one on S4 is a thing the table can say. `requestSeason()` adds a series Sonarr does not
+  hold with `monitor: none` first, so asking for one season never drags in the rest, then
+  monitors that season and its episodes and runs a `SeasonSearch` — which is also the only
+  way to ask for more of a series already in the library, since adding one Sonarr holds
+  does nothing. `releaseSeason()` is its inverse: files deleted, season unmonitored, the
+  series and its other seasons untouched. The state model reads a season the same way it
+  reads a title: `LibraryEntry` carries one entry per season, and a queue record is filed
+  under its season as well as its series, so `resolveState()` answers both.
 - **Everyone hears, however they asked** — `announce()` in `server/webhooks/announce.ts`
   is the one place media arriving turns into someone being told. It records an in-app
   notification for every subscriber, and additionally replies in Slack or Discord where
@@ -503,35 +516,36 @@ rather than passed to the agent as an opaque ID.
 
 ## API reference
 
-| Endpoint                              | Auth                  | Description                                     |
-| ------------------------------------- | --------------------- | ----------------------------------------------- |
-| `GET /health`                         | —                     | Health check (includes DB status + `deployId`)  |
-| `POST /chat`                          | `CHAT_API_KEY` bearer | Send a message, get a response                  |
-| `POST /slack/events`                  | Slack signature       | Slack event ingress; supports `X-Sync-Response` |
-| `POST /webhooks/sonarr`               | `WEBHOOK_AUTH` basic  | Sonarr webhook handler                          |
-| `POST /webhooks/radarr`               | `WEBHOOK_AUTH` basic  | Radarr webhook handler                          |
-| `GET /api/discover?q=`                | JWT                   | Search TMDB for something to request            |
-| `POST /api/requests`                  | JWT                   | Request a title `{ mediaType, tmdbId }`         |
-| `GET /api/requests`                   | JWT                   | Your requests, or all with `?all=true` as admin |
-| `POST /api/requests/:type/:id/retry`  | JWT                   | Search again; drops a stalled release first     |
-| `POST /api/requests/:type/:id/report` | JWT                   | Tell every admin a request is stuck             |
-| `GET /api/library`                    | JWT                   | Everything Radarr and Sonarr hold               |
-| `DELETE /api/library/:type/:id`       | Admin                 | Remove an item, deleting files unless disabled  |
-| `GET /api/threads`                    | JWT                   | List conversation threads                       |
-| `GET /api/threads/:uuid`              | Admin                 | Fetch a single thread's messages                |
-| `GET /api/auth/status`                | JWT cookie            | Current user + admin flag                       |
-| `POST /api/auth/logout`               | JWT cookie            | Clear the session cookie                        |
-| `POST /api/auth/passkey/*`            | —                     | WebAuthn registration/authentication            |
-| `POST /api/auth/plex/login/start`     | —                     | Begin Plex sign-in; returns the Auth App URL    |
-| `POST /api/auth/plex/link/start`      | JWT cookie            | Begin connecting Plex to the current account    |
-| `DELETE /api/auth/plex/link`          | JWT cookie            | Disconnect the linked Plex account              |
-| `GET /api/auth/plex/callback`         | `state`               | Where Plex forwards back to; sets the session   |
-| `GET /api/plex/members`               | JWT                   | People you invited; the whole server as admin   |
-| `POST /api/plex/invites`              | JWT                   | Invite someone by email `{ email }`             |
-| `DELETE /api/plex/members/:handle`    | JWT                   | Someone you invited, or anyone as admin         |
-| `GET /api/users`                      | Admin                 | List users + platform identities                |
-| `POST /api/users/:id/links`           | Admin                 | Link a platform identity                        |
-| `DELETE /api/users/:id/links/:linkId` | Admin                 | Unlink a platform identity                      |
+| Endpoint                                    | Auth                  | Description                                                    |
+| ------------------------------------------- | --------------------- | -------------------------------------------------------------- |
+| `GET /health`                               | —                     | Health check (includes DB status + `deployId`)                 |
+| `POST /chat`                                | `CHAT_API_KEY` bearer | Send a message, get a response                                 |
+| `POST /slack/events`                        | Slack signature       | Slack event ingress; supports `X-Sync-Response`                |
+| `POST /webhooks/sonarr`                     | `WEBHOOK_AUTH` basic  | Sonarr webhook handler                                         |
+| `POST /webhooks/radarr`                     | `WEBHOOK_AUTH` basic  | Radarr webhook handler                                         |
+| `GET /api/discover?q=`                      | JWT                   | Search TMDB for something to request                           |
+| `POST /api/requests`                        | JWT                   | Request `{ mediaType, tmdbId, seasonNumber?, episodeNumber? }` |
+| `GET /api/requests`                         | JWT                   | Your requests, or all with `?all=true` as admin                |
+| `POST /api/requests/:type/:id/retry`        | JWT                   | Search again; drops a stalled release first                    |
+| `POST /api/requests/:type/:id/report`       | JWT                   | Tell every admin a request is stuck                            |
+| `GET /api/library`                          | JWT                   | Everything Radarr and Sonarr hold                              |
+| `DELETE /api/library/:type/:id`             | Admin                 | Remove an item, deleting files unless disabled                 |
+| `DELETE /api/library/series/:id/seasons/:n` | Admin                 | Release one season: files go, the series stays                 |
+| `GET /api/threads`                          | JWT                   | List conversation threads                                      |
+| `GET /api/threads/:uuid`                    | Admin                 | Fetch a single thread's messages                               |
+| `GET /api/auth/status`                      | JWT cookie            | Current user + admin flag                                      |
+| `POST /api/auth/logout`                     | JWT cookie            | Clear the session cookie                                       |
+| `POST /api/auth/passkey/*`                  | —                     | WebAuthn registration/authentication                           |
+| `POST /api/auth/plex/login/start`           | —                     | Begin Plex sign-in; returns the Auth App URL                   |
+| `POST /api/auth/plex/link/start`            | JWT cookie            | Begin connecting Plex to the current account                   |
+| `DELETE /api/auth/plex/link`                | JWT cookie            | Disconnect the linked Plex account                             |
+| `GET /api/auth/plex/callback`               | `state`               | Where Plex forwards back to; sets the session                  |
+| `GET /api/plex/members`                     | JWT                   | People you invited; the whole server as admin                  |
+| `POST /api/plex/invites`                    | JWT                   | Invite someone by email `{ email }`                            |
+| `DELETE /api/plex/members/:handle`          | JWT                   | Someone you invited, or anyone as admin                        |
+| `GET /api/users`                            | Admin                 | List users + platform identities                               |
+| `POST /api/users/:id/links`                 | Admin                 | Link a platform identity                                       |
+| `DELETE /api/users/:id/links/:linkId`       | Admin                 | Unlink a platform identity                                     |
 
 Requests larger than 1 MB are rejected with a `413` by `Bun.serve`'s `maxRequestBodySize`.
 
