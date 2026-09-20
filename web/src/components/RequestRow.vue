@@ -16,7 +16,7 @@
         </div>
 
         <p class="mt-0.5 truncate text-xs text-text-muted">
-          {{ request.mediaType === "movie" ? "Movie" : "Series" }}
+          {{ scope }}
           <template v-if="request.requestedBy"> · {{ request.requestedBy }}</template>
           · {{ relativeTime(request.createdAt) }}
         </p>
@@ -34,8 +34,8 @@
       </div>
 
       <div class="flex shrink-0 flex-col items-end gap-1.5">
-        <StatusPill :tone="STATES[request.state].tone">
-          {{ STATES[request.state].label }}
+        <StatusPill :tone="REQUEST_STATES[request.state].tone">
+          {{ REQUEST_STATES[request.state].label }}
         </StatusPill>
         <RequestActions :request="request" />
       </div>
@@ -48,6 +48,7 @@ import { computed } from "vue";
 import type { MediaRequest, MissingSeason, RequestState } from "#web/api/requests";
 import { posterUrl } from "#web/utils/images";
 import { formatDate } from "#web/utils/format";
+import { REQUEST_STATES } from "#web/utils/states";
 import { relativeTime } from "#web/composables/useRelativeTime";
 import DownloadProgress from "./DownloadProgress.vue";
 import RequestActions from "./RequestActions.vue";
@@ -55,22 +56,6 @@ import MediaTitle from "./MediaTitle.vue";
 import AppCard from "./ui/AppCard.vue";
 import MediaPoster from "./ui/MediaPoster.vue";
 import StatusPill from "./ui/StatusPill.vue";
-import type { Tone } from "./ui/types";
-
-/** The one place a request's state is put into words. */
-const STATES: Record<RequestState, { label: string; tone: Tone }> = {
-  unreleased: { label: "Not out yet", tone: "neutral" },
-  waiting: { label: "In cinemas", tone: "neutral" },
-  searching: { label: "Looking", tone: "blue" },
-  found: { label: "Found one", tone: "blue" },
-  downloading: { label: "Downloading", tone: "amber" },
-  stalled: { label: "Stalled", tone: "amber" },
-  blocked: { label: "Can't import", tone: "red" },
-  importing: { label: "Almost there", tone: "amber" },
-  ready: { label: "Ready", tone: "green" },
-  paused: { label: "Paused", tone: "neutral" },
-  removed: { label: "Gone", tone: "neutral" },
-};
 
 const props = defineProps<{ request: MediaRequest }>();
 
@@ -116,5 +101,13 @@ const explanation = computed(() => {
   const line = explain(props.request);
   if (!line || !props.request.since || !TIMED.has(props.request.state)) return line;
   return `${line} · ${relativeTime(props.request.since)}`;
+});
+
+/** What was asked for: a film, a series, or one season of one. */
+const scope = computed(() => {
+  const { mediaType, seasonNumber } = props.request;
+  if (mediaType === "movie") return "Movie";
+  if (seasonNumber === null) return "Series";
+  return seasonNumber === 0 ? "Specials" : `Season ${seasonNumber}`;
 });
 </script>

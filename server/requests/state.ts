@@ -76,7 +76,38 @@ export async function queueStatusFor(
   }
 }
 
-/** A season has a progress of its own, and rolls up into the series' own key. */
+/**
+ * What each season of one series has in its queue, so a season row says what
+ * is happening to that season rather than to the series around it.
+ */
+export async function queueStatusBySeason(seriesId: number): Promise<Map<number, QueueStatus>> {
+  const records = new Map<number, QueueRecord[]>();
+
+  try {
+    const queue = await sonarr.getQueue({ seriesIds: [seriesId] });
+    for (const item of queue.records) {
+      const seasonNumber = item.seasonNumber ?? item.episode?.seasonNumber;
+      if (seasonNumber === undefined) continue;
+      collect(records, seasonNumber, item);
+    }
+  } catch (error) {
+    log.warn("queue unavailable", {
+      mediaType: "series",
+      serviceId: seriesId,
+      error: errorMessage(error),
+    });
+    return new Map();
+  }
+
+  const statuses = new Map<number, QueueStatus>();
+  for (const [seasonNumber, items] of records) {
+    const status = summarise(items);
+    if (status) statuses.set(seasonNumber, status);
+  }
+  return statuses;
+}
+
+/** A season has a queue of its own, and rolls up into the series' own key. */
 function key(mediaType: string, serviceId: number, seasonNumber?: number | null): string {
   const scope = seasonNumber === undefined || seasonNumber === null ? "" : `:${seasonNumber}`;
   return `${mediaType}:${serviceId}${scope}`;
@@ -105,7 +136,7 @@ function removedState(removal: Removal | undefined): RequestStatus {
   };
 }
 
-function collect(records: Map<string, QueueRecord[]>, at: string, record: QueueRecord): void {
+function collect<K>(records: Map<K, QueueRecord[]>, at: K, record: QueueRecord): void {
   const existing = records.get(at);
   if (existing) existing.push(record);
   else records.set(at, [record]);

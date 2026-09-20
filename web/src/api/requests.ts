@@ -22,12 +22,16 @@ export interface RequestInput {
   mediaType: RequestableMediaType;
   tmdbId: number;
   posterPath: string | null;
+  /** A series only: one season of it, or one episode of that season. */
+  seasonNumber?: number;
+  episodeNumber?: number;
 }
 
 export interface RequestOutcome {
   status: "added" | "existing";
   title: string;
   year?: number;
+  seasonNumber?: number;
 }
 
 export async function discover(query: string): Promise<DiscoverResult[]> {
@@ -44,6 +48,8 @@ export async function requestMedia(item: RequestInput): Promise<RequestOutcome> 
       mediaType: item.mediaType,
       tmdbId: item.tmdbId,
       posterPath: item.posterPath ?? undefined,
+      seasonNumber: item.seasonNumber,
+      episodeNumber: item.episodeNumber,
     }),
   });
 }
@@ -57,10 +63,18 @@ export interface RetryOutcome {
 export interface RetryInput {
   mediaType: RequestableMediaType;
   tmdbId: number;
+  /** Acts on the one season that was asked for, rather than the series. */
+  seasonNumber?: number | null;
+}
+
+/** The season a request named, as the query string the API reads it from. */
+function seasonQuery(seasonNumber: number | null | undefined): string {
+  return seasonNumber === null || seasonNumber === undefined ? "" : `?season=${seasonNumber}`;
 }
 
 export async function retryRequest(item: RetryInput): Promise<RetryOutcome> {
-  return apiFetch<RetryOutcome>(`/api/requests/${item.mediaType}/${item.tmdbId}/retry`, {
+  const scope = seasonQuery(item.seasonNumber);
+  return apiFetch<RetryOutcome>(`/api/requests/${item.mediaType}/${item.tmdbId}/retry${scope}`, {
     method: "POST",
   });
 }
@@ -71,7 +85,8 @@ export interface ReportOutcome {
 }
 
 export async function reportRequest(item: RetryInput): Promise<ReportOutcome> {
-  return apiFetch<ReportOutcome>(`/api/requests/${item.mediaType}/${item.tmdbId}/report`, {
+  const scope = seasonQuery(item.seasonNumber);
+  return apiFetch<ReportOutcome>(`/api/requests/${item.mediaType}/${item.tmdbId}/report${scope}`, {
     method: "POST",
   });
 }

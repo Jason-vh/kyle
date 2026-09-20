@@ -19,6 +19,7 @@ function request(state: RequestState): MediaRequest {
     title: "Inception",
     year: 2010,
     posterPath: "/poster.jpg",
+    seasonNumber: null,
     createdAt: new Date().toISOString(),
     state,
   };

@@ -211,7 +211,9 @@ web/                         → Vue 3 + Vite + Tailwind CSS 4 SPA
   does nothing. `releaseSeason()` is its inverse: files deleted, season unmonitored, the
   series and its other seasons untouched. The state model reads a season the same way it
   reads a title: `LibraryEntry` carries one entry per season, and a queue record is filed
-  under its season as well as its series, so `resolveState()` answers both.
+  under its season as well as its series, so `resolveState()` answers both. A season adds
+  two states of its own — `unrequested`, which nothing is looking for, and `airing`, which
+  is up to date with a broadcast still running.
 - **Everyone hears, however they asked** — `announce()` in `server/webhooks/announce.ts`
   is the one place media arriving turns into someone being told. It records an in-app
   notification for every subscriber, and additionally replies in Slack or Discord where

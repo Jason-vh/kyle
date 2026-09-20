@@ -173,6 +173,15 @@ export async function handleGetRequests(req: Request): Promise<Response> {
 // POST /api/requests/:mediaType/:tmdbId/retry — look for it again
 // ---------------------------------------------------------------------------
 
+/** `?season=3` narrows an action to the season that was asked for. */
+function seasonParam(req: Request): number | undefined {
+  const raw = new URL(req.url).searchParams.get("season");
+  if (raw === null) return undefined;
+
+  const seasonNumber = Number(raw);
+  return Number.isInteger(seasonNumber) && seasonNumber >= 0 ? seasonNumber : undefined;
+}
+
 export async function handleRetryRequest(
   req: Request,
   mediaType: string,
@@ -197,7 +206,7 @@ export async function handleRetryRequest(
   }
 
   try {
-    const outcome = await retryRequest(mediaType, entry.serviceId);
+    const outcome = await retryRequest(mediaType, entry.serviceId, seasonParam(req));
     return Response.json(outcome, { headers: auth.refreshHeaders });
   } catch (error) {
     log.error("retry failed", { mediaType, tmdbId, error: errorMessage(error) });
@@ -226,8 +235,14 @@ export async function handleReportRequest(
     return Response.json({ error: "Invalid id" }, { status: 400 });
   }
 
+  const seasonNumber = seasonParam(req);
   const requests = await getMediaRequestsForUser(auth.user.id);
-  const request = requests.find((row) => row.mediaType === mediaType && row.tmdbId === tmdbId);
+  const request = requests.find(
+    (row) =>
+      row.mediaType === mediaType &&
+      row.tmdbId === tmdbId &&
+      row.seasonNumber === (seasonNumber ?? null),
+  );
   if (!request) {
     return Response.json({ error: "You have not requested this" }, { status: 404 });
   }
@@ -238,6 +253,7 @@ export async function handleReportRequest(
       tmdbId,
       title: request.title,
       reportedBy: auth.user.name,
+      seasonNumber,
     });
     return Response.json(outcome, { headers: auth.refreshHeaders });
   } catch (error) {

@@ -268,6 +268,7 @@ function stubSonarr(overrides: Record<string, unknown> = {}) {
     "/series/lookup": [{ ...SEVERANCE }],
     "/episode/monitor": [],
     "/episode?seriesId=": EPISODES,
+    "/queue": { records: [] },
     "/episodefile/": {},
     "/command": { id: 1, status: "queued" },
     "/api/v3/series/9": { ...SEVERANCE, seasons: SEVERANCE.seasons.map((s) => ({ ...s })) },
@@ -374,6 +375,37 @@ describe("requestSeason", () => {
 
     expect(status).toBe("existing");
     expect(calls.some((call) => call.url.includes("/command"))).toBe(true);
+  });
+
+  // Searching again while a dead release sits in the queue finds the same
+  // release, so the stuck one goes first.
+  test("drops a stalled download of that season before searching", async () => {
+    const calls = stubSonarr({
+      "/queue": {
+        records: [
+          {
+            id: 31,
+            seriesId: 9,
+            seasonNumber: 3,
+            trackedDownloadStatus: "warning",
+            statusMessages: [{ title: "The download is stalled with no connections" }],
+          },
+          {
+            id: 32,
+            seriesId: 9,
+            seasonNumber: 1,
+            trackedDownloadStatus: "warning",
+            errorMessage: "stalled",
+          },
+        ],
+      },
+    });
+
+    await requestSeason({ tmdbId: 95396, seasonNumber: 3 });
+
+    const removed = calls.filter((call) => call.method === "DELETE");
+    expect(removed).toHaveLength(1);
+    expect(removed[0]!.url).toContain("/queue/31");
   });
 
   test("reports a season the series does not have", () => {

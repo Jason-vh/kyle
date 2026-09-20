@@ -10,6 +10,7 @@ function request(state: RequestState): MediaRequest {
     title: "Arrival",
     year: 2016,
     posterPath: null,
+    seasonNumber: null,
     createdAt: new Date().toISOString(),
     state,
   };

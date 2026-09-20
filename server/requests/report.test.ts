@@ -12,4 +12,11 @@ describe("reportBody", () => {
   test("still reads as a sentence when the service said nothing", () => {
     expect(reportBody("Bob", { state: "stalled" })).toBe("Bob reported a problem. It is stalled.");
   });
+
+  // A series can be mostly fine and one season stuck, so say which.
+  test("names the season when that is what was asked for", () => {
+    expect(reportBody("Bob", { state: "searching" }, 3)).toBe(
+      "Bob reported a problem with season 3. It is searching.",
+    );
+  });
 });

@@ -4,8 +4,13 @@ import * as sonarr from "#server/sonarr/api.ts";
 import * as tmdb from "#server/tmdb/api.ts";
 import { yearOf } from "#server/tmdb/utils.ts";
 import { movieState, seriesState } from "#server/library/item.ts";
-import { buildSeasons, withEpisodeWatchers } from "./seasons.ts";
-import { queueStatusFor } from "#server/requests/state.ts";
+import { buildSeasons, withEpisodeWatchers, type SeasonContext } from "./seasons.ts";
+import {
+  placeOf,
+  queueStatusBySeason,
+  queueStatusFor,
+  type PlexPlace,
+} from "#server/requests/state.ts";
 import { getRequestersForMedia } from "#server/db/requests.ts";
 import { getWatchers, watchKey } from "#server/plex/history.ts";
 import { getPlexPlaces } from "#server/plex/catalog.ts";
@@ -67,12 +72,32 @@ interface Held {
   seasons?: SeasonSummary[];
 }
 
+/** Who asked for which season; a series-wide request belongs to no season. */
+function bySeason(
+  requesters: { name: string; seasonNumber: number | null }[],
+): Map<number, string[]> {
+  const grouped = new Map<number, string[]>();
+  for (const requester of requesters) {
+    if (requester.seasonNumber === null) continue;
+    grouped.set(requester.seasonNumber, [
+      ...(grouped.get(requester.seasonNumber) ?? []),
+      requester.name,
+    ]);
+  }
+  return grouped;
+}
+
 /**
  * What the service holds of this title, or nothing when it holds none. Asked of
  * the service directly rather than the cached index, so a service being down
  * can be said out loud instead of reading as "not in the library".
  */
-async function heldState(mediaType: LibraryMediaType, tmdbId: number): Promise<Held | undefined> {
+async function heldState(
+  mediaType: LibraryMediaType,
+  tmdbId: number,
+  seasonRequesters: Map<number, string[]>,
+  plex: PlexPlace,
+): Promise<Held | undefined> {
   if (mediaType === "movie") {
     const movie = await radarr.getLibraryMovieByTmdbId(tmdbId);
     return movie ? { state: movieState(movie) } : undefined;
@@ -82,8 +107,13 @@ async function heldState(mediaType: LibraryMediaType, tmdbId: number): Promise<H
   const series = (await sonarr.getAllSeries()).find((show) => show.tmdbId === tmdbId);
   if (!series) return undefined;
 
-  const episodes = await sonarr.getEpisodes(series.id);
-  return { state: seriesState(series), seasons: buildSeasons(series, episodes) };
+  const [episodes, queues] = await Promise.all([
+    sonarr.getEpisodes(series.id),
+    queueStatusBySeason(series.id),
+  ]);
+  const context: SeasonContext = { requestedBy: seasonRequesters, queues, plex };
+
+  return { state: seriesState(series), seasons: buildSeasons(series, episodes, context) };
 }
 
 function serviceName(mediaType: LibraryMediaType): string {
@@ -100,9 +130,15 @@ export async function getMediaDetail(
   tmdbId: number,
   viewerId: string,
 ): Promise<MediaDetail> {
-  const [description, held, requesters, watchers, places] = await Promise.all([
+  const [requesters, places] = await Promise.all([
+    getRequestersForMedia(mediaType, tmdbId),
+    getPlexPlaces(),
+  ]);
+  const plex = placeOf(places, { mediaType, tmdbId });
+
+  const [description, held, watchers] = await Promise.all([
     describe(mediaType, tmdbId),
-    heldState(mediaType, tmdbId).catch((error) => {
+    heldState(mediaType, tmdbId, bySeason(requesters), plex).catch((error) => {
       log.warn("library state unavailable", {
         source: serviceName(mediaType),
         tmdbId,
@@ -110,9 +146,7 @@ export async function getMediaDetail(
       });
       return null;
     }),
-    getRequestersForMedia(mediaType, tmdbId),
     getWatchers(),
-    getPlexPlaces(),
   ]);
 
   const library = held?.state;
@@ -128,7 +162,7 @@ export async function getMediaDetail(
     progress: download?.progress,
     eta: download?.eta,
     plexUrl: places?.get(key),
-    requestedBy: requesters.map((requester) => requester.name),
+    requestedBy: [...new Set(requesters.map((requester) => requester.name))],
     requestedByMe: requesters.some((requester) => requester.userId === viewerId),
     watchedBy: watchers.get(key) ?? [],
     unavailable: held === null ? [serviceName(mediaType)] : [],
