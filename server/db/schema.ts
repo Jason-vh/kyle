@@ -234,6 +234,31 @@ export const mediaRemovals = pgTable(
   (table) => [uniqueIndex("media_removals_media_idx").on(table.mediaType, table.tmdbId)],
 );
 
+/**
+ * When each scheduled job last started. The container restarts on every
+ * deploy, so an in-memory timer alone would let a job that runs once a day
+ * never run at all; this is what a restarted process reads to find out what it
+ * owes. Written before the work rather than after, so a job that brings the
+ * process down does not run again on every boot.
+ */
+export const jobRuns = pgTable("job_runs", {
+  name: text("name").primaryKey(),
+  lastRunAt: timestamp("last_run_at").notNull().defaultNow(),
+  lastError: text("last_error"),
+});
+
+/**
+ * What a job needs to remember between runs — whether it has already
+ * complained, and when. Separate from `job_runs` because the scheduler never
+ * touches it: a throttle guarding a side effect has to be written by whoever
+ * performs the side effect, at the moment it performs it.
+ */
+export const jobState = pgTable("job_state", {
+  key: text("key").primaryKey(),
+  value: jsonb("value").notNull(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
 export const notifications = pgTable(
   "notifications",
   {

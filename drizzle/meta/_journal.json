@@ -141,6 +141,13 @@
       "when": 1789929556328,
       "tag": "0019_media_removals",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1789930079513,
+      "tag": "0020_late_exodus",
+      "breakpoints": true
     }
   ]
 }

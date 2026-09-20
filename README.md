@@ -152,6 +152,9 @@ server/
   brave/                     → types, api, utils, tools (web search)
   plex/                      → plex.tv client, owner token, share list, access policy,
                                watch history, watch time, addition counts
+  jobs/
+    schedule.ts              → every(name, interval, task): the daily/hourly tick
+    index.ts                 → startJobs(): the one list of what runs on its own
   webhooks/
     announce.ts              → announce(): tells everyone who asked, however they asked
     types.ts                 → Webhook payload types + MediaNotificationInfo
@@ -205,6 +208,23 @@ web/                         → Vue 3 + Vite + Tailwind CSS 4 SPA
   the subscription has a conversation. A request made in a browser has none, which is
   precisely why the in-app half exists: the chat lookup joins `conversations` and would
   find nobody. A failed chat reply never loses the notification already recorded.
+- **Scheduled work outlives the process** — `every(name, interval, task)` in
+  `server/jobs/schedule.ts` re-arms a `setTimeout` after each run, so it cannot drift, and
+  refuses to start a run while the last one is still going. It is single-instance by
+  assumption: one container, one process, one timer. Every push to `main` restarts that
+  container, so the schedule lives in `job_runs` rather than in memory — a restarted
+  process reads `last_run_at` and runs what it owes, two minutes in. That is also the
+  throttle: three deploys in an hour run an hourly job once, which is what keeps the
+  seedbox check inside Ultra's ten requests an hour. `last_run_at` is written _before_ the
+  work, so a job that brings the process down waits its interval instead of running on
+  every boot.
+- **Jobs remember their own side effects** — `job_state` holds what a job needs to know
+  next time, under a key it chooses (`readState` / `writeState` in `server/db/jobs.ts`).
+  The scheduler never touches it. A throttle on an alert has to be written by whoever sent
+  the alert, at the moment it sent it: persisting a job's return value instead would record
+  a Slack message that may never have gone out, or lose one that did when the container
+  stops in between. Send, then write — a failed write costs a duplicate alert, and the
+  alternative costs a silent one.
 - **Media events + subscriptions** — `media_events` is an append-only log of tool actions.
   `movie_subscriptions` / `series_subscriptions` track notification preferences (created on
   add by the request service, on download by `processMediaEvent`, deactivated on
