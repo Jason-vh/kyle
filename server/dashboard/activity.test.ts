@@ -49,12 +49,27 @@ function movieRecord(overrides: Record<string, unknown> = {}) {
 function seriesRecord(overrides: Record<string, unknown> = {}) {
   return {
     id: 1,
+    episodeId: 400,
     eventType: IMPORT,
     date: "2026-09-05T12:00:00Z",
     series: { title: "Severance", year: 2022, tmdbId: 95396 },
     episode: { seasonNumber: 1, episodeNumber: 4, title: "The You You Are" },
     ...overrides,
   };
+}
+
+/** One episode of a series, as its own import. */
+function episodeRecord(
+  seasonNumber: number,
+  episodeNumber: number,
+  overrides: Record<string, unknown> = {},
+) {
+  return seriesRecord({
+    id: seasonNumber * 100 + episodeNumber,
+    episodeId: seasonNumber * 100 + episodeNumber,
+    episode: { seasonNumber, episodeNumber, title: `Episode ${episodeNumber}` },
+    ...overrides,
+  });
 }
 
 const since = new Date("2026-09-01T00:00:00Z");
@@ -68,7 +83,7 @@ describe("getActivity", () => {
 
     const activity = await getActivity(userId, since);
 
-    expect(activity.map((item) => item.id)).toEqual(["series-9", "movie-7"]);
+    expect(activity.map((item) => item.id)).toEqual(["series-tmdb-95396", "movie-7"]);
     expect(activity[0]).toMatchObject({
       mediaType: "series",
       title: "Severance",
@@ -109,6 +124,72 @@ describe("getActivity", () => {
 
     const [item] = await getActivity(userId, since);
     expect(item?.tmdbId).toBe(329865);
+  });
+
+  // A season arriving at once used to fill the whole feed with one series.
+  test("gathers the episodes of one series into a single row", async () => {
+    stubHistory([], [episodeRecord(1, 1), episodeRecord(1, 2), episodeRecord(1, 3)]);
+
+    const activity = await getActivity(userId, since);
+
+    expect(activity).toHaveLength(1);
+    expect(activity[0]).toMatchObject({ title: "Severance", detail: "Season 1 · 3 episodes" });
+  });
+
+  test("counts episodes spanning seasons without naming one", async () => {
+    stubHistory([], [episodeRecord(1, 9), episodeRecord(2, 1)]);
+
+    const [item] = await getActivity(userId, since);
+
+    expect(item?.detail).toBe("2 episodes");
+  });
+
+  test("leaves a lone episode named as itself", async () => {
+    stubHistory([], [episodeRecord(1, 4, { episode: { seasonNumber: 1, episodeNumber: 4 } })]);
+
+    const [item] = await getActivity(userId, since);
+
+    expect(item?.detail).toBe("S01E04");
+  });
+
+  // Sonarr writes a second import when an episode is upgraded.
+  test("counts an episode imported twice only once", async () => {
+    stubHistory(
+      [],
+      [episodeRecord(1, 1), episodeRecord(1, 1, { id: 99, date: "2026-09-06T00:00:00Z" })],
+    );
+
+    const [item] = await getActivity(userId, since);
+
+    expect(item?.detail).toBe("S01E01 Episode 1");
+  });
+
+  test("dates the row by the newest episode it holds", async () => {
+    stubHistory(
+      [],
+      [
+        episodeRecord(1, 1, { date: "2026-09-03T00:00:00Z" }),
+        episodeRecord(1, 2, { date: "2026-09-08T00:00:00Z" }),
+      ],
+    );
+
+    const [item] = await getActivity(userId, since);
+
+    expect(item?.at).toBe("2026-09-08T00:00:00Z");
+  });
+
+  test("keeps two series apart", async () => {
+    stubHistory(
+      [],
+      [
+        episodeRecord(1, 1),
+        episodeRecord(1, 1, { series: { title: "Slow Horses", year: 2022, tmdbId: 95480 } }),
+      ],
+    );
+
+    const activity = await getActivity(userId, since);
+
+    expect(activity.map((item) => item.title).sort()).toEqual(["Severance", "Slow Horses"]);
   });
 
   test("one service being down costs its half of the feed, not the page", async () => {

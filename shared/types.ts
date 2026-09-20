@@ -170,7 +170,7 @@ export interface ActivityItem {
   tmdbId?: number;
   title: string;
   year?: number;
-  /** "S01E04 · Good News" for an episode. */
+  /** "S01E04 Good News" for one episode, "Season 1 · 10 episodes" for several. */
   detail?: string;
   posterUrl?: string;
   at: string;

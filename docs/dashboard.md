@@ -53,6 +53,11 @@ Radarr's and Sonarr's own history, filtered to `downloadFolderImported` — hist
 noisy with grabs, failures and renames, and only an import means it landed. Plex is not
 used here because only the services know the title behind a file.
 
+Episodes are gathered under the series they belong to, so a season arriving at once is one
+row (`Season 1 · 10 episodes`) rather than ten. The row is dated by the newest episode in
+it, and an episode imported twice — Sonarr writes a second row when one is upgraded — is
+counted once.
+
 Each item is matched to `media_requests` by TMDB id, so the feed says who asked for it.
 Anything added by hand simply has nobody, which is expected for a library that predates
 Kyle.

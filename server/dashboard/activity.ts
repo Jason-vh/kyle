@@ -1,4 +1,5 @@
 import type { ActivityItem } from "#shared/types.ts";
+import type { SonarrEpisode, SonarrHistoryItem, SonarrSeries } from "#server/sonarr/types.ts";
 import * as radarr from "#server/radarr/api.ts";
 import * as sonarr from "#server/sonarr/api.ts";
 import { getAllRequesters } from "#server/db/requests.ts";
@@ -15,6 +16,34 @@ const IMPORTED = "downloadFolderImported";
 
 /** Enough history to cover a busy week without paging. */
 const HISTORY_PAGE = 60;
+
+/** Episodes are grouped under the series they belong to, by whatever names it. */
+function seriesKey(series: SonarrSeries): string {
+  return series.tmdbId ? `tmdb-${series.tmdbId}` : `title-${series.title}`;
+}
+
+/** One episode reads as itself; several read as a count, by season where they share one. */
+function episodesLabel(episodes: SonarrEpisode[]): string {
+  const only = episodes[0];
+  if (episodes.length === 1 && only) {
+    return episodeLabel(only.seasonNumber, only.episodeNumber, only.title);
+  }
+
+  const seasons = new Set(episodes.map((episode) => episode.seasonNumber));
+  const count = `${episodes.length} episodes`;
+  const season = [...seasons][0];
+
+  return seasons.size === 1 && season !== undefined ? `Season ${season} · ${count}` : count;
+}
+
+/**
+ * The episodes of one series that landed, newest import first. Sonarr writes a
+ * row per episode, and another when one is upgraded, so each is counted once.
+ */
+interface SeriesLanding {
+  newest: SonarrHistoryItem;
+  episodes: Map<number, SonarrEpisode>;
+}
 
 /** One service being down costs its half of the feed, not the whole page. */
 async function settle<T>(name: string, load: () => Promise<T>): Promise<T | undefined> {
@@ -39,9 +68,10 @@ export async function getActivity(viewerId: string, since: Date): Promise<Activi
   ]);
 
   const items: ActivityItem[] = [];
+  const landed = (at: string) => new Date(at) >= since;
 
   for (const record of movies?.records ?? []) {
-    if (record.eventType !== IMPORTED || !record.movie) continue;
+    if (record.eventType !== IMPORTED || !record.movie || !landed(record.date)) continue;
     items.push({
       id: `movie-${record.id}`,
       mediaType: "movie",
@@ -55,31 +85,38 @@ export async function getActivity(viewerId: string, since: Date): Promise<Activi
     });
   }
 
+  const landings = new Map<string, SeriesLanding>();
+
   for (const record of series?.records ?? []) {
-    if (record.eventType !== IMPORTED || !record.series) continue;
+    if (record.eventType !== IMPORTED || !record.series || !landed(record.date)) continue;
+
+    const key = seriesKey(record.series);
+    const landing = landings.get(key) ?? { newest: record, episodes: new Map() };
+
+    if (record.episode) landing.episodes.set(record.episodeId, record.episode);
+    if (record.date > landing.newest.date) landing.newest = record;
+    landings.set(key, landing);
+  }
+
+  for (const [key, landing] of landings) {
+    const { newest, episodes } = landing;
     items.push({
-      id: `series-${record.id}`,
+      id: `series-${key}`,
       mediaType: "series",
-      title: record.series.title,
-      year: record.series.year || undefined,
-      detail: episodeLabel(
-        record.episode?.seasonNumber,
-        record.episode?.episodeNumber,
-        record.episode?.title,
-      ),
-      posterUrl: posterOf(record.series),
-      at: record.date,
+      title: newest.series.title,
+      year: newest.series.year || undefined,
+      detail: episodesLabel([...episodes.values()]),
+      posterUrl: posterOf(newest.series),
+      at: newest.date,
       requestedBy: [],
       requestedByMe: false,
-      tmdbId: record.series.tmdbId,
+      tmdbId: newest.series.tmdbId,
     });
   }
 
   annotateRequesters(items, viewerId, requesters);
 
-  const recent = items
-    .filter((item) => new Date(item.at) >= since)
-    .sort((a, b) => b.at.localeCompare(a.at));
+  const recent = items.sort((a, b) => b.at.localeCompare(a.at));
 
   log.info("built activity feed", { since: since.toISOString(), items: recent.length });
 
