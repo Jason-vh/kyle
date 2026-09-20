@@ -74,13 +74,16 @@ export async function backfillUserFromPlatformLink(
   const interfaceType = platformToInterfaceType(platform);
 
   const [convResult] = await query<{ count: string }>(sql`
-    UPDATE conversations
-    SET user_id = ${appUserId}
-    WHERE platform_user_id = ${platformUserId}
-      AND interface_type = ${interfaceType}
-      AND user_id IS NULL
-    RETURNING count(*)::text AS count
-  `).catch(() => [{ count: "0" }]);
+    WITH updated AS (
+      UPDATE conversations
+      SET user_id = ${appUserId}
+      WHERE platform_user_id = ${platformUserId}
+        AND interface_type = ${interfaceType}
+        AND user_id IS NULL
+      RETURNING 1
+    )
+    SELECT count(*)::text AS count FROM updated
+  `);
 
   // For messages/media_events, scope by conversations of the right interface type
   const [msgResult] = await query<{ count: string }>(sql`
@@ -95,7 +98,7 @@ export async function backfillUserFromPlatformLink(
       RETURNING 1
     )
     SELECT count(*)::text AS count FROM updated
-  `).catch(() => [{ count: "0" }]);
+  `);
 
   const [refResult] = await query<{ count: string }>(sql`
     WITH updated AS (
@@ -109,7 +112,7 @@ export async function backfillUserFromPlatformLink(
       RETURNING 1
     )
     SELECT count(*)::text AS count FROM updated
-  `).catch(() => [{ count: "0" }]);
+  `);
 
   const counts = {
     conversations: parseInt(convResult?.count ?? "0", 10),
