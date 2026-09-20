@@ -4,6 +4,7 @@ import { runConversationTurn, ConversationNotFoundError } from "#server/agent/co
 import { timingSafeEqual } from "crypto";
 import { errorFields } from "#server/errors.ts";
 import { getActiveUser } from "#server/auth/account.ts";
+import { isLocalDevelopmentRequest } from "#server/config.ts";
 
 const log = createLogger("chat");
 
@@ -13,8 +14,10 @@ interface ChatRequest {
 }
 
 export async function handleChat(req: Request): Promise<Response> {
-  // Bearer token auth (optional — only enforced when CHAT_API_KEY is set)
   const apiKey = process.env.CHAT_API_KEY;
+  if (!apiKey && !isLocalDevelopmentRequest(req)) {
+    return Response.json({ error: "Chat authentication is not configured" }, { status: 503 });
+  }
   if (apiKey) {
     const authHeader = req.headers.get("authorization");
     if (!authHeader || !authHeader.startsWith("Bearer ")) {

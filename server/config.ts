@@ -8,6 +8,11 @@ export function isDevEnvironment(): boolean {
   return !optionalEnv("RAILWAY_ENVIRONMENT") && !optionalEnv("WEBAUTHN_RP_ID")?.includes(".");
 }
 
+export function isLocalDevelopmentRequest(req: Request): boolean {
+  const host = new URL(req.url).hostname;
+  return process.env.NODE_ENV === "development" && (host === "localhost" || host === "127.0.0.1");
+}
+
 /** Public origin of the web app, used to build browser-facing redirect URLs. */
 export function appOrigin(): string {
   return (

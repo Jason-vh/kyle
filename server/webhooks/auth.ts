@@ -1,15 +1,15 @@
 import { timingSafeEqual } from "crypto";
 import { createLogger } from "#server/logger.ts";
+import { isLocalDevelopmentRequest } from "#server/config.ts";
 
 const log = createLogger("webhooks:auth");
 
-/**
- * Checks the basic-auth credentials Sonarr and Radarr send, if WEBHOOK_AUTH is
- * configured. Returns a response to send back, or null when the request may proceed.
- */
 export function checkWebhookAuth(req: Request): Response | null {
   const expected = process.env.WEBHOOK_AUTH;
-  if (!expected) return null;
+  if (!expected) {
+    if (isLocalDevelopmentRequest(req)) return null;
+    return Response.json({ error: "Webhook authentication is not configured" }, { status: 503 });
+  }
 
   const unauthorized = () => Response.json({ error: "Unauthorized" }, { status: 401 });
 

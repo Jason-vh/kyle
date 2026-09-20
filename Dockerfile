@@ -27,6 +27,7 @@ COPY shared ./shared
 COPY drizzle ./drizzle
 COPY drizzle.config.ts ./
 COPY --from=web-build /app/web/dist ./web/dist
+ENV NODE_ENV=production
 ENV HOST=0.0.0.0
 ENV PORT=3000
 EXPOSE 3000
