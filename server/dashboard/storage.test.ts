@@ -1,40 +1,10 @@
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
-import { getRequestedBytes, getStorage, mountFor } from "./storage.ts";
+import { getRequestedBytes, getStorage } from "./storage.ts";
 import { invalidateStats } from "#server/ultra/api.ts";
 import { db } from "#server/db/index.ts";
 import { mediaRequests } from "#server/db/schema.ts";
 import { createTestUser, deleteTestUser } from "#server/db/testing.ts";
-
-const MOUNTS = [
-  { path: "/", freeSpace: 400_000, totalSpace: 890_000 },
-  { path: "/home/jason", freeSpace: 1_600_000, totalSpace: 15_900_000 },
-];
-
-describe("mountFor", () => {
-  // The media disk and the root filesystem are both prefixes of the path;
-  // reporting the root would show the wrong disk entirely.
-  test("prefers the longest matching mount", () => {
-    expect(mountFor("/home/jason/media/Movies", MOUNTS)?.path).toBe("/home/jason");
-  });
-
-  test("falls back to the root when nothing else matches", () => {
-    expect(mountFor("/srv/media", MOUNTS)?.path).toBe("/");
-  });
-
-  test("matches a path that is the mount itself", () => {
-    expect(mountFor("/home/jason", MOUNTS)?.path).toBe("/home/jason");
-  });
-
-  // `/home/jasonvh` is not inside `/home/jason`, however much it looks like it.
-  test("does not match a mount that is only a string prefix", () => {
-    expect(mountFor("/home/jasonvh/media", MOUNTS)?.path).toBe("/");
-  });
-
-  test("reports nothing when there are no mounts", () => {
-    expect(mountFor("/media", [])).toBeUndefined();
-  });
-});
 
 // The seedbox, Radarr and Sonarr all answer at the network; the database is real.
 
@@ -55,12 +25,6 @@ const QUOTA = {
   },
 };
 
-/** Radarr and Sonarr see the whole array, which is far bigger than the slot. */
-const ROOTS = [{ path: "/home/jasonvh/media", freeSpace: 431_000_000_000 }];
-const DISKS = [
-  { path: "/home/jasonvh", freeSpace: 431_000_000_000, totalSpace: 15_990_000_000_000 },
-];
-
 const MOVIES = [
   { title: "Asked For", tmdbId: 111, sizeOnDisk: 4_000_000_000 },
   { title: "Nobody Asked", tmdbId: 222, sizeOnDisk: 9_000_000_000 },
@@ -71,17 +35,21 @@ const SERIES = [
   { title: "Unasked", tmdbId: 444, statistics: { sizeOnDisk: 8_000_000_000 } },
 ];
 
-function stubServices(options: { ultra?: unknown; ultraStatus?: number } = {}) {
+function stubServices(options: { ultra?: unknown; down?: "ultra" | "radarr" | "sonarr" } = {}) {
+  const refused = new Response("no", { status: 500 });
   globalThis.fetch = ((url: string) => {
     if (url.includes("ultra.test")) {
-      if (options.ultraStatus)
-        return Promise.resolve(new Response("no", { status: options.ultraStatus }));
+      if (options.down === "ultra") return Promise.resolve(refused.clone());
       return Promise.resolve(Response.json(options.ultra ?? QUOTA));
     }
-    if (url.includes("/rootfolder")) return Promise.resolve(Response.json(ROOTS));
-    if (url.includes("/diskspace")) return Promise.resolve(Response.json(DISKS));
-    if (url.includes("radarr.test")) return Promise.resolve(Response.json(MOVIES));
-    if (url.includes("sonarr.test")) return Promise.resolve(Response.json(SERIES));
+    if (url.includes("radarr.test")) {
+      if (options.down === "radarr") return Promise.resolve(refused.clone());
+      return Promise.resolve(Response.json(MOVIES));
+    }
+    if (url.includes("sonarr.test")) {
+      if (options.down === "sonarr") return Promise.resolve(refused.clone());
+      return Promise.resolve(Response.json(SERIES));
+    }
     return Promise.resolve(new Response("unexpected", { status: 500 }));
   }) as unknown as typeof fetch;
 }
@@ -106,23 +74,13 @@ afterEach(async () => {
 });
 
 describe("getStorage", () => {
-  // Radarr and Sonarr see the array under the slot, not the slot's share of it.
-  test("takes the seedbox quota over what the services can see", async () => {
+  test("reports the quota the seedbox actually holds this slot to", async () => {
     stubServices();
 
     const stat = await getStorage();
 
-    expect(stat?.freeBytes).toBe(193_273_528_320);
-    expect(stat?.totalBytes).toBe(7451 * 1024 ** 3);
-  });
-
-  test("falls back to the services when the seedbox cannot be reached", async () => {
-    stubServices({ ultraStatus: 500 });
-
-    const stat = await getStorage();
-
-    expect(stat?.freeBytes).toBe(431_000_000_000);
-    expect(stat?.totalBytes).toBe(15_990_000_000_000);
+    expect(stat.freeBytes).toBe(193_273_528_320);
+    expect(stat.totalBytes).toBe(7451 * 1024 ** 3);
   });
 
   test("reads the unit the quota is quoted in", async () => {
@@ -136,16 +94,24 @@ describe("getStorage", () => {
       },
     });
 
-    expect((await getStorage())?.totalBytes).toBe(8 * 1024 ** 4);
+    expect((await getStorage()).totalBytes).toBe(8 * 1024 ** 4);
+  });
+
+  // Radarr and Sonarr see the array under the slot and would answer with
+  // roughly double the space. A wrong figure here is worse than none.
+  test("fails rather than answering from somewhere else", async () => {
+    stubServices({ down: "ultra" });
+
+    expect(getStorage()).rejects.toThrow();
   });
 
   test("asks the seedbox once, however often the page is loaded", async () => {
     const calls: string[] = [];
     stubServices();
-    const stubbed = globalThis.fetch;
+    const stubbed = globalThis.fetch as (u: string, i?: RequestInit) => Promise<Response>;
     globalThis.fetch = ((url: string, init?: RequestInit) => {
       if (url.includes("ultra.test")) calls.push(url);
-      return (stubbed as (u: string, i?: RequestInit) => Promise<Response>)(url, init);
+      return stubbed(url, init);
     }) as unknown as typeof fetch;
 
     await getStorage();
@@ -186,10 +152,9 @@ describe("getRequestedBytes", () => {
     expect(await getRequestedBytes()).toBe(0);
   });
 
-  test("says nothing rather than zero when a service is down", async () => {
-    globalThis.fetch = (() =>
-      Promise.resolve(new Response("no", { status: 500 }))) as unknown as typeof fetch;
+  test.each(["radarr", "sonarr"] as const)("fails when %s cannot be reached", async (down) => {
+    stubServices({ down });
 
-    expect(await getRequestedBytes()).toBeUndefined();
+    expect(getRequestedBytes()).rejects.toThrow();
   });
 });

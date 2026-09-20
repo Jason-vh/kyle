@@ -46,17 +46,14 @@ array the slot sits on, not the slot's share of it — they report ~16 TB where 
 Ultra allows **10 requests an hour**, which a phone would spend in a minute, so
 `server/ultra/api.ts` caches the answer for ten minutes. The quota moves slowly.
 
-The services remain the fallback for when Ultra cannot be reached. There, Radarr's
-`/rootfolder` gives the media path and its free space but no total; `/diskspace` gives
-totals per mount. The mount is the **longest** one the root folder path starts with, so
-`/home/x/media/Movies` resolves to `/home/x` rather than `/`. `/home/xy` must not match
-`/home/x`, hence the separator in `mountFor`. Free space comes from the root folder
-(fresher), the total from the mount. Sonarr answers if Radarr cannot.
+**There is no fallback.** Asking the services instead would answer with a number that is
+confidently wrong, and a figure nobody can tell is wrong is worse than a missing one. When
+Ultra cannot be reached the card is empty and the page names it in `unavailable`.
 
 `requestedBytes` is what the titles in `media_requests` take up, summed from Radarr's
 `sizeOnDisk` and Sonarr's `statistics.sizeOnDisk` — how much of the disk is things people
-asked Kyle for, as against the library that predates it. It says nothing rather than zero
-when a service is down, so an outage cannot read as "nobody asked for anything".
+asked Kyle for, as against the library that predates it. It fails the same way, under
+"Radarr and Sonarr", so an outage cannot read as "nobody asked for anything".
 
 ## Just landed — `server/dashboard/activity.ts`
 

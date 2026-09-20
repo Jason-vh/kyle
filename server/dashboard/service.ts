@@ -4,7 +4,7 @@ import { withState } from "#server/requests/state.ts";
 import { tryGetAdditions } from "#server/plex/additions.ts";
 import { tryGetWatchTime } from "#server/plex/watch-time.ts";
 import { getActivity } from "./activity.ts";
-import { getStorage } from "./storage.ts";
+import { getRequestedBytes, getStorage } from "./storage.ts";
 import { createLogger } from "#server/logger.ts";
 import { errorMessage } from "#server/errors.ts";
 
@@ -37,14 +37,21 @@ async function tolerate<T>(
 export async function getDashboard(viewerId: string): Promise<DashboardResponse> {
   const since = new Date(Date.now() - WINDOW_DAYS * 24 * 60 * 60 * 1000);
 
-  const [watch, additions, storage, [activity, activityDown], [requests, requestsDown]] =
-    await Promise.all([
-      tryGetWatchTime(since),
-      tryGetAdditions(since),
-      getStorage(),
-      tolerate("Activity", [], () => getActivity(viewerId, since)),
-      tolerate("Requests", [], async () => withState(await getMediaRequestsForUser(viewerId))),
-    ]);
+  const [
+    watch,
+    additions,
+    [storage, storageDown],
+    [requestedBytes, requestedDown],
+    [activity, activityDown],
+    [requests, requestsDown],
+  ] = await Promise.all([
+    tryGetWatchTime(since),
+    tryGetAdditions(since),
+    tolerate("Ultra", undefined, getStorage),
+    tolerate("Radarr and Sonarr", undefined, getRequestedBytes),
+    tolerate("Activity", [], () => getActivity(viewerId, since)),
+    tolerate("Requests", [], async () => withState(await getMediaRequestsForUser(viewerId))),
+  ]);
 
   return {
     windowDays: WINDOW_DAYS,
@@ -52,10 +59,12 @@ export async function getDashboard(viewerId: string): Promise<DashboardResponse>
       watchMinutes: watch?.minutes,
       newMovies: additions?.movies,
       newEpisodes: additions?.episodes,
-      storage,
+      storage: storage && { ...storage, requestedBytes },
     },
     activity: activity.slice(0, ACTIVITY_LIMIT),
     requests,
-    unavailable: [activityDown, requestsDown].filter((name) => name !== undefined),
+    unavailable: [storageDown, requestedDown, activityDown, requestsDown].filter(
+      (name) => name !== undefined,
+    ),
   };
 }
