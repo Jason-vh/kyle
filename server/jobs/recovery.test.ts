@@ -11,10 +11,13 @@ afterEach(() => {
 
 function timers() {
   const pending: { run: () => Promise<void>; delay: number }[] = [];
+  const setTimer = globalThis.setTimeout;
   const timer = spyOn(globalThis, "setTimeout").mockImplementation(((
     run: () => Promise<void>,
     delay: number,
+    ...args: unknown[]
   ) => {
+    if (![30_000, 120_000, HOUR_MS].includes(delay)) return setTimer(run, delay, ...args);
     pending.push({ run, delay });
     return 0;
   }) as unknown as typeof setTimeout);
