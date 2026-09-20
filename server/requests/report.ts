@@ -31,7 +31,7 @@ export async function reportProblem(report: Report): Promise<{ notified: number 
   const library = await getLibraryIndex();
   const entry = library[report.mediaType].get(report.tmdbId);
   const queue = entry ? await queueStatusFor(report.mediaType, entry.serviceId) : undefined;
-  const status = resolveState(entry, queue);
+  const status = resolveState({ entry, queue });
 
   const admins = await getAdminUserIds();
   const notified = await saveNotifications(admins, {

@@ -88,8 +88,8 @@ Each one says what the requester should expect next, not where the file is:
 | `stalled`     | downloading with a warning: no seeders, no connections               |
 | `downloading` | actually moving, with progress and an ETA                            |
 | `found`       | a release is in hand, held back by a delay profile                   |
-| `importing`   | downloaded and being imported; Plex has yet to pick it up            |
-| `ready`       | the library holds it with files                                      |
+| `importing`   | downloaded; Plex has yet to show it, so it cannot be watched yet     |
+| `ready`       | on disk and watchable on Plex, with a link there                     |
 | `paused`      | nothing on disk and nobody monitoring it — nothing will ever happen  |
 | `unreleased`  | not out anywhere yet; `expectedAt` says when                         |
 | `waiting`     | out, but not in a form we can fetch — in cinemas, digital date ahead |
@@ -103,6 +103,11 @@ among equals the furthest along.
 
 A state carries `detail` (what the service said: a stall, a rejection, a bad file),
 `expectedAt`, and `since`. `RequestRow.vue` is the one place they are put into words.
+
+`ready` is checked against Plex (`server/plex/catalog.ts`): a title on disk that Plex has
+yet to show reads `importing` until Plex scans it — or for six hours, after which its
+absence is read as a match Plex never made rather than a scan still pending. Plex being
+unable to answer holds nothing back; it can confirm a title, never deny one.
 
 The home page shows only what is still coming — `stillComing` in
 `server/dashboard/service.ts` drops `removed`, which is over and not on its way. The

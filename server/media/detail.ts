@@ -8,6 +8,7 @@ import { buildSeasons, withEpisodeWatchers } from "./seasons.ts";
 import { queueStatusFor } from "#server/requests/state.ts";
 import { getRequestersForMedia } from "#server/db/requests.ts";
 import { getWatchers, watchKey } from "#server/plex/history.ts";
+import { getPlexPlaces } from "#server/plex/catalog.ts";
 import { createLogger } from "#server/logger.ts";
 import { errorMessage } from "#server/errors.ts";
 
@@ -99,7 +100,7 @@ export async function getMediaDetail(
   tmdbId: number,
   viewerId: string,
 ): Promise<MediaDetail> {
-  const [description, held, requesters, watchers] = await Promise.all([
+  const [description, held, requesters, watchers, places] = await Promise.all([
     describe(mediaType, tmdbId),
     heldState(mediaType, tmdbId).catch((error) => {
       log.warn("library state unavailable", {
@@ -111,6 +112,7 @@ export async function getMediaDetail(
     }),
     getRequestersForMedia(mediaType, tmdbId),
     getWatchers(),
+    getPlexPlaces(),
   ]);
 
   const library = held?.state;
@@ -125,6 +127,7 @@ export async function getMediaDetail(
     seasons: held?.seasons && withEpisodeWatchers(held.seasons, key, watchers),
     progress: download?.progress,
     eta: download?.eta,
+    plexUrl: places?.get(key),
     requestedBy: requesters.map((requester) => requester.name),
     requestedByMe: requesters.some((requester) => requester.userId === viewerId),
     watchedBy: watchers.get(key) ?? [],

@@ -31,6 +31,8 @@ export interface LibraryEntry {
   missing?: MissingSeason[];
   /** ISO 8601 of the last search, where the service records one. */
   lastSearchedAt?: string;
+  /** ISO 8601 of when the file landed, which is when Plex has yet to scan it. */
+  filesAddedAt?: string;
   /** Absent once the service can search for it. */
   awaiting?: Awaiting;
 }
@@ -74,6 +76,7 @@ export function movieEntry(movie: RadarrMovie, now = new Date()): LibraryEntry {
     hasFiles: movie.hasFile,
     complete: movie.hasFile,
     lastSearchedAt: movie.lastSearchTime,
+    filesAddedAt: movie.movieFile?.dateAdded,
     awaiting: movieAwaiting(movie, now),
   };
 }

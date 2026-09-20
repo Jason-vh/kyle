@@ -3,6 +3,8 @@ import * as radarr from "#server/radarr/api.ts";
 import * as sonarr from "#server/sonarr/api.ts";
 import { getLibraryIndex, type LibraryEntry } from "./library.ts";
 import { getRemovals, type Removal } from "#server/db/removals.ts";
+import { getPlexPlaces, type PlexPlaces } from "#server/plex/catalog.ts";
+import { watchKey } from "#server/plex/keys.ts";
 import { summarise, type QueueRecord, type QueueStatus } from "./queue.ts";
 import { createLogger } from "#server/logger.ts";
 import { errorMessage } from "#server/errors.ts";
@@ -28,9 +30,32 @@ export interface RequestStatus {
   expectedAt?: string;
   since?: string;
   missing?: MissingSeason[];
+  plexUrl?: string;
   progress?: number;
   eta?: string;
 }
+
+/** Where Plex has a title, and whether Plex could be asked at all. */
+export interface PlexPlace {
+  reachable: boolean;
+  url?: string;
+}
+
+/** Everything one request's state is worked out from. */
+export interface StateInputs {
+  entry?: LibraryEntry;
+  queue?: QueueStatus;
+  removal?: Removal;
+  plex?: PlexPlace;
+  now?: Date;
+}
+
+/**
+ * How long an imported file may be missing from Plex before its absence stops
+ * meaning "not scanned yet". Past this, something is wrong with the match
+ * rather than the scan, and calling it ready is the lesser lie.
+ */
+const SCAN_GRACE_MS = 6 * 60 * 60 * 1000;
 
 /** What one title's downloads amount to, or nothing if it has none. */
 export async function queueStatusFor(
@@ -51,6 +76,15 @@ export async function queueStatusFor(
 
 function key(mediaType: string, serviceId: number): string {
   return `${mediaType}:${serviceId}`;
+}
+
+/** An unreachable Plex says nothing about a title, which is not the same as no. */
+export function placeOf(
+  places: PlexPlaces | undefined,
+  media: { mediaType: LibraryMediaType; tmdbId: number },
+): PlexPlace {
+  if (!places) return { reachable: false };
+  return { reachable: true, url: places.get(watchKey(media.mediaType, media.tmdbId)) };
 }
 
 /**
@@ -113,19 +147,40 @@ async function queuesByService(): Promise<Map<string, QueueStatus>> {
  * whose queue can only be an upgrade nobody is waiting on. A series carries
  * the seasons it is still short of, which its own row would otherwise hide.
  */
-export function resolveState(
-  entry: LibraryEntry | undefined,
-  queue: QueueStatus | undefined,
-  removal?: Removal,
-): RequestStatus {
+export function resolveState({
+  entry,
+  queue,
+  removal,
+  plex,
+  now = new Date(),
+}: StateInputs): RequestStatus {
   if (!entry) return removedState(removal);
   if (queue && !entry.complete) return { ...queue, missing: entry.missing };
-  if (entry.hasFiles) return { state: "ready", missing: entry.missing };
+  if (entry.hasFiles) return onDiskState(entry, plex, now);
   if (!entry.monitored) return { state: "paused" };
   if (entry.awaiting) {
     return { state: entry.awaiting.reason, expectedAt: entry.awaiting.expectedAt };
   }
   return { state: "searching", since: entry.lastSearchedAt };
+}
+
+/**
+ * On disk is not the same as watchable: Plex has to scan it first. Only a
+ * recent import Plex has yet to show is held back, since Plex not knowing a
+ * title could as easily mean it matched the file to nothing at all.
+ */
+function onDiskState(entry: LibraryEntry, plex: PlexPlace | undefined, now: Date): RequestStatus {
+  if (plex?.reachable && !plex.url && justImported(entry.filesAddedAt, now)) {
+    return { state: "importing", since: entry.filesAddedAt };
+  }
+
+  return { state: "ready", missing: entry.missing, plexUrl: plex?.url };
+}
+
+function justImported(filesAddedAt: string | undefined, now: Date): boolean {
+  if (!filesAddedAt) return false;
+  const added = new Date(filesAddedAt).getTime();
+  return Number.isFinite(added) && now.getTime() - added < SCAN_GRACE_MS;
 }
 
 /**
@@ -136,10 +191,11 @@ export function resolveState(
 export async function withState(requests: StatelessRequest[]): Promise<MediaRequest[]> {
   if (requests.length === 0) return [];
 
-  const [library, queues, removals] = await Promise.all([
+  const [library, queues, removals, places] = await Promise.all([
     getLibraryIndex(),
     queuesByService(),
     getRemovals(),
+    getPlexPlaces(),
   ]);
 
   return requests.map((request) => {
@@ -150,7 +206,7 @@ export async function withState(requests: StatelessRequest[]): Promise<MediaRequ
     return {
       ...request,
       createdAt: new Date(request.createdAt).toISOString(),
-      ...resolveState(entry, queue, removal),
+      ...resolveState({ entry, queue, removal, plex: placeOf(places, request) }),
     };
   });
 }

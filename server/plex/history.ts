@@ -1,5 +1,7 @@
 import { getServerAccountNames, type PlexPerson } from "./access.ts";
 import type { Watcher } from "#shared/types.ts";
+import { listPlexTitles, tmdbIdOf } from "./catalog.ts";
+import { episodeWatchKey, titleKey, watchKey } from "./keys.ts";
 import { pmsRequest } from "./server.ts";
 import { createLogger } from "#server/logger.ts";
 import { errorMessage } from "#server/errors.ts";
@@ -8,15 +10,7 @@ const log = createLogger("plex-history");
 
 const CACHE_TTL_MS = 10 * 60 * 1000;
 
-interface SectionsResponse {
-  MediaContainer: { Directory?: { key: string; type: string }[] };
-}
-
-interface SectionItem {
-  ratingKey: string;
-  title: string;
-  Guid?: { id: string }[];
-}
+export { episodeWatchKey, titleKey, watchKey };
 
 export interface HistoryEntry {
   type: string;
@@ -41,24 +35,6 @@ export interface TitleIndex {
   byTitle: Map<string, string>;
 }
 
-/** `movie:550` — the two services number their ids independently. */
-export function watchKey(mediaType: string, tmdbId: number): string {
-  return `${mediaType}:${tmdbId}`;
-}
-
-export function titleKey(sectionKey: string, title: string): string {
-  return `${sectionKey}:${title.toLowerCase()}`;
-}
-
-/** `series:1220:6:10` — one episode of the series `watchKey` names. */
-export function episodeWatchKey(
-  seriesKey: string,
-  seasonNumber: number,
-  episodeNumber: number,
-): string {
-  return `${seriesKey}:${seasonNumber}:${episodeNumber}`;
-}
-
 /**
  * The episode a history row refers to, by number rather than by id.
  *
@@ -75,11 +51,7 @@ export function resolveEpisodeKey(entry: HistoryEntry, seriesKey: string): strin
   return episodeWatchKey(seriesKey, seasonNumber, episodeNumber);
 }
 
-export function tmdbIdOf(item: SectionItem): number | undefined {
-  const guid = item.Guid?.find((g) => g.id.startsWith("tmdb://"));
-  const id = Number(guid?.id.slice("tmdb://".length));
-  return Number.isInteger(id) && id > 0 ? id : undefined;
-}
+export { tmdbIdOf };
 
 /** The last path segment of `/library/metadata/14026`. */
 export function ratingKeyOfPath(path: string | null | undefined): string | undefined {
@@ -87,29 +59,18 @@ export function ratingKeyOfPath(path: string | null | undefined): string | undef
 }
 
 /**
- * Plex's own identifiers mapped onto TMDB ids. `?guid=` cannot be filtered on
- * current agents, so each section is listed and indexed instead.
+ * Plex's own identifiers mapped onto TMDB ids, from the same listing the
+ * catalog is built from. `?guid=` cannot be filtered on current agents, so
+ * each section is listed and indexed instead.
  */
 async function buildTitleIndex(): Promise<TitleIndex> {
-  const sections = await pmsRequest<SectionsResponse>("/library/sections");
   const index: TitleIndex = { byRatingKey: new Map(), byTitle: new Map() };
 
-  for (const section of sections.MediaContainer.Directory ?? []) {
-    const mediaType =
-      section.type === "movie" ? "movie" : section.type === "show" ? "series" : null;
-    if (!mediaType) continue;
-
-    const listing = await pmsRequest<{ MediaContainer: { Metadata?: SectionItem[] } }>(
-      `/library/sections/${section.key}/all?includeGuids=1`,
-    );
-
-    for (const item of listing.MediaContainer.Metadata ?? []) {
-      const tmdbId = tmdbIdOf(item);
-      if (!tmdbId) continue;
-      const key = watchKey(mediaType, tmdbId);
-      index.byRatingKey.set(item.ratingKey, key);
-      index.byTitle.set(titleKey(section.key, item.title), key);
-    }
+  for (const title of await listPlexTitles()) {
+    if (!title.tmdbId) continue;
+    const key = watchKey(title.mediaType, title.tmdbId);
+    index.byRatingKey.set(title.ratingKey, key);
+    index.byTitle.set(titleKey(title.sectionKey, title.title), key);
   }
 
   return index;
