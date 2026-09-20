@@ -143,6 +143,7 @@ export interface EpisodeSummary {
  * what the requester should expect next, not where the file is.
  */
 export type RequestState =
+  | "unknown"
   | "unreleased"
   | "waiting"
   | "searching"

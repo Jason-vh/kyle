@@ -70,7 +70,8 @@ export async function searchRequestableMedia(query: string): Promise<DiscoverRes
 
   for (const result of results) {
     const entry = library[result.mediaType].get(result.tmdbId);
-    result.libraryStatus = entry && libraryStatusOf(entry);
+    if (library.unavailable.includes(result.mediaType)) result.libraryStatus = "unknown";
+    else result.libraryStatus = entry && libraryStatusOf(entry);
     const requesters = result.mediaType === "movie" ? movieRequesters : seriesRequesters;
     result.requestedBy = requesters.get(result.tmdbId) ?? [];
   }

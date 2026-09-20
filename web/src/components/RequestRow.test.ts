@@ -28,6 +28,7 @@ describe("RequestRow", () => {
   // The home screen and the requests page both render this, so the wording
   // for a state is fixed here rather than in either of them.
   const WORDING: Record<RequestState, string> = {
+    unknown: "Unavailable",
     unreleased: "Not out yet",
     waiting: "In cinemas",
     searching: "Looking",

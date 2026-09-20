@@ -27,7 +27,9 @@
             Downloading
           </StatusPill>
 
+          <StatusPill v-if="item.libraryStatus === 'unknown'">Library unavailable</StatusPill>
           <RequestAction
+            v-else
             :item="item"
             :held="item.libraryStatus !== undefined"
             size="sm"

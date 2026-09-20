@@ -8,6 +8,7 @@ export interface StateBadge {
 
 /** The one place a request's state is put into words. */
 export const REQUEST_STATES: Record<RequestState, StateBadge> = {
+  unknown: { label: "Unavailable", tone: "neutral" },
   unreleased: { label: "Not out yet", tone: "neutral" },
   waiting: { label: "In cinemas", tone: "neutral" },
   searching: { label: "Looking", tone: "blue" },

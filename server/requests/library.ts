@@ -11,7 +11,7 @@ const log = createLogger("requests-library");
 
 const CACHE_TTL_MS = 60_000;
 
-export type LibraryStatus = "available" | "pending";
+export type LibraryStatus = "available" | "pending" | "unknown";
 
 /** Why a service cannot go and fetch a title yet. */
 export interface Awaiting {
@@ -40,7 +40,9 @@ export interface LibraryEntry {
 }
 
 /** What Radarr and Sonarr already hold, keyed by TMDB id. */
-type LibraryIndex = Record<RequestableMediaType, Map<number, LibraryEntry>>;
+type LibraryIndex = Record<RequestableMediaType, Map<number, LibraryEntry>> & {
+  unavailable: RequestableMediaType[];
+};
 
 const UNRELEASED_STATUSES = new Set(["tba", "announced"]);
 
@@ -150,39 +152,39 @@ export function libraryStatusOf(entry: LibraryEntry): LibraryStatus {
 let cached: { value: LibraryIndex; expires: number } | null = null;
 
 async function build(): Promise<LibraryIndex> {
-  const [movies, series] = await Promise.all([radarr.getMovies(), sonarr.getAllSeries()]);
+  const [movies, series] = await Promise.allSettled([radarr.getMovies(), sonarr.getAllSeries()]);
+  const index: LibraryIndex = { movie: new Map(), series: new Map(), unavailable: [] };
 
-  const index: LibraryIndex = { movie: new Map(), series: new Map() };
-
-  for (const movie of movies) {
-    index.movie.set(movie.tmdbId, movieEntry(movie));
+  if (movies.status === "fulfilled") {
+    for (const movie of movies.value) index.movie.set(movie.tmdbId, movieEntry(movie));
+  } else {
+    index.unavailable.push("movie");
+    log.error("Radarr unavailable", { error: errorMessage(movies.reason) });
   }
 
-  for (const show of series) {
-    if (!show.tmdbId) continue;
-    index.series.set(show.tmdbId, seriesEntry(show));
+  if (series.status === "fulfilled") {
+    for (const show of series.value) {
+      if (show.tmdbId) index.series.set(show.tmdbId, seriesEntry(show));
+    }
+  } else {
+    index.unavailable.push("series");
+    log.error("Sonarr unavailable", { error: errorMessage(series.reason) });
   }
 
   return index;
 }
 
-/**
- * Cached view of the library, so a page of search results costs one refresh
- * rather than a lookup per title. An unreachable service yields an empty
- * index, which shows everything as requestable rather than failing the search.
- */
 export async function getLibraryIndex(): Promise<LibraryIndex> {
   if (cached && cached.expires > Date.now()) return cached.value;
 
-  try {
-    const value = await build();
-    cached = { value, expires: Date.now() + CACHE_TTL_MS };
-    log.info("library index built", { movies: value.movie.size, series: value.series.size });
-    return value;
-  } catch (error) {
-    log.error("could not read the library", { error: errorMessage(error) });
-    return { movie: new Map(), series: new Map() };
-  }
+  const value = await build();
+  cached = { value, expires: Date.now() + CACHE_TTL_MS };
+  log.info("library index built", {
+    movies: value.movie.size,
+    series: value.series.size,
+    unavailable: value.unavailable,
+  });
+  return value;
 }
 
 export function invalidateLibraryIndex(): void {

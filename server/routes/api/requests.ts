@@ -200,6 +200,9 @@ export async function handleRetryRequest(
   }
 
   const library = await getLibraryIndex();
+  if (library.unavailable.includes(mediaType)) {
+    return Response.json({ error: "Library service is unavailable" }, { status: 503 });
+  }
   const entry = library[mediaType].get(tmdbId);
   if (!entry) {
     return Response.json({ error: "This is no longer in the library" }, { status: 404 });

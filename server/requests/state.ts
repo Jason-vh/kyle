@@ -45,6 +45,7 @@ export interface PlexPlace {
 
 /** Everything one request's state is worked out from. */
 export interface StateInputs {
+  libraryAvailable?: boolean;
   entry?: LibraryEntry;
   queue?: QueueStatus;
   removal?: Removal;
@@ -205,12 +206,14 @@ export function scopeOf(
  * the seasons it is still short of, which its own row would otherwise hide.
  */
 export function resolveState({
+  libraryAvailable = true,
   entry,
   queue,
   removal,
   plex,
   now = new Date(),
 }: StateInputs): RequestStatus {
+  if (!libraryAvailable) return { state: "unknown", detail: "Library service is unavailable" };
   if (!entry) return removedState(removal);
   if (queue && !entry.complete) return { ...queue, missing: entry.missing };
   if (entry.hasFiles) return onDiskState(entry, plex, now);
@@ -268,6 +271,7 @@ export async function withState(requests: StatelessRequest[]): Promise<MediaRequ
       seasonNumber: request.seasonNumber ?? null,
       createdAt: new Date(request.createdAt).toISOString(),
       ...resolveState({
+        libraryAvailable: !library.unavailable.includes(request.mediaType),
         entry: scope,
         queue,
         removal,

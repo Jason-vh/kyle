@@ -4,7 +4,7 @@ import { apiFetch } from "./client";
 export type { MediaRequest, MissingSeason, RequestState } from "#shared/types";
 
 export type RequestableMediaType = "movie" | "series";
-export type LibraryStatus = "available" | "pending";
+export type LibraryStatus = "available" | "pending" | "unknown";
 
 export interface DiscoverResult {
   tmdbId: number;

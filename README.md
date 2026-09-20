@@ -235,7 +235,7 @@ web/                         → Vue 3 + Vite + Tailwind CSS 4 SPA
   container, so the schedule lives in `job_runs` rather than in memory — a restarted
   process reads `last_run_at` and runs what it owes, two minutes in. That is also the
   throttle: three deploys in an hour run an hourly job once, which is what keeps the
-  seedbox check inside Ultra's ten requests an hour. `last_run_at` is written *before* the
+  seedbox check inside Ultra's ten requests an hour. `last_run_at` is written _before_ the
   work, so a job that brings the process down waits its interval instead of running on
   every boot.
 - **Jobs remember their own side effects** — `job_state` holds what a job needs to know
@@ -250,7 +250,7 @@ web/                         → Vue 3 + Vite + Tailwind CSS 4 SPA
   each service whether it still holds them. A file that 404s was upgraded or removed, and
   the torrent seeding it is deleting 60 GB of nothing. It also retries downloads stalled
   past half a day — blocklist, then search again — drops imports blocked by releases that
-  can never import (`.exe` bait, sample packs), and only ever *flags* what it cannot
+  can never import (`.exe` bait, sample packs), and only ever _flags_ what it cannot
   prove: a torrent with no history was added by hand. Restraint is structural, not a flag
   somebody remembers: a service that fails to answer aborts the whole sweep, because
   unreachable looks like unknown and unknown is a reason to delete; torrents still in a

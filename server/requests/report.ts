@@ -60,6 +60,7 @@ export async function reportProblem(report: Report): Promise<{ notified: number 
     ? await queueFor(report.mediaType, entry.serviceId, report.seasonNumber)
     : undefined;
   const status = resolveState({
+    libraryAvailable: !library.unavailable.includes(report.mediaType),
     entry: scopeOf(entry, report.seasonNumber),
     queue,
     plex: placeOf(await getPlexPlaces(), report),

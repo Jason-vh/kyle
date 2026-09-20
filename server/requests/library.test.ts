@@ -1,9 +1,53 @@
 import { describe, expect, test } from "bun:test";
-import { movieEntry, seasonEntry, seriesEntry } from "./library.ts";
+import {
+  getLibraryIndex,
+  invalidateLibraryIndex,
+  movieEntry,
+  seasonEntry,
+  seriesEntry,
+} from "./library.ts";
+import { resolveState } from "./state.ts";
 import type { RadarrMovie } from "#server/radarr/types.ts";
 import type { SonarrSeason, SonarrSeries, SonarrStatistics } from "#server/sonarr/types.ts";
 
 const NOW = new Date("2026-09-20");
+
+test("an unavailable source does not erase the other library or imply removals", async () => {
+  const originalFetch = globalThis.fetch;
+  const env = {
+    RADARR_HOST: process.env.RADARR_HOST,
+    RADARR_API_KEY: process.env.RADARR_API_KEY,
+    SONARR_HOST: process.env.SONARR_HOST,
+    SONARR_API_KEY: process.env.SONARR_API_KEY,
+  };
+  process.env.RADARR_HOST = "http://radarr.test";
+  process.env.RADARR_API_KEY = "test";
+  process.env.SONARR_HOST = "http://sonarr.test";
+  process.env.SONARR_API_KEY = "test";
+  globalThis.fetch = (async (url: string) => {
+    if (url.includes("radarr.test")) return new Response(null, { status: 503 });
+    return Response.json([{ id: 9, tmdbId: 123, monitored: true, seasons: [] }]);
+  }) as unknown as typeof fetch;
+  invalidateLibraryIndex();
+  try {
+    const library = await getLibraryIndex();
+    expect(library.unavailable).toEqual(["movie"]);
+    expect(library.series.has(123)).toBe(true);
+    expect(resolveState({ libraryAvailable: !library.unavailable.includes("movie") }).state).toBe(
+      "unknown",
+    );
+    expect(resolveState({ libraryAvailable: !library.unavailable.includes("series") }).state).toBe(
+      "removed",
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+    invalidateLibraryIndex();
+    for (const [key, value] of Object.entries(env)) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+  }
+});
 
 function movie(overrides: Partial<RadarrMovie>): RadarrMovie {
   return {
