@@ -16,6 +16,7 @@ import {
 import { signJwt, buildJwtCookie, isLocalhost, parseAuthCookie } from "#server/auth/jwt.ts";
 import { createLogger } from "#server/logger.ts";
 import { errorMessage } from "#server/errors.ts";
+import { createFlowCookie, readFlowCookie } from "#server/auth/flow-cookie.ts";
 
 const log = createLogger("api-passkey");
 
@@ -23,10 +24,11 @@ const log = createLogger("api-passkey");
 // POST /api/auth/passkey/login/options
 // ---------------------------------------------------------------------------
 
-export async function handlePasskeyLoginOptions(_req: Request): Promise<Response> {
+export async function handlePasskeyLoginOptions(req: Request): Promise<Response> {
   const options = await generateAuthOptions();
-  storeChallenge("login", options.challenge);
-  return Response.json(options);
+  const { binding, cookie } = createFlowCookie(req, "kyle_passkey_login", 300);
+  storeChallenge(`login:${binding}`, options.challenge);
+  return Response.json(options, { headers: { "Set-Cookie": cookie } });
 }
 
 // ---------------------------------------------------------------------------
@@ -41,7 +43,8 @@ export async function handlePasskeyLoginVerify(req: Request): Promise<Response> 
     return Response.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const expectedChallenge = getAndDeleteChallenge("login");
+  const binding = readFlowCookie(req, "kyle_passkey_login");
+  const expectedChallenge = binding ? getAndDeleteChallenge(`login:${binding}`) : null;
   if (!expectedChallenge) {
     return Response.json({ error: "Challenge expired or not found" }, { status: 400 });
   }
@@ -114,8 +117,9 @@ export async function handlePasskeyRegisterOptions(req: Request): Promise<Respon
   }));
 
   const options = await generateRegOptions(user.id, user.name, excludeCredentials);
-  storeChallenge(`reg:${user.id}`, options.challenge);
-  return Response.json(options);
+  const { binding, cookie } = createFlowCookie(req, "kyle_passkey_register", 300);
+  storeChallenge(`reg:${user.id}:${binding}`, options.challenge);
+  return Response.json(options, { headers: { "Set-Cookie": cookie } });
 }
 
 // ---------------------------------------------------------------------------
@@ -135,7 +139,8 @@ export async function handlePasskeyRegisterVerify(req: Request): Promise<Respons
     return Response.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const expectedChallenge = getAndDeleteChallenge(`reg:${user.id}`);
+  const binding = readFlowCookie(req, "kyle_passkey_register");
+  const expectedChallenge = binding ? getAndDeleteChallenge(`reg:${user.id}:${binding}`) : null;
   if (!expectedChallenge) {
     return Response.json({ error: "Challenge expired or not found" }, { status: 400 });
   }
