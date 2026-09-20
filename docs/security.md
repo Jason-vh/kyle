@@ -28,8 +28,10 @@ administrator access. Missing `CHAT_API_KEY` or `WEBHOOK_AUTH` disables that end
 
 Slack events are persisted before acknowledgement and deduplicated by event ID. A worker
 recovers pending events after restarts and retries processing failures. Processing is
-at-least-once: a crash during a turn can replay the event, including tool actions. A handled
-agent error that has already been reported to the user is considered completed.
+at-least-once: a crash during a turn can replay the event, including tool actions. Final replies
+are persisted before delivery; delivery retries resend the saved text without rerunning the agent.
+A handled agent error is completed only after its reply is delivered. A crash after Slack accepts
+a reply but before completion is recorded can duplicate the reply.
 
 Webhooks are acknowledged only after PostgreSQL accepts them. Series episodes are merged
 into a ten-minute batch. The delivery worker runs every thirty seconds after the scheduler's

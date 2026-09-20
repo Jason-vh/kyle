@@ -5,7 +5,7 @@ import { slackEventJobs } from "#server/db/schema.ts";
 import { createLogger } from "#server/logger.ts";
 import { errorMessage } from "#server/errors.ts";
 import type { SlackEvent } from "./events.ts";
-import { processSlackMessage } from "./handler.ts";
+import { postSlackReply, processSlackMessage } from "./handler.ts";
 
 const log = createLogger("slack:jobs");
 type ProcessMessage = typeof processSlackMessage;
@@ -25,6 +25,7 @@ export async function processSlackEvent(
   eventId: string,
   processMessage: ProcessMessage = processSlackMessage,
   now = new Date(),
+  postReply: typeof postSlackReply = postSlackReply,
 ): Promise<string | undefined> {
   return withDatabaseLock(`slack-event:${eventId}`, async () => {
     const job = await db.query.slackEventJobs.findFirst({
@@ -39,7 +40,17 @@ export async function processSlackEvent(
       .set({ attempts: sql`${slackEventJobs.attempts} + 1` })
       .where(eq(slackEventJobs.eventId, eventId));
     try {
-      const responseText = await processMessage(job.event, job.teamId ?? undefined);
+      let responseText = job.responseText;
+      if (responseText === null) {
+        responseText = await processMessage(job.event, job.teamId ?? undefined, async (text) => {
+          await db
+            .update(slackEventJobs)
+            .set({ responseText: text })
+            .where(eq(slackEventJobs.eventId, eventId));
+        });
+      } else {
+        await postReply(job.event, responseText);
+      }
       await db
         .update(slackEventJobs)
         .set({ responseText, completedAt: new Date(), lastError: null })

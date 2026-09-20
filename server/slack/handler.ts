@@ -104,6 +104,7 @@ function createProgressReporter(
 export async function processSlackMessage(
   slackEvent: SlackEvent,
   teamId?: string,
+  saveReply?: (text: string) => Promise<void>,
 ): Promise<string> {
   const { channel, user: userId } = slackEvent;
   const replyThreadTs = slackEvent.thread_ts ?? slackEvent.ts;
@@ -119,12 +120,10 @@ export async function processSlackMessage(
 
   const appUserId = userId ? await resolveAppUserId("slack", userId) : null;
   if (!appUserId || !(await getActiveUser(appUserId))) {
-    await getSlackClient().chat.postMessage({
-      channel,
-      thread_ts: replyThreadTs,
-      text: "Ask an admin to link your Slack account before using Kyle.",
-    });
-    return "";
+    const text = "Ask an admin to link your Slack account before using Kyle.";
+    await saveReply?.(text);
+    await postSlackReply(slackEvent, text);
+    return text;
   }
 
   let agentContext: AgentContext | undefined;
@@ -148,6 +147,8 @@ export async function processSlackMessage(
   });
   const progress = createProgressReporter(stream, channel, replyThreadTs);
 
+  let replyText: string;
+  let tables: ResultTable[] = [];
   try {
     const { conversationId, responseText } = await runConversationTurn({
       interfaceType: "slack",
@@ -164,13 +165,9 @@ export async function processSlackMessage(
       },
     });
 
-    const tables = progress.tables();
-    await stream.finish(
-      responseText || EMPTY_REPLY,
-      tables.length ? tableBlocks(tables) : undefined,
-    );
-    log.info("slack reply sent", { channel, threadTs: replyThreadTs, conversationId });
-    return responseText;
+    tables = progress.tables();
+    replyText = responseText || EMPTY_REPLY;
+    log.info("slack reply prepared", { channel, threadTs: replyThreadTs, conversationId });
   } catch (error) {
     log.error("slack message processing failed", {
       channel,
@@ -178,16 +175,27 @@ export async function processSlackMessage(
       ...errorFields(error),
     });
 
-    const errorText = failureReply(error);
-    try {
-      stream.newParagraph();
-      stream.appendText(errorText);
-      await stream.finish(errorText);
-    } catch (postError) {
-      log.error("failed to post error message to slack", errorFields(postError));
-    }
-    return "";
+    replyText = failureReply(error);
+    stream.newParagraph();
+    stream.appendText(replyText);
+  }
+
+  try {
+    await saveReply?.(replyText);
+    await stream.finish(replyText, tables.length ? tableBlocks(tables) : undefined);
+    return replyText;
   } finally {
     setThreadStatus(channel, replyThreadTs, "");
   }
+}
+
+export async function postSlackReply(event: SlackEvent, text: string): Promise<void> {
+  if (!text) return;
+  await getSlackClient().chat.postMessage({
+    channel: event.channel,
+    thread_ts: event.thread_ts ?? event.ts,
+    markdown_text: text,
+    unfurl_links: false,
+    unfurl_media: false,
+  });
 }
