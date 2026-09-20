@@ -40,6 +40,7 @@ sending, and completed recipients are skipped on retries. Delivery is at-least-o
 between a platform accepting a reply and Kyle recording that acceptance can duplicate a
 chat message. Inspect `webhook_jobs.last_error`, `attempts`, and `completed_at` for failures.
 
-Conversation turns are serialized across processes with PostgreSQL advisory locks on a
-separate connection pool. External thread identifiers are unique; the migration merges
-existing duplicates and preserves their messages, events, and subscriptions.
+Conversation turns and media writes are serialized across processes with PostgreSQL advisory
+locks. Each nesting depth has its own connection pool, so parent operations cannot exhaust
+the connections their children need. External thread identifiers are unique; the migration
+merges existing duplicates and preserves their messages, events, and subscriptions.
