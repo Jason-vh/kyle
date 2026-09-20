@@ -449,6 +449,21 @@ describe("requestEpisode", () => {
 });
 
 describe("releaseSeason", () => {
+  test("deletes a multi-episode file once and completes the release", async () => {
+    const calls = stubSonarr({
+      "/episode?seriesId=": [
+        { seasonNumber: 3, episodeFileId: 55 },
+        { seasonNumber: 3, episodeFileId: 55 },
+        { seasonNumber: 1, episodeFileId: 56 },
+      ],
+    });
+
+    expect((await releaseSeason(9, 3)).filesDeleted).toBe(1);
+    expect(calls.filter((call) => call.method === "DELETE")).toHaveLength(1);
+    const update = calls.find((call) => call.method === "PUT");
+    expect(JSON.parse(update!.body!).seasons).toContainEqual({ seasonNumber: 3, monitored: false });
+  });
+
   test("deletes the season's files and unmonitors it, keeping the series", async () => {
     const calls = stubSonarr();
 

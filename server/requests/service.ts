@@ -359,9 +359,11 @@ export async function releaseSeason(
   ]);
 
   const season = seasonOf(series, seasonNumber);
-  const fileIds = episodes
-    .filter((episode) => episode.seasonNumber === seasonNumber && episode.episodeFileId)
-    .map((episode) => episode.episodeFileId!);
+  const fileIds = new Set(
+    episodes
+      .filter((episode) => episode.seasonNumber === seasonNumber && episode.episodeFileId)
+      .map((episode) => episode.episodeFileId!),
+  );
 
   for (const fileId of fileIds) {
     await sonarr.deleteEpisodeFile(fileId);
@@ -378,7 +380,7 @@ export async function releaseSeason(
     title: series.title,
     serviceId: seriesId,
     seasonNumber,
-    filesDeleted: fileIds.length,
+    filesDeleted: fileIds.size,
   });
-  return { series, filesDeleted: fileIds.length };
+  return { series, filesDeleted: fileIds.size };
 }
