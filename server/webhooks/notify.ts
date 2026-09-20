@@ -36,7 +36,8 @@ async function postReply(requester: MediaRequester, text: string): Promise<void>
       unfurl_media: false,
     });
   } else {
-    await sendDiscordMessageToChannel(requester.channelId, text);
+    const sent = await sendDiscordMessageToChannel(requester.channelId, text);
+    if (!sent) throw new Error("Discord notification could not be delivered");
   }
 }
 

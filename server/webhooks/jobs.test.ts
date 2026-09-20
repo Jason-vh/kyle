@@ -97,6 +97,43 @@ test("retries do not duplicate in-app notifications", async () => {
   ).toHaveLength(1);
 });
 
+test("an unavailable Discord client leaves the delivery pending for retry", async () => {
+  const jobId = await job();
+  const [conversation] = await db
+    .insert(conversations)
+    .values({ interfaceType: "discord" })
+    .returning();
+  conversationIds.push(conversation!.id);
+  const [delivery] = await db
+    .insert(notificationDeliveries)
+    .values({
+      jobId,
+      conversationId: conversation!.id,
+      requester: {
+        interfaceType: "discord",
+        channelId: "unavailable-channel",
+        conversationId: conversation!.id,
+        title: "Arrival",
+      },
+      responseText: "Ready",
+    })
+    .returning();
+
+  await processWebhookJobs(new Date(0), async () => {
+    await deliverNotification(delivery!, movie);
+  });
+
+  const stored = await db.query.notificationDeliveries.findFirst({
+    where: eq(notificationDeliveries.id, delivery!.id),
+  });
+  const failed = await db.query.webhookJobs.findFirst({ where: eq(webhookJobs.id, jobId) });
+  expect(stored).toMatchObject({ responseText: "Ready", sentAt: null });
+  expect(failed).toMatchObject({
+    completedAt: null,
+    lastError: "Discord notification could not be delivered",
+  });
+});
+
 test("chat retries reuse the prepared reply and skip completed deliveries", async () => {
   const jobId = await job();
   const [conversation] = await db
