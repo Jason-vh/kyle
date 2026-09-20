@@ -21,6 +21,10 @@
           · {{ relativeTime(request.createdAt) }}
         </p>
 
+        <p v-if="explanation" class="mt-0.5 truncate text-xs text-text-secondary">
+          {{ explanation }}
+        </p>
+
         <DownloadProgress
           v-if="request.progress !== undefined"
           :progress="request.progress"
@@ -35,8 +39,10 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from "vue";
 import type { MediaRequest, RequestState } from "#web/api/requests";
 import { posterUrl } from "#web/utils/images";
+import { formatDate } from "#web/utils/format";
 import { relativeTime } from "#web/composables/useRelativeTime";
 import DownloadProgress from "./DownloadProgress.vue";
 import MediaTitle from "./MediaTitle.vue";
@@ -47,11 +53,45 @@ import type { Tone } from "./ui/types";
 
 /** The one place a request's state is put into words. */
 const STATES: Record<RequestState, { label: string; tone: Tone }> = {
-  available: { label: "Ready", tone: "green" },
+  unreleased: { label: "Not out yet", tone: "neutral" },
+  waiting: { label: "In cinemas", tone: "neutral" },
+  searching: { label: "Looking", tone: "blue" },
+  found: { label: "Found one", tone: "blue" },
   downloading: { label: "Downloading", tone: "amber" },
-  pending: { label: "Looking", tone: "blue" },
-  unavailable: { label: "Gone", tone: "neutral" },
+  stalled: { label: "Stalled", tone: "amber" },
+  blocked: { label: "Can't import", tone: "red" },
+  importing: { label: "Almost there", tone: "amber" },
+  ready: { label: "Ready", tone: "green" },
+  paused: { label: "Paused", tone: "neutral" },
+  removed: { label: "Gone", tone: "neutral" },
 };
 
-defineProps<{ request: MediaRequest }>();
+const props = defineProps<{ request: MediaRequest }>();
+
+/** What the state means for the person who asked, in one line. */
+function explain(request: MediaRequest): string | undefined {
+  const { state, detail, expectedAt } = request;
+
+  if (state === "unreleased") {
+    return expectedAt ? `Not out until ${formatDate(expectedAt)}` : "No release date yet";
+  }
+  if (state === "waiting") {
+    return expectedAt ? `Digital release ${formatDate(expectedAt)}` : "In cinemas only for now";
+  }
+  if (state === "searching") return detail ?? "Searching for a release";
+  if (state === "found") return detail ?? "Found a release, starting shortly";
+  if (state === "stalled") return detail ?? "No seeders — it will be retried";
+  if (state === "blocked") return detail ?? "Downloaded, but it could not be imported";
+  if (state === "importing") return "Downloaded — adding it to Plex";
+  if (state === "paused") return "Nobody is looking for this";
+  if (state === "removed") return "No longer in the library";
+
+  return undefined;
+}
+
+const explanation = computed(() => {
+  const line = explain(props.request);
+  if (!line || !props.request.since) return line;
+  return `${line} · ${relativeTime(props.request.since)}`;
+});
 </script>

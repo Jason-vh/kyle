@@ -12,7 +12,7 @@ function requestWith(overrides: Partial<MediaRequest> = {}): MediaRequest {
     year: 2010,
     posterPath: "/poster.jpg",
     createdAt: new Date().toISOString(),
-    state: "available",
+    state: "ready",
     ...overrides,
   };
 }
@@ -27,15 +27,48 @@ describe("RequestRow", () => {
   // The home screen and the requests page both render this, so the wording
   // for a state is fixed here rather than in either of them.
   const WORDING: Record<RequestState, string> = {
-    available: "Ready",
+    unreleased: "Not out yet",
+    waiting: "In cinemas",
+    searching: "Looking",
+    found: "Found one",
     downloading: "Downloading",
-    pending: "Looking",
-    unavailable: "Gone",
+    stalled: "Stalled",
+    blocked: "Can't import",
+    importing: "Almost there",
+    ready: "Ready",
+    paused: "Paused",
+    removed: "Gone",
   };
 
   test.each(Object.entries(WORDING))("a %s request reads as %s", (state, label) => {
     const row = render({ state: state as RequestState });
     expect(row.text()).toContain(label);
+  });
+
+  test("says when an unreleased title is expected", () => {
+    const row = render({ state: "unreleased", expectedAt: "2026-03-06" });
+    expect(row.text()).toContain("Not out until 6 Mar");
+  });
+
+  test("says when a film in cinemas can be fetched", () => {
+    const row = render({ state: "waiting", expectedAt: "2026-12-01" });
+    expect(row.text()).toContain("Digital release 1 Dec");
+  });
+
+  // Why it is stuck is the whole point of the state.
+  test("passes on the reason a service gives", () => {
+    const row = render({ state: "blocked", detail: "Found archive file, might need extraction" });
+    expect(row.text()).toContain("Found archive file, might need extraction");
+  });
+
+  test("explains a state the service says nothing about", () => {
+    expect(render({ state: "stalled" }).text()).toContain("No seeders");
+    expect(render({ state: "paused" }).text()).toContain("Nobody is looking for this");
+  });
+
+  test("says how long it has been that way", () => {
+    const since = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString();
+    expect(render({ state: "stalled", since }).text()).toContain("3h ago");
   });
 
   test("shows how far along a download is", () => {
@@ -53,7 +86,7 @@ describe("RequestRow", () => {
   });
 
   test("shows no bar for anything that is not downloading", () => {
-    expect(render({ state: "pending" }).find(".bg-accent-amber").exists()).toBe(false);
+    expect(render({ state: "searching" }).find(".bg-accent-amber").exists()).toBe(false);
   });
 
   test("names the requester only when there is one to name", () => {

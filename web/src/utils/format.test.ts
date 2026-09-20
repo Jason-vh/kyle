@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { formatDuration, formatNames, formatSize } from "./format";
+import { formatDate, formatDuration, formatNames, formatSize } from "./format";
 
 describe("formatNames", () => {
   test("reads as a sentence at every length", () => {
@@ -7,6 +7,22 @@ describe("formatNames", () => {
     expect(formatNames(["Bob"])).toBe("Bob");
     expect(formatNames(["Bob", "Jane"])).toBe("Bob and Jane");
     expect(formatNames(["Bob", "Jane", "Sue"])).toBe("Bob, Jane and Sue");
+  });
+});
+
+describe("formatDate", () => {
+  const now = new Date("2026-09-20");
+
+  test("leaves out the year while it is the one we are in", () => {
+    expect(formatDate("2026-03-06", now)).toBe("6 Mar");
+  });
+
+  test("says the year once it stops being obvious", () => {
+    expect(formatDate("2027-01-08T01:00:00Z", now)).toBe("8 Jan 2027");
+  });
+
+  test("says nothing for a date it cannot read", () => {
+    expect(formatDate("soon", now)).toBe("");
   });
 });
 

@@ -110,8 +110,22 @@ export interface EpisodeSummary {
 
 // Requests
 
-/** Where a request has got to, worked out live rather than stored. */
-export type RequestState = "available" | "downloading" | "pending" | "unavailable";
+/**
+ * Where a request has got to, worked out live rather than stored. Each says
+ * what the requester should expect next, not where the file is.
+ */
+export type RequestState =
+  | "unreleased"
+  | "waiting"
+  | "searching"
+  | "found"
+  | "downloading"
+  | "stalled"
+  | "blocked"
+  | "importing"
+  | "ready"
+  | "paused"
+  | "removed";
 
 export interface MediaRequest {
   id: string;
@@ -124,6 +138,12 @@ export interface MediaRequest {
   requestedBy?: string;
   createdAt: string;
   state: RequestState;
+  /** What the service says about the state: a stall, a rejection, a bad file. */
+  detail?: string;
+  /** ISO 8601 of when the title becomes obtainable, while it is not. */
+  expectedAt?: string;
+  /** ISO 8601 of when the state began, where the source knows. */
+  since?: string;
   /** 0–1, while downloading. */
   progress?: number;
   /** What the download client thinks is left, e.g. "00:12:31". */
@@ -153,6 +173,8 @@ export interface NotificationsResponse {
 export interface StorageStat {
   freeBytes: number;
   totalBytes: number;
+  /** What the titles someone asked for take up, absent when it cannot be counted. */
+  requestedBytes?: number;
 }
 
 export interface DashboardStats {

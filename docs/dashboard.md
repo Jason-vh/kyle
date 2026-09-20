@@ -39,13 +39,24 @@ season landing is the thing people notice.
 
 ## Space left — `server/dashboard/storage.ts`
 
-Radarr's `/rootfolder` gives the media path and its free space but no total; `/diskspace`
-gives totals per mount. The mount is the **longest** one the root folder path starts
-with, so `/home/x/media/Movies` resolves to `/home/x` rather than `/`. `/home/xy` must
-not match `/home/x`, hence the separator in `mountFor`.
+The seedbox quota answers for this, via Ultra's `/total-stats`. Radarr and Sonarr see the
+array the slot sits on, not the slot's share of it — they report ~16 TB where the quota is
+~8 TB, so their figure is wrong by double and always will be.
 
-Free space comes from the root folder (fresher), the total from the mount (the only
-place it exists). Sonarr answers if Radarr cannot; they are almost always the same disk.
+Ultra allows **10 requests an hour**, which a phone would spend in a minute, so
+`server/ultra/api.ts` caches the answer for ten minutes. The quota moves slowly.
+
+The services remain the fallback for when Ultra cannot be reached. There, Radarr's
+`/rootfolder` gives the media path and its free space but no total; `/diskspace` gives
+totals per mount. The mount is the **longest** one the root folder path starts with, so
+`/home/x/media/Movies` resolves to `/home/x` rather than `/`. `/home/xy` must not match
+`/home/x`, hence the separator in `mountFor`. Free space comes from the root folder
+(fresher), the total from the mount. Sonarr answers if Radarr cannot.
+
+`requestedBytes` is what the titles in `media_requests` take up, summed from Radarr's
+`sizeOnDisk` and Sonarr's `statistics.sizeOnDisk` — how much of the disk is things people
+asked Kyle for, as against the library that predates it. It says nothing rather than zero
+when a service is down, so an outage cannot read as "nobody asked for anything".
 
 ## Just landed — `server/dashboard/activity.ts`
 
@@ -64,14 +75,30 @@ Kyle.
 
 ## Your requests — `server/requests/state.ts`
 
-State is **derived, not stored**, so it can never drift from what the services are doing:
+State is **derived, not stored**, so it can never drift from what the services are doing.
+Each one says what the requester should expect next, not where the file is:
 
-| State         | Meaning                                                                     |
-| ------------- | --------------------------------------------------------------------------- |
-| `downloading` | in a Radarr or Sonarr queue. Beats everything, even a series partly on disk |
-| `available`   | the library holds it with files                                             |
-| `pending`     | the library holds it with nothing on disk yet                               |
-| `unavailable` | not in the library — it was removed after being asked for                   |
+| State         | Meaning                                                              |
+| ------------- | -------------------------------------------------------------------- |
+| `blocked`     | downloaded, and the import failed or is held — needs somebody        |
+| `stalled`     | downloading with a warning: no seeders, no connections               |
+| `downloading` | actually moving, with progress and an ETA                            |
+| `found`       | a release is in hand, held back by a delay profile                   |
+| `importing`   | downloaded and being imported; Plex has yet to pick it up            |
+| `ready`       | the library holds it with files                                      |
+| `paused`      | nothing on disk and nobody monitoring it — nothing will ever happen  |
+| `unreleased`  | not out anywhere yet; `expectedAt` says when                         |
+| `waiting`     | out, but not in a form we can fetch — in cinemas, digital date ahead |
+| `searching`   | obtainable, monitored, nothing to show for it yet                    |
+| `removed`     | not in the library — it was removed after being asked for            |
+
+The queue (`server/requests/queue.ts`) speaks first, since it is the only thing moving —
+except for a title already complete on disk, whose queue can only be an upgrade nobody is
+waiting on. Where several records belong to one title, the one needing a hand wins, and
+among equals the furthest along.
+
+A state carries `detail` (what the service said: a stall, a rejection, a bad file),
+`expectedAt`, and `since`. `RequestRow.vue` is the one place they are put into words.
 
 Progress is `1 - sizeleft / size`. For a series, the furthest-along episode is shown,
 since it is the next thing that will become watchable.

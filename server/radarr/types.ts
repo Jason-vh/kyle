@@ -130,6 +130,11 @@ export interface RadarrMovie {
   statistics: RadarrStatistics;
 }
 
+export interface RadarrStatusMessage {
+  title: string;
+  messages: string[];
+}
+
 export interface RadarrQueueItem {
   id: number;
   movie: RadarrMovie;
@@ -139,10 +144,11 @@ export interface RadarrQueueItem {
   title: string;
   timeleft?: string;
   estimatedCompletionTime?: string;
+  added?: string;
   status: string;
   trackedDownloadStatus?: string;
   trackedDownloadState?: string;
-  statusMessages?: string[];
+  statusMessages?: RadarrStatusMessage[];
   errorMessage?: string;
   downloadId?: string;
   protocol: string;

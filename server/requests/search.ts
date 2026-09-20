@@ -1,6 +1,6 @@
 import * as tmdb from "#server/tmdb/api.ts";
 import type { TMDBMultiResult } from "#server/tmdb/types.ts";
-import { getLibraryIndex, type LibraryStatus } from "./library.ts";
+import { getLibraryIndex, libraryStatusOf, type LibraryStatus } from "./library.ts";
 import { getRequestersByTmdbId } from "#server/db/requests.ts";
 import { yearOf } from "#server/tmdb/utils.ts";
 import type { RequestableMediaType } from "./service.ts";
@@ -69,7 +69,8 @@ export async function searchRequestableMedia(query: string): Promise<DiscoverRes
   ]);
 
   for (const result of results) {
-    result.libraryStatus = library[result.mediaType].get(result.tmdbId)?.status;
+    const entry = library[result.mediaType].get(result.tmdbId);
+    result.libraryStatus = entry && libraryStatusOf(entry);
     const requesters = result.mediaType === "movie" ? movieRequesters : seriesRequesters;
     result.requestedBy = requesters.get(result.tmdbId) ?? [];
   }

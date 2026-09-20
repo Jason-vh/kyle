@@ -14,6 +14,19 @@ export function formatSize(bytes: number): string {
   return `${value.toFixed(value >= 10 || exponent === 0 ? 0 : 1)} ${SIZE_UNITS[exponent]}`;
 }
 
+/** "6 Mar", or "6 Mar 2026" once the year stops being obvious. */
+export function formatDate(iso: string, now = new Date()): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "";
+
+  const sameYear = date.getFullYear() === now.getFullYear();
+  return date.toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "short",
+    year: sameYear ? undefined : "numeric",
+  });
+}
+
 /** "3h 20m", "45m", "0m" — a duration a person reads at a glance. */
 export function formatDuration(minutes: number): string {
   const whole = Math.round(minutes);

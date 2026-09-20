@@ -5,7 +5,7 @@ import * as tmdb from "#server/tmdb/api.ts";
 import { yearOf } from "#server/tmdb/utils.ts";
 import { movieState, seriesState } from "#server/library/item.ts";
 import { buildSeasons, withEpisodeWatchers } from "./seasons.ts";
-import { progressFor } from "#server/requests/state.ts";
+import { queueStatusFor } from "#server/requests/state.ts";
 import { getRequestersForMedia } from "#server/db/requests.ts";
 import { getWatchers, watchKey } from "#server/plex/history.ts";
 import { createLogger } from "#server/logger.ts";
@@ -114,7 +114,7 @@ export async function getMediaDetail(
   ]);
 
   const library = held?.state;
-  const download = library ? await progressFor(mediaType, library.serviceId) : undefined;
+  const download = library ? await queueStatusFor(mediaType, library.serviceId) : undefined;
   const key = watchKey(mediaType, tmdbId);
 
   return {
