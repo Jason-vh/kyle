@@ -79,6 +79,8 @@ export interface MediaDetail {
   progress?: number;
   /** What the download client thinks is left, e.g. "00:12:31". */
   eta?: string;
+  /** Where to watch it, once Plex has scanned it in. */
+  plexUrl?: string;
   requestedBy: string[];
   requestedByMe: boolean;
   watchedBy: Watcher[];
@@ -152,6 +154,8 @@ export interface MediaRequest {
   since?: string;
   /** Seasons still short of episodes, while the rest of the series is watchable. */
   missing?: MissingSeason[];
+  /** Where to watch it, once Plex has scanned it in. */
+  plexUrl?: string;
   /** 0–1, while downloading. */
   progress?: number;
   /** What the download client thinks is left, e.g. "00:12:31". */
