@@ -1,4 +1,5 @@
-import { defineQueryOptions, useMutation, useQuery, useQueryCache } from "@pinia/colada";
+import { defineQueryOptions, useMutation, useQueryCache } from "@pinia/colada";
+import { useAccountQuery } from "./account";
 import type { MaybeRefOrGetter } from "vue";
 import { toValue } from "vue";
 import type { LibraryMediaType } from "#shared/types";
@@ -69,26 +70,26 @@ export const mediaDetailQuery = defineQueryOptions(
 );
 
 export function useDashboard() {
-  return useQuery(dashboardQuery);
+  return useAccountQuery(dashboardQuery);
 }
 
 export function useLibrary() {
-  return useQuery(libraryQuery);
+  return useAccountQuery(libraryQuery);
 }
 
 export function useRequests(all: MaybeRefOrGetter<boolean>) {
-  return useQuery(() => requestsQuery(toValue(all)));
+  return useAccountQuery(() => requestsQuery(toValue(all)));
 }
 
 export function useDiscover(term: MaybeRefOrGetter<string>) {
-  return useQuery(() => discoverQuery(toValue(term).trim()));
+  return useAccountQuery(() => discoverQuery(toValue(term).trim()));
 }
 
 export function useMediaDetail(
   mediaType: MaybeRefOrGetter<LibraryMediaType>,
   tmdbId: MaybeRefOrGetter<number>,
 ) {
-  return useQuery(() =>
+  return useAccountQuery(() =>
     mediaDetailQuery({ mediaType: toValue(mediaType), tmdbId: toValue(tmdbId) }),
   );
 }

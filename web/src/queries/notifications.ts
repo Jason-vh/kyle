@@ -1,4 +1,5 @@
-import { defineQueryOptions, useMutation, useQuery, useQueryCache } from "@pinia/colada";
+import { defineQueryOptions, useMutation, useQueryCache } from "@pinia/colada";
+import { useAccountQuery } from "./account";
 import { getNotifications, markNotificationsRead } from "#web/api/notifications";
 
 export const notificationsQuery = defineQueryOptions({
@@ -9,7 +10,7 @@ export const notificationsQuery = defineQueryOptions({
 });
 
 export function useNotifications() {
-  return useQuery(notificationsQuery);
+  return useAccountQuery(notificationsQuery);
 }
 
 export function useMarkNotificationsRead() {

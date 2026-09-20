@@ -15,6 +15,11 @@ afterEach(() => {
 function stub(unread: number, items: unknown[]) {
   const posted: string[] = [];
   globalThis.fetch = vi.fn((url: string, init?: RequestInit) => {
+    if (url === "/api/auth/status") {
+      return Promise.resolve(
+        Response.json({ authenticated: true, user: { id: "u1", name: "Jane", admin: false } }),
+      );
+    }
     if (init?.method === "POST") {
       posted.push(url);
       return Promise.resolve(new Response(JSON.stringify({ read: unread })));

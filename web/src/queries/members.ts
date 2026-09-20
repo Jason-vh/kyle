@@ -1,4 +1,5 @@
-import { defineQueryOptions, useMutation, useQuery, useQueryCache } from "@pinia/colada";
+import { defineQueryOptions, useMutation, useQueryCache } from "@pinia/colada";
+import { useAccountQuery } from "./account";
 import { getPlexMembers, invitePlexMember, removePlexMember } from "#web/api/plex";
 
 export const membersQuery = defineQueryOptions({
@@ -10,7 +11,7 @@ export const membersQuery = defineQueryOptions({
 });
 
 export function useMembers() {
-  return useQuery(membersQuery);
+  return useAccountQuery(membersQuery);
 }
 
 export function useInviteMember() {

@@ -1,10 +1,22 @@
 import { computed } from "vue";
 import { defineQueryOptions, useQuery, useQueryCache } from "@pinia/colada";
-import { fetchAuthStatus } from "#web/api/auth";
+import { fetchAuthStatus, type AuthStatus } from "#web/api/auth";
 
 export const sessionQuery = defineQueryOptions({
   key: ["session"],
-  query: fetchAuthStatus,
+  query: async () => {
+    const cache = useQueryCache();
+    const previous = cache.getQueryData<AuthStatus>(["session"]);
+    const next = await fetchAuthStatus();
+    if (previous?.user?.id !== next.user?.id || previous?.user?.admin !== next.user?.admin) {
+      for (const entry of cache.getEntries()) {
+        if (entry.key[0] === "session") continue;
+        cache.cancel(entry);
+        cache.remove(entry);
+      }
+    }
+    return next;
+  },
   // Signing in and out invalidate this explicitly, so it does not need to be
   // re-asked on a schedule.
   staleTime: Infinity,

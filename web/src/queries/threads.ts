@@ -1,4 +1,5 @@
-import { defineQueryOptions, useQuery } from "@pinia/colada";
+import { defineQueryOptions } from "@pinia/colada";
+import { useAccountQuery } from "./account";
 import type { MaybeRefOrGetter } from "vue";
 import { toValue } from "vue";
 import { getThread, getThreads } from "#web/api/threads";
@@ -17,9 +18,9 @@ export const threadQuery = defineQueryOptions((params: { id: string }) => ({
 }));
 
 export function useThreads() {
-  return useQuery(threadsQuery);
+  return useAccountQuery(threadsQuery);
 }
 
 export function useThread(params: MaybeRefOrGetter<{ id: string }>) {
-  return useQuery(() => threadQuery(toValue(params)));
+  return useAccountQuery(() => threadQuery(toValue(params)));
 }
