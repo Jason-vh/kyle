@@ -2,7 +2,13 @@ import { createLogger } from "#server/logger.ts";
 import { braveTools } from "#server/brave/tools.ts";
 import { qbittorrentTools } from "#server/qbittorrent/tools.ts";
 import { addMoviePresentation, createAddMovieTool, radarrTools } from "#server/radarr/tools.ts";
-import { addSeriesPresentation, createAddSeriesTool, sonarrTools } from "#server/sonarr/tools.ts";
+import {
+  addSeriesPresentation,
+  createAddSeriesTool,
+  createRequestSeasonTool,
+  requestSeasonPresentation,
+  sonarrTools,
+} from "#server/sonarr/tools.ts";
 import { timeTools } from "#server/time/tools.ts";
 import { tmdbTools } from "#server/tmdb/tools.ts";
 import { ultraTools } from "#server/ultra/tools.ts";
@@ -28,7 +34,11 @@ export const allTools: AnyTool[] = [
 ];
 
 /** Tools built per turn, so only their presentation can live in the registry. */
-const contextualPresentations: ToolPresentation[] = [addMoviePresentation, addSeriesPresentation];
+const contextualPresentations: ToolPresentation[] = [
+  addMoviePresentation,
+  addSeriesPresentation,
+  requestSeasonPresentation,
+];
 
 /** The one place a tool name maps back to how it should be described. */
 const presentationByName = new Map<string, ToolPresentation>(
@@ -50,5 +60,10 @@ export function toolsForTurn(context?: AgentContext): AnyTool[] {
     ? { userId: context.userId, conversationId: context.conversationId }
     : undefined;
 
-  return [...allTools, createAddMovieTool(requestedBy), createAddSeriesTool(requestedBy)];
+  return [
+    ...allTools,
+    createAddMovieTool(requestedBy),
+    createAddSeriesTool(requestedBy),
+    createRequestSeasonTool(requestedBy),
+  ];
 }

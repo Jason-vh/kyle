@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { movieEntry, seriesEntry } from "./library.ts";
+import { movieEntry, seasonEntry, seriesEntry } from "./library.ts";
 import type { RadarrMovie } from "#server/radarr/types.ts";
 import type { SonarrSeason, SonarrSeries, SonarrStatistics } from "#server/sonarr/types.ts";
 
@@ -103,7 +103,55 @@ describe("movieEntry", () => {
   });
 });
 
+describe("seasonEntry", () => {
+  // Ownership is per season, so each season has to answer for itself rather
+  // than inherit whatever the series around it happens to be doing.
+  test("a season complete on disk is complete, in a series that is not", () => {
+    const show = series({ statistics: statistics(30, 22), seasons: [season(1, 22, 22)] });
+
+    expect(seasonEntry(show, show.seasons[0]!)).toMatchObject({
+      serviceId: 9,
+      hasFiles: true,
+      complete: true,
+      missing: undefined,
+    });
+  });
+
+  test("a season short of episodes names itself as what is missing", () => {
+    const show = series({ seasons: [season(4, 8, 6)] });
+
+    expect(seasonEntry(show, show.seasons[0]!)).toMatchObject({
+      complete: false,
+      missing: [{ season: 4, episodes: 2 }],
+    });
+  });
+
+  test("a season nobody monitors is paused rather than missing", () => {
+    const show = series({ seasons: [season(3, 10, 0, false)] });
+
+    expect(seasonEntry(show, show.seasons[0]!).monitored).toBe(false);
+  });
+
+  test("a season with nothing aired yet is unreleased, dated by the next airing", () => {
+    const show = series({ nextAiring: "2027-01-14", seasons: [season(5, 0, 0)] });
+
+    expect(seasonEntry(show, show.seasons[0]!).awaiting).toEqual({
+      reason: "unreleased",
+      expectedAt: "2027-01-14",
+    });
+  });
+});
+
 describe("seriesEntry", () => {
+  test("carries an entry for every season, so a season request can be answered", () => {
+    const entry = seriesEntry(
+      series({ statistics: statistics(30, 22), seasons: [season(1, 22, 22), season(2, 8, 0)] }),
+    );
+
+    expect(entry.seasons?.get(1)).toMatchObject({ complete: true });
+    expect(entry.seasons?.get(2)).toMatchObject({ hasFiles: false, complete: false });
+  });
+
   test("every aired episode on disk is complete", () => {
     const entry = seriesEntry(
       series({ statistics: statistics(10, 10), seasons: [season(1, 10, 10)] }),

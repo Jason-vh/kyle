@@ -97,10 +97,19 @@ export const mediaRequests = pgTable(
     posterPath: text("poster_path"),
     /** Radarr or Sonarr id, once the media exists there. */
     serviceId: integer("service_id"),
+    /** Which season was asked for; null is the series as a whole. */
+    seasonNumber: integer("season_number"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
+  // Postgres counts two NULL seasons as distinct, so the series-wide scope
+  // needs an index of its own to stay one row per user and title.
   (table) => [
-    uniqueIndex("media_requests_user_media_idx").on(table.userId, table.mediaType, table.tmdbId),
+    uniqueIndex("media_requests_user_media_idx")
+      .on(table.userId, table.mediaType, table.tmdbId)
+      .where(sql`season_number IS NULL`),
+    uniqueIndex("media_requests_user_season_idx")
+      .on(table.userId, table.mediaType, table.tmdbId, table.seasonNumber)
+      .where(sql`season_number IS NOT NULL`),
     index("media_requests_created_at_idx").on(table.createdAt),
   ],
 );

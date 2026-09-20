@@ -20,6 +20,8 @@ export interface StatelessRequest {
   year: number | null;
   posterPath: string | null;
   requestedBy?: string;
+  /** Which season was asked for; null is the series as a whole. */
+  seasonNumber?: number | null;
   createdAt: Date | string;
 }
 
@@ -74,8 +76,10 @@ export async function queueStatusFor(
   }
 }
 
-function key(mediaType: string, serviceId: number): string {
-  return `${mediaType}:${serviceId}`;
+/** A season has a progress of its own, and rolls up into the series' own key. */
+function key(mediaType: string, serviceId: number, seasonNumber?: number | null): string {
+  const scope = seasonNumber === undefined || seasonNumber === null ? "" : `:${seasonNumber}`;
+  return `${mediaType}:${serviceId}${scope}`;
 }
 
 /** An unreachable Plex says nothing about a title, which is not the same as no. */
@@ -124,9 +128,17 @@ async function queuesByService(): Promise<Map<string, QueueStatus>> {
     log.warn("radarr queue unavailable", { error: errorMessage(movies.reason) });
   }
 
+  // An episode's download belongs to its season as well as to the series, so a
+  // request for one season sees only what is being fetched for that season.
   if (series.status === "fulfilled") {
     for (const item of series.value.records) {
-      if (item.seriesId) collect(records, key("series", item.seriesId), item);
+      if (!item.seriesId) continue;
+      collect(records, key("series", item.seriesId), item);
+
+      const seasonNumber = item.seasonNumber ?? item.episode?.seasonNumber;
+      if (seasonNumber !== undefined) {
+        collect(records, key("series", item.seriesId, seasonNumber), item);
+      }
     }
   } else {
     log.warn("sonarr queue unavailable", { error: errorMessage(series.reason) });
@@ -139,6 +151,20 @@ async function queuesByService(): Promise<Map<string, QueueStatus>> {
   }
 
   return statuses;
+}
+
+/**
+ * What the request was for: the whole series, or the one season it named. A
+ * season the series no longer lists was released or never existed, which reads
+ * the same way as a title removed from the library.
+ */
+export function scopeOf(
+  entry: LibraryEntry | undefined,
+  seasonNumber: number | null | undefined,
+): LibraryEntry | undefined {
+  if (!entry) return undefined;
+  if (seasonNumber === undefined || seasonNumber === null) return entry;
+  return entry.seasons?.get(seasonNumber);
 }
 
 /**
@@ -200,13 +226,22 @@ export async function withState(requests: StatelessRequest[]): Promise<MediaRequ
 
   return requests.map((request) => {
     const entry = library[request.mediaType].get(request.tmdbId);
-    const queue = entry ? queues.get(key(request.mediaType, entry.serviceId)) : undefined;
+    const scope = scopeOf(entry, request.seasonNumber);
+    const queue = entry
+      ? queues.get(key(request.mediaType, entry.serviceId, request.seasonNumber))
+      : undefined;
     const removal = removals.get(key(request.mediaType, request.tmdbId));
 
     return {
       ...request,
+      seasonNumber: request.seasonNumber ?? null,
       createdAt: new Date(request.createdAt).toISOString(),
-      ...resolveState({ entry, queue, removal, plex: placeOf(places, request) }),
+      ...resolveState({
+        entry: scope,
+        queue,
+        removal,
+        plex: placeOf(places, request),
+      }),
     };
   });
 }

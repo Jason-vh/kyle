@@ -80,6 +80,19 @@ export function extractMediaEvent(
       };
     }
 
+    case "request_season":
+      return {
+        action: "add",
+        mediaType: "series",
+        title: parsed.title as string,
+        ids: {
+          sonarr: parsed.seriesId as number,
+          tvdb: parsed.tvdbId as number | undefined,
+          tmdb: parsed.tmdbId as number | undefined,
+        },
+        seasonNumber: parsed.seasonNumber as number,
+      };
+
     case "remove_series":
       return {
         action: "remove",

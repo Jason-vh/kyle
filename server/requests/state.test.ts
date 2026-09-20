@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { placeOf, resolveState } from "./state.ts";
+import { placeOf, resolveState, scopeOf } from "./state.ts";
 import type { LibraryEntry } from "./library.ts";
 import type { QueueStatus } from "./queue.ts";
 
@@ -185,5 +185,25 @@ describe("placeOf", () => {
     expect(placeOf(undefined, { mediaType: "movie", tmdbId: 27205 })).toEqual({
       reachable: false,
     });
+  });
+});
+
+describe("scopeOf", () => {
+  const season = entry({ hasFiles: true, complete: true });
+  const series = entry({ seasons: new Map([[3, season]]) });
+
+  test("a request for the whole series is answered by the series", () => {
+    expect(scopeOf(series, null)).toBe(series);
+  });
+
+  test("a request for one season is answered by that season", () => {
+    expect(scopeOf(series, 3)).toBe(season);
+  });
+
+  // Releasing a season leaves the request behind it pointing at nothing, which
+  // is the same position as a title removed from the library.
+  test("a season the series no longer has is nothing at all", () => {
+    expect(scopeOf(series, 4)).toBeUndefined();
+    expect(resolveState({ entry: scopeOf(series, 4) })).toEqual({ state: "removed" });
   });
 });

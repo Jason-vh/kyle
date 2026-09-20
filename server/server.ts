@@ -30,7 +30,11 @@ import {
   handleReportRequest,
   handleRetryRequest,
 } from "./routes/api/requests.ts";
-import { handleGetLibrary, handleRemoveLibraryItem } from "./routes/api/library.ts";
+import {
+  handleGetLibrary,
+  handleReleaseSeason,
+  handleRemoveLibraryItem,
+} from "./routes/api/library.ts";
 import { handleGetMediaDetail } from "./routes/api/media.ts";
 import { handleGetDashboard } from "./routes/api/dashboard.ts";
 import { handleGetNotifications, handleMarkNotificationsRead } from "./routes/api/notifications.ts";
@@ -113,6 +117,9 @@ export function startServer(port: number) {
       },
       "/api/library/:mediaType/:serviceId": {
         DELETE: (req) => handleRemoveLibraryItem(req, req.params.mediaType, req.params.serviceId),
+      },
+      "/api/library/series/:serviceId/seasons/:seasonNumber": {
+        DELETE: (req) => handleReleaseSeason(req, req.params.serviceId, req.params.seasonNumber),
       },
 
       "/api/dashboard": { GET: handleGetDashboard },

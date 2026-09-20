@@ -35,6 +35,8 @@ export interface LibraryEntry {
   filesAddedAt?: string;
   /** Absent once the service can search for it. */
   awaiting?: Awaiting;
+  /** The same questions asked of each season, for a series. */
+  seasons?: Map<number, LibraryEntry>;
 }
 
 /** What Radarr and Sonarr already hold, keyed by TMDB id. */
@@ -97,6 +99,28 @@ function shortfallOf(seasons: SonarrSeason[] = []): MissingSeason[] {
   return missing;
 }
 
+/**
+ * One season asked what the series is asked, so a request for a season can be
+ * answered by the same state model as a request for all of it.
+ */
+export function seasonEntry(series: SonarrSeries, season: SonarrSeason): LibraryEntry {
+  const present = season.statistics?.episodeFileCount ?? 0;
+  const aired = season.statistics?.episodeCount ?? 0;
+  const gap = aired - present;
+
+  return {
+    serviceId: series.id,
+    monitored: season.monitored,
+    hasFiles: present > 0,
+    complete: aired > 0 && gap === 0,
+    missing: gap > 0 ? [{ season: season.seasonNumber, episodes: gap }] : undefined,
+    awaiting:
+      aired === 0
+        ? { reason: "unreleased", expectedAt: series.nextAiring ?? series.firstAired }
+        : undefined,
+  };
+}
+
 /** Sonarr counts only episodes that have aired, so none means none yet. */
 export function seriesEntry(series: SonarrSeries): LibraryEntry {
   const present = series.statistics?.episodeFileCount ?? 0;
@@ -113,6 +137,9 @@ export function seriesEntry(series: SonarrSeries): LibraryEntry {
       aired === 0
         ? { reason: "unreleased", expectedAt: series.nextAiring ?? series.firstAired }
         : undefined,
+    seasons: new Map(
+      (series.seasons ?? []).map((season) => [season.seasonNumber, seasonEntry(series, season)]),
+    ),
   };
 }
 

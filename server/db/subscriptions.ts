@@ -130,6 +130,26 @@ export async function deactivateSeriesSubscriptions(
 }
 
 /**
+ * Deactivate everyone's subscriptions to one season, for when the season
+ * itself goes rather than one person's interest in it.
+ */
+export async function deactivateSeasonSubscriptions(
+  sonarrId: number,
+  seasonNumber: number,
+): Promise<number> {
+  const result = await query<{ id: string }>(sql`
+    UPDATE series_subscriptions
+    SET active = false, updated_at = NOW()
+    WHERE sonarr_id = ${sonarrId} AND season_number = ${seasonNumber} AND active = true
+    RETURNING id
+  `);
+  if (result.length > 0) {
+    log.info("deactivated season subscriptions", { sonarrId, seasonNumber, count: result.length });
+  }
+  return result.length;
+}
+
+/**
  * Get all subscriptions for a user (both active and inactive).
  */
 export async function getSubscriptionsForUser(userId: string): Promise<UserSubscription[]> {

@@ -2,7 +2,7 @@ import { Type } from "@sinclair/typebox";
 import type { Tool, ToolPresentation } from "#server/agent/tool.ts";
 import { jsonResult } from "#server/agent/tool-result.ts";
 import { buildTable } from "#server/agent/table.ts";
-import { requestSeries, type Requester } from "#server/requests/service.ts";
+import { requestSeason, requestSeries, type Requester } from "#server/requests/service.ts";
 import { recordRemoval } from "#server/db/removals.ts";
 import { episodeCode, episodeLabel, titleWithYear } from "#shared/media.ts";
 import * as sonarr from "./api.ts";
@@ -168,6 +168,52 @@ export function createAddSeriesTool(requestedBy?: Requester): Tool<typeof addSer
         series: toPartialSeries(series),
         message:
           status === "existing" ? `${name} is already in Sonarr.` : `Added ${name} to Sonarr.`,
+      });
+    },
+  };
+}
+
+const requestSeasonParams = Type.Object({
+  tvdbId: Type.Optional(Type.Number({ description: "The TVDB ID of the series" })),
+  tmdbId: Type.Optional(Type.Number({ description: "The TMDB ID of the series" })),
+  seasonNumber: Type.Number({
+    description: "The season wanted (0 for specials)",
+  }),
+});
+
+/** Bound to the requester at call time, so the registry indexes it separately. */
+export const requestSeasonPresentation: ToolPresentation = {
+  name: "request_season",
+  label: "Requesting a season in Sonarr",
+  action: true,
+  summary: (args, payload) =>
+    `Requested ${seriesName(payload)} season ${(args as { seasonNumber?: number }).seasonNumber}`,
+};
+
+export function createRequestSeasonTool(requestedBy?: Requester): Tool<typeof requestSeasonParams> {
+  return {
+    ...requestSeasonPresentation,
+    description:
+      "Request one season of a TV series and record who asked for it. Adds the series to Sonarr unmonitored if it is not there, monitors that season alone, and searches for it. This is how to ask for more of a series already in the library — add_series does nothing for one Sonarr already holds.",
+    parameters: requestSeasonParams,
+    async execute(_toolCallId, params) {
+      const { status, series, seasonNumber } = await requestSeason({
+        tvdbId: params.tvdbId,
+        tmdbId: params.tmdbId,
+        seasonNumber: params.seasonNumber,
+        requestedBy,
+      });
+      const name = titleWithYear(series.title, series.year);
+      const already = status === "existing" ? " It was already monitored, so this is a retry." : "";
+      return jsonResult({
+        series: toPartialSeries(series),
+        seriesId: series.id,
+        seasonNumber,
+        title: series.title,
+        year: series.year,
+        tvdbId: series.tvdbId,
+        tmdbId: series.tmdbId,
+        message: `Requested season ${seasonNumber} of ${name}.${already}`,
       });
     },
   };
