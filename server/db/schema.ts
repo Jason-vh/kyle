@@ -13,6 +13,7 @@ import {
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import type { MediaNotificationInfo, MediaRequester } from "#server/webhooks/types.ts";
+import type { SlackEvent } from "#server/slack/events.ts";
 
 // Custom type for bytea columns
 const bytea = customType<{ data: Uint8Array; driverData: Buffer }>({
@@ -282,6 +283,26 @@ export const jobState = pgTable("job_state", {
   value: jsonb("value").notNull(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
+
+export const slackEventJobs = pgTable(
+  "slack_event_jobs",
+  {
+    eventId: text("event_id").primaryKey(),
+    event: jsonb("event").$type<SlackEvent>().notNull(),
+    teamId: text("team_id"),
+    availableAt: timestamp("available_at").notNull().defaultNow(),
+    attempts: integer("attempts").notNull().default(0),
+    responseText: text("response_text"),
+    completedAt: timestamp("completed_at"),
+    lastError: text("last_error"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (table) => [
+    index("slack_event_jobs_pending_idx")
+      .on(table.availableAt)
+      .where(sql`completed_at IS NULL`),
+  ],
+);
 
 export const webhookJobs = pgTable(
   "webhook_jobs",

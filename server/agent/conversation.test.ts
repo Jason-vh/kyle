@@ -10,7 +10,9 @@ let script: (options: RunAgentOptions) => RunAgentResult | Promise<RunAgentResul
   throw new Error("no script set");
 };
 
+const realAgent = await import("./index.ts");
 mock.module("./index.ts", () => ({
+  ...realAgent,
   runAgent: async (options: RunAgentOptions) => script(options),
   ApiOverloadedError: class ApiOverloadedError extends Error {},
 }));

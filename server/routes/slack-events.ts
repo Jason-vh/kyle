@@ -2,21 +2,10 @@ import { createLogger } from "#server/logger.ts";
 import { safeJsonParse } from "#server/json.ts";
 import { errorFields } from "#server/errors.ts";
 import { verifySlackSignature } from "#server/slack/verify.ts";
-import { processSlackMessage } from "#server/slack/handler.ts";
+import { enqueueSlackEvent, processSlackEvent } from "#server/slack/jobs.ts";
 import { shouldProcess, type SlackEventPayload } from "#server/slack/events.ts";
 
 const log = createLogger("slack:events");
-
-const MAX_SEEN_EVENTS = 10_000;
-const seenEvents = new Set<string>();
-
-/** Slack redelivers events; only the first sighting of an ID is worth processing. */
-function isFirstSighting(eventId: string): boolean {
-  if (seenEvents.has(eventId)) return false;
-  if (seenEvents.size >= MAX_SEEN_EVENTS) seenEvents.clear();
-  seenEvents.add(eventId);
-  return true;
-}
 
 export async function handleSlackEvents(req: Request): Promise<Response> {
   const rawBody = await req.text();
@@ -40,13 +29,15 @@ export async function handleSlackEvents(req: Request): Promise<Response> {
   }
 
   const ack = new Response("ok", { status: 200 });
-  if (req.headers.get("x-slack-retry-num")) return ack;
-  if (payload.event_id && !isFirstSighting(payload.event_id)) return ack;
-
   const event = payload.event;
   if (!event) return ack;
   if (event.type !== "message" && event.type !== "app_mention") return ack;
   if (!shouldProcess(event)) return ack;
+  if (typeof payload.event_id !== "string" || !payload.event_id) {
+    return Response.json({ error: "event_id is required" }, { status: 400 });
+  }
+
+  await enqueueSlackEvent(payload.event_id, event, payload.team_id);
 
   log.info("processing slack message", {
     channel: event.channel,
@@ -56,11 +47,11 @@ export async function handleSlackEvents(req: Request): Promise<Response> {
 
   // Tests ask for the reply inline; Slack itself needs an immediate ack.
   if (req.headers.get("x-sync-response") === "true") {
-    const response = await processSlackMessage(event, payload.team_id);
+    const response = await processSlackEvent(payload.event_id);
     return Response.json({ ok: true, response });
   }
 
-  processSlackMessage(event, payload.team_id).catch((error) => {
+  processSlackEvent(payload.event_id).catch((error) => {
     log.error("slack message handler crashed", errorFields(error));
   });
   return ack;
