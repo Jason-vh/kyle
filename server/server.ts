@@ -27,6 +27,7 @@ import {
   handleDiscoverSearch,
   handleCreateRequest,
   handleGetRequests,
+  handleRetryRequest,
 } from "./routes/api/requests.ts";
 import { handleGetLibrary, handleRemoveLibraryItem } from "./routes/api/library.ts";
 import { handleGetMediaDetail } from "./routes/api/media.ts";
@@ -120,6 +121,9 @@ export function startServer(port: number) {
 
       "/api/discover": { GET: handleDiscoverSearch },
       "/api/requests": { GET: handleGetRequests, POST: handleCreateRequest },
+      "/api/requests/:mediaType/:tmdbId/retry": {
+        POST: (req) => handleRetryRequest(req, req.params.mediaType, req.params.tmdbId),
+      },
 
       "/api/plex/members": { GET: handleGetPlexMembers },
       "/api/plex/members/:handle": {

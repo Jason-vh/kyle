@@ -33,7 +33,12 @@
         />
       </div>
 
-      <StatusPill :tone="STATES[request.state].tone">{{ STATES[request.state].label }}</StatusPill>
+      <div class="flex shrink-0 flex-col items-end gap-1.5">
+        <StatusPill :tone="STATES[request.state].tone">
+          {{ STATES[request.state].label }}
+        </StatusPill>
+        <RequestRetry v-if="RETRYABLE.has(request.state)" :request="request" />
+      </div>
     </div>
   </AppCard>
 </template>
@@ -45,6 +50,7 @@ import { posterUrl } from "#web/utils/images";
 import { formatDate } from "#web/utils/format";
 import { relativeTime } from "#web/composables/useRelativeTime";
 import DownloadProgress from "./DownloadProgress.vue";
+import RequestRetry from "./RequestRetry.vue";
 import MediaTitle from "./MediaTitle.vue";
 import AppCard from "./ui/AppCard.vue";
 import MediaPoster from "./ui/MediaPoster.vue";
@@ -76,6 +82,9 @@ function describeMissing(missing: MissingSeason[]): string {
   if (missing.length === 1) return `Season ${missing[0]!.season} · ${episodes} ${plural} missing`;
   return `${missing.length} seasons · ${episodes} ${plural} missing`;
 }
+
+/** States another search could move; the rest are waiting on time or a person. */
+const RETRYABLE = new Set<RequestState>(["searching", "stalled"]);
 
 /** States whose age is worth saying: something has been stuck that long. */
 const TIMED = new Set<RequestState>(["found", "stalled", "blocked", "importing"]);

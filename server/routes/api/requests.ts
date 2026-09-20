@@ -8,7 +8,10 @@ import {
   type Requester,
 } from "#server/requests/service.ts";
 import { getAllMediaRequests, getMediaRequestsForUser } from "#server/db/requests.ts";
+import { getLibraryIndex } from "#server/requests/library.ts";
+import { retryRequest } from "#server/requests/retry.ts";
 import { withState } from "#server/requests/state.ts";
+import { isLibraryMediaType } from "#shared/types.ts";
 import { createLogger } from "#server/logger.ts";
 import { errorMessage, errorResponse } from "#server/errors.ts";
 
@@ -115,4 +118,40 @@ export async function handleGetRequests(req: Request): Promise<Response> {
   const rows = all ? await getAllMediaRequests() : await getMediaRequestsForUser(auth.user.id);
 
   return Response.json({ requests: await withState(rows) }, { headers: auth.refreshHeaders });
+}
+
+// ---------------------------------------------------------------------------
+// POST /api/requests/:mediaType/:tmdbId/retry — look for it again
+// ---------------------------------------------------------------------------
+
+export async function handleRetryRequest(
+  req: Request,
+  mediaType: string,
+  rawTmdbId: string,
+): Promise<Response> {
+  const auth = await requireAuth(req);
+  if ("error" in auth) return auth.error;
+
+  if (!isLibraryMediaType(mediaType)) {
+    return Response.json({ error: "Unknown media type" }, { status: 404 });
+  }
+
+  const tmdbId = Number(rawTmdbId);
+  if (!Number.isInteger(tmdbId)) {
+    return Response.json({ error: "Invalid id" }, { status: 400 });
+  }
+
+  const library = await getLibraryIndex();
+  const entry = library[mediaType].get(tmdbId);
+  if (!entry) {
+    return Response.json({ error: "This is no longer in the library" }, { status: 404 });
+  }
+
+  try {
+    const outcome = await retryRequest(mediaType, entry.serviceId);
+    return Response.json(outcome, { headers: auth.refreshHeaders });
+  } catch (error) {
+    log.error("retry failed", { mediaType, tmdbId, error: errorMessage(error) });
+    return errorResponse(error, 502, "Could not search again");
+  }
 }

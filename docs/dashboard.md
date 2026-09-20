@@ -111,6 +111,14 @@ since it is the next thing that will become watchable.
 The same function backs `GET /api/requests`, so the home screen and the requests page
 cannot disagree.
 
+### Acting on a state
+
+`POST /api/requests/:mediaType/:tmdbId/retry` searches again. A stalled release is dropped
+and blocklisted first (`server/requests/retry.ts`), so the search that follows has to find
+a different one; a blocked import is left alone, since it has the file already and needs a
+person rather than another release. Only `searching` and `stalled` offer the button — the
+rest are waiting on a date, a download, or an admin.
+
 ## Adding a figure
 
 1. Write the source module beside its service (`server/plex/`, `server/dashboard/`),

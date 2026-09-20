@@ -221,6 +221,16 @@ export async function getSeriesHistory(
   return request<SonarrHistoryItem[]>(`/history/series?${params.toString()}`);
 }
 
+/** Drops a download; blocklisting it stops the same release being grabbed again. */
+export async function removeQueueItem(id: number, blocklist: boolean): Promise<void> {
+  const params = new URLSearchParams({
+    removeFromClient: "true",
+    blocklist: String(blocklist),
+    skipRedownload: "true",
+  });
+  await request<void>(`/queue/${id}?${params.toString()}`, { method: "DELETE" });
+}
+
 export async function getManualImport(
   downloadId: string,
   seriesId?: number,

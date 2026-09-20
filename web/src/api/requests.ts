@@ -48,6 +48,23 @@ export async function requestMedia(item: RequestInput): Promise<RequestOutcome> 
   });
 }
 
+/** What a retry did, so the UI can say whether a release was given up on. */
+export interface RetryOutcome {
+  discarded: number;
+}
+
+/** All a retry needs: the title is already in the library. */
+export interface RetryInput {
+  mediaType: RequestableMediaType;
+  tmdbId: number;
+}
+
+export async function retryRequest(item: RetryInput): Promise<RetryOutcome> {
+  return apiFetch<RetryOutcome>(`/api/requests/${item.mediaType}/${item.tmdbId}/retry`, {
+    method: "POST",
+  });
+}
+
 export async function getRequests(all = false): Promise<MediaRequest[]> {
   const { requests } = await apiFetch<{ requests: MediaRequest[] }>(
     `/api/requests${all ? "?all=true" : ""}`,

@@ -108,6 +108,23 @@ export async function getQueue(options?: { movieIds?: number[] }): Promise<Radar
   return response;
 }
 
+export async function searchMovie(movieId: number): Promise<void> {
+  await request<unknown>("/command", {
+    method: "POST",
+    body: JSON.stringify({ name: "MoviesSearch", movieIds: [movieId] }),
+  });
+}
+
+/** Drops a download; blocklisting it stops the same release being grabbed again. */
+export async function removeQueueItem(id: number, blocklist: boolean): Promise<void> {
+  const params = new URLSearchParams({
+    removeFromClient: "true",
+    blocklist: String(blocklist),
+    skipRedownload: "true",
+  });
+  await request<void>(`/queue/${id}?${params.toString()}`, { method: "DELETE" });
+}
+
 export async function getHistory(pageSize: number = 20): Promise<RadarrHistoryResponse> {
   return request<RadarrHistoryResponse>(`/history?includeMovie=true&pageSize=${pageSize}`);
 }

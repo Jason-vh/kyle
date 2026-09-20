@@ -5,7 +5,14 @@ import type { LibraryMediaType } from "#shared/types";
 import { getDashboard } from "#web/api/dashboard";
 import { getLibrary, removeLibraryItem, type RemovableItem } from "#web/api/library";
 import { getMediaDetail } from "#web/api/media";
-import { discover, getRequests, requestMedia, type RequestInput } from "#web/api/requests";
+import {
+  discover,
+  getRequests,
+  requestMedia,
+  retryRequest,
+  type RequestInput,
+  type RetryInput,
+} from "#web/api/requests";
 
 /**
  * Everything a change to the library could be visible in. Adding or removing a
@@ -88,6 +95,14 @@ export function useRequestMedia() {
   const invalidate = useMediaInvalidation();
   return useMutation({
     mutation: (item: RequestInput) => requestMedia(item),
+    onSettled: invalidate,
+  });
+}
+
+export function useRetryRequest() {
+  const invalidate = useMediaInvalidation();
+  return useMutation({
+    mutation: (item: RetryInput) => retryRequest(item),
     onSettled: invalidate,
   });
 }
