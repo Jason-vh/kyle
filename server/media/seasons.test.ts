@@ -1,6 +1,8 @@
 import { describe, expect, test } from "bun:test";
-import { buildSeasons } from "./seasons.ts";
+import { buildSeasons, withEpisodeWatchers } from "./seasons.ts";
 import type { SonarrEpisode, SonarrSeries } from "#server/sonarr/types.ts";
+import { episodeWatchKey, watchKey } from "#server/plex/history.ts";
+import type { Watcher } from "#shared/types.ts";
 
 function series(seasonNumbers: number[]): SonarrSeries {
   return {
@@ -79,5 +81,38 @@ describe("buildSeasons", () => {
     const seasons = buildSeasons(series([1]), [episode(1, 1), episode(7, 1)]);
 
     expect(seasons).toHaveLength(1);
+  });
+});
+
+describe("withEpisodeWatchers", () => {
+  const GIRLS = watchKey("series", 1220);
+  const jason: Watcher = { name: "Jason" };
+
+  test("gives each episode only the people who watched that episode", () => {
+    const seasons = buildSeasons(series([1]), [episode(1, 1), episode(1, 2)]);
+    const watchers = new Map([[episodeWatchKey(GIRLS, 1, 2), [jason]]]);
+
+    const [season] = withEpisodeWatchers(seasons, GIRLS, watchers);
+
+    expect(season?.episodes[0]?.watchedBy).toEqual([]);
+    expect(season?.episodes[1]?.watchedBy).toEqual([jason]);
+  });
+
+  test("does not carry one series' history onto another", () => {
+    const seasons = buildSeasons(series([1]), [episode(1, 1)]);
+    const watchers = new Map([[episodeWatchKey(watchKey("series", 75219), 1, 1), [jason]]]);
+
+    const [season] = withEpisodeWatchers(seasons, GIRLS, watchers);
+
+    expect(season?.episodes[0]?.watchedBy).toEqual([]);
+  });
+
+  test("leaves the rest of the season as it was", () => {
+    const seasons = buildSeasons(series([1]), [episode(1, 1)]);
+
+    const [season] = withEpisodeWatchers(seasons, GIRLS, new Map());
+
+    expect(season?.episodeCount).toBe(2);
+    expect(season?.episodes[0]?.title).toBe("Episode 1");
   });
 });

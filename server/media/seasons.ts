@@ -1,5 +1,6 @@
-import type { EpisodeSummary, SeasonSummary } from "#shared/types.ts";
+import type { EpisodeSummary, SeasonSummary, Watcher } from "#shared/types.ts";
 import type { SonarrEpisode, SonarrSeries } from "#server/sonarr/types.ts";
+import { episodeWatchKey } from "#server/plex/history.ts";
 
 /** Sonarr files specials under season 0, which nobody thinks of as the first one. */
 const SPECIALS = 0;
@@ -11,7 +12,24 @@ function toEpisode(episode: SonarrEpisode): EpisodeSummary {
     airDate: episode.airDateUtc ?? episode.airDate,
     hasFile: episode.hasFile,
     monitored: episode.monitored,
+    watchedBy: [],
   };
+}
+
+/** Annotates each episode with whoever has played it, leaving the rest alone. */
+export function withEpisodeWatchers(
+  seasons: SeasonSummary[],
+  seriesKey: string,
+  watchers: Map<string, Watcher[]>,
+): SeasonSummary[] {
+  return seasons.map((season) => ({
+    ...season,
+    episodes: season.episodes.map((episode) => ({
+      ...episode,
+      watchedBy:
+        watchers.get(episodeWatchKey(seriesKey, season.seasonNumber, episode.episodeNumber)) ?? [],
+    })),
+  }));
 }
 
 function byNumber(a: { seasonNumber: number }, b: { seasonNumber: number }): number {

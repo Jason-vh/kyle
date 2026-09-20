@@ -45,6 +45,8 @@ export interface LibraryItem extends LibraryState {
 export interface Watcher {
   name: string;
   thumb?: string;
+  /** ISO 8601 of their most recent play; absent when Plex did not say. */
+  watchedAt?: string;
 }
 
 // Media detail
@@ -100,6 +102,8 @@ export interface EpisodeSummary {
   airDate?: string;
   hasFile: boolean;
   monitored: boolean;
+  /** Anyone who has played this episode on the Plex server. */
+  watchedBy: Watcher[];
 }
 
 // Requests

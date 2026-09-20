@@ -4,7 +4,7 @@ import * as sonarr from "#server/sonarr/api.ts";
 import * as tmdb from "#server/tmdb/api.ts";
 import { yearOf } from "#server/tmdb/utils.ts";
 import { movieState, seriesState } from "#server/library/item.ts";
-import { buildSeasons } from "./seasons.ts";
+import { buildSeasons, withEpisodeWatchers } from "./seasons.ts";
 import { progressFor } from "#server/requests/state.ts";
 import { getRequestersForMedia } from "#server/db/requests.ts";
 import { getWatchers, watchKey } from "#server/plex/history.ts";
@@ -115,18 +115,19 @@ export async function getMediaDetail(
 
   const library = held?.state;
   const download = library ? await progressFor(mediaType, library.serviceId) : undefined;
+  const key = watchKey(mediaType, tmdbId);
 
   return {
     mediaType,
     tmdbId,
     ...description,
     library,
-    seasons: held?.seasons,
+    seasons: held?.seasons && withEpisodeWatchers(held.seasons, key, watchers),
     progress: download?.progress,
     eta: download?.eta,
     requestedBy: requesters.map((requester) => requester.name),
     requestedByMe: requesters.some((requester) => requester.userId === viewerId),
-    watchedBy: watchers.get(watchKey(mediaType, tmdbId)) ?? [],
+    watchedBy: watchers.get(key) ?? [],
     unavailable: held === null ? [serviceName(mediaType)] : [],
   };
 }

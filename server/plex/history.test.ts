@@ -1,5 +1,11 @@
 import { describe, expect, test } from "bun:test";
-import { resolveHistoryKey, watchKey, type TitleIndex } from "./history.ts";
+import {
+  episodeWatchKey,
+  resolveEpisodeKey,
+  resolveHistoryKey,
+  watchKey,
+  type TitleIndex,
+} from "./history.ts";
 
 const MOVIES = "1";
 const SHOWS = "2";
@@ -104,5 +110,50 @@ describe("resolveHistoryKey", () => {
     );
 
     expect(key).toBe("series:75219");
+  });
+});
+
+describe("resolveEpisodeKey", () => {
+  const GIRLS = watchKey("series", 1220);
+
+  // Most episode rows have lost their ids, so the numbers are the only link left.
+  test("places an episode whose ids are gone", () => {
+    const key = resolveEpisodeKey(
+      { type: "episode", accountID: 1, grandparentTitle: "Girls", index: 10, parentIndex: 6 },
+      GIRLS,
+    );
+
+    expect(key).toBe("series:1220:6:10");
+  });
+
+  test("places a special, which Plex numbers as season 0", () => {
+    const key = resolveEpisodeKey(
+      { type: "episode", accountID: 1, index: 1, parentIndex: 0 },
+      GIRLS,
+    );
+
+    expect(key).toBe("series:1220:0:1");
+  });
+
+  test("ignores a movie, which has no episode to place", () => {
+    expect(
+      resolveEpisodeKey({ type: "movie", accountID: 1 }, watchKey("movie", 9880)),
+    ).toBeUndefined();
+  });
+
+  test("gives up on an episode row missing its numbers", () => {
+    expect(resolveEpisodeKey({ type: "episode", accountID: 1, index: 3 }, GIRLS)).toBeUndefined();
+  });
+});
+
+describe("episodeWatchKey", () => {
+  test("names one episode under its series", () => {
+    expect(episodeWatchKey(watchKey("series", 1220), 6, 10)).toBe("series:1220:6:10");
+  });
+
+  test("keeps specials apart from the first season", () => {
+    const specials = episodeWatchKey(watchKey("series", 1220), 0, 1);
+
+    expect(specials).not.toBe(episodeWatchKey(watchKey("series", 1220), 1, 1));
   });
 });

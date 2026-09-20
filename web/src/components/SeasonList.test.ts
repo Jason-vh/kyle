@@ -4,7 +4,14 @@ import type { EpisodeSummary, SeasonSummary } from "#shared/types";
 import SeasonList from "./SeasonList.vue";
 
 function episode(overrides: Partial<EpisodeSummary> = {}): EpisodeSummary {
-  return { episodeNumber: 1, title: "Good News", hasFile: true, monitored: true, ...overrides };
+  return {
+    episodeNumber: 1,
+    title: "Good News",
+    hasFile: true,
+    monitored: true,
+    watchedBy: [],
+    ...overrides,
+  };
 }
 
 function season(overrides: Partial<SeasonSummary> = {}): SeasonSummary {
@@ -86,5 +93,21 @@ describe("SeasonList", () => {
   test("says so when Sonarr knows the season but not its episodes", async () => {
     const list = await render([season({ episodes: [] })]);
     expect(list.text()).toContain("no episodes");
+  });
+
+  test("shows who has watched an episode", async () => {
+    const list = await render([
+      season({ episodes: [episode({ watchedBy: [{ name: "Jason" }, { name: "Kate" }] })] }),
+    ]);
+
+    expect(list.find("[aria-label]").attributes("aria-label")).toBe(
+      "Jason and Kate have watched this",
+    );
+  });
+
+  test("shows nothing against an episode nobody has watched", async () => {
+    const list = await render([season({ episodes: [episode({ watchedBy: [] })] })]);
+
+    expect(list.find("[aria-label]").exists()).toBe(false);
   });
 });

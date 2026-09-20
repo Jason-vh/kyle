@@ -47,6 +47,7 @@
               <span class="min-w-0 flex-1 truncate text-sm text-text-primary">
                 {{ episode.title }}
               </span>
+              <WatcherAvatars :watchers="episode.watchedBy" :max="3" class="shrink-0" />
               <span class="shrink-0 text-xs" :class="episodeClass(episode)">
                 {{ episodeState(episode) }}
               </span>
@@ -75,6 +76,7 @@ import { episodeCode } from "#shared/media";
 import { formatSize } from "#web/utils/format";
 import AppCard from "./ui/AppCard.vue";
 import StatusPill from "./ui/StatusPill.vue";
+import WatcherAvatars from "./WatcherAvatars.vue";
 import type { Tone } from "./ui/types";
 
 defineProps<{ seasons: SeasonSummary[] }>();
