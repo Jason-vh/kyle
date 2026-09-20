@@ -1,6 +1,6 @@
 {
   "id": "7e65e3c3-5bd3-4ead-a6e3-6535772b5857",
-  "prevId": "aae15e29-6f1b-43c1-96e3-fdf5e08a3f57",
+  "prevId": "9bb467c2-a2d1-439b-ae1e-5e32a1e3d3c6",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -487,6 +487,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "season_number": {
+          "name": "season_number",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp",
@@ -519,6 +525,41 @@
             }
           ],
           "isUnique": true,
+          "where": "season_number IS NULL",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "media_requests_user_season_idx": {
+          "name": "media_requests_user_season_idx",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "media_type",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "tmdb_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "season_number",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "season_number IS NOT NULL",
           "concurrently": false,
           "method": "btree",
           "with": {}
