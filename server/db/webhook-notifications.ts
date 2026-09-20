@@ -26,14 +26,19 @@ export async function saveWebhookNotification(
   source: "sonarr" | "radarr",
   message: string,
   payload: WebhookNotificationPayload,
+  deliveryId?: string,
 ): Promise<void> {
   try {
-    await db.insert(webhookNotifications).values({
-      conversationId,
-      source,
-      message,
-      payload,
-    });
+    await db
+      .insert(webhookNotifications)
+      .values({
+        id: deliveryId,
+        conversationId,
+        source,
+        message,
+        payload,
+      })
+      .onConflictDoNothing();
 
     log.info("saved webhook notification", {
       conversationId,
@@ -41,6 +46,7 @@ export async function saveWebhookNotification(
       title: payload.title,
     });
   } catch (error) {
+    if (deliveryId) throw error;
     log.error("failed to save webhook notification", {
       conversationId,
       error: errorMessage(error),

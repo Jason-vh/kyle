@@ -46,18 +46,20 @@ export interface Announcement {
 export async function announce(
   ids: { radarr?: number; sonarr?: number; tmdb?: number },
   media: MediaNotificationInfo,
+  jobId?: string,
 ): Promise<Announcement> {
   const [userIds, requesters] = await Promise.all([
     findSubscribedUserIds(media.mediaType, ids, media.episodes),
     findMediaRequesters(media.mediaType, ids, media.episodes),
   ]);
 
-  const notified = await saveNotifications(userIds, notificationFor(media, ids));
+  const notified = await saveNotifications(userIds, notificationFor(media, ids), jobId);
 
   // A failed chat reply must not lose the in-app notification already recorded.
   try {
-    await notifyRequesters(requesters, media);
+    await notifyRequesters(requesters, media, jobId);
   } catch (error) {
+    if (jobId) throw error;
     log.error("could not reply in chat", {
       title: describeMedia(media),
       error: errorMessage(error),

@@ -25,18 +25,21 @@ export interface NewNotification {
 export async function saveNotifications(
   userIds: string[],
   notification: NewNotification,
+  webhookJobId?: string,
 ): Promise<number> {
   if (userIds.length === 0) return 0;
 
   try {
     const rows = await db
       .insert(notifications)
-      .values(userIds.map((userId) => ({ userId, ...notification })))
+      .values(userIds.map((userId) => ({ userId, ...notification, webhookJobId })))
+      .onConflictDoNothing()
       .returning({ id: notifications.id });
 
     log.info("recorded notifications", { count: rows.length, title: notification.title });
     return rows.length;
   } catch (error) {
+    if (webhookJobId) throw error;
     log.error("could not record notifications", {
       title: notification.title,
       error: errorMessage(error),

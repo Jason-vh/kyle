@@ -12,6 +12,7 @@ import {
   customType,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
+import type { MediaNotificationInfo, MediaRequester } from "#server/webhooks/types.ts";
 
 // Custom type for bytea columns
 const bytea = customType<{ data: Uint8Array; driverData: Buffer }>({
@@ -282,6 +283,48 @@ export const jobState = pgTable("job_state", {
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
+export const webhookJobs = pgTable(
+  "webhook_jobs",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    batchKey: text("batch_key").notNull(),
+    ids: jsonb("ids").$type<{ radarr?: number; sonarr?: number; tmdb?: number }>().notNull(),
+    media: jsonb("media").$type<MediaNotificationInfo>().notNull(),
+    availableAt: timestamp("available_at").notNull(),
+    attempts: integer("attempts").notNull().default(0),
+    completedAt: timestamp("completed_at"),
+    lastError: text("last_error"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (table) => [
+    index("webhook_jobs_pending_idx")
+      .on(table.availableAt)
+      .where(sql`completed_at IS NULL`),
+  ],
+);
+
+export const notificationDeliveries = pgTable(
+  "notification_deliveries",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    jobId: uuid("job_id")
+      .notNull()
+      .references(() => webhookJobs.id, { onDelete: "cascade" }),
+    conversationId: uuid("conversation_id")
+      .notNull()
+      .references(() => conversations.id, { onDelete: "cascade" }),
+    requester: jsonb("requester").$type<MediaRequester>().notNull(),
+    responseText: text("response_text"),
+    sentAt: timestamp("sent_at"),
+  },
+  (table) => [
+    uniqueIndex("notification_deliveries_job_conversation_idx").on(
+      table.jobId,
+      table.conversationId,
+    ),
+  ],
+);
+
 export const notifications = pgTable(
   "notifications",
   {
@@ -293,12 +336,14 @@ export const notifications = pgTable(
     /** "Severance (2022)" — the media, named as a person would say it. */
     title: text("title").notNull(),
     body: text("body").notNull(),
+    webhookJobId: uuid("webhook_job_id").references(() => webhookJobs.id, { onDelete: "set null" }),
     tmdbId: integer("tmdb_id"),
     serviceId: integer("service_id"),
     readAt: timestamp("read_at"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
   (table) => [
+    uniqueIndex("notifications_user_webhook_idx").on(table.userId, table.webhookJobId),
     index("notifications_user_created_idx").on(table.userId, table.createdAt),
     index("notifications_user_unread_idx")
       .on(table.userId)

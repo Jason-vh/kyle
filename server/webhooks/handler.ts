@@ -1,8 +1,6 @@
 import { createLogger } from "#server/logger.ts";
-import { errorMessage } from "#server/errors.ts";
 import { checkWebhookAuth } from "./auth.ts";
-import { batchSeriesNotification } from "./batch.ts";
-import { announce } from "./announce.ts";
+import { enqueueWebhook } from "./jobs.ts";
 import type { MediaNotificationInfo, RadarrWebhookPayload, SonarrWebhookPayload } from "./types.ts";
 
 const log = createLogger("webhooks");
@@ -42,13 +40,7 @@ export async function handleRadarrWebhook(req: Request): Promise<Response> {
     releaseGroup: payload.release?.releaseGroup,
   };
 
-  // Radarr does not wait for a reply, so announce it in the background.
-  announce({ radarr: payload.movie.id, tmdb: payload.movie.tmdbId }, media).catch((error) => {
-    log.error("radarr notification failed", {
-      title: payload.movie.title,
-      error: errorMessage(error),
-    });
-  });
+  await enqueueWebhook({ radarr: payload.movie.id, tmdb: payload.movie.tmdbId }, media);
 
   return Response.json({ ok: true });
 }
@@ -63,19 +55,22 @@ export async function handleSonarrWebhook(req: Request): Promise<Response> {
     episodeCount: payload.episodes?.length,
   });
 
-  batchSeriesNotification(payload.series.id, {
-    mediaType: "series",
-    title: payload.series.title,
-    year: payload.series.year,
-    quality: payload.release?.quality,
-    releaseGroup: payload.release?.releaseGroup,
-    episodes:
-      payload.episodes?.map((e) => ({
-        seasonNumber: e.seasonNumber,
-        episodeNumber: e.episodeNumber,
-        title: e.title,
-      })) ?? [],
-  });
+  await enqueueWebhook(
+    { sonarr: payload.series.id },
+    {
+      mediaType: "series",
+      title: payload.series.title,
+      year: payload.series.year,
+      quality: payload.release?.quality,
+      releaseGroup: payload.release?.releaseGroup,
+      episodes:
+        payload.episodes?.map((e) => ({
+          seasonNumber: e.seasonNumber,
+          episodeNumber: e.episodeNumber,
+          title: e.title,
+        })) ?? [],
+    },
+  );
 
   return Response.json({ ok: true, batched: true });
 }
