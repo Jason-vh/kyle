@@ -77,9 +77,12 @@ function describeMissing(missing: MissingSeason[]): string {
   return `${missing.length} seasons · ${episodes} ${plural} missing`;
 }
 
+/** States whose age is worth saying: something has been stuck that long. */
+const TIMED = new Set<RequestState>(["found", "stalled", "blocked", "importing"]);
+
 /** What the state means for the person who asked, in one line. */
 function explain(request: MediaRequest): string | undefined {
-  const { state, detail, expectedAt, missing } = request;
+  const { state, detail, expectedAt, missing, since } = request;
 
   if (state === "ready") return missing?.length ? describeMissing(missing) : undefined;
 
@@ -89,7 +92,10 @@ function explain(request: MediaRequest): string | undefined {
   if (state === "waiting") {
     return expectedAt ? `Digital release ${formatDate(expectedAt)}` : "In cinemas only for now";
   }
-  if (state === "searching") return detail ?? "Searching for a release";
+  if (state === "searching") {
+    if (detail) return detail;
+    return since ? `Nothing found — last tried ${relativeTime(since)}` : "Searching for a release";
+  }
   if (state === "found") return detail ?? "Found a release, starting shortly";
   if (state === "stalled") return detail ?? "No seeders — it will be retried";
   if (state === "blocked") return detail ?? "Downloaded, but it could not be imported";
@@ -102,7 +108,7 @@ function explain(request: MediaRequest): string | undefined {
 
 const explanation = computed(() => {
   const line = explain(props.request);
-  if (!line || !props.request.since) return line;
+  if (!line || !props.request.since || !TIMED.has(props.request.state)) return line;
   return `${line} · ${relativeTime(props.request.since)}`;
 });
 </script>

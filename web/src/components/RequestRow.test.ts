@@ -88,6 +88,18 @@ describe("RequestRow", () => {
     expect(render({ state: "stalled", since }).text()).toContain("3h ago");
   });
 
+  // A search from months ago is the reason to press retry.
+  test("says when a search was last tried", () => {
+    const since = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
+    const row = render({ state: "searching", since });
+
+    expect(row.text()).toContain("Nothing found — last tried 2h ago");
+  });
+
+  test("a search nobody has run yet says only that it is looking", () => {
+    expect(render({ state: "searching" }).text()).toContain("Searching for a release");
+  });
+
   test("shows how far along a download is", () => {
     const row = render({ state: "downloading", progress: 0.42, eta: "00:12:31" });
 

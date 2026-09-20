@@ -109,7 +109,7 @@ export function resolveState(
   if (entry.awaiting) {
     return { state: entry.awaiting.reason, expectedAt: entry.awaiting.expectedAt };
   }
-  return { state: "searching" };
+  return { state: "searching", since: entry.lastSearchedAt };
 }
 
 /**

@@ -29,6 +29,8 @@ export interface LibraryEntry {
   complete: boolean;
   /** Seasons a series is still short of, which a whole-series count hides. */
   missing?: MissingSeason[];
+  /** ISO 8601 of the last search, where the service records one. */
+  lastSearchedAt?: string;
   /** Absent once the service can search for it. */
   awaiting?: Awaiting;
 }
@@ -71,6 +73,7 @@ export function movieEntry(movie: RadarrMovie, now = new Date()): LibraryEntry {
     monitored: movie.monitored,
     hasFiles: movie.hasFile,
     complete: movie.hasFile,
+    lastSearchedAt: movie.lastSearchTime,
     awaiting: movieAwaiting(movie, now),
   };
 }

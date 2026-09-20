@@ -67,7 +67,17 @@ describe("resolveState", () => {
   });
 
   test("obtainable, monitored, and nothing to show for it is searching", () => {
-    expect(resolveState(entry(), undefined)).toEqual({ state: "searching" });
+    expect(resolveState(entry(), undefined)).toEqual({ state: "searching", since: undefined });
+  });
+
+  // Months since anything was tried is the difference between looking and giving up.
+  test("a search says when it was last run", () => {
+    const lastSearchedAt = "2026-06-18T13:41:26Z";
+
+    expect(resolveState(entry({ lastSearchedAt }), undefined)).toEqual({
+      state: "searching",
+      since: lastSearchedAt,
+    });
   });
 
   // The request outlives the title, so a removal has to read as something.
