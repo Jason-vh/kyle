@@ -13,6 +13,7 @@ import type {
   SonarrSeries,
 } from "./types.ts";
 import { createApiClient, optional } from "#server/http/client.ts";
+import { readAllPages } from "#server/http/pagination.ts";
 import { requireEnv } from "#server/config.ts";
 
 const request = createApiClient({
@@ -122,7 +123,10 @@ export async function getQueue(options?: { seriesIds?: number[] }): Promise<Sona
     includeSeries: "true",
     pageSize: "1000",
   });
-  const response = await request<SonarrQueueResponse>(`/queue?${params.toString()}`);
+  const response = await readAllPages((page) => {
+    params.set("page", String(page));
+    return request<SonarrQueueResponse>(`/queue?${params.toString()}`);
+  });
 
   // Sonarr's queue endpoint doesn't support server-side filtering, so filter client-side
   if (options?.seriesIds?.length) {
@@ -230,7 +234,10 @@ export async function getDownloadHistory(downloadId: string): Promise<SonarrHist
     includeEpisode: "true",
     pageSize: "200",
   });
-  const response = await request<SonarrHistoryResponse>(`/history?${params.toString()}`);
+  const response = await readAllPages((page) => {
+    params.set("page", String(page));
+    return request<SonarrHistoryResponse>(`/history?${params.toString()}`);
+  });
   return response.records;
 }
 
@@ -238,7 +245,11 @@ export async function getDownloadHistory(downloadId: string): Promise<SonarrHist
 export async function getEpisodeFile(
   episodeFileId: number,
 ): Promise<SonarrEpisodeFile | undefined> {
-  return optional(() => request<SonarrEpisodeFile>(`/episodefile/${episodeFileId}`));
+  return optional(async () => {
+    const file = await request<SonarrEpisodeFile>(`/episodefile/${episodeFileId}`);
+    if (file?.id !== episodeFileId) throw new Error("Invalid episode file response");
+    return file;
+  });
 }
 
 /** Drops a download; blocklisting it stops the same release being grabbed again. */

@@ -10,10 +10,13 @@ const IMPORTED = "downloadfolderimported";
 /** How many torrents are resolved at once, so a sweep does not flood a service. */
 const BATCH = 5;
 
-function fileIdOf(data: Record<string, unknown> | undefined): number | undefined {
+function fileIdOf(data: Record<string, unknown> | undefined): number {
   const raw = data?.fileId;
-  const id = typeof raw === "string" ? Number.parseInt(raw, 10) : raw;
-  return typeof id === "number" && Number.isFinite(id) ? id : undefined;
+  const id = typeof raw === "string" ? Number(raw) : raw;
+  if (typeof id !== "number" || !Number.isSafeInteger(id) || id <= 0) {
+    throw new Error("Cannot verify an imported file without a valid file id");
+  }
+  return id;
 }
 
 async function importedFiles(
@@ -36,16 +39,14 @@ async function importedFiles(
 
   const imports = await Promise.all([
     ...movieFileIds.map(async (fileId) => {
-      if (fileId === undefined) return undefined;
       return { fileId, alive: (await radarr.getMovieFile(fileId)) !== undefined };
     }),
     ...episodeFileIds.map(async (fileId) => {
-      if (fileId === undefined) return undefined;
       return { fileId, alive: (await sonarr.getEpisodeFile(fileId)) !== undefined };
     }),
   ]);
 
-  return { known, imports: imports.filter((file) => file !== undefined) };
+  return { known, imports };
 }
 
 async function resolve(torrent: QBittorrentTorrent, queued: Set<string>): Promise<TorrentOrigin> {

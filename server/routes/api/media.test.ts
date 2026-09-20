@@ -83,7 +83,7 @@ const HELD_SERIES = {
       monitored: true,
     },
   ],
-  "/queue": { records: [] },
+  "/queue": { records: [], totalRecords: 0 },
 };
 
 /** Answers whichever upstream the URL names; anything else is a test bug. */
@@ -147,7 +147,7 @@ describe("GET /api/media/:mediaType/:tmdbId", () => {
     stubServices({
       "/movie/27205": MOVIE,
       "/api/v3/movie?tmdbId": [HELD_MOVIE],
-      "/queue": { records: [] },
+      "/queue": { records: [], totalRecords: 0 },
     });
 
     const res = await get("movie", "27205");
@@ -194,7 +194,7 @@ describe("GET /api/media/:mediaType/:tmdbId", () => {
     stubServices({
       "/movie/27205": MOVIE,
       "/api/v3/movie?tmdbId": [HELD_MOVIE],
-      "/queue": { records: [] },
+      "/queue": { records: [], totalRecords: 0 },
     });
 
     const body = (await (await get("movie", "27205")).json()) as MediaDetail;
@@ -206,7 +206,10 @@ describe("GET /api/media/:mediaType/:tmdbId", () => {
     stubServices({
       "/movie/27205": MOVIE,
       "/api/v3/movie?tmdbId": [HELD_MOVIE],
-      "/queue": { records: [{ movie: { id: 42 }, size: 100, sizeleft: 25, timeleft: "00:10:00" }] },
+      "/queue": {
+        totalRecords: 1,
+        records: [{ id: 1, movie: { id: 42 }, size: 100, sizeleft: 25, timeleft: "00:10:00" }],
+      },
     });
 
     const body = (await (await get("movie", "27205")).json()) as MediaDetail;
@@ -219,7 +222,11 @@ describe("GET /api/media/:mediaType/:tmdbId", () => {
     await db
       .insert(mediaRequests)
       .values({ userId, mediaType: "movie", tmdbId: 27205, title: "Inception" });
-    stubServices({ "/movie/27205": MOVIE, "/api/v3/movie?tmdbId": [], "/queue": { records: [] } });
+    stubServices({
+      "/movie/27205": MOVIE,
+      "/api/v3/movie?tmdbId": [],
+      "/queue": { records: [], totalRecords: 0 },
+    });
 
     const body = (await (await get("movie", "27205")).json()) as MediaDetail;
 

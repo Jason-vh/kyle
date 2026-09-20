@@ -83,7 +83,7 @@ function stubSeries(held = true, externalAdd = false) {
       return Response.json(state.series);
     }
     if (url.includes("/episode?seriesId=")) return Response.json([]);
-    if (url.includes("/queue?")) return Response.json({ records: [] });
+    if (url.includes("/queue?")) return Response.json({ records: [], totalRecords: 0 });
     if (url.endsWith("/command")) return Response.json({ id: 1 });
     return new Response("unexpected", { status: 500 });
   }) as unknown as typeof fetch;

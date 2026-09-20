@@ -269,7 +269,7 @@ function stubSonarr(overrides: Record<string, unknown> = {}) {
     "/series/lookup": [{ ...SEVERANCE }],
     "/episode/monitor": [],
     "/episode?seriesId=": EPISODES,
-    "/queue": { records: [] },
+    "/queue": { records: [], totalRecords: 0 },
     "/episodefile/": {},
     "/command": { id: 1, status: "queued" },
     "/api/v3/series/9": { ...SEVERANCE, seasons: SEVERANCE.seasons.map((s) => ({ ...s })) },
@@ -383,6 +383,7 @@ describe("requestSeason", () => {
   test("drops a stalled download of that season before searching", async () => {
     const calls = stubSonarr({
       "/queue": {
+        totalRecords: 2,
         records: [
           {
             id: 31,

@@ -8,6 +8,7 @@ import type {
   RadarrRootFolder,
 } from "./types.ts";
 import { createApiClient, optional } from "#server/http/client.ts";
+import { readAllPages } from "#server/http/pagination.ts";
 import { requireEnv } from "#server/config.ts";
 
 const request = createApiClient({
@@ -99,7 +100,10 @@ export async function getQueue(options?: { movieIds?: number[] }): Promise<Radar
     includeMovie: "true",
     pageSize: "1000",
   });
-  const response = await request<RadarrQueueResponse>(`/queue?${params.toString()}`);
+  const response = await readAllPages((page) => {
+    params.set("page", String(page));
+    return request<RadarrQueueResponse>(`/queue?${params.toString()}`);
+  });
 
   // Radarr's queue endpoint may not support server-side filtering, so filter client-side
   if (options?.movieIds?.length) {
@@ -138,11 +142,18 @@ export async function getDownloadHistory(downloadId: string): Promise<RadarrHist
     includeMovie: "true",
     pageSize: "100",
   });
-  const response = await request<RadarrHistoryResponse>(`/history?${params.toString()}`);
+  const response = await readAllPages((page) => {
+    params.set("page", String(page));
+    return request<RadarrHistoryResponse>(`/history?${params.toString()}`);
+  });
   return response.records;
 }
 
 /** The file, or undefined once Radarr no longer has it — upgraded, or deleted. */
 export async function getMovieFile(movieFileId: number): Promise<RadarrMovieFile | undefined> {
-  return optional(() => request<RadarrMovieFile>(`/moviefile/${movieFileId}`));
+  return optional(async () => {
+    const file = await request<RadarrMovieFile>(`/moviefile/${movieFileId}`);
+    if (file?.id !== movieFileId) throw new Error("Invalid movie file response");
+    return file;
+  });
 }
