@@ -28,6 +28,31 @@ describe("createApiClient", () => {
     expect((calls[0]!.init.headers as Record<string, string>)["X-Api-Key"]).toBe("secret");
   });
 
+  test("does not discard caller cancellation", async () => {
+    const controller = new AbortController();
+    const calls = stubFetch(() => Response.json({ id: 1 }));
+    controller.abort(new Error("Caller cancelled"));
+    const request = createApiClient({ service: "test", config });
+    await expect(request("/thing", { signal: controller.signal })).rejects.toThrow(
+      "Caller cancelled",
+    );
+    expect(calls).toHaveLength(0);
+  });
+
+  test("limits each upstream to four concurrent requests", async () => {
+    const gates = Array.from({ length: 5 }, () => Promise.withResolvers<Response>());
+    let active = 0;
+    globalThis.fetch = (() => gates[active++]!.promise) as unknown as typeof fetch;
+    const request = createApiClient({ service: "test", config });
+    const requests = gates.map(() => request("/thing"));
+    expect(active).toBe(4);
+    gates[0]!.resolve(Response.json({ id: 0 }));
+    await requests[0];
+    for (let i = 1; i < gates.length; i++) gates[i]!.resolve(Response.json({ id: i }));
+    expect(await Promise.all(requests)).toHaveLength(5);
+    expect(active).toBe(5);
+  });
+
   test("resolves an empty body as undefined", async () => {
     stubFetch(() => new Response(""));
     const request = createApiClient({ service: "test", config });

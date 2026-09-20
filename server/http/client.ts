@@ -1,5 +1,6 @@
 import { createLogger } from "#server/logger.ts";
 import { safeJsonParse } from "#server/json.ts";
+import { createConcurrencyLimit } from "./concurrency.ts";
 
 const DEFAULT_TIMEOUT_MS = 15_000;
 
@@ -78,37 +79,44 @@ export function createApiClient(options: ApiClientOptions): ApiRequest {
   const { service, config, authenticate, isAuthFailure } = options;
   const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   const log = createLogger(service);
+  const limit = createConcurrencyLimit(4, 32);
 
   async function send(endpoint: string, init: RequestInit): Promise<Response> {
     const { baseUrl, headers } = config();
     return fetch(`${baseUrl}${endpoint}`, {
       ...init,
-      signal: AbortSignal.timeout(timeoutMs),
+      signal: init.signal,
       headers: { ...headers, ...init.headers },
     });
   }
 
   return async function request<T>(endpoint: string, init: RequestInit = {}): Promise<T> {
-    if (authenticate) await authenticate(false);
+    const timeout = AbortSignal.timeout(timeoutMs);
+    const signal = init.signal ? AbortSignal.any([init.signal, timeout]) : timeout;
+    return limit(async () => {
+      if (authenticate) await authenticate(false);
+      signal.throwIfAborted();
+      let response = await send(endpoint, { ...init, signal });
 
-    let response = await send(endpoint, init);
+      if (isAuthFailure?.(response) && authenticate) {
+        await response.body?.cancel();
+        log.info("session rejected, re-authenticating", { endpoint });
+        await authenticate(true);
+        signal.throwIfAborted();
+        response = await send(endpoint, { ...init, signal });
+      }
 
-    if (isAuthFailure?.(response) && authenticate) {
-      log.info("session rejected, re-authenticating", { endpoint });
-      await authenticate(true);
-      response = await send(endpoint, init);
-    }
+      if (!response.ok) {
+        const body = await readBody(response);
+        log.error("request failed", {
+          endpoint,
+          status: response.status,
+          body: summariseBody(body),
+        });
+        throw new ApiError(service, response.status, body);
+      }
 
-    if (!response.ok) {
-      const body = await readBody(response);
-      log.error("request failed", {
-        endpoint,
-        status: response.status,
-        body: summariseBody(body),
-      });
-      throw new ApiError(service, response.status, body);
-    }
-
-    return (await readBody(response)) as T;
+      return (await readBody(response)) as T;
+    }, signal);
   };
 }
