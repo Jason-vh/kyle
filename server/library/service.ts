@@ -6,6 +6,8 @@ import * as sonarr from "#server/sonarr/api.ts";
 import { movieState, seriesState } from "./item.ts";
 import { getAllRequesters } from "#server/db/requests.ts";
 import { recordRemoval } from "#server/db/removals.ts";
+import { withDatabaseLock } from "#server/db/lock.ts";
+import { invalidateLibraryIndex } from "#server/requests/library.ts";
 import { annotateRequesters } from "#server/requests/requesters.ts";
 import { getWatchers, watchKey } from "#server/plex/history.ts";
 import { posterOf } from "#server/media-images.ts";
@@ -90,35 +92,63 @@ export async function listLibrary(viewerId: string): Promise<LibraryListing> {
  * title is read first and kept, since the service forgets it immediately and a
  * requester is still owed an answer about where it went.
  */
+export function removeLibraryItem(
+  mediaType: "movie",
+  serviceId: number,
+  deleteFiles: boolean,
+  removedBy?: string,
+): Promise<RadarrMovie>;
+export function removeLibraryItem(
+  mediaType: "series",
+  serviceId: number,
+  deleteFiles: boolean,
+  removedBy?: string,
+): Promise<SonarrSeries>;
+export function removeLibraryItem(
+  mediaType: LibraryMediaType,
+  serviceId: number,
+  deleteFiles: boolean,
+  removedBy?: string,
+): Promise<RadarrMovie | SonarrSeries>;
 export async function removeLibraryItem(
   mediaType: LibraryMediaType,
   serviceId: number,
   deleteFiles: boolean,
   removedBy?: string,
-): Promise<void> {
+): Promise<RadarrMovie | SonarrSeries> {
+  let removed: RadarrMovie | SonarrSeries;
   if (mediaType === "movie") {
     const movie = await radarr.getMovie(serviceId);
-    await radarr.removeMovie(serviceId, deleteFiles);
-    await recordRemoval({
-      mediaType,
-      tmdbId: movie.tmdbId,
-      title: movie.title,
-      removedBy,
-      deletedFiles: deleteFiles,
-    });
-  } else {
-    const series = await sonarr.getSeries(serviceId);
-    await sonarr.removeSeries(serviceId, deleteFiles);
-    if (series.tmdbId) {
+    removed = await withDatabaseLock(`media:movie:${movie.tmdbId}`, async () => {
+      await radarr.removeMovie(serviceId, deleteFiles);
+      invalidateLibraryIndex();
       await recordRemoval({
         mediaType,
-        tmdbId: series.tmdbId,
-        title: series.title,
+        tmdbId: movie.tmdbId,
+        title: movie.title,
         removedBy,
         deletedFiles: deleteFiles,
       });
-    }
+      return movie;
+    });
+  } else {
+    const series = await sonarr.getSeries(serviceId);
+    removed = await withDatabaseLock(`media:series:${series.tvdbId}`, async () => {
+      await sonarr.removeSeries(serviceId, deleteFiles);
+      invalidateLibraryIndex();
+      if (series.tmdbId) {
+        await recordRemoval({
+          mediaType,
+          tmdbId: series.tmdbId,
+          title: series.title,
+          removedBy,
+          deletedFiles: deleteFiles,
+        });
+      }
+      return series;
+    });
   }
 
   log.info("removed library item", { mediaType, serviceId, deleteFiles, removedBy });
+  return removed;
 }

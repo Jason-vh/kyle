@@ -8,7 +8,7 @@ import {
   requestSeries,
   type Requester,
 } from "#server/requests/service.ts";
-import { recordRemoval } from "#server/db/removals.ts";
+import { removeLibraryItem } from "#server/library/service.ts";
 import { episodeCode, episodeLabel, titleWithYear } from "#shared/media.ts";
 import * as sonarr from "./api.ts";
 import {
@@ -238,17 +238,7 @@ export const removeSeriesTool: Tool<typeof removeSeriesParams> = {
   action: true,
   summary: (_args, payload) => `Removed ${seriesName(payload)} from Sonarr`,
   async execute(_toolCallId, params) {
-    const series = await sonarr.getSeries(params.seriesId);
-    await sonarr.removeSeries(params.seriesId, true);
-    if (series.tmdbId) {
-      await recordRemoval({
-        mediaType: "series",
-        tmdbId: series.tmdbId,
-        title: series.title,
-        removedBy: "Kyle",
-        deletedFiles: true,
-      });
-    }
+    const series = await removeLibraryItem("series", params.seriesId, true, "Kyle");
     return jsonResult({
       success: true,
       message: `Removed ${series.title} (${series.year}) from Sonarr and deleted files from disk.`,

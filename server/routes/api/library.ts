@@ -2,7 +2,6 @@ import { isLibraryMediaType } from "#shared/types.ts";
 import { requireAdmin, requireAuth } from "#server/auth/middleware.ts";
 import { listLibrary, removeLibraryItem } from "#server/library/service.ts";
 import { MediaNotFoundError, releaseSeason } from "#server/requests/service.ts";
-import { invalidateLibraryIndex } from "#server/requests/library.ts";
 import { createLogger } from "#server/logger.ts";
 import { errorMessage, errorResponse } from "#server/errors.ts";
 
@@ -51,7 +50,6 @@ export async function handleRemoveLibraryItem(
 
   try {
     await removeLibraryItem(mediaType, serviceId, deleteFiles, auth.user.name);
-    invalidateLibraryIndex();
 
     log.info("library item removed", { by: auth.user.id, mediaType, serviceId, deleteFiles });
     return Response.json({ success: true }, { headers: auth.refreshHeaders });
