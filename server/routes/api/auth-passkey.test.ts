@@ -9,7 +9,7 @@ async function startLogin() {
   const response = await handlePasskeyLoginOptions(
     new Request(`${url}/options`, { method: "POST" }),
   );
-  const options = await response.json();
+  const options = (await response.json()) as { challenge: string };
   const cookie = response.headers.get("set-cookie")!;
   const request = new Request(`${url}/verify`, { headers: { cookie } });
   const binding = readFlowCookie(request, "kyle_passkey_login");

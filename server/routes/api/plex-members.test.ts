@@ -98,7 +98,7 @@ async function cookieFor(id: string, name: string, admin: boolean): Promise<stri
 beforeAll(async () => {
   memberId = await createTestUser("Member");
   otherId = await createTestUser("Other");
-  adminId = await createTestUser("Admin");
+  adminId = await createTestUser("Admin", true);
   asMember = await cookieFor(memberId, "Member", false);
   asOther = await cookieFor(otherId, "Other", false);
   asAdmin = await cookieFor(adminId, "Admin", true);

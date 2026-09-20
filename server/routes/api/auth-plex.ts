@@ -120,15 +120,15 @@ async function loginWithPlexAccount(req: Request, account: PlexAccount): Promise
   const userId = await resolveAppUserId(PLEX_PLATFORM, identityKey);
   let user = userId ? await getUserById(userId) : undefined;
 
-  if (!user) {
-    const access = await checkPlexAccess(identityKey);
-    if (!access.allowed) {
-      log.warn("plex login refused, no access to the server", {
-        plexUsername: account.username,
-      });
-      return redirect("/login?error=plex_no_access");
-    }
+  const access = await checkPlexAccess(identityKey);
+  if (!access.allowed || user?.isDisabled) {
+    log.warn("plex login refused, no access to the server", {
+      plexUsername: account.username,
+    });
+    return redirect("/login?error=plex_no_access");
+  }
 
+  if (!user) {
     user = await createUserWithPlatformLink({
       displayName: access.displayName || account.title || account.username,
       isAdmin: access.isOwner,

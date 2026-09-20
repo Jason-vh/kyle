@@ -17,7 +17,7 @@ let asAdmin = "";
 
 beforeAll(async () => {
   userId = await createTestUser("Threads Route");
-  adminId = await createTestUser("Threads Admin");
+  adminId = await createTestUser("Threads Admin", true);
   asUser = buildJwtCookie(await signJwt({ id: userId, name: "Jane", admin: false }), true).split(
     ";",
   )[0]!;

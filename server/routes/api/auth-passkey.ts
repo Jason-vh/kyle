@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import { db } from "#server/db/index.ts";
 import { userCredentials } from "#server/db/schema.ts";
-import { getUserById, getUserCredentials, getCredentialById } from "#server/db/users.ts";
+import { getUserCredentials, getCredentialById } from "#server/db/users.ts";
 import {
   generateRegOptions,
   verifyRegResponse,
@@ -17,6 +17,7 @@ import { signJwt, buildJwtCookie, isLocalhost, parseAuthCookie } from "#server/a
 import { createLogger } from "#server/logger.ts";
 import { errorMessage } from "#server/errors.ts";
 import { createFlowCookie, readFlowCookie } from "#server/auth/flow-cookie.ts";
+import { getActiveUser } from "#server/auth/account.ts";
 
 const log = createLogger("api-passkey");
 
@@ -78,7 +79,7 @@ export async function handlePasskeyLoginVerify(req: Request): Promise<Response> 
       .where(eq(userCredentials.id, cred.id));
 
     // Get user
-    const user = await getUserById(cred.userId);
+    const user = await getActiveUser(cred.userId);
     if (!user) {
       return Response.json({ error: "User not found" }, { status: 400 });
     }

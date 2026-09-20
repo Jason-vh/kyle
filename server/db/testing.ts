@@ -13,10 +13,10 @@ import {
  * here hangs off a user, so removing the user is enough to clean up.
  */
 
-export async function createTestUser(name = "Test User"): Promise<string> {
+export async function createTestUser(name = "Test User", isAdmin = false): Promise<string> {
   const [user] = await db
     .insert(users)
-    .values({ displayName: `${name} ${crypto.randomUUID().slice(0, 8)}` })
+    .values({ displayName: `${name} ${crypto.randomUUID().slice(0, 8)}`, isAdmin })
     .returning();
   return user!.id;
 }

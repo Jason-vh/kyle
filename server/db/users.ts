@@ -214,7 +214,11 @@ export async function createUserWithPlatformLink(input: {
   const user = await db.transaction(async (tx) => {
     const [created] = await tx
       .insert(users)
-      .values({ displayName: input.displayName, isAdmin: input.isAdmin })
+      .values({
+        displayName: input.displayName,
+        isAdmin: input.isAdmin,
+        plexAccountId: input.platform === "plex" ? input.platformUserId : null,
+      })
       .returning();
 
     await tx.insert(platformIdentities).values({

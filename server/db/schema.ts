@@ -41,9 +41,23 @@ export const users = pgTable("users", {
   id: uuid("id").primaryKey().defaultRandom(),
   displayName: text("display_name").notNull(),
   isAdmin: boolean("is_admin").notNull().default(false),
+  isDisabled: boolean("is_disabled").notNull().default(false),
+  plexAccountId: text("plex_account_id"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
+
+export const authSessions = pgTable(
+  "auth_sessions",
+  {
+    id: uuid("id").primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    expiresAt: timestamp("expires_at").notNull(),
+  },
+  (table) => [index("auth_sessions_user_idx").on(table.userId)],
+);
 
 export const platformIdentities = pgTable(
   "platform_identities",

@@ -1,4 +1,4 @@
-import { parseAuthCookie, clearJwtCookie, isLocalhost } from "#server/auth/jwt.ts";
+import { parseAuthCookie, clearJwtCookie, isLocalhost, revokeSession } from "#server/auth/jwt.ts";
 import { PLEX_PLATFORM } from "#server/auth/plex.ts";
 import { isPlexConfigured } from "#server/plex/api.ts";
 import { getPlexAvatar } from "#server/plex/access.ts";
@@ -30,6 +30,7 @@ export async function handleApiAuthStatus(req: Request): Promise<Response> {
 }
 
 export async function handleApiLogout(req: Request): Promise<Response> {
+  await revokeSession(req);
   const isLocal = isLocalhost(req);
 
   const headers = new Headers();
