@@ -15,6 +15,26 @@ export async function optionalAuth(req: Request): Promise<JwtUser | null> {
   return parseAuthCookie(req);
 }
 
+const refreshCookies = new WeakMap<Request, string>();
+
+export function withSessionRefresh<Args extends unknown[]>(
+  handler: (req: Request, ...args: Args) => Promise<Response>,
+): (req: Request, ...args: Args) => Promise<Response> {
+  return async (req, ...args) => {
+    try {
+      const response = await handler(req, ...args);
+      const cookie = refreshCookies.get(req);
+      const hasAuthCookie = response.headers
+        .getSetCookie()
+        .some((value) => value.startsWith("kyle_auth="));
+      if (cookie && !hasAuthCookie) response.headers.append("Set-Cookie", cookie);
+      return response;
+    } finally {
+      refreshCookies.delete(req);
+    }
+  };
+}
+
 export type AuthResult =
   | { user: JwtUser; refreshHeaders?: Record<string, string> }
   | { error: Response };
@@ -34,9 +54,9 @@ export async function requireAuth(req: Request): Promise<AuthResult> {
   const jwtToken = getJwtFromRequest(req);
   if (jwtToken && (await shouldRefreshJwt(jwtToken))) {
     const newToken = await signJwt(user);
-    result.refreshHeaders = {
-      "Set-Cookie": buildJwtCookie(newToken, isLocalhost(req)),
-    };
+    const cookie = buildJwtCookie(newToken, isLocalhost(req));
+    refreshCookies.set(req, cookie);
+    result.refreshHeaders = { "Set-Cookie": cookie };
   }
 
   return result;

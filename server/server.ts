@@ -1,4 +1,5 @@
 import { createLogger } from "./logger.ts";
+import { withSessionRefresh } from "./auth/middleware.ts";
 import { handleHealth } from "./routes/health.ts";
 import { handleChat } from "./routes/chat.ts";
 import { handleSlackEvents } from "./routes/slack-events.ts";
@@ -97,55 +98,80 @@ export function startServer(port: number) {
       "/health": { GET: handleHealth },
 
       // --- API routes ---
-      "/api/threads": { GET: handleApiThreadList },
-      "/api/threads/:id": { GET: (req) => handleApiThreadDetail(req, req.params.id) },
+      "/api/threads": { GET: withSessionRefresh(handleApiThreadList) },
+      "/api/threads/:id": {
+        GET: (req) => withSessionRefresh(handleApiThreadDetail)(req, req.params.id),
+      },
 
-      "/api/auth/status": { GET: handleApiAuthStatus },
-      "/api/auth/logout": { POST: handleApiLogout },
+      "/api/auth/status": { GET: withSessionRefresh(handleApiAuthStatus) },
+      "/api/auth/logout": { POST: withSessionRefresh(handleApiLogout) },
       "/api/auth/passkey/login/options": { POST: handlePasskeyLoginOptions },
       "/api/auth/passkey/login/verify": { POST: handlePasskeyLoginVerify },
-      "/api/auth/passkey/register/options": { POST: handlePasskeyRegisterOptions },
-      "/api/auth/passkey/register/verify": { POST: handlePasskeyRegisterVerify },
+      "/api/auth/passkey/register/options": {
+        POST: withSessionRefresh(handlePasskeyRegisterOptions),
+      },
+      "/api/auth/passkey/register/verify": {
+        POST: withSessionRefresh(handlePasskeyRegisterVerify),
+      },
       "/api/auth/plex/login/start": { POST: handlePlexLoginStart },
-      "/api/auth/plex/link/start": { POST: handlePlexLinkStart },
-      "/api/auth/plex/link": { DELETE: handlePlexUnlink },
+      "/api/auth/plex/link/start": { POST: withSessionRefresh(handlePlexLinkStart) },
+      "/api/auth/plex/link": { DELETE: withSessionRefresh(handlePlexUnlink) },
       "/api/auth/plex/callback": { GET: handlePlexCallback },
 
-      "/api/library": { GET: handleGetLibrary },
+      "/api/library": { GET: withSessionRefresh(handleGetLibrary) },
       "/api/media/:mediaType/:tmdbId": {
-        GET: (req) => handleGetMediaDetail(req, req.params.mediaType, req.params.tmdbId),
+        GET: (req) =>
+          withSessionRefresh(handleGetMediaDetail)(req, req.params.mediaType, req.params.tmdbId),
       },
       "/api/library/:mediaType/:serviceId": {
-        DELETE: (req) => handleRemoveLibraryItem(req, req.params.mediaType, req.params.serviceId),
+        DELETE: (req) =>
+          withSessionRefresh(handleRemoveLibraryItem)(
+            req,
+            req.params.mediaType,
+            req.params.serviceId,
+          ),
       },
       "/api/library/series/:serviceId/seasons/:seasonNumber": {
-        DELETE: (req) => handleReleaseSeason(req, req.params.serviceId, req.params.seasonNumber),
+        DELETE: (req) =>
+          withSessionRefresh(handleReleaseSeason)(
+            req,
+            req.params.serviceId,
+            req.params.seasonNumber,
+          ),
       },
 
-      "/api/dashboard": { GET: handleGetDashboard },
+      "/api/dashboard": { GET: withSessionRefresh(handleGetDashboard) },
 
-      "/api/notifications": { GET: handleGetNotifications },
-      "/api/notifications/read": { POST: handleMarkNotificationsRead },
+      "/api/notifications": { GET: withSessionRefresh(handleGetNotifications) },
+      "/api/notifications/read": { POST: withSessionRefresh(handleMarkNotificationsRead) },
 
-      "/api/discover": { GET: handleDiscoverSearch },
-      "/api/requests": { GET: handleGetRequests, POST: handleCreateRequest },
+      "/api/discover": { GET: withSessionRefresh(handleDiscoverSearch) },
+      "/api/requests": {
+        GET: withSessionRefresh(handleGetRequests),
+        POST: withSessionRefresh(handleCreateRequest),
+      },
       "/api/requests/:mediaType/:tmdbId/retry": {
-        POST: (req) => handleRetryRequest(req, req.params.mediaType, req.params.tmdbId),
+        POST: (req) =>
+          withSessionRefresh(handleRetryRequest)(req, req.params.mediaType, req.params.tmdbId),
       },
       "/api/requests/:mediaType/:tmdbId/report": {
-        POST: (req) => handleReportRequest(req, req.params.mediaType, req.params.tmdbId),
+        POST: (req) =>
+          withSessionRefresh(handleReportRequest)(req, req.params.mediaType, req.params.tmdbId),
       },
 
-      "/api/plex/members": { GET: handleGetPlexMembers },
+      "/api/plex/members": { GET: withSessionRefresh(handleGetPlexMembers) },
       "/api/plex/members/:handle": {
-        DELETE: (req) => handleRemovePlexMember(req, req.params.handle),
+        DELETE: (req) => withSessionRefresh(handleRemovePlexMember)(req, req.params.handle),
       },
-      "/api/plex/invites": { POST: handleCreatePlexInvite },
+      "/api/plex/invites": { POST: withSessionRefresh(handleCreatePlexInvite) },
 
-      "/api/users": { GET: handleGetUsers },
-      "/api/users/:userId/links": { POST: (req) => handleCreateLink(req, req.params.userId) },
+      "/api/users": { GET: withSessionRefresh(handleGetUsers) },
+      "/api/users/:userId/links": {
+        POST: (req) => withSessionRefresh(handleCreateLink)(req, req.params.userId),
+      },
       "/api/users/:userId/links/:linkId": {
-        DELETE: (req) => handleDeleteLink(req, req.params.userId, req.params.linkId),
+        DELETE: (req) =>
+          withSessionRefresh(handleDeleteLink)(req, req.params.userId, req.params.linkId),
       },
 
       // --- Service routes ---

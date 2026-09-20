@@ -1,4 +1,5 @@
-import { parseAuthCookie, clearJwtCookie, isLocalhost, revokeSession } from "#server/auth/jwt.ts";
+import { clearJwtCookie, isLocalhost, revokeSession } from "#server/auth/jwt.ts";
+import { requireAuth } from "#server/auth/middleware.ts";
 import { PLEX_PLATFORM } from "#server/auth/plex.ts";
 import { isPlexConfigured } from "#server/plex/api.ts";
 import { getPlexAvatar } from "#server/plex/access.ts";
@@ -8,7 +9,8 @@ import { createLogger } from "#server/logger.ts";
 const log = createLogger("api-auth");
 
 export async function handleApiAuthStatus(req: Request): Promise<Response> {
-  const jwtUser = await parseAuthCookie(req);
+  const auth = await requireAuth(req);
+  const jwtUser = "error" in auth ? null : auth.user;
   const plexEnabled = isPlexConfigured();
 
   if (jwtUser) {

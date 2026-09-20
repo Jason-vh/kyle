@@ -13,7 +13,8 @@ import {
   type AuthenticationResponseJSON,
   type StoredCredential,
 } from "#server/auth/webauthn.ts";
-import { signJwt, buildJwtCookie, isLocalhost, parseAuthCookie } from "#server/auth/jwt.ts";
+import { signJwt, buildJwtCookie, isLocalhost } from "#server/auth/jwt.ts";
+import { requireAuth } from "#server/auth/middleware.ts";
 import { createLogger } from "#server/logger.ts";
 import { errorMessage } from "#server/errors.ts";
 import { createFlowCookie, readFlowCookie } from "#server/auth/flow-cookie.ts";
@@ -104,10 +105,9 @@ export async function handlePasskeyLoginVerify(req: Request): Promise<Response> 
 // ---------------------------------------------------------------------------
 
 export async function handlePasskeyRegisterOptions(req: Request): Promise<Response> {
-  const user = await parseAuthCookie(req);
-  if (!user) {
-    return Response.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const auth = await requireAuth(req);
+  if ("error" in auth) return auth.error;
+  const { user } = auth;
 
   const existing = await getUserCredentials(user.id);
   const excludeCredentials: StoredCredential[] = existing.map((c) => ({
@@ -128,10 +128,9 @@ export async function handlePasskeyRegisterOptions(req: Request): Promise<Respon
 // ---------------------------------------------------------------------------
 
 export async function handlePasskeyRegisterVerify(req: Request): Promise<Response> {
-  const user = await parseAuthCookie(req);
-  if (!user) {
-    return Response.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const auth = await requireAuth(req);
+  if ("error" in auth) return auth.error;
+  const { user } = auth;
 
   let body: RegistrationResponseJSON;
   try {
