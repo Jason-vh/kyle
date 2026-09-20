@@ -23,3 +23,15 @@ export async function removeLibraryItem(item: RemovableItem, deleteFiles: boolea
     method: "DELETE",
   });
 }
+
+/** One season given back: its files go, the series and its other seasons stay. */
+export interface ReleasableSeason {
+  serviceId: number;
+  seasonNumber: number;
+}
+
+export async function releaseSeason(season: ReleasableSeason): Promise<void> {
+  await apiFetch(`/api/library/series/${season.serviceId}/seasons/${season.seasonNumber}`, {
+    method: "DELETE",
+  });
+}

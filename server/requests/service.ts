@@ -11,6 +11,7 @@ import {
   upsertSeriesSubscription,
 } from "#server/db/subscriptions.ts";
 import { invalidateLibraryIndex } from "./library.ts";
+import { discardStalled } from "./retry.ts";
 import { createLogger } from "#server/logger.ts";
 
 const log = createLogger("requests");
@@ -250,6 +251,9 @@ export async function requestSeason(input: {
   const { status: seriesStatus, series } = await findOrAddSeries(input, "none");
 
   const monitoringChanged = await monitorSeason(series, seasonNumber);
+  // Asking again for a season half-stuck in the queue means the stuck release
+  // has to go, or the search finds the same one and nothing moves.
+  await discardStalled("series", series.id, seasonNumber);
   await sonarr.searchEpisodes(series.id, undefined, seasonNumber);
   if (monitoringChanged) invalidateLibraryIndex();
 

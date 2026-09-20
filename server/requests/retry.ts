@@ -27,6 +27,7 @@ export function discardable<T extends Identified>(records: T[]): T[] {
 async function queueRecordsFor(
   mediaType: LibraryMediaType,
   serviceId: number,
+  seasonNumber?: number,
 ): Promise<Identified[]> {
   if (mediaType === "movie") {
     const queue = await radarr.getQueue({ movieIds: [serviceId] });
@@ -34,7 +35,11 @@ async function queueRecordsFor(
   }
 
   const queue = await sonarr.getQueue({ seriesIds: [serviceId] });
-  return queue.records;
+  if (seasonNumber === undefined) return queue.records;
+
+  return queue.records.filter(
+    (record) => (record.seasonNumber ?? record.episode?.seasonNumber) === seasonNumber,
+  );
 }
 
 async function discard(mediaType: LibraryMediaType, id: number): Promise<void> {
@@ -42,9 +47,32 @@ async function discard(mediaType: LibraryMediaType, id: number): Promise<void> {
   else await sonarr.removeQueueItem(id, true);
 }
 
-async function search(mediaType: LibraryMediaType, serviceId: number): Promise<void> {
+async function search(
+  mediaType: LibraryMediaType,
+  serviceId: number,
+  seasonNumber?: number,
+): Promise<void> {
   if (mediaType === "movie") await radarr.searchMovie(serviceId);
-  else await sonarr.searchEpisodes(serviceId);
+  else await sonarr.searchEpisodes(serviceId, undefined, seasonNumber);
+}
+
+/**
+ * Give up on whatever has stuck, so the search that follows has to find a
+ * different release rather than the one that stalled. Scoped to a season where
+ * one is named, since the rest of the series may be downloading happily.
+ */
+export async function discardStalled(
+  mediaType: LibraryMediaType,
+  serviceId: number,
+  seasonNumber?: number,
+): Promise<number> {
+  const stalled = discardable(await queueRecordsFor(mediaType, serviceId, seasonNumber));
+
+  for (const record of stalled) {
+    await discard(mediaType, record.id);
+  }
+
+  return stalled.length;
 }
 
 /**
@@ -54,15 +82,12 @@ async function search(mediaType: LibraryMediaType, serviceId: number): Promise<v
 export async function retryRequest(
   mediaType: LibraryMediaType,
   serviceId: number,
+  seasonNumber?: number,
 ): Promise<RetryOutcome> {
-  const stalled = discardable(await queueRecordsFor(mediaType, serviceId));
+  const discarded = await discardStalled(mediaType, serviceId, seasonNumber);
 
-  for (const record of stalled) {
-    await discard(mediaType, record.id);
-  }
+  await search(mediaType, serviceId, seasonNumber);
 
-  await search(mediaType, serviceId);
-
-  log.info("retried a request", { mediaType, serviceId, discarded: stalled.length });
-  return { discarded: stalled.length };
+  log.info("retried a request", { mediaType, serviceId, seasonNumber, discarded });
+  return { discarded };
 }

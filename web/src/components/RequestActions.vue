@@ -42,11 +42,19 @@ const action = computed<Action | undefined>(() => {
   const entry = ACTIONS[props.request.state];
   if (!entry) return undefined;
 
-  const { mediaType, tmdbId, posterPath } = props.request;
+  // Whatever is pressed acts on what was asked for, which may be one season.
+  const { mediaType, tmdbId, posterPath, seasonNumber } = props.request;
+  const scoped = { mediaType, tmdbId, seasonNumber };
   const runners: Record<string, () => Promise<unknown>> = {
-    retry: () => retry.mutateAsync({ mediaType, tmdbId }),
-    report: () => report.mutateAsync({ mediaType, tmdbId }),
-    request: () => request.mutateAsync({ mediaType, tmdbId, posterPath }),
+    retry: () => retry.mutateAsync(scoped),
+    report: () => report.mutateAsync(scoped),
+    request: () =>
+      request.mutateAsync({
+        mediaType,
+        tmdbId,
+        posterPath,
+        seasonNumber: seasonNumber ?? undefined,
+      }),
   };
 
   return { label: entry.label, done: entry.done, run: runners[entry.kind]! };

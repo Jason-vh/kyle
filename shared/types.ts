@@ -88,8 +88,30 @@ export interface MediaDetail {
   unavailable: string[];
 }
 
+/**
+ * Where a season stands: everything a request can be, plus the two answers
+ * only a season gives. `unrequested` is one nobody has asked for and nothing
+ * is watching; `airing` is one up to date with a broadcast still running.
+ */
+export type SeasonState = RequestState | "unrequested" | "airing";
+
+/** Where a season has got to, and what the source knows about it. */
+export interface SeasonStatus {
+  state: SeasonState;
+  /** What the service says about the state: a stall, a rejection, a bad file. */
+  detail?: string;
+  /** ISO 8601 of the next episode to air, while one is coming. */
+  expectedAt?: string;
+  /** ISO 8601 of when the state began, where the source knows. */
+  since?: string;
+  /** 0–1, while downloading. */
+  progress?: number;
+  /** What the download client thinks is left, e.g. "00:12:31". */
+  eta?: string;
+}
+
 /** A season as Sonarr holds it, with the episodes it is made of. */
-export interface SeasonSummary {
+export interface SeasonSummary extends SeasonStatus {
   /** 0 is Sonarr's specials season. */
   seasonNumber: number;
   monitored: boolean;
@@ -97,6 +119,8 @@ export interface SeasonSummary {
   episodeFileCount: number;
   sizeOnDisk: number;
   episodes: EpisodeSummary[];
+  /** Names of anyone who asked for this season in particular. */
+  requestedBy: string[];
 }
 
 export interface EpisodeSummary {

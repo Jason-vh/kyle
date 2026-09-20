@@ -20,17 +20,17 @@ web/src/
 
 ## Routes
 
-| Path                        | View            | Notes                                             |
-| --------------------------- | --------------- | ------------------------------------------------- |
-| `/`                         | —               | redirects to `/home`                              |
-| `/home`                     | `DashboardView` | the default landing page                          |
-| `/discover`                 | `DiscoverView`  | search TMDB and request                           |
-| `/library`                  | `LibraryView`   | what the services hold; admins can remove         |
-| `/media/:mediaType/:tmdbId` | `MediaView`     | one title in full, reached from any of its rows   |
-| `/requests`                 | `RequestsView`  | your requests, or everyone's for an admin         |
-| `/account`                  | `AccountView`   | Plex link, passkeys, sign out                     |
-| `/threads`, `/threads/:id`  | thread viewer   | admin only; debugging the chatbot, not in the nav |
-| `/login`                    | `LoginView`     | Plex and passkey sign-in                          |
+| Path                        | View            | Notes                                              |
+| --------------------------- | --------------- | -------------------------------------------------- |
+| `/`                         | —               | redirects to `/home`                               |
+| `/home`                     | `DashboardView` | the default landing page                           |
+| `/discover`                 | `DiscoverView`  | search TMDB and request                            |
+| `/library`                  | `LibraryView`   | what the services hold; admins can remove          |
+| `/media/:mediaType/:tmdbId` | `MediaView`     | one title in full; seasons request, retry, release |
+| `/requests`                 | `RequestsView`  | your requests, or everyone's for an admin          |
+| `/account`                  | `AccountView`   | Plex link, passkeys, sign out                      |
+| `/threads`, `/threads/:id`  | thread viewer   | admin only; debugging the chatbot, not in the nav  |
+| `/login`                    | `LoginView`     | Plex and passkey sign-in                           |
 
 `router.beforeEach` checks `meta.requiresAuth` against `/api/auth/status`, and sends anyone
 without `meta.requiresAdmin` home.

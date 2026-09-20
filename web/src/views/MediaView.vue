@@ -106,7 +106,12 @@
 
         <template v-if="media.seasons?.length">
           <SectionHeading title="Seasons" class="mt-6" />
-          <SeasonList :seasons="media.seasons" />
+          <SeasonList
+            :seasons="media.seasons"
+            :tmdb-id="media.tmdbId"
+            :poster-path="media.posterPath"
+            :service-id="media.library?.serviceId"
+          />
         </template>
 
         <ConfirmDialog

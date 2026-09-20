@@ -3,7 +3,13 @@ import type { MaybeRefOrGetter } from "vue";
 import { toValue } from "vue";
 import type { LibraryMediaType } from "#shared/types";
 import { getDashboard } from "#web/api/dashboard";
-import { getLibrary, removeLibraryItem, type RemovableItem } from "#web/api/library";
+import {
+  getLibrary,
+  releaseSeason,
+  removeLibraryItem,
+  type ReleasableSeason,
+  type RemovableItem,
+} from "#web/api/library";
 import { getMediaDetail } from "#web/api/media";
 import {
   discover,
@@ -116,6 +122,14 @@ export function useRemoveLibraryItem() {
   const invalidate = useMediaInvalidation();
   return useMutation({
     mutation: (item: RemovableItem) => removeLibraryItem(item, true),
+    onSettled: invalidate,
+  });
+}
+
+export function useReleaseSeason() {
+  const invalidate = useMediaInvalidation();
+  return useMutation({
+    mutation: (season: ReleasableSeason) => releaseSeason(season),
     onSettled: invalidate,
   });
 }
