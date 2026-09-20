@@ -50,7 +50,10 @@ const realFetch = globalThis.fetch;
 let deletes: string[] = [];
 let posts: unknown[] = [];
 
-function stubPlex(options: { sentInvites?: string; refusal?: string } = {}) {
+function stubPlex(
+  options: { sentInvites?: string; refusal?: string; trackInvites?: boolean } = {},
+) {
+  const sent: string[] = [];
   globalThis.fetch = ((url: string, init: RequestInit = {}) => {
     const method = init.method ?? "GET";
 
@@ -60,7 +63,8 @@ function stubPlex(options: { sentInvites?: string; refusal?: string } = {}) {
     if (url.endsWith("/v2/user")) return Promise.resolve(Response.json(OWNER));
     if (url.endsWith("/api/users")) return Promise.resolve(new Response(SHARE_LIST));
     if (url.endsWith("/invites/requested") && method === "GET") {
-      return Promise.resolve(new Response(options.sentInvites ?? "<MediaContainer/>"));
+      const tracked = `<MediaContainer>${sent.map((email, i) => `<Invite id="${i}" email="${email}" server="1"/>`).join("")}</MediaContainer>`;
+      return Promise.resolve(new Response(options.sentInvites ?? tracked));
     }
     if (url.includes("/api/servers/") && method === "GET") {
       return Promise.resolve(new Response(SERVERS));
@@ -72,6 +76,7 @@ function stubPlex(options: { sentInvites?: string; refusal?: string } = {}) {
           Response.json({ errors: [{ code: 1123, message: options.refusal }] }, { status: 422 }),
         );
       }
+      if (options.trackInvites) sent.push(JSON.parse(String(init.body)).invitedEmail);
       return Promise.resolve(Response.json({ id: 700 }));
     }
     if (method === "DELETE") {
@@ -259,6 +264,28 @@ describe("POST /api/plex/invites", () => {
 
     expect(res.status).toBe(400);
     expect(posts).toEqual([]);
+  });
+
+  test.each(["pete", "@plex.test", "pete@", "pete@@plex.test", "pete @plex.test"])(
+    "rejects non-email invitation %s before contacting Plex",
+    async (email) => {
+      stubPlex();
+      expect((await invite(email, asMember)).status).toBe(400);
+      expect(posts).toEqual([]);
+      expect(await db.select().from(plexInvites)).toEqual([]);
+    },
+  );
+
+  test("concurrent invitations cannot exceed one user's quota", async () => {
+    stubPlex({ trackInvites: true });
+    const results = await Promise.all(
+      Array.from({ length: 6 }, (_, i) => invite(`concurrent${i}@plex.test`, asMember)),
+    );
+    expect(results.filter((response) => response.status === 200)).toHaveLength(5);
+    expect(results.filter((response) => response.status === 429)).toHaveLength(1);
+    expect(posts).toHaveLength(5);
+    expect(await db.select().from(plexInvites)).toHaveLength(5);
+    expect(await members(asMember)).toHaveLength(5);
   });
 
   test("passes on Plex's own words when it refuses", async () => {

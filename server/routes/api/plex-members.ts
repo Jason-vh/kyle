@@ -1,6 +1,7 @@
 import type { JwtUser } from "#server/auth/jwt.ts";
 import { requireAuth, type AuthResult } from "#server/auth/middleware.ts";
 import { getPlexInviters, recordPlexInvite, type PlexInviter } from "#server/db/plex-invites.ts";
+import { withDatabaseLock } from "#server/db/lock.ts";
 import {
   invitePlexMember,
   listPlexMembers,
@@ -22,8 +23,8 @@ const log = createLogger("api-plex-members");
  */
 const PENDING_PER_USER = 5;
 
-/** Plex matches a username as readily as an address; only obvious nonsense is refused here. */
 const MAX_EMAIL_LENGTH = 254;
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 interface MemberView {
   id: string;
@@ -118,28 +119,30 @@ export async function handleCreatePlexInvite(req: Request): Promise<Response> {
 
   const body = (await req.json().catch(() => ({}))) as { email?: unknown };
   const email = typeof body.email === "string" ? body.email.trim() : "";
-  if (email === "" || email.length > MAX_EMAIL_LENGTH || /\s/.test(email)) {
+  if (email.length > MAX_EMAIL_LENGTH || !EMAIL_PATTERN.test(email)) {
     return Response.json({ error: "An email address is required" }, { status: 400 });
   }
 
   try {
-    const [members, inviters] = await Promise.all([listPlexMembers(), getPlexInviters()]);
+    return await withDatabaseLock(`plex-invites:${auth.user.id}`, async () => {
+      const [members, inviters] = await Promise.all([listPlexMembers(), getPlexInviters()]);
 
-    const outstanding = members.filter(
-      (member) => member.status === "pending" && invitedBy(member, auth.user, inviters),
-    );
-    if (!auth.user.admin && outstanding.length >= PENDING_PER_USER) {
-      return Response.json(
-        { error: `You already have ${outstanding.length} invitations waiting to be accepted` },
-        { status: 429 },
+      const outstanding = members.filter(
+        (member) => member.status === "pending" && invitedBy(member, auth.user, inviters),
       );
-    }
+      if (!auth.user.admin && outstanding.length >= PENDING_PER_USER) {
+        return Response.json(
+          { error: `You already have ${outstanding.length} invitations waiting to be accepted` },
+          { status: 429 },
+        );
+      }
 
-    await invitePlexMember(email);
-    await recordPlexInvite(email.toLowerCase(), auth.user.id);
+      await invitePlexMember(email);
+      await recordPlexInvite(email.toLowerCase(), auth.user.id);
 
-    log.info("plex invite sent", { by: auth.user.id });
-    return Response.json({ invited: email }, { headers: auth.refreshHeaders });
+      log.info("plex invite sent", { by: auth.user.id });
+      return Response.json({ invited: email }, { headers: auth.refreshHeaders });
+    });
   } catch (error) {
     if (error instanceof PlexRefusedError) {
       return Response.json({ error: error.message }, { status: 400 });
