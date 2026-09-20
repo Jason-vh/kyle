@@ -1,4 +1,5 @@
 import { requireAuth } from "#server/auth/middleware.ts";
+import { isInteger, readJsonObject } from "#server/http/input.ts";
 import { searchRequestableMedia } from "#server/requests/search.ts";
 import {
   MediaNotFoundError,
@@ -30,6 +31,7 @@ export async function handleDiscoverSearch(req: Request): Promise<Response> {
 
   const query = new URL(req.url).searchParams.get("q")?.trim();
   if (!query) return Response.json({ results: [] });
+  if (query.length > 200) return Response.json({ error: "Search is too long" }, { status: 400 });
 
   try {
     return Response.json({ results: await searchRequestableMedia(query) });
@@ -97,12 +99,12 @@ function scopeError(body: RequestBody): string | undefined {
 
   if (seasonNumber === undefined && episodeNumber === undefined) return undefined;
   if (mediaType !== "series") return "Only a series has seasons";
-  if (seasonNumber !== undefined && (!Number.isInteger(seasonNumber) || seasonNumber < 0)) {
+  if (seasonNumber !== undefined && !isInteger(seasonNumber)) {
     return "seasonNumber must be a non-negative integer";
   }
   if (episodeNumber === undefined) return undefined;
   if (seasonNumber === undefined) return "episodeNumber needs a seasonNumber";
-  if (!Number.isInteger(episodeNumber) || episodeNumber < 1) {
+  if (!isInteger(episodeNumber, 1)) {
     return "episodeNumber must be a positive integer";
   }
   return undefined;
@@ -114,7 +116,7 @@ export async function handleCreateRequest(req: Request): Promise<Response> {
 
   let body: RequestBody;
   try {
-    body = (await req.json()) as RequestBody;
+    body = await readJsonObject(req);
   } catch {
     return Response.json({ error: "Invalid JSON" }, { status: 400 });
   }
@@ -122,8 +124,14 @@ export async function handleCreateRequest(req: Request): Promise<Response> {
   if (!isRequestableType(body.mediaType)) {
     return Response.json({ error: "mediaType must be 'movie' or 'series'" }, { status: 400 });
   }
-  if (typeof body.tmdbId !== "number" || !Number.isInteger(body.tmdbId)) {
-    return Response.json({ error: "tmdbId must be an integer" }, { status: 400 });
+  if (!isInteger(body.tmdbId, 1)) {
+    return Response.json({ error: "tmdbId must be a positive integer" }, { status: 400 });
+  }
+  if (
+    body.posterPath !== undefined &&
+    (typeof body.posterPath !== "string" || body.posterPath.length > 2048)
+  ) {
+    return Response.json({ error: "Invalid posterPath" }, { status: 400 });
   }
   const invalidScope = scopeError(body);
   if (invalidScope) {
@@ -174,12 +182,15 @@ export async function handleGetRequests(req: Request): Promise<Response> {
 // ---------------------------------------------------------------------------
 
 /** `?season=3` narrows an action to the season that was asked for. */
-function seasonParam(req: Request): number | undefined {
+function seasonParam(req: Request): number | undefined | Response {
   const raw = new URL(req.url).searchParams.get("season");
   if (raw === null) return undefined;
 
   const seasonNumber = Number(raw);
-  return Number.isInteger(seasonNumber) && seasonNumber >= 0 ? seasonNumber : undefined;
+  if (raw.trim() === "" || !isInteger(seasonNumber)) {
+    return Response.json({ error: "Invalid season" }, { status: 400 });
+  }
+  return seasonNumber;
 }
 
 export async function handleRetryRequest(
@@ -195,9 +206,11 @@ export async function handleRetryRequest(
   }
 
   const tmdbId = Number(rawTmdbId);
-  if (!Number.isInteger(tmdbId)) {
+  if (!isInteger(tmdbId, 1)) {
     return Response.json({ error: "Invalid id" }, { status: 400 });
   }
+  const seasonNumber = seasonParam(req);
+  if (seasonNumber instanceof Response) return seasonNumber;
 
   const library = await getLibraryIndex();
   if (library.unavailable.includes(mediaType)) {
@@ -209,7 +222,7 @@ export async function handleRetryRequest(
   }
 
   try {
-    const outcome = await retryRequest(mediaType, entry.serviceId, seasonParam(req));
+    const outcome = await retryRequest(mediaType, entry.serviceId, seasonNumber);
     return Response.json(outcome, { headers: auth.refreshHeaders });
   } catch (error) {
     log.error("retry failed", { mediaType, tmdbId, error: errorMessage(error) });
@@ -234,11 +247,12 @@ export async function handleReportRequest(
   }
 
   const tmdbId = Number(rawTmdbId);
-  if (!Number.isInteger(tmdbId)) {
+  if (!isInteger(tmdbId, 1)) {
     return Response.json({ error: "Invalid id" }, { status: 400 });
   }
 
   const seasonNumber = seasonParam(req);
+  if (seasonNumber instanceof Response) return seasonNumber;
   const requests = await getMediaRequestsForUser(auth.user.id);
   const request = requests.find(
     (row) =>

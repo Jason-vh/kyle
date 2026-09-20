@@ -1,4 +1,5 @@
 import { createLogger } from "#server/logger.ts";
+import { isUuid, readJsonObject } from "#server/http/input.ts";
 import { ApiOverloadedError } from "#server/agent/index.ts";
 import { runConversationTurn, ConversationNotFoundError } from "#server/agent/conversation.ts";
 import { timingSafeEqual } from "crypto";
@@ -41,13 +42,17 @@ export async function handleChat(req: Request): Promise<Response> {
 
   let body: ChatRequest;
   try {
-    body = (await req.json()) as ChatRequest;
+    body = (await readJsonObject(req)) as unknown as ChatRequest;
   } catch {
     return Response.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
   if (!body.message || typeof body.message !== "string") {
     return Response.json({ error: "message is required and must be a string" }, { status: 400 });
+  }
+
+  if (body.conversationId !== undefined && !isUuid(body.conversationId)) {
+    return Response.json({ error: "Invalid conversationId" }, { status: 400 });
   }
 
   try {

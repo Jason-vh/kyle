@@ -77,6 +77,7 @@ export async function countUnread(userId: string): Promise<number> {
 
 /** Marks the given notifications read, or every unread one when none are named. */
 export async function markRead(userId: string, ids?: string[]): Promise<number> {
+  if (ids?.length === 0) return 0;
   const mine = and(eq(notifications.userId, userId), isNull(notifications.readAt));
 
   const rows = await db

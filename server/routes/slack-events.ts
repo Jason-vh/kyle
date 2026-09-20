@@ -3,7 +3,8 @@ import { safeJsonParse } from "#server/json.ts";
 import { errorFields } from "#server/errors.ts";
 import { verifySlackSignature } from "#server/slack/verify.ts";
 import { enqueueSlackEvent, processSlackEvent } from "#server/slack/jobs.ts";
-import { shouldProcess, type SlackEventPayload } from "#server/slack/events.ts";
+import { isSlackEvent, shouldProcess } from "#server/slack/events.ts";
+import { isObject, isText } from "#server/http/input.ts";
 
 const log = createLogger("slack:events");
 
@@ -19,25 +20,32 @@ export async function handleSlackEvents(req: Request): Promise<Response> {
     return Response.json({ error: "Invalid signature" }, { status: 401 });
   }
 
-  const payload = safeJsonParse<SlackEventPayload>(rawBody);
-  if (!payload) {
+  const payload = safeJsonParse<unknown>(rawBody);
+  if (!isObject(payload) || !isText(payload.type)) {
     return Response.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
   if (payload.type === "url_verification") {
+    if (!isText(payload.challenge))
+      return Response.json({ error: "Invalid challenge" }, { status: 400 });
     return Response.json({ challenge: payload.challenge });
   }
 
   const ack = new Response("ok", { status: 200 });
   const event = payload.event;
-  if (!event) return ack;
+  if (event === undefined) return ack;
+  if (!isObject(event) || !isText(event.type))
+    return Response.json({ error: "Invalid event" }, { status: 400 });
   if (event.type !== "message" && event.type !== "app_mention") return ack;
+  if (!isSlackEvent(event) || (payload.team_id !== undefined && !isText(payload.team_id))) {
+    return Response.json({ error: "Invalid message event" }, { status: 400 });
+  }
   if (!shouldProcess(event)) return ack;
   if (typeof payload.event_id !== "string" || !payload.event_id) {
     return Response.json({ error: "event_id is required" }, { status: 400 });
   }
 
-  await enqueueSlackEvent(payload.event_id, event, payload.team_id);
+  await enqueueSlackEvent(payload.event_id, event, payload.team_id as string | undefined);
 
   log.info("processing slack message", {
     channel: event.channel,

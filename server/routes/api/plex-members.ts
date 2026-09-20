@@ -1,4 +1,5 @@
 import type { JwtUser } from "#server/auth/jwt.ts";
+import { readJsonObject } from "#server/http/input.ts";
 import { requireAuth, type AuthResult } from "#server/auth/middleware.ts";
 import { getPlexInviters, recordPlexInvite, type PlexInviter } from "#server/db/plex-invites.ts";
 import { withDatabaseLock } from "#server/db/lock.ts";
@@ -117,7 +118,12 @@ export async function handleCreatePlexInvite(req: Request): Promise<Response> {
   const auth = await authorise(req);
   if ("error" in auth) return auth.error;
 
-  const body = (await req.json().catch(() => ({}))) as { email?: unknown };
+  let body: Record<string, unknown>;
+  try {
+    body = await readJsonObject(req);
+  } catch {
+    return Response.json({ error: "Invalid JSON" }, { status: 400 });
+  }
   const email = typeof body.email === "string" ? body.email.trim() : "";
   if (email.length > MAX_EMAIL_LENGTH || !EMAIL_PATTERN.test(email)) {
     return Response.json({ error: "An email address is required" }, { status: 400 });

@@ -102,15 +102,24 @@ describe("POST /api/notifications/read", () => {
     expect(body.unread).toBe(1);
   });
 
-  test("ids that are not strings are dropped rather than reaching the query", async () => {
+  test("invalid ids reject the entire update without marking anything read", async () => {
     const first = await give(userId, "One");
     await give(userId, "Two");
 
-    await read(asUser, JSON.stringify({ ids: [first, 7, null] }));
+    expect((await read(asUser, JSON.stringify({ ids: [first, 7, null] }))).status).toBe(400);
 
     const body = (await (await listed(asUser)).json()) as { unread: number };
-    expect(body.unread).toBe(1);
+    expect(body.unread).toBe(2);
   });
+
+  test.each(['{"ids":[]}', '{"ids":["invalid-uuid"]}', "null", "[]", "not json"])(
+    "invalid or empty selections never mark all notifications read: %s",
+    async (input) => {
+      await give(userId, "Unread");
+      await read(asUser, input);
+      expect(await (await listed(asUser)).json()).toMatchObject({ unread: 1 });
+    },
+  );
 
   // Naming a stranger's notification must not mark it read.
   test("someone else's notification is left alone", async () => {

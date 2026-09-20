@@ -1,4 +1,5 @@
 import { requireAdmin } from "#server/auth/middleware.ts";
+import { isText, isUuid, readJsonObject } from "#server/http/input.ts";
 import {
   getAllUsersWithIdentities,
   createPlatformLink,
@@ -45,12 +46,19 @@ export async function handleCreateLink(req: Request, userId: string): Promise<Re
 
   let body: { platform?: string; platformUserId?: string; platformUsername?: string };
   try {
-    body = (await req.json()) as typeof body;
+    body = await readJsonObject(req);
   } catch {
     return Response.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  if (!body.platform || !body.platformUserId) {
+  if (!isUuid(userId)) return Response.json({ error: "Invalid user id" }, { status: 400 });
+  if (
+    body.platformUsername !== undefined &&
+    (typeof body.platformUsername !== "string" || body.platformUsername.length > 200)
+  ) {
+    return Response.json({ error: "Invalid platformUsername" }, { status: 400 });
+  }
+  if (!isText(body.platform) || !isText(body.platformUserId, 200)) {
     return Response.json({ error: "platform and platformUserId are required" }, { status: 400 });
   }
 
@@ -94,11 +102,15 @@ export async function handleCreateLink(req: Request, userId: string): Promise<Re
 
 export async function handleDeleteLink(
   req: Request,
-  _userId: string,
+  userId: string,
   linkId: string,
 ): Promise<Response> {
   const authResult = await requireAdmin(req);
   if ("error" in authResult) return authResult.error;
+
+  if (!isUuid(userId) || !isUuid(linkId)) {
+    return Response.json({ error: "Invalid id" }, { status: 400 });
+  }
 
   const deleted = await deletePlatformLink(linkId);
   if (!deleted) {

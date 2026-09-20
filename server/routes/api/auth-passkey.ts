@@ -1,4 +1,5 @@
 import { eq } from "drizzle-orm";
+import { isObject, isText, readJsonObject } from "#server/http/input.ts";
 import { db } from "#server/db/index.ts";
 import { userCredentials } from "#server/db/schema.ts";
 import { getUserCredentials, getCredentialById } from "#server/db/users.ts";
@@ -22,6 +23,16 @@ import { getActiveUser } from "#server/auth/account.ts";
 
 const log = createLogger("api-passkey");
 
+function validCredential(body: AuthenticationResponseJSON | RegistrationResponseJSON): boolean {
+  return (
+    isText(body.id, 2048) &&
+    isText(body.rawId, 2048) &&
+    body.type === "public-key" &&
+    isObject(body.response) &&
+    isText(body.response.clientDataJSON)
+  );
+}
+
 // ---------------------------------------------------------------------------
 // POST /api/auth/passkey/login/options
 // ---------------------------------------------------------------------------
@@ -40,9 +51,13 @@ export async function handlePasskeyLoginOptions(req: Request): Promise<Response>
 export async function handlePasskeyLoginVerify(req: Request): Promise<Response> {
   let body: AuthenticationResponseJSON;
   try {
-    body = (await req.json()) as AuthenticationResponseJSON;
+    body = (await readJsonObject(req)) as unknown as AuthenticationResponseJSON;
   } catch {
     return Response.json({ error: "Invalid JSON" }, { status: 400 });
+  }
+
+  if (!validCredential(body)) {
+    return Response.json({ error: "Invalid credential" }, { status: 400 });
   }
 
   const binding = readFlowCookie(req, "kyle_passkey_login");
@@ -134,9 +149,13 @@ export async function handlePasskeyRegisterVerify(req: Request): Promise<Respons
 
   let body: RegistrationResponseJSON;
   try {
-    body = (await req.json()) as RegistrationResponseJSON;
+    body = (await readJsonObject(req)) as unknown as RegistrationResponseJSON;
   } catch {
     return Response.json({ error: "Invalid JSON" }, { status: 400 });
+  }
+
+  if (!validCredential(body)) {
+    return Response.json({ error: "Invalid credential" }, { status: 400 });
   }
 
   const binding = readFlowCookie(req, "kyle_passkey_register");

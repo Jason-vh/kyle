@@ -1,4 +1,5 @@
 import { isLibraryMediaType } from "#shared/types.ts";
+import { isInteger } from "#server/http/input.ts";
 import { requireAdmin, requireAuth } from "#server/auth/middleware.ts";
 import { listLibrary, removeLibraryItem } from "#server/library/service.ts";
 import { MediaNotFoundError, releaseSeason } from "#server/requests/service.ts";
@@ -42,7 +43,7 @@ export async function handleRemoveLibraryItem(
   }
 
   const serviceId = Number(rawServiceId);
-  if (!Number.isInteger(serviceId)) {
+  if (!isInteger(serviceId, 1)) {
     return Response.json({ error: "Invalid id" }, { status: 400 });
   }
 
@@ -77,7 +78,7 @@ export async function handleReleaseSeason(
 
   const serviceId = Number(rawServiceId);
   const seasonNumber = Number(rawSeasonNumber);
-  if (!Number.isInteger(serviceId) || !Number.isInteger(seasonNumber) || seasonNumber < 0) {
+  if (!isInteger(serviceId, 1) || !isInteger(seasonNumber)) {
     return Response.json({ error: "Invalid id" }, { status: 400 });
   }
 

@@ -1,4 +1,5 @@
 import { requireAuth } from "#server/auth/middleware.ts";
+import { isUuid, readJsonObject } from "#server/http/input.ts";
 import { countUnread, listNotifications, markRead } from "#server/db/notifications.ts";
 import { createLogger } from "#server/logger.ts";
 import { errorMessage, errorResponse } from "#server/errors.ts";
@@ -34,8 +35,16 @@ export async function handleMarkNotificationsRead(req: Request): Promise<Respons
   if ("error" in auth) return auth.error;
 
   // An empty body means "all of them", which is what the bell does.
-  const body = (await req.json().catch(() => ({}))) as { ids?: unknown };
-  const ids = Array.isArray(body.ids) ? body.ids.filter((id) => typeof id === "string") : undefined;
+  let body: Record<string, unknown>;
+  try {
+    body = await readJsonObject(req, true);
+  } catch {
+    return Response.json({ error: "Invalid JSON" }, { status: 400 });
+  }
+  if (body.ids !== undefined && (!Array.isArray(body.ids) || !body.ids.every(isUuid))) {
+    return Response.json({ error: "ids must be an array of notification UUIDs" }, { status: 400 });
+  }
+  const ids = body.ids as string[] | undefined;
 
   try {
     const read = await markRead(auth.user.id, ids);

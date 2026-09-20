@@ -1,4 +1,5 @@
 import { isLibraryMediaType } from "#shared/types.ts";
+import { isInteger } from "#server/http/input.ts";
 import { requireAuth } from "#server/auth/middleware.ts";
 import { getMediaDetail } from "#server/media/detail.ts";
 import { ApiError } from "#server/http/client.ts";
@@ -24,7 +25,7 @@ export async function handleGetMediaDetail(
   }
 
   const tmdbId = Number(rawTmdbId);
-  if (!Number.isInteger(tmdbId) || tmdbId <= 0) {
+  if (!isInteger(tmdbId, 1)) {
     return Response.json({ error: "Invalid id" }, { status: 400 });
   }
 

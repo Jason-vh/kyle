@@ -113,6 +113,14 @@ describe("POST /api/requests", () => {
   });
 
   test.each([
+    ["null", null],
+    ["an array", []],
+    ["a string", "movie"],
+    ["a negative id", { mediaType: "movie", tmdbId: -1 }],
+    ["an overflowing id", { mediaType: "movie", tmdbId: 2 ** 40 }],
+    ["an invalid poster", { mediaType: "movie", tmdbId: 1, posterPath: {} }],
+    ["a null season", { mediaType: "series", tmdbId: 1, seasonNumber: null }],
+    ["an invalid episode", { mediaType: "series", tmdbId: 1, seasonNumber: 1, episodeNumber: "1" }],
     ["an unknown media type", { mediaType: "album", tmdbId: 1 }],
     ["a missing media type", { tmdbId: 1 }],
     ["a missing id", { mediaType: "movie" }],

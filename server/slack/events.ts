@@ -1,4 +1,5 @@
 import { SUPPORTED_IMAGE_TYPES } from "#server/images.ts";
+import { isObject, isText } from "#server/http/input.ts";
 
 export interface SlackFile {
   id: string;
@@ -32,6 +33,42 @@ export interface SlackEventPayload {
   event_id?: string;
   team_id?: string;
   event?: SlackEvent;
+}
+
+export function isSlackEvent(value: unknown): value is SlackEvent {
+  if (!isObject(value) || !isText(value.type) || !isText(value.channel) || !isText(value.ts))
+    return false;
+  for (const key of ["subtype", "channel_type", "user", "text", "thread_ts", "bot_id"]) {
+    if (value[key] !== undefined && typeof value[key] !== "string") return false;
+  }
+  if (
+    value.files !== undefined &&
+    (!Array.isArray(value.files) ||
+      !value.files.every(
+        (file) =>
+          isObject(file) &&
+          isText(file.id) &&
+          isText(file.mimetype) &&
+          isText(file.url_private) &&
+          (file.name === undefined || typeof file.name === "string") &&
+          (file.size === undefined ||
+            (typeof file.size === "number" && Number.isSafeInteger(file.size) && file.size >= 0)),
+      ))
+  )
+    return false;
+  if (value.app_context !== undefined) {
+    if (!isObject(value.app_context)) return false;
+    const entities = value.app_context.entities;
+    if (
+      entities !== undefined &&
+      (!Array.isArray(entities) ||
+        !entities.every(
+          (entity) => isObject(entity) && isText(entity.type) && isText(entity.value),
+        ))
+    )
+      return false;
+  }
+  return true;
 }
 
 export function buildExternalId(event: SlackEvent): string {
