@@ -66,7 +66,7 @@ export async function optional<T>(load: () => Promise<T>): Promise<T | undefined
 }
 
 async function readBody(response: Response): Promise<unknown> {
-  const text = await response.text().catch(() => "(unreadable)");
+  const text = await response.text();
   if (!text) return undefined;
   return safeJsonParse(text) ?? text;
 }

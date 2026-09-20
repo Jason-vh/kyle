@@ -35,6 +35,23 @@ describe("createApiClient", () => {
     expect(await request("/delete")).toBeUndefined();
   });
 
+  test.each([200, 502])("rejects interrupted response bodies with status %s", async (status) => {
+    stubFetch(
+      () =>
+        new Response(
+          new ReadableStream({
+            start(controller) {
+              controller.error(new Error("Connection reset while reading response"));
+            },
+          }),
+          { status },
+        ),
+    );
+    const request = createApiClient({ service: "test", config });
+
+    await expect(request("/thing")).rejects.toThrow("Connection reset while reading response");
+  });
+
   test("throws ApiError carrying the parsed error body", async () => {
     stubFetch(() => Response.json({ message: "nope" }, { status: 422 }));
     const request = createApiClient({ service: "test", config });
