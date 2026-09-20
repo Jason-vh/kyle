@@ -13,6 +13,8 @@ import {
 import { invalidateLibraryIndex } from "./library.ts";
 import { discardStalled } from "./retry.ts";
 import { createLogger } from "#server/logger.ts";
+import { withDatabaseLock } from "#server/db/lock.ts";
+import { ApiError } from "#server/http/client.ts";
 
 const log = createLogger("requests");
 
@@ -104,44 +106,65 @@ export async function requestMovie(input: {
   requestedBy?: Requester;
   posterPath?: string;
 }): Promise<{ status: RequestStatus; movie: RadarrMovie }> {
-  // Radarr rejects a movie it already holds, and its lookup will not say so.
-  const held = await radarr.getLibraryMovieByTmdbId(input.tmdbId);
-  const movie = held ?? (await addToRadarr(input.tmdbId));
-  const status: RequestStatus = held ? "existing" : "added";
+  return withDatabaseLock(`media:movie:${input.tmdbId}`, async () => {
+    let movie = await radarr.getLibraryMovieByTmdbId(input.tmdbId);
+    let status: RequestStatus = "existing";
+    if (!movie) {
+      try {
+        movie = await addToRadarr(input.tmdbId);
+        status = "added";
+      } catch (error) {
+        if (!(error instanceof ApiError) || ![400, 409].includes(error.status)) throw error;
+        movie = await radarr.getLibraryMovieByTmdbId(input.tmdbId);
+        if (!movie) throw error;
+        invalidateLibraryIndex();
+      }
+    }
 
-  // It is back, so how it once left stops being the answer to where it is.
-  if (status === "added") {
-    invalidateLibraryIndex();
-    await clearRemoval("movie", input.tmdbId);
-  }
+    // It is back, so how it once left stops being the answer to where it is.
+    if (status === "added") {
+      invalidateLibraryIndex();
+      await clearRemoval("movie", input.tmdbId);
+    }
 
-  if (input.requestedBy) {
-    await recordRequest({
-      requester: input.requestedBy,
-      mediaType: "movie",
+    if (input.requestedBy) {
+      await recordRequest({
+        requester: input.requestedBy,
+        mediaType: "movie",
+        tmdbId: input.tmdbId,
+        serviceId: movie.id,
+        title: movie.title,
+        // Radarr reports 0 for a film with no known release year.
+        year: movie.year || undefined,
+        posterPath: input.posterPath,
+      });
+    }
+
+    log.info("movie requested", {
+      status,
       tmdbId: input.tmdbId,
-      serviceId: movie.id,
       title: movie.title,
-      // Radarr reports 0 for a film with no known release year.
-      year: movie.year || undefined,
-      posterPath: input.posterPath,
+      serviceId: movie.id,
+      userId: input.requestedBy?.userId,
     });
-  }
-
-  log.info("movie requested", {
-    status,
-    tmdbId: input.tmdbId,
-    title: movie.title,
-    serviceId: movie.id,
-    userId: input.requestedBy?.userId,
+    return { status, movie };
   });
-  return { status, movie };
 }
 
 /** How a caller names a series: Sonarr is TVDB-native but resolves TMDB itself. */
 export interface SeriesRef {
   tmdbId?: number;
   tvdbId?: number;
+}
+
+async function withRequestedSeriesLock<T>(ref: SeriesRef, run: () => Promise<T>): Promise<T> {
+  let tvdbId = ref.tvdbId;
+  if (ref.tmdbId !== undefined) {
+    const [lookup] = await sonarr.searchSeries(seriesTerm(ref));
+    tvdbId = lookup?.tvdbId;
+  }
+  if (!tvdbId) throw new MediaNotFoundError("series", seriesTerm(ref));
+  return withDatabaseLock(`media:series:${tvdbId}`, run);
 }
 
 function seriesTerm(ref: SeriesRef): string {
@@ -165,7 +188,16 @@ async function findOrAddSeries(
 
   if (lookup.id) return { status: "existing", series: await sonarr.getSeries(lookup.id) };
 
-  const series = await sonarr.addSeries(lookup.title, lookup.year, lookup.tvdbId, monitorOption);
+  let series: SonarrSeries;
+  try {
+    series = await sonarr.addSeries(lookup.title, lookup.year, lookup.tvdbId, monitorOption);
+  } catch (error) {
+    if (!(error instanceof ApiError) || ![400, 409].includes(error.status)) throw error;
+    const [held] = await sonarr.searchSeries(`tvdb:${lookup.tvdbId}`);
+    if (!held?.id) throw error;
+    invalidateLibraryIndex();
+    return { status: "existing", series: await sonarr.getSeries(held.id) };
+  }
   invalidateLibraryIndex();
 
   // It is back, so how it once left stops being the answer to where it is.
@@ -186,28 +218,30 @@ export async function requestSeries(input: {
   requestedBy?: Requester;
   posterPath?: string;
 }): Promise<{ status: RequestStatus; series: SonarrSeries }> {
-  const { status, series } = await findOrAddSeries(input, input.monitorOption ?? "all");
+  return withRequestedSeriesLock(input, async () => {
+    const { status, series } = await findOrAddSeries(input, input.monitorOption ?? "all");
 
-  if (input.requestedBy) {
-    await recordRequest({
-      requester: input.requestedBy,
-      mediaType: "series",
-      tmdbId: series.tmdbId ?? input.tmdbId,
-      serviceId: series.id,
+    if (input.requestedBy) {
+      await recordRequest({
+        requester: input.requestedBy,
+        mediaType: "series",
+        tmdbId: series.tmdbId ?? input.tmdbId,
+        serviceId: series.id,
+        title: series.title,
+        year: series.year || undefined,
+        posterPath: input.posterPath,
+      });
+    }
+
+    log.info("series requested", {
+      status,
+      term: seriesTerm(input),
       title: series.title,
-      year: series.year || undefined,
-      posterPath: input.posterPath,
+      serviceId: series.id,
+      userId: input.requestedBy?.userId,
     });
-  }
-
-  log.info("series requested", {
-    status,
-    term: seriesTerm(input),
-    title: series.title,
-    serviceId: series.id,
-    userId: input.requestedBy?.userId,
+    return { status, series };
   });
-  return { status, series };
 }
 
 function seasonOf(series: SonarrSeries, seasonNumber: number) {
@@ -247,40 +281,42 @@ export async function requestSeason(input: {
   requestedBy?: Requester;
   posterPath?: string;
 }): Promise<{ status: RequestStatus; series: SonarrSeries; seasonNumber: number }> {
-  const { seasonNumber } = input;
-  const { status: seriesStatus, series } = await findOrAddSeries(input, "none");
+  return withRequestedSeriesLock(input, async () => {
+    const { seasonNumber } = input;
+    const { status: seriesStatus, series } = await findOrAddSeries(input, "none");
 
-  const monitoringChanged = await monitorSeason(series, seasonNumber);
-  // Asking again for a season half-stuck in the queue means the stuck release
-  // has to go, or the search finds the same one and nothing moves.
-  await discardStalled("series", series.id, seasonNumber);
-  await sonarr.searchEpisodes(series.id, undefined, seasonNumber);
-  if (monitoringChanged) invalidateLibraryIndex();
+    const monitoringChanged = await monitorSeason(series, seasonNumber);
+    // Asking again for a season half-stuck in the queue means the stuck release
+    // has to go, or the search finds the same one and nothing moves.
+    await discardStalled("series", series.id, seasonNumber);
+    await sonarr.searchEpisodes(series.id, undefined, seasonNumber);
+    if (monitoringChanged) invalidateLibraryIndex();
 
-  if (input.requestedBy) {
-    await recordRequest({
-      requester: input.requestedBy,
-      mediaType: "series",
-      tmdbId: series.tmdbId ?? input.tmdbId,
-      serviceId: series.id,
+    if (input.requestedBy) {
+      await recordRequest({
+        requester: input.requestedBy,
+        mediaType: "series",
+        tmdbId: series.tmdbId ?? input.tmdbId,
+        serviceId: series.id,
+        title: series.title,
+        year: series.year || undefined,
+        posterPath: input.posterPath,
+        seasonNumber,
+      });
+    }
+
+    const status: RequestStatus =
+      seriesStatus === "added" || monitoringChanged ? "added" : "existing";
+    log.info("season requested", {
+      status,
+      term: seriesTerm(input),
       title: series.title,
-      year: series.year || undefined,
-      posterPath: input.posterPath,
+      serviceId: series.id,
       seasonNumber,
+      userId: input.requestedBy?.userId,
     });
-  }
-
-  const status: RequestStatus =
-    seriesStatus === "added" || monitoringChanged ? "added" : "existing";
-  log.info("season requested", {
-    status,
-    term: seriesTerm(input),
-    title: series.title,
-    serviceId: series.id,
-    seasonNumber,
-    userId: input.requestedBy?.userId,
+    return { status, series, seasonNumber };
   });
-  return { status, series, seasonNumber };
 }
 
 function episodeOf(
@@ -311,37 +347,39 @@ export async function requestEpisode(input: {
   requestedBy?: Requester;
   posterPath?: string;
 }): Promise<{ status: RequestStatus; series: SonarrSeries }> {
-  const { seasonNumber, episodeNumber } = input;
-  const { status, series } = await findOrAddSeries(input, "none");
+  return withRequestedSeriesLock(input, async () => {
+    const { seasonNumber, episodeNumber } = input;
+    const { status, series } = await findOrAddSeries(input, "none");
 
-  const episodes = await sonarr.getEpisodes(series.id);
-  const episode = episodeOf(episodes, seasonNumber, episodeNumber, series);
+    const episodes = await sonarr.getEpisodes(series.id);
+    const episode = episodeOf(episodes, seasonNumber, episodeNumber, series);
 
-  await sonarr.monitorEpisodes([episode.id], true);
-  await sonarr.searchEpisodes(undefined, [episode.id]);
+    await sonarr.monitorEpisodes([episode.id], true);
+    await sonarr.searchEpisodes(undefined, [episode.id]);
 
-  if (input.requestedBy) {
-    await recordRequest({
-      requester: input.requestedBy,
-      mediaType: "series",
-      tmdbId: series.tmdbId ?? input.tmdbId,
-      serviceId: series.id,
+    if (input.requestedBy) {
+      await recordRequest({
+        requester: input.requestedBy,
+        mediaType: "series",
+        tmdbId: series.tmdbId ?? input.tmdbId,
+        serviceId: series.id,
+        title: series.title,
+        year: series.year || undefined,
+        posterPath: input.posterPath,
+        seasonNumber,
+        episodeNumber,
+      });
+    }
+
+    log.info("episode requested", {
       title: series.title,
-      year: series.year || undefined,
-      posterPath: input.posterPath,
+      serviceId: series.id,
       seasonNumber,
       episodeNumber,
+      userId: input.requestedBy?.userId,
     });
-  }
-
-  log.info("episode requested", {
-    title: series.title,
-    serviceId: series.id,
-    seasonNumber,
-    episodeNumber,
-    userId: input.requestedBy?.userId,
+    return { status, series };
   });
-  return { status, series };
 }
 
 /**
@@ -353,34 +391,37 @@ export async function releaseSeason(
   seriesId: number,
   seasonNumber: number,
 ): Promise<{ series: SonarrSeries; filesDeleted: number }> {
-  const [series, episodes] = await Promise.all([
-    sonarr.getSeries(seriesId),
-    sonarr.getEpisodes(seriesId),
-  ]);
+  const { tvdbId } = await sonarr.getSeries(seriesId);
+  return withDatabaseLock(`media:series:${tvdbId}`, async () => {
+    const [series, episodes] = await Promise.all([
+      sonarr.getSeries(seriesId),
+      sonarr.getEpisodes(seriesId),
+    ]);
 
-  const season = seasonOf(series, seasonNumber);
-  const fileIds = new Set(
-    episodes
-      .filter((episode) => episode.seasonNumber === seasonNumber && episode.episodeFileId)
-      .map((episode) => episode.episodeFileId!),
-  );
+    const season = seasonOf(series, seasonNumber);
+    const fileIds = new Set(
+      episodes
+        .filter((episode) => episode.seasonNumber === seasonNumber && episode.episodeFileId)
+        .map((episode) => episode.episodeFileId!),
+    );
 
-  for (const fileId of fileIds) {
-    await sonarr.deleteEpisodeFile(fileId);
-  }
+    for (const fileId of fileIds) {
+      await sonarr.deleteEpisodeFile(fileId);
+    }
 
-  season.monitored = false;
-  await sonarr.updateSeries(seriesId, series);
-  invalidateLibraryIndex();
+    season.monitored = false;
+    await sonarr.updateSeries(seriesId, series);
+    invalidateLibraryIndex();
 
-  if (series.tmdbId !== undefined) await deleteSeasonRequests(series.tmdbId, seasonNumber);
-  await deactivateSeasonSubscriptions(seriesId, seasonNumber);
+    if (series.tmdbId !== undefined) await deleteSeasonRequests(series.tmdbId, seasonNumber);
+    await deactivateSeasonSubscriptions(seriesId, seasonNumber);
 
-  log.info("season released", {
-    title: series.title,
-    serviceId: seriesId,
-    seasonNumber,
-    filesDeleted: fileIds.size,
+    log.info("season released", {
+      title: series.title,
+      serviceId: seriesId,
+      seasonNumber,
+      filesDeleted: fileIds.size,
+    });
+    return { series, filesDeleted: fileIds.size };
   });
-  return { series, filesDeleted: fileIds.size };
 }
