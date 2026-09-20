@@ -9,10 +9,9 @@ export const threadsQuery = defineQueryOptions({
   staleTime: 30_000,
 });
 
-/** A shared `?sig=` link reads the same thread without being signed in. */
-export const threadQuery = defineQueryOptions((params: { id: string; sig?: string }) => ({
+export const threadQuery = defineQueryOptions((params: { id: string }) => ({
   key: ["threads", params.id],
-  query: () => getThread(params.id, params.sig),
+  query: () => getThread(params.id),
   // A thread only grows, so revisiting one should not wait on the network.
   staleTime: 30_000,
 }));
@@ -21,6 +20,6 @@ export function useThreads() {
   return useQuery(threadsQuery);
 }
 
-export function useThread(params: MaybeRefOrGetter<{ id: string; sig?: string }>) {
+export function useThread(params: MaybeRefOrGetter<{ id: string }>) {
   return useQuery(() => threadQuery(toValue(params)));
 }

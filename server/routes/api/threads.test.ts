@@ -1,14 +1,12 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { handleApiThreadDetail, handleApiThreadList } from "./threads.ts";
 import { buildJwtCookie, signJwt } from "#server/auth/jwt.ts";
-import { signThreadSig } from "#server/routes/threads-auth.ts";
 import { createTestUser, deleteTestUser } from "#server/db/testing.ts";
 
 // Conversations are everyone's private words to Kyle, so the route itself is
 // the thing under test rather than what it returns.
 
 process.env.JWT_SECRET = "test-secret-that-is-long-enough-for-hs256";
-process.env.THREAD_VIEWER_TOKEN = "test-thread-viewer-token";
 
 const THREAD_ID = "00000000-0000-4000-8000-000000000000";
 
@@ -63,21 +61,13 @@ describe("GET /api/threads/:id", () => {
     expect((await detail("", asUser)).status).toBe(403);
   });
 
-  // The point of sharing a thread is that whoever holds the link can read it.
-  test("a signed link opens the one thread it names, admin or not", async () => {
-    const sig = await signThreadSig(THREAD_ID);
-
-    // 404 rather than 403: the link was accepted, the thread simply is not there.
-    expect((await detail(`?sig=${sig}`)).status).toBe(404);
+  // Sharing by signed link is gone; the parameter must not be a way back in.
+  test("a ?sig= link no longer opens anything", async () => {
+    expect((await detail("?sig=any-signature-at-all")).status).toBe(401);
   });
 
-  test("a forged signature is refused", async () => {
-    expect((await detail("?sig=not-a-real-signature")).status).toBe(403);
-  });
-
-  test("a signature for another thread does not open this one", async () => {
-    const sig = await signThreadSig("11111111-1111-4111-8111-111111111111");
-
-    expect((await detail(`?sig=${sig}`)).status).toBe(403);
+  test("an admin reads the thread itself", async () => {
+    // 404 rather than 403: allowed in, the thread simply is not there.
+    expect((await detail("", asAdmin)).status).toBe(404);
   });
 });

@@ -4,7 +4,7 @@
     <div v-else-if="error" class="py-12 text-center text-accent-red">{{ error }}</div>
     <template v-else-if="thread">
       <header class="mb-6">
-        <div v-if="thread.shareUrl" class="mb-2 text-sm">
+        <div class="mb-2 text-sm">
           <router-link
             to="/threads"
             class="inline-flex items-center gap-1 text-text-muted no-underline hover:text-text-primary"
@@ -31,14 +31,6 @@
           <span class="flex items-center gap-1" v-html="platformIcon"></span>
           <span>&middot;</span>
           <time :datetime="thread.createdAt">{{ formattedDate }}</time>
-          <button
-            v-if="thread.shareUrl"
-            class="ml-auto inline-flex shrink-0 items-center gap-1.5 self-start rounded-lg border border-border-primary px-3 py-1.5 text-sm text-text-secondary transition-colors hover:border-border-secondary hover:text-text-primary"
-            @click="copyShareUrl"
-          >
-            <span v-html="copied ? '' : shareIcon"></span>
-            {{ copied ? "Copied!" : "Share" }}
-          </button>
         </div>
       </header>
 
@@ -54,7 +46,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, provide, watchEffect, nextTick } from "vue";
+import { computed, watchEffect, nextTick } from "vue";
 import { useTitle } from "@vueuse/core";
 import { useRoute } from "vue-router";
 import { relativeTime } from "#web/composables/useRelativeTime";
@@ -70,16 +62,9 @@ const {
   data: thread,
   error,
   isPending: loading,
-} = useThread(() => ({
-  id: route.params.id as string,
-  sig: (route.query.sig as string) ?? undefined,
-}));
+} = useThread(() => ({ id: route.params.id as string }));
 
 useTitle(computed(() => (thread.value ? `${thread.value.pageTitle} — Kyle` : "Kyle")));
-const copied = ref(false);
-
-const shareUrl = computed(() => thread.value?.shareUrl ?? null);
-provide("shareUrl", shareUrl);
 
 const formattedDate = computed(() => (thread.value ? relativeTime(thread.value.createdAt) : ""));
 
@@ -117,16 +102,6 @@ function showDateSeparator(index: number): boolean {
   return currentDay !== prevDay;
 }
 
-function copyShareUrl() {
-  if (thread.value?.shareUrl) {
-    navigator.clipboard.writeText(thread.value.shareUrl).catch(() => {});
-    copied.value = true;
-    setTimeout(() => {
-      copied.value = false;
-    }, 2000);
-  }
-}
-
 // Jump to a linked message once the thread it lives in has rendered.
 watchEffect(async () => {
   if (!thread.value) return;
@@ -142,6 +117,4 @@ watchEffect(async () => {
   if (details && !details.open) details.open = true;
   requestAnimationFrame(() => el.scrollIntoView({ behavior: "smooth", block: "start" }));
 });
-
-const shareIcon = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>`;
 </script>

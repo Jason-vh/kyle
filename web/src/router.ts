@@ -75,9 +75,6 @@ export const router = createRouter({
 });
 
 router.beforeEach(async (to) => {
-  // Allow shared links with ?sig= without auth (thread detail only)
-  if (to.name === "thread" && to.query.sig) return;
-
   if (!to.meta.requiresAuth) return;
 
   // The same cache entry the views read, so navigating costs one request in

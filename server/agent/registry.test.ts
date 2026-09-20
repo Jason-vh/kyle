@@ -17,13 +17,6 @@ test("every tool describes itself for the thread viewer", () => {
   }
 });
 
-test("the share tool is offered only when there is a conversation to share", () => {
-  expect(toolsForTurn().map((t) => t.name)).not.toContain("share_conversation");
-  expect(everyTool.map((t) => t.name)).toContain("share_conversation");
-  // Its presentation is always known, so old threads still render.
-  expect(toolPresentation("share_conversation")?.label).toBe("Generating share link");
-});
-
 test("adding is offered even when nobody can be attributed", () => {
   const names = toolsForTurn().map((t) => t.name);
   expect(names).toContain("add_movie");

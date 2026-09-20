@@ -99,16 +99,6 @@ describe("the auth guard", () => {
 
     expect(calls.count).toBe(1);
   });
-
-  // Otherwise the page is unreachable for the person it was shared with.
-  test("lets a shared thread link through unauthenticated", async () => {
-    const calls = stubAuth(false);
-
-    await router.push("/threads/abc?sig=signature");
-
-    expect(router.currentRoute.value.name).toBe("thread");
-    expect(calls.count).toBe(0);
-  });
 });
 
 // Threads are everyone's conversations with Kyle, not everyone's to read.
@@ -137,13 +127,12 @@ describe("the admin guard", () => {
     expect(router.currentRoute.value.name).toBe("home");
   });
 
-  // The link was shared with them on purpose, admin or not.
-  test("still opens a thread shared by signed link", async () => {
+  test("is not talked out of it by a ?sig= link, which no longer means anything", async () => {
     stubAuth(true, false);
 
     await router.push("/threads/abc?sig=signature");
 
-    expect(router.currentRoute.value.name).toBe("thread");
+    expect(router.currentRoute.value.name).toBe("home");
   });
 
   test("leaves pages that are everyone's alone", async () => {

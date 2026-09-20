@@ -195,7 +195,6 @@ export interface ThreadListItem {
   preview: string;
   messageCount: number;
   createdAt: string; // ISO 8601
-  shareUrl: string | null;
   mediaRefs: { action: string; title: string }[];
 }
 
@@ -205,7 +204,6 @@ export interface ThreadDetail {
   interfaceType: string;
   pageTitle: string;
   createdAt: string;
-  shareUrl: string | null;
   mediaRefs: MediaRef[];
   items: ThreadItem[];
 }

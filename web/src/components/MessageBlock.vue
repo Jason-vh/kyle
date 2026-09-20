@@ -131,7 +131,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, inject, ref, type Ref } from "vue";
+import { computed } from "vue";
 import { relativeTime } from "#web/composables/useRelativeTime";
 import type { ThreadMessage } from "#shared/types";
 import UserAvatar from "./UserAvatar.vue";
@@ -140,15 +140,11 @@ import ToolCallBlock from "./ToolCallBlock.vue";
 
 const props = defineProps<{ msg: ThreadMessage }>();
 
-const shareUrl = inject<Ref<string | null>>("shareUrl", ref(null));
-
 const time = computed(() => relativeTime(props.msg.createdAt));
 
 function anchorUrl(id: string): string {
-  const base =
-    shareUrl.value ??
-    `${window.location.origin}${window.location.pathname}${window.location.search}`;
-  return `${base}#${id}`;
+  const { origin, pathname, search } = window.location;
+  return `${origin}${pathname}${search}#${id}`;
 }
 </script>
 

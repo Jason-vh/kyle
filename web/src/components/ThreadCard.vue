@@ -31,25 +31,14 @@
         </span>
       </div>
     </div>
-    <!-- Share button -->
-    <button
-      v-if="thread.shareUrl"
-      class="hidden shrink-0 items-center justify-center rounded-lg border border-border-primary text-text-muted transition-colors hover:border-border-secondary hover:text-text-primary group-hover:inline-flex md:inline-flex"
-      style="width: 32px; height: 32px"
-      @click.prevent="copyShareUrl"
-      title="Copy share link"
-      v-html="copied ? '\u2713' : shareIcon"
-    ></button>
   </router-link>
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed } from "vue";
 import type { ThreadListItem } from "#shared/types";
 
 const props = defineProps<{ thread: ThreadListItem }>();
-
-const copied = ref(false);
 
 const formattedDate = computed(() => {
   const d = new Date(props.thread.createdAt);
@@ -67,16 +56,4 @@ const platformIcon = computed(() => {
       return `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>`;
   }
 });
-
-function copyShareUrl() {
-  if (props.thread.shareUrl) {
-    navigator.clipboard.writeText(props.thread.shareUrl).catch(() => {});
-    copied.value = true;
-    setTimeout(() => {
-      copied.value = false;
-    }, 2000);
-  }
-}
-
-const shareIcon = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>`;
 </script>

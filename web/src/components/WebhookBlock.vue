@@ -57,7 +57,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, inject, ref, type Ref } from "vue";
+import { computed } from "vue";
 import { relativeTime } from "#web/composables/useRelativeTime";
 import type { ThreadWebhook } from "#shared/types";
 import { episodeCode } from "#shared/media";
@@ -65,15 +65,11 @@ import DownloadIcon from "./DownloadIcon.vue";
 
 const props = defineProps<{ notification: ThreadWebhook }>();
 
-const shareUrl = inject<Ref<string | null>>("shareUrl", ref(null));
-
 const formattedTime = computed(() => relativeTime(props.notification.receivedAt));
 
 const anchorUrl = computed(() => {
-  const base =
-    shareUrl.value ??
-    `${window.location.origin}${window.location.pathname}${window.location.search}`;
-  return `${base}#${props.notification.id}`;
+  const { origin, pathname, search } = window.location;
+  return `${origin}${pathname}${search}#${props.notification.id}`;
 });
 
 const episodes = computed(() => {

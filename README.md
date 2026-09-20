@@ -43,7 +43,7 @@ Capabilities:
   subscription tables) and tell them in the app; anyone who asked in Slack or Discord
   also gets an AI-written reply in the thread they asked in.
 - **Conversation memory** — full agent messages stored as JSONB; browse past threads in the
-  web viewer, shareable via signed `?sig=` links.
+  web viewer, which admins alone can read.
 - **Auth** — Plex sign-in for anyone with access to the Plex server, plus WebAuthn passkeys
   and JWT sessions.
 - **Requests & library** — search TMDB and add straight to Radarr/Sonarr without the agent;
@@ -112,7 +112,6 @@ server/
     chat.ts                  → POST /chat
     health.ts                → GET /health (includes deployId)
     slack-events.ts          → POST /slack/events: verify, dedup, dispatch
-    threads-auth.ts          → HMAC-SHA256 thread sharing signatures (?sig= URLs)
     api/
       threads.ts             → GET /api/threads, GET /api/threads/:uuid
       auth.ts                → GET /api/auth/status, POST /api/auth/logout
@@ -209,7 +208,7 @@ web/                         → Vue 3 + Vite + Tailwind CSS 4 SPA
 - **Auth: Plex + passkeys + JWT** — access to the Plex server onboards a user on first
   sign-in; passkeys are added afterwards from `/account`. JWT sessions (`jose`, HS256) in an
   httpOnly `kyle_auth` cookie (30-day expiry, sliding refresh at 15 days). Thread sharing uses
-  separate `?sig=` HMAC signatures (`THREAD_VIEWER_TOKEN`).
+  the thread viewer, which is admin-only.
 - **Slack immediate ack** — `/slack/events` returns 200 and processes the message async to
   stay within Slack's 3-second timeout. Responses always post as thread replies.
 - **Slack streaming** — replies stream via `chat.startStream`/`appendStream`/`stopStream`.
@@ -496,7 +495,6 @@ rather than passed to the agent as an opaque ID.
 | `WEBHOOK_AUTH`           | Basic auth credentials for webhook endpoints (`username:password`)                         |
 | `CHAT_API_KEY`           | Bearer token for `/chat` (optional, skipped if unset)                                      |
 | `DISCORD_BOT_TOKEN`      | Discord bot token (optional; skips gracefully if unset)                                    |
-| `THREAD_VIEWER_TOKEN`    | Shared secret for `?sig=` thread share links (HMAC-SHA256)                                 |
 
 ## API reference
 
@@ -513,7 +511,7 @@ rather than passed to the agent as an opaque ID.
 | `GET /api/library`                    | JWT                   | Everything Radarr and Sonarr hold               |
 | `DELETE /api/library/:type/:id`       | Admin                 | Remove an item, deleting files unless disabled  |
 | `GET /api/threads`                    | JWT                   | List conversation threads                       |
-| `GET /api/threads/:uuid`              | JWT / `?sig=`         | Fetch a single thread's messages                |
+| `GET /api/threads/:uuid`              | Admin                 | Fetch a single thread's messages                |
 | `GET /api/auth/status`                | JWT cookie            | Current user + admin flag                       |
 | `POST /api/auth/logout`               | JWT cookie            | Clear the session cookie                        |
 | `POST /api/auth/passkey/*`            | —                     | WebAuthn registration/authentication            |
@@ -547,7 +545,7 @@ Omit `conversationId` to start a new conversation; include it to continue an exi
 The Vue SPA (views: `/threads`, `/threads/:id`, `/login`, `/account`) lets
 authenticated users browse past conversations. It renders user/assistant/tool-use blocks,
 webhook notification cards, media-action summaries, collapsible tool calls, and relative
-timestamps. Threads are shareable via signed `?sig=` links (`THREAD_VIEWER_TOKEN`).
+timestamps. Reading them is an admin's to do: they are everyone's words, not everyone's to read.
 
 ## Deployment
 
@@ -626,20 +624,20 @@ confirm a deploy landed.
 
 This repo is public, so most app config lives in GitHub Actions secrets:
 
-| Secret                                                              | Purpose                                       |
-| ------------------------------------------------------------------- | --------------------------------------------- |
-| `KYLE_DB_PASSWORD`                                                  | Password for the `kyle` Postgres role         |
-| `JWT_SECRET`, `CHAT_API_KEY`, `THREAD_VIEWER_TOKEN`, `WEBHOOK_AUTH` | App-level auth tokens / secrets               |
-| `ANTHROPIC_API_KEY`, `BRAVE_API_KEY`                                | LLM + search                                  |
-| `SLACK_BOT_TOKEN`, `SLACK_SIGNING_SECRET`                           | Slack bot + event signature verification      |
-| `DISCORD_BOT_TOKEN`                                                 | Discord bot login                             |
-| `RADARR_HOST`, `RADARR_API_KEY`                                     | Radarr integration                            |
-| `SONARR_HOST`, `SONARR_API_KEY`                                     | Sonarr integration                            |
-| `TMDB_API_TOKEN`                                                    | TMDB lookups                                  |
-| `QBITTORRENT_HOST`, `QBITTORRENT_USERNAME`, `QBITTORRENT_PASSWORD`  | qBittorrent UI                                |
-| `ULTRA_HOST`, `ULTRA_API_TOKEN`                                     | Ultra seedbox                                 |
-| `PLEX_CLIENT_IDENTIFIER`                                            | Identifies Kyle to Plex; enables Plex sign-in |
-| `PLEX_SERVER_URL`, `PLEX_SERVER_TOKEN`                              | Plex server address + owner token             |
+| Secret                                                             | Purpose                                       |
+| ------------------------------------------------------------------ | --------------------------------------------- |
+| `KYLE_DB_PASSWORD`                                                 | Password for the `kyle` Postgres role         |
+| `JWT_SECRET`, `CHAT_API_KEY`, `WEBHOOK_AUTH`                       | App-level auth tokens / secrets               |
+| `ANTHROPIC_API_KEY`, `BRAVE_API_KEY`                               | LLM + search                                  |
+| `SLACK_BOT_TOKEN`, `SLACK_SIGNING_SECRET`                          | Slack bot + event signature verification      |
+| `DISCORD_BOT_TOKEN`                                                | Discord bot login                             |
+| `RADARR_HOST`, `RADARR_API_KEY`                                    | Radarr integration                            |
+| `SONARR_HOST`, `SONARR_API_KEY`                                    | Sonarr integration                            |
+| `TMDB_API_TOKEN`                                                   | TMDB lookups                                  |
+| `QBITTORRENT_HOST`, `QBITTORRENT_USERNAME`, `QBITTORRENT_PASSWORD` | qBittorrent UI                                |
+| `ULTRA_HOST`, `ULTRA_API_TOKEN`                                    | Ultra seedbox                                 |
+| `PLEX_CLIENT_IDENTIFIER`                                           | Identifies Kyle to Plex; enables Plex sign-in |
+| `PLEX_SERVER_URL`, `PLEX_SERVER_TOKEN`                             | Plex server address + owner token             |
 
 ## Conventions
 

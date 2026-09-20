@@ -7,7 +7,6 @@ import { timeTools } from "#server/time/tools.ts";
 import { tmdbTools } from "#server/tmdb/tools.ts";
 import { ultraTools } from "#server/ultra/tools.ts";
 import { getRequestsForUserTool } from "./requests-tool.ts";
-import { createShareConversationTool, shareConversationPresentation } from "./share-tool.ts";
 import { unsubscribeNotificationsTool } from "./unsubscribe-tool.ts";
 import type { AgentContext } from "./system-prompt.ts";
 import type { AnyTool, ToolPresentation } from "./tool.ts";
@@ -28,11 +27,7 @@ export const allTools: AnyTool[] = [
 ];
 
 /** Tools built per turn, so only their presentation can live in the registry. */
-const contextualPresentations: ToolPresentation[] = [
-  shareConversationPresentation,
-  addMoviePresentation,
-  addSeriesPresentation,
-];
+const contextualPresentations: ToolPresentation[] = [addMoviePresentation, addSeriesPresentation];
 
 /** The one place a tool name maps back to how it should be described. */
 const presentationByName = new Map<string, ToolPresentation>(
@@ -48,16 +43,11 @@ export function toolPresentation(name: string): ToolPresentation | undefined {
   return presentationByName.get(name);
 }
 
-/**
- * The turn's tools. Adding attributes to the user it is running for, and the
- * share tool appears once there is a conversation to share.
- */
+/** The turn's tools, with adding attributed to the user it is running for. */
 export function toolsForTurn(context?: AgentContext): AnyTool[] {
   const requestedBy = context?.userId
     ? { userId: context.userId, conversationId: context.conversationId }
     : undefined;
 
-  const tools = [...allTools, createAddMovieTool(requestedBy), createAddSeriesTool(requestedBy)];
-  if (context?.conversationId) tools.push(createShareConversationTool(context.conversationId));
-  return tools;
+  return [...allTools, createAddMovieTool(requestedBy), createAddSeriesTool(requestedBy)];
 }
