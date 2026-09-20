@@ -119,9 +119,13 @@ const storage = computed(() => data.value?.stats.storage);
 
 const spaceLeft = computed(() => (storage.value ? formatSize(storage.value.freeBytes) : "—"));
 
-const spaceHint = computed(() =>
-  storage.value ? `of ${formatSize(storage.value.totalBytes)}` : undefined,
-);
+const spaceHint = computed(() => {
+  if (!storage.value) return undefined;
+  const parts = [`of ${formatSize(storage.value.totalBytes)}`];
+  const requested = storage.value.requestedBytes;
+  if (requested !== undefined) parts.push(`${formatSize(requested)} requested`);
+  return parts.join(" \u00b7 ");
+});
 
 /** The bar fills as the disk does, so a full disk is a full red bar. */
 const spaceFraction = computed(() => {

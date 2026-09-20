@@ -1,10 +1,20 @@
 import type { StorageStat } from "#shared/types.ts";
 import * as radarr from "#server/radarr/api.ts";
 import * as sonarr from "#server/sonarr/api.ts";
+import * as ultra from "#server/ultra/api.ts";
+import { getAllRequesters } from "#server/db/requests.ts";
 import { createLogger } from "#server/logger.ts";
 import { errorMessage } from "#server/errors.ts";
 
 const log = createLogger("dashboard-storage");
+
+/** The units `quota -s` speaks, which Ultra passes on verbatim. */
+const UNIT_BYTES: Record<string, number> = {
+  K: 1024,
+  M: 1024 ** 2,
+  G: 1024 ** 3,
+  T: 1024 ** 4,
+};
 
 interface Mount {
   path: string;
@@ -46,10 +56,62 @@ async function fromService(
 }
 
 /**
- * Space where the media actually lives. Radarr answers for it, and Sonarr is
- * asked only if Radarr cannot — they are almost always the same disk.
+ * The seedbox quota, which is the limit that actually bites: Radarr and Sonarr
+ * see the whole array underneath and report space this slot may never use.
+ */
+async function fromUltra(): Promise<StorageStat> {
+  const stats = await ultra.getStats();
+  const unit = UNIT_BYTES[stats.total_storage_unit] ?? 1;
+
+  return {
+    freeBytes: stats.free_storage_bytes,
+    totalBytes: stats.total_storage_value * unit,
+  };
+}
+
+/** What the titles someone asked for take up, across both services. */
+export async function getRequestedBytes(): Promise<number | undefined> {
+  try {
+    const [requests, movies, series] = await Promise.all([
+      getAllRequesters(),
+      radarr.getMovies(),
+      sonarr.getAllSeries(),
+    ]);
+
+    const requested = new Set(requests.map((request) => `${request.mediaType}:${request.tmdbId}`));
+
+    const movieBytes = movies
+      .filter((movie) => requested.has(`movie:${movie.tmdbId}`))
+      .reduce((total, movie) => total + (movie.sizeOnDisk ?? 0), 0);
+
+    const seriesBytes = series
+      .filter((show) => requested.has(`series:${show.tmdbId}`))
+      .reduce((total, show) => total + (show.statistics?.sizeOnDisk ?? 0), 0);
+
+    return movieBytes + seriesBytes;
+  } catch (error) {
+    log.warn("could not measure what was requested", { error: errorMessage(error) });
+    return undefined;
+  }
+}
+
+/**
+ * Space where the media actually lives. The seedbox quota answers for it; the
+ * services are asked only when Ultra cannot, and they see the array rather
+ * than this slot's share of it.
  */
 export async function getStorage(): Promise<StorageStat | undefined> {
+  const [stat, requestedBytes] = await Promise.all([capacity(), getRequestedBytes()]);
+  return stat && { ...stat, requestedBytes };
+}
+
+async function capacity(): Promise<StorageStat | undefined> {
+  try {
+    return await fromUltra();
+  } catch (error) {
+    log.warn("ultra could not report the quota", { error: errorMessage(error) });
+  }
+
   try {
     return await fromService(radarr.getRootFolders, radarr.getDiskSpace);
   } catch (error) {

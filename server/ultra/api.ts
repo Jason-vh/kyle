@@ -29,7 +29,23 @@ const request = createApiClient({
   },
 });
 
+/**
+ * The seedbox answers 10 times an hour and no more, which a dashboard on a
+ * phone would spend in a minute. The quota moves slowly; a stale minute of it
+ * costs nothing.
+ */
+const CACHE_TTL_MS = 10 * 60 * 1000;
+
+let cached: { value: UltraStats; expires: number } | null = null;
+
 export async function getStats(): Promise<UltraStats> {
+  if (cached && cached.expires > Date.now()) return cached.value;
+
   const data = await request<UltraStatsResponse>("/total-stats");
-  return data.service_stats_info;
+  cached = { value: data.service_stats_info, expires: Date.now() + CACHE_TTL_MS };
+  return cached.value;
+}
+
+export function invalidateStats(): void {
+  cached = null;
 }
