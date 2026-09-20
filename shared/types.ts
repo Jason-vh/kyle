@@ -5,6 +5,8 @@ export interface AuthStatusResponse {
     id: string;
     name: string;
     admin: boolean;
+    /** Their Plex avatar, when a Plex account is linked and still has access. */
+    avatarUrl?: string | null;
   };
 }
 

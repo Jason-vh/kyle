@@ -4,6 +4,8 @@ export interface AuthUser {
   admin: boolean;
   /** Linked Plex account, or null when none is connected. */
   plexUsername?: string | null;
+  /** Their Plex avatar, when a Plex account is linked and still has access. */
+  avatarUrl?: string | null;
 }
 
 interface AuthStatus {

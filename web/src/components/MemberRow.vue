@@ -1,14 +1,7 @@
 <template>
   <AppCard>
     <div class="flex items-center gap-3">
-      <img
-        v-if="member.thumb"
-        :src="member.thumb"
-        :alt="member.name"
-        loading="lazy"
-        class="size-8 shrink-0 rounded-full object-cover"
-      />
-      <UserAvatar v-else :name="member.name" />
+      <UserAvatar :name="member.name" :src="member.thumb" />
 
       <div class="min-w-0 flex-1">
         <p class="truncate text-sm font-medium text-text-primary">{{ member.name }}</p>

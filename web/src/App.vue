@@ -37,11 +37,11 @@
         <router-link
           v-if="user"
           to="/account"
-          class="flex items-center gap-2 no-underline"
+          class="flex items-center no-underline"
           :title="`Signed in as ${user.name}`"
+          :aria-label="`Signed in as ${user.name}`"
         >
-          <span class="hidden text-sm text-text-muted sm:inline">{{ user.name }}</span>
-          <UserAvatar :name="user.name" />
+          <UserAvatar :name="user.name" :src="user.avatarUrl" />
         </router-link>
       </div>
     </header>

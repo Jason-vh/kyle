@@ -1,6 +1,7 @@
 import { parseAuthCookie, clearJwtCookie, isLocalhost } from "#server/auth/jwt.ts";
 import { PLEX_PLATFORM } from "#server/auth/plex.ts";
 import { isPlexConfigured } from "#server/plex/api.ts";
+import { getPlexAvatar } from "#server/plex/access.ts";
 import { getPlatformIdentity } from "#server/db/users.ts";
 import { createLogger } from "#server/logger.ts";
 
@@ -20,6 +21,7 @@ export async function handleApiAuthStatus(req: Request): Promise<Response> {
         name: jwtUser.name,
         admin: jwtUser.admin,
         plexUsername: plex?.platformUsername ?? null,
+        avatarUrl: plex ? ((await getPlexAvatar(plex.platformUserId)) ?? null) : null,
       },
     });
   }

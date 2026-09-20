@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { checkPlexAccess, invalidatePlexAccessCache } from "./access.ts";
+import { checkPlexAccess, getPlexAvatar, invalidatePlexAccessCache } from "./access.ts";
 
 const realFetch = globalThis.fetch;
 
@@ -14,8 +14,10 @@ const OWNER = {
   thumb: "",
 };
 
+const COLIN_THUMB = "https://plex.tv/users/abc/avatar";
+
 const SHARE_LIST = `<MediaContainer>
-  <User id="211227001" title="Colin" username="colin.va6">
+  <User id="211227001" title="Colin" username="colin.va6" thumb="${COLIN_THUMB}">
     <Server id="101" machineIdentifier="${MACHINE}" pending="0"/>
   </User>
   <User id="248153810" title="joshua.ci" username="joshua.ci">
@@ -24,7 +26,7 @@ const SHARE_LIST = `<MediaContainer>
   <User id="535008446" title="Victor" username="">
     <Server id="103" machineIdentifier="${MACHINE}" pending="0"/>
   </User>
-  <User id="999" title="Pending Pete" username="pete">
+  <User id="999" title="Pending Pete" username="pete" thumb="https://plex.tv/users/pete/avatar">
     <Server id="104" machineIdentifier="${MACHINE}" pending="1"/>
   </User>
   <User id="888" title="Other Server Olly" username="olly">
@@ -33,14 +35,16 @@ const SHARE_LIST = `<MediaContainer>
 </MediaContainer>`;
 
 /** Serves the three upstream calls the access cache makes. */
-function stubPlex(overrides: { shareListStatus?: number } = {}) {
+function stubPlex(overrides: { shareListStatus?: number; ownerThumb?: string } = {}) {
   const calls: string[] = [];
   globalThis.fetch = ((url: string) => {
     calls.push(url);
     if (url.endsWith("/identity")) {
       return Promise.resolve(Response.json({ MediaContainer: { machineIdentifier: MACHINE } }));
     }
-    if (url.endsWith("/v2/user")) return Promise.resolve(Response.json(OWNER));
+    if (url.endsWith("/v2/user")) {
+      return Promise.resolve(Response.json({ ...OWNER, thumb: overrides.ownerThumb ?? "" }));
+    }
     if (url.endsWith("/users")) {
       return Promise.resolve(
         new Response(SHARE_LIST, { status: overrides.shareListStatus ?? 200 }),
@@ -137,5 +141,57 @@ describe("checkPlexAccess", () => {
     await checkPlexAccess("248153810");
 
     expect(calls.filter((u) => u.endsWith("/users"))).toHaveLength(1);
+  });
+});
+
+describe("getPlexAvatar", () => {
+  test("gives the picture Plex holds for a member", async () => {
+    stubPlex();
+
+    expect(await getPlexAvatar("211227001")).toBe(COLIN_THUMB);
+  });
+
+  test("gives the owner their own picture, which no share list names", async () => {
+    stubPlex({ ownerThumb: "https://plex.tv/users/owner/avatar" });
+
+    expect(await getPlexAvatar(String(OWNER.id))).toBe("https://plex.tv/users/owner/avatar");
+  });
+
+  // An empty thumb is Plex saying there is no picture, not a picture at "".
+  test("has none for a member Plex holds no picture for", async () => {
+    stubPlex();
+
+    expect(await getPlexAvatar("248153810")).toBeUndefined();
+  });
+
+  test("has none for an owner who has set no picture", async () => {
+    stubPlex();
+
+    expect(await getPlexAvatar(String(OWNER.id))).toBeUndefined();
+  });
+
+  test("has none for someone the server is not shared with", async () => {
+    stubPlex();
+
+    expect(await getPlexAvatar("123")).toBeUndefined();
+  });
+
+  test("has none for an invitation not yet taken up", async () => {
+    stubPlex();
+
+    expect(await getPlexAvatar("999")).toBeUndefined();
+  });
+
+  test("has none when plex.tv cannot be reached", async () => {
+    stubPlex({ shareListStatus: 500 });
+
+    expect(await getPlexAvatar("211227001")).toBeUndefined();
+  });
+
+  test("has none when the server is not configured", async () => {
+    stubPlex();
+    delete process.env.PLEX_SERVER_TOKEN;
+
+    expect(await getPlexAvatar("211227001")).toBeUndefined();
   });
 });

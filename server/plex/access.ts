@@ -27,6 +27,7 @@ export interface PlexPerson {
 interface ServerAccess {
   ownerAccountId: string;
   ownerName: string;
+  ownerThumb: string;
   members: Map<string, Member>;
   /**
    * Names keyed by the account id the *server* reports, which is not the same
@@ -74,6 +75,7 @@ async function loadAccess(): Promise<ServerAccess> {
   const value: ServerAccess = {
     ownerAccountId: String(owner.id),
     ownerName,
+    ownerThumb: owner.thumb,
     members,
     byServerAccountId,
   };
@@ -119,6 +121,23 @@ export async function checkPlexAccess(accountId: string): Promise<PlexAccess> {
   if (!member?.canSignIn) return DENIED;
 
   return { allowed: true, isOwner: false, displayName: member.displayName };
+}
+
+/**
+ * The avatar Plex holds for an account with access to the server, keyed by
+ * plex.tv's own account id — which is what a linked Kyle user is filed under.
+ */
+export async function getPlexAvatar(accountId: string): Promise<string | undefined> {
+  if (!isPlexServerConfigured()) return undefined;
+
+  try {
+    const access = await loadAccess();
+    if (accountId === access.ownerAccountId) return access.ownerThumb || undefined;
+    return access.members.get(accountId)?.thumb || undefined;
+  } catch (error) {
+    log.error("could not read plex avatar", { error: errorMessage(error) });
+    return undefined;
+  }
 }
 
 /** Names for the account ids a Plex server reports against playback. */

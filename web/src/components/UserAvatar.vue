@@ -1,5 +1,13 @@
 <template>
+  <img
+    v-if="src"
+    :src="src"
+    :alt="name"
+    loading="lazy"
+    class="size-8 shrink-0 rounded-full object-cover"
+  />
   <div
+    v-else
     class="flex size-8 shrink-0 items-center justify-center rounded-full text-sm font-semibold text-text-inverse"
     :style="{ background: avatarColor }"
   >
@@ -10,7 +18,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 
-const props = defineProps<{ name: string }>();
+const props = defineProps<{ name: string; src?: string | null }>();
 
 const AVATAR_COLORS = [
   "#2563EB",
