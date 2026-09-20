@@ -32,10 +32,24 @@ export function msUntilNext(intervalMs: number, last: Date | undefined, now: num
 }
 
 const running = new Set<string>();
+const status = new Map<
+  string,
+  { state: "starting" | "scheduled" | "running" | "failed"; error?: string }
+>();
+const INITIALIZATION_RETRY_MS = 30_000;
+
+export function getJobHealth() {
+  return {
+    healthy: [...status.values()].every(
+      (job) => job.state === "scheduled" || job.state === "running",
+    ),
+    jobs: Object.fromEntries(status),
+  };
+}
 
 function armed(job: Job, delayMs: number): void {
   log.info("job armed", { job: job.name, dueInMs: delayMs });
-  setTimeout(() => void tick(job), delayMs);
+  setTimeout(() => tick(job), delayMs);
 }
 
 async function tick(job: Job): Promise<void> {
@@ -46,14 +60,17 @@ async function tick(job: Job): Promise<void> {
   }
 
   running.add(job.name);
+  status.set(job.name, { state: "running" });
   const startedAt = Date.now();
 
   try {
     await recordRunStart(job.name);
     await job.run();
+    status.set(job.name, { state: "scheduled" });
     log.info("job finished", { job: job.name, ms: Date.now() - startedAt });
   } catch (error) {
     const message = errorMessage(error);
+    status.set(job.name, { state: "failed", error: message });
     log.error("job failed", { job: job.name, ms: Date.now() - startedAt, error: message });
     await recordRunFailure(job.name, message).catch(() => {});
   } finally {
@@ -67,7 +84,21 @@ async function tick(job: Job): Promise<void> {
  * logged and the schedule carries on: a job that throws must not take the
  * server down with it, and must not stop running either.
  */
+async function initialize(job: Job): Promise<void> {
+  try {
+    const last = await lastRunAt(job.name);
+    armed(job, msUntilNext(job.intervalMs, last, Date.now()));
+    status.set(job.name, { state: "scheduled" });
+  } catch (error) {
+    const message = errorMessage(error);
+    status.set(job.name, { state: "failed", error: message });
+    log.error("job initialization failed, retrying", { job: job.name, error: message });
+    setTimeout(() => initialize(job), INITIALIZATION_RETRY_MS);
+  }
+}
+
 export async function every(name: string, intervalMs: number, run: Job["run"]): Promise<void> {
-  const job = { name, intervalMs, run };
-  armed(job, msUntilNext(intervalMs, await lastRunAt(name), Date.now()));
+  if (status.has(name)) return;
+  status.set(name, { state: "starting" });
+  await initialize({ name, intervalMs, run });
 }

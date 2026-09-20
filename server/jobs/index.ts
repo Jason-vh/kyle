@@ -3,19 +3,13 @@ import { sweep } from "#server/janitor/run.ts";
 import { DAY_MS, every, HOUR_MS } from "./schedule.ts";
 import { processWebhookJobs } from "#server/webhooks/jobs.ts";
 import { processSlackEvents } from "#server/slack/jobs.ts";
-import { createLogger } from "#server/logger.ts";
-import { errorMessage } from "#server/errors.ts";
-
-const log = createLogger("jobs");
 
 /** What runs on its own, and how often. The one list of it. */
 export async function startJobs(): Promise<void> {
-  try {
-    await every("webhook-delivery", 30_000, processWebhookJobs);
-    await every("slack-events", 30_000, processSlackEvents);
-    await every("seedbox-health", HOUR_MS, checkSeedbox);
-    await every("janitor", DAY_MS, () => sweep(true));
-  } catch (error) {
-    log.error("could not start jobs", { error: errorMessage(error) });
-  }
+  await Promise.all([
+    every("webhook-delivery", 30_000, processWebhookJobs),
+    every("slack-events", 30_000, processSlackEvents),
+    every("seedbox-health", HOUR_MS, checkSeedbox),
+    every("janitor", DAY_MS, () => sweep(true)),
+  ]);
 }
