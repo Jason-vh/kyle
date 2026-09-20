@@ -71,6 +71,7 @@ jobs:
         run: |
           cat > .env.production <<EOF
           APP_URL=https://kyle.vhtm.eu
+          TRUST_PROXY=true
           WEBAUTHN_ORIGIN=https://kyle.vhtm.eu
           WEBAUTHN_RP_ID=kyle.vhtm.eu
           DATABASE_URL=postgresql://kyle:${{ secrets.KYLE_DB_PASSWORD }}@postgres:5432/kyle

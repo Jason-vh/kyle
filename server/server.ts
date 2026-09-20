@@ -1,5 +1,6 @@
 import { createLogger } from "./logger.ts";
 import { withSessionRefresh } from "./auth/middleware.ts";
+import { withAuthenticationLimit } from "./http/rate-limit.ts";
 import { handleHealth } from "./routes/health.ts";
 import { handleChat } from "./routes/chat.ts";
 import { handleSlackEvents } from "./routes/slack-events.ts";
@@ -105,18 +106,20 @@ export function startServer(port: number) {
 
       "/api/auth/status": { GET: withSessionRefresh(handleApiAuthStatus) },
       "/api/auth/logout": { POST: withSessionRefresh(handleApiLogout) },
-      "/api/auth/passkey/login/options": { POST: handlePasskeyLoginOptions },
-      "/api/auth/passkey/login/verify": { POST: handlePasskeyLoginVerify },
+      "/api/auth/passkey/login/options": {
+        POST: withAuthenticationLimit(handlePasskeyLoginOptions),
+      },
+      "/api/auth/passkey/login/verify": { POST: withAuthenticationLimit(handlePasskeyLoginVerify) },
       "/api/auth/passkey/register/options": {
         POST: withSessionRefresh(handlePasskeyRegisterOptions),
       },
       "/api/auth/passkey/register/verify": {
         POST: withSessionRefresh(handlePasskeyRegisterVerify),
       },
-      "/api/auth/plex/login/start": { POST: handlePlexLoginStart },
+      "/api/auth/plex/login/start": { POST: withAuthenticationLimit(handlePlexLoginStart) },
       "/api/auth/plex/link/start": { POST: withSessionRefresh(handlePlexLinkStart) },
       "/api/auth/plex/link": { DELETE: withSessionRefresh(handlePlexUnlink) },
-      "/api/auth/plex/callback": { GET: handlePlexCallback },
+      "/api/auth/plex/callback": { GET: withAuthenticationLimit(handlePlexCallback) },
 
       "/api/library": { GET: withSessionRefresh(handleGetLibrary) },
       "/api/media/:mediaType/:tmdbId": {

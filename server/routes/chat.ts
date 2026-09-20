@@ -1,5 +1,6 @@
 import { createLogger } from "#server/logger.ts";
 import { isUuid, readJsonObject } from "#server/http/input.ts";
+import { userRateLimit } from "#server/http/rate-limit.ts";
 import { ApiOverloadedError } from "#server/agent/index.ts";
 import { runConversationTurn, ConversationNotFoundError } from "#server/agent/conversation.ts";
 import { timingSafeEqual } from "crypto";
@@ -39,6 +40,9 @@ export async function handleChat(req: Request): Promise<Response> {
   if (!user) {
     return Response.json({ error: "An active CHAT_USER_ID is required" }, { status: 403 });
   }
+
+  const rateLimit = userRateLimit(req, user.id);
+  if (rateLimit) return rateLimit;
 
   let body: ChatRequest;
   try {

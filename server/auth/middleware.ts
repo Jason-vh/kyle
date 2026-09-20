@@ -1,3 +1,4 @@
+import { userRateLimit } from "#server/http/rate-limit.ts";
 import {
   parseAuthCookie,
   getJwtFromRequest,
@@ -48,6 +49,9 @@ export async function requireAuth(req: Request): Promise<AuthResult> {
   if (!user) {
     return { error: Response.json({ error: "Unauthorized" }, { status: 401 }) };
   }
+
+  const rateLimit = userRateLimit(req, user.id);
+  if (rateLimit) return { error: rateLimit };
 
   // Check sliding window refresh
   const result: AuthResult = { user };

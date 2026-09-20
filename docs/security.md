@@ -24,6 +24,19 @@ administrator access. Missing `CHAT_API_KEY` or `WEBHOOK_AUTH` disables that end
 - Passkey challenges and Plex callbacks are single-use and bound to their initiating browser.
   Their temporary state remains process-local, so a restart requires restarting sign-in.
 
+## Resource limits
+
+- Authenticated HTTP requests allow 240 reads and 60 writes per account per minute.
+- Public sign-in endpoints share 20 requests per client address per minute, with a
+  process-wide ceiling of 100. Exceeded limits return 429 and `Retry-After`.
+- Limits are process-local and reset on restart. Multiple replicas need a shared limiter.
+- `TRUST_PROXY=true` accepts `X-Real-IP` from Caddy, which overwrites that header. Enable
+  it only behind the trusted proxy; keep the app port inaccessible to untrusted clients.
+- Each upstream API client allows four active requests and 32 queued requests. The
+  request deadline includes queueing, and caller cancellation is preserved.
+- Images allow ten attachments per message, five MiB of actual bytes per image, and a
+  fifteen-second deadline. Three downloads run concurrently, with at most 24 queued.
+
 ## Background delivery
 
 Slack events are persisted before acknowledgement and deduplicated by event ID. A worker
@@ -41,6 +54,9 @@ In-app notifications are unique per job and recipient. Chat replies are persiste
 sending, and completed recipients are skipped on retries. Delivery is at-least-once: a crash
 between a platform accepting a reply and Kyle recording that acceptance can duplicate a
 chat message. Inspect `webhook_jobs.last_error`, `attempts`, and `completed_at` for failures.
+
+Worker initialization retries every thirty seconds after database failures. Workers start
+independently; `/health` reports degraded status until initialization or a failed run recovers.
 
 Conversation turns and media writes are serialized across processes with PostgreSQL advisory
 locks. Each nesting depth has its own connection pool, so parent operations cannot exhaust

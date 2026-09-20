@@ -10,6 +10,7 @@ const log = createLogger("api-auth");
 
 export async function handleApiAuthStatus(req: Request): Promise<Response> {
   const auth = await requireAuth(req);
+  if ("error" in auth && auth.error.status !== 401) return auth.error;
   const jwtUser = "error" in auth ? null : auth.user;
   const plexEnabled = isPlexConfigured();
 
