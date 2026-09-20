@@ -141,12 +141,13 @@ server/
   threads/
     items.ts                 → buildThreadItems(): messages + webhooks as viewer items
     usernames.ts             → Batch display-name resolution across app + platform users
-  slack/                     → handler (one message → one turn), streaming, tables, verify
+  slack/                     → handler (one message → one turn), streaming, tables, verify,
+                               alerts (DMs admins about things nobody asked about)
   discord/                   → discord.js client, messageCreate handler, user resolution
   sonarr/                    → types, api, utils, tools (12 tools)
   radarr/                    → types, api, utils, tools (7 tools)
   tmdb/                      → types, api, utils, tools (5 tools)
-  ultra/                     → api, tools (stats)
+  ultra/                     → api, tools (stats), health (quota watch, alerts to Slack)
   qbittorrent/               → api, tools (torrents)
   brave/                     → types, api, utils, tools (web search)
   plex/                      → plex.tv client, owner token, share list, access policy,

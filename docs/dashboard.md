@@ -55,6 +55,13 @@ Ultra cannot be reached the card is empty and the page names it in `unavailable`
 asked Kyle for, as against the library that predates it. It fails the same way, under
 "Radarr and Sonarr", so an outage cannot read as "nobody asked for anything".
 
+A blank card only helps someone already looking at it, so `server/ultra/health.ts` watches
+the same figure for the scheduler: `checkSeedbox()` DMs the admins on Slack when the box
+stops answering, when under 5% of the quota is left, and once more when it recovers. It
+speaks on a change of condition and then at most twice a day, so a disk that stays full
+does not fill Slack as well. The Ultra service on the seedbox was dead for months before
+anyone noticed; this is what notices.
+
 ## Just landed — `server/dashboard/activity.ts`
 
 Radarr's and Sonarr's own history, filtered to `downloadFolderImported` — history is
