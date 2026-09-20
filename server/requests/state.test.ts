@@ -23,7 +23,24 @@ describe("resolveState", () => {
   });
 
   test("files on disk and nothing in the queue is ready", () => {
-    expect(resolveState(entry({ hasFiles: true }), undefined)).toEqual({ state: "ready" });
+    expect(resolveState(entry({ hasFiles: true }), undefined)).toEqual({
+      state: "ready",
+      missing: undefined,
+    });
+  });
+
+  // A series is watchable and short of a season at the same time.
+  test("a ready series still says which season it is short of", () => {
+    const missing = [{ season: 4, episodes: 2 }];
+
+    expect(resolveState(entry({ hasFiles: true, missing }), undefined)).toEqual({
+      state: "ready",
+      missing,
+    });
+    expect(resolveState(entry({ hasFiles: true, missing }), downloading)).toMatchObject({
+      state: "downloading",
+      missing,
+    });
   });
 
   // The one nobody could see before: nothing will ever happen here.

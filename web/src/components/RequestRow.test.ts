@@ -61,6 +61,23 @@ describe("RequestRow", () => {
     expect(row.text()).toContain("Found archive file, might need extraction");
   });
 
+  test("a ready series says which season it is short of", () => {
+    const row = render({ state: "ready", missing: [{ season: 4, episodes: 2 }] });
+    expect(row.text()).toContain("Season 4 · 2 episodes missing");
+  });
+
+  test("adds several incomplete seasons up rather than listing them", () => {
+    const row = render({
+      state: "ready",
+      missing: [
+        { season: 2, episodes: 1 },
+        { season: 7, episodes: 5 },
+      ],
+    });
+
+    expect(row.text()).toContain("2 seasons · 6 episodes missing");
+  });
+
   test("explains a state the service says nothing about", () => {
     expect(render({ state: "stalled" }).text()).toContain("No seeders");
     expect(render({ state: "paused" }).text()).toContain("Nobody is looking for this");

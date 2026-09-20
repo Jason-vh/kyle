@@ -100,6 +100,11 @@ among equals the furthest along.
 A state carries `detail` (what the service said: a stall, a rejection, a bad file),
 `expectedAt`, and `since`. `RequestRow.vue` is the one place they are put into words.
 
+A series is read season by season, from the statistics Sonarr already returns with the
+listing: monitored seasons only, specials excluded. So 28 of 30 episodes is still `ready`
+— it is watchable — but it says `Season 4 · 2 episodes missing` rather than letting the
+whole-series count hide the gap.
+
 Progress is `1 - sizeleft / size`. For a series, the furthest-along episode is shown,
 since it is the next thing that will become watchable.
 

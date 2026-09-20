@@ -127,6 +127,12 @@ export type RequestState =
   | "paused"
   | "removed";
 
+/** A season of a series that is monitored, aired, and not all there. */
+export interface MissingSeason {
+  season: number;
+  episodes: number;
+}
+
 export interface MediaRequest {
   id: string;
   mediaType: LibraryMediaType;
@@ -144,6 +150,8 @@ export interface MediaRequest {
   expectedAt?: string;
   /** ISO 8601 of when the state began, where the source knows. */
   since?: string;
+  /** Seasons still short of episodes, while the rest of the series is watchable. */
+  missing?: MissingSeason[];
   /** 0–1, while downloading. */
   progress?: number;
   /** What the download client thinks is left, e.g. "00:12:31". */

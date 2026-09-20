@@ -40,7 +40,7 @@
 
 <script setup lang="ts">
 import { computed } from "vue";
-import type { MediaRequest, RequestState } from "#web/api/requests";
+import type { MediaRequest, MissingSeason, RequestState } from "#web/api/requests";
 import { posterUrl } from "#web/utils/images";
 import { formatDate } from "#web/utils/format";
 import { relativeTime } from "#web/composables/useRelativeTime";
@@ -68,9 +68,20 @@ const STATES: Record<RequestState, { label: string; tone: Tone }> = {
 
 const props = defineProps<{ request: MediaRequest }>();
 
+/** "Season 4 · 2 episodes missing", "3 seasons · 12 episodes missing". */
+function describeMissing(missing: MissingSeason[]): string {
+  const episodes = missing.reduce((total, season) => total + season.episodes, 0);
+  const plural = episodes === 1 ? "episode" : "episodes";
+
+  if (missing.length === 1) return `Season ${missing[0]!.season} · ${episodes} ${plural} missing`;
+  return `${missing.length} seasons · ${episodes} ${plural} missing`;
+}
+
 /** What the state means for the person who asked, in one line. */
 function explain(request: MediaRequest): string | undefined {
-  const { state, detail, expectedAt } = request;
+  const { state, detail, expectedAt, missing } = request;
+
+  if (state === "ready") return missing?.length ? describeMissing(missing) : undefined;
 
   if (state === "unreleased") {
     return expectedAt ? `Not out until ${formatDate(expectedAt)}` : "No release date yet";

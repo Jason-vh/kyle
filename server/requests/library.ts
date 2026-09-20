@@ -1,7 +1,8 @@
 import * as radarr from "#server/radarr/api.ts";
 import * as sonarr from "#server/sonarr/api.ts";
+import type { MissingSeason } from "#shared/types.ts";
 import type { RadarrMovie } from "#server/radarr/types.ts";
-import type { SonarrSeries } from "#server/sonarr/types.ts";
+import type { SonarrSeason, SonarrSeries } from "#server/sonarr/types.ts";
 import type { RequestableMediaType } from "./service.ts";
 import { createLogger } from "#server/logger.ts";
 import { errorMessage } from "#server/errors.ts";
@@ -26,6 +27,8 @@ export interface LibraryEntry {
   hasFiles: boolean;
   /** Everything the service counts is on disk, so nothing is left to fetch. */
   complete: boolean;
+  /** Seasons a series is still short of, which a whole-series count hides. */
+  missing?: MissingSeason[];
   /** Absent once the service can search for it. */
   awaiting?: Awaiting;
 }
@@ -72,16 +75,34 @@ export function movieEntry(movie: RadarrMovie, now = new Date()): LibraryEntry {
   };
 }
 
+/**
+ * Seasons nobody is monitoring are nobody's concern, and specials are not what
+ * anyone means by "the series".
+ */
+function shortfallOf(seasons: SonarrSeason[] = []): MissingSeason[] {
+  const missing: MissingSeason[] = [];
+
+  for (const season of seasons) {
+    if (season.seasonNumber === 0 || !season.monitored) continue;
+    const gap = (season.statistics?.episodeCount ?? 0) - (season.statistics?.episodeFileCount ?? 0);
+    if (gap > 0) missing.push({ season: season.seasonNumber, episodes: gap });
+  }
+
+  return missing;
+}
+
 /** Sonarr counts only episodes that have aired, so none means none yet. */
 export function seriesEntry(series: SonarrSeries): LibraryEntry {
   const present = series.statistics?.episodeFileCount ?? 0;
   const aired = series.statistics?.episodeCount ?? 0;
+  const missing = shortfallOf(series.seasons);
 
   return {
     serviceId: series.id,
     monitored: series.monitored,
     hasFiles: present > 0,
-    complete: aired > 0 && present >= aired,
+    complete: aired > 0 && missing.length === 0,
+    missing: missing.length > 0 ? missing : undefined,
     awaiting:
       aired === 0
         ? { reason: "unreleased", expectedAt: series.nextAiring ?? series.firstAired }

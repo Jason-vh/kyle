@@ -1,4 +1,4 @@
-import type { LibraryMediaType, MediaRequest, RequestState } from "#shared/types.ts";
+import type { LibraryMediaType, MediaRequest, MissingSeason, RequestState } from "#shared/types.ts";
 import * as radarr from "#server/radarr/api.ts";
 import * as sonarr from "#server/sonarr/api.ts";
 import { getLibraryIndex, type LibraryEntry } from "./library.ts";
@@ -26,6 +26,7 @@ export interface RequestStatus {
   detail?: string;
   expectedAt?: string;
   since?: string;
+  missing?: MissingSeason[];
   progress?: number;
   eta?: string;
 }
@@ -94,15 +95,16 @@ async function queuesByService(): Promise<Map<string, QueueStatus>> {
 /**
  * What the requester should expect next. The queue speaks first — it is the
  * only thing actually moving — except for a title already complete on disk,
- * whose queue can only be an upgrade nobody is waiting on.
+ * whose queue can only be an upgrade nobody is waiting on. A series carries
+ * the seasons it is still short of, which its own row would otherwise hide.
  */
 export function resolveState(
   entry: LibraryEntry | undefined,
   queue: QueueStatus | undefined,
 ): RequestStatus {
   if (!entry) return { state: "removed" };
-  if (queue && !entry.complete) return queue;
-  if (entry.hasFiles) return { state: "ready" };
+  if (queue && !entry.complete) return { ...queue, missing: entry.missing };
+  if (entry.hasFiles) return { state: "ready", missing: entry.missing };
   if (!entry.monitored) return { state: "paused" };
   if (entry.awaiting) {
     return { state: entry.awaiting.reason, expectedAt: entry.awaiting.expectedAt };

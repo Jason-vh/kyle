@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { movieEntry, seriesEntry } from "./library.ts";
 import type { RadarrMovie } from "#server/radarr/types.ts";
-import type { SonarrSeries, SonarrStatistics } from "#server/sonarr/types.ts";
+import type { SonarrSeason, SonarrSeries, SonarrStatistics } from "#server/sonarr/types.ts";
 
 const NOW = new Date("2026-09-20");
 
@@ -19,6 +19,26 @@ function movie(overrides: Partial<RadarrMovie>): RadarrMovie {
 
 function series(overrides: Partial<SonarrSeries>): SonarrSeries {
   return { id: 9, monitored: true, ...overrides } as unknown as SonarrSeries;
+}
+
+function season(
+  seasonNumber: number,
+  episodeCount: number,
+  episodeFileCount: number,
+  monitored = true,
+): SonarrSeason {
+  return {
+    seasonNumber,
+    monitored,
+    images: [],
+    statistics: {
+      episodeCount,
+      episodeFileCount,
+      totalEpisodeCount: episodeCount,
+      sizeOnDisk: 0,
+      percentOfEpisodes: 0,
+    },
+  };
 }
 
 function statistics(episodeCount: number, episodeFileCount: number): SonarrStatistics {
@@ -85,15 +105,38 @@ describe("movieEntry", () => {
 
 describe("seriesEntry", () => {
   test("every aired episode on disk is complete", () => {
-    const entry = seriesEntry(series({ statistics: statistics(10, 10) }));
+    const entry = seriesEntry(
+      series({ statistics: statistics(10, 10), seasons: [season(1, 10, 10)] }),
+    );
 
-    expect(entry).toMatchObject({ hasFiles: true, complete: true });
+    expect(entry).toMatchObject({ hasFiles: true, complete: true, missing: undefined });
   });
 
-  test("some episodes missing is neither complete nor empty", () => {
-    const entry = seriesEntry(series({ statistics: statistics(10, 3) }));
+  // 28 of 30 episodes reads as a whole series until the season is named.
+  test("a long-runner short of one season names the season", () => {
+    const entry = seriesEntry(
+      series({
+        statistics: statistics(30, 28),
+        seasons: [season(1, 22, 22), season(4, 8, 6)],
+      }),
+    );
 
-    expect(entry).toMatchObject({ hasFiles: true, complete: false, awaiting: undefined });
+    expect(entry).toMatchObject({
+      hasFiles: true,
+      complete: false,
+      missing: [{ season: 4, episodes: 2 }],
+    });
+  });
+
+  test("seasons nobody monitors, and specials, are nobody's concern", () => {
+    const entry = seriesEntry(
+      series({
+        statistics: statistics(30, 20),
+        seasons: [season(0, 5, 0), season(1, 10, 10), season(2, 10, 0, false)],
+      }),
+    );
+
+    expect(entry).toMatchObject({ complete: true, missing: undefined });
   });
 
   test("a series with nothing aired yet is unreleased, dated by its next airing", () => {
