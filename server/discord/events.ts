@@ -13,6 +13,7 @@ import { BOT_USER_ID } from "./client.ts";
 import { resolveDiscordUsername } from "./users.ts";
 import { sendDiscordMessage } from "./messages.ts";
 import { resolveAppUserId } from "#server/db/users.ts";
+import { getActiveUser } from "#server/auth/account.ts";
 import { errorFields } from "#server/errors.ts";
 
 const log = createLogger("discord");
@@ -94,6 +95,10 @@ export async function handleDiscordMessage(message: Message): Promise<void> {
   const username = resolveDiscordUsername(message);
   const userId = message.author.id;
   const appUserId = await resolveAppUserId("discord", userId);
+  if (!appUserId || !(await getActiveUser(appUserId))) {
+    await replyChannel.send("Ask an admin to link your Discord account before using Kyle.");
+    return;
+  }
 
   log.info("processing discord message", {
     externalId,

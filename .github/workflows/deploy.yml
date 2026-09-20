@@ -73,6 +73,7 @@ jobs:
           DATABASE_URL=postgresql://kyle:${{ secrets.KYLE_DB_PASSWORD }}@postgres:5432/kyle
           JWT_SECRET=${{ secrets.JWT_SECRET }}
           CHAT_API_KEY=${{ secrets.CHAT_API_KEY }}
+          CHAT_USER_ID=${{ secrets.CHAT_USER_ID }}
           THREAD_VIEWER_TOKEN=${{ secrets.THREAD_VIEWER_TOKEN }}
           WEBHOOK_AUTH=${{ secrets.WEBHOOK_AUTH }}
           ANTHROPIC_API_KEY=${{ secrets.ANTHROPIC_API_KEY }}

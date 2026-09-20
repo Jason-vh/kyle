@@ -1,4 +1,5 @@
 import { createLogger } from "#server/logger.ts";
+import { getActiveUser } from "#server/auth/account.ts";
 import { braveTools } from "#server/brave/tools.ts";
 import { qbittorrentTools } from "#server/qbittorrent/tools.ts";
 import { addMoviePresentation, createAddMovieTool, radarrTools } from "#server/radarr/tools.ts";
@@ -54,16 +55,56 @@ export function toolPresentation(name: string): ToolPresentation | undefined {
   return presentationByName.get(name);
 }
 
-/** The turn's tools, with adding attributed to the user it is running for. */
-export function toolsForTurn(context?: AgentContext): AnyTool[] {
-  const requestedBy = context?.userId
-    ? { userId: context.userId, conversationId: context.conversationId }
-    : undefined;
+const MEMBER_TOOLS = new Set([
+  "get_all_series",
+  "get_series_by_id",
+  "search_series",
+  "get_episodes",
+  "get_series_queue",
+  "get_calendar",
+  "get_radarr_movie",
+  "get_all_movies",
+  "search_movies",
+  "get_movie_queue",
+  "search_tmdb_movies",
+  "search_tmdb_series",
+  "search_tmdb",
+  "get_tmdb_movie_details",
+  "get_tmdb_series_details",
+  "web_search",
+  "convert_time",
+  "get_requests_for_user",
+  "get_request_states",
+  "unsubscribe_notifications",
+  "add_movie",
+  "add_series",
+  "request_season",
+]);
+
+export async function toolsForTurn(context?: AgentContext): Promise<AnyTool[]> {
+  if (!context?.userId) return [];
+  const user = await getActiveUser(context.userId);
+  if (!user) return [];
+  const requestedBy = { userId: user.id, conversationId: context.conversationId };
 
   return [
     ...allTools,
     createAddMovieTool(requestedBy),
     createAddSeriesTool(requestedBy),
     createRequestSeasonTool(requestedBy),
-  ];
+  ]
+    .filter((tool) => user.isAdmin || MEMBER_TOOLS.has(tool.name))
+    .map((tool) => ({
+      ...tool,
+      async execute(toolCallId, args, signal, onUpdate) {
+        const current = await getActiveUser(user.id);
+        if (!current || (!current.isAdmin && !MEMBER_TOOLS.has(tool.name))) {
+          throw new Error("You are not authorized to use this tool");
+        }
+        if (typeof args.userId === "string" && args.userId !== current.id && !current.isAdmin) {
+          throw new Error("You can only manage your own requests and subscriptions");
+        }
+        return tool.execute(toolCallId, args, signal, onUpdate);
+      },
+    }));
 }

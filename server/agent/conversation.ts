@@ -53,7 +53,12 @@ async function resolveConversationId(turn: ConversationTurn): Promise<string> {
     const existing = await db.query.conversations.findFirst({
       where: eq(conversations.id, turn.conversationId),
     });
-    if (!existing) throw new ConversationNotFoundError(turn.conversationId);
+    if (
+      !existing ||
+      existing.interfaceType !== turn.interfaceType ||
+      (turn.interfaceType === "http" && turn.appUserId && existing.userId !== turn.appUserId)
+    )
+      throw new ConversationNotFoundError(turn.conversationId);
     return existing.id;
   }
 

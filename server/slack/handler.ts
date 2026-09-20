@@ -9,6 +9,7 @@ import { describeToolCall, isActionTool } from "#server/agent/tool-display.ts";
 import { parseToolPayload } from "#server/agent/tool-result.ts";
 import { extractTable, type ResultTable } from "#server/agent/result-tables.ts";
 import { resolveAppUserId } from "#server/db/users.ts";
+import { getActiveUser } from "#server/auth/account.ts";
 import { tableBlocks } from "./tables.ts";
 import { getSlackClient, setThreadStatus } from "./client.ts";
 import { describeAppContext } from "./context.ts";
@@ -117,6 +118,14 @@ export async function processSlackMessage(
   if (!messageText && images.length === 0) return "";
 
   const appUserId = userId ? await resolveAppUserId("slack", userId) : null;
+  if (!appUserId || !(await getActiveUser(appUserId))) {
+    await getSlackClient().chat.postMessage({
+      channel,
+      thread_ts: replyThreadTs,
+      text: "Ask an admin to link your Slack account before using Kyle.",
+    });
+    return "";
+  }
 
   let agentContext: AgentContext | undefined;
   if (userId) {

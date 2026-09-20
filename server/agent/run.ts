@@ -55,10 +55,10 @@ function withTimestamps(messages: AgentMessage[], timestamps?: WeakMap<object, D
     });
 }
 
-export function createAgent(
+export async function createAgent(
   context?: AgentContext,
   messageTimestamps?: WeakMap<object, Date>,
-): Agent {
+): Promise<Agent> {
   if (!getEnvApiKey("anthropic")) {
     throw new Error("ANTHROPIC_API_KEY environment variable is required");
   }
@@ -68,7 +68,7 @@ export function createAgent(
       systemPrompt: getSystemPrompt(context),
       model,
       thinkingLevel: "off",
-      tools: toolsForTurn(context),
+      tools: await toolsForTurn(context),
     },
     convertToLlm: (messages) => withTimestamps(messages, messageTimestamps),
   });
@@ -104,7 +104,7 @@ function lastResponseText(messages: AgentMessage[]): string {
 /** Runs one prompt to completion, retrying while the API reports it is overloaded. */
 export async function runAgent(options: RunAgentOptions): Promise<RunAgentResult> {
   const { message, previousMessages = [], context, images, messageTimestamps } = options;
-  const agent = createAgent(context, messageTimestamps);
+  const agent = await createAgent(context, messageTimestamps);
 
   if (previousMessages.length > 0) agent.replaceMessages(previousMessages);
   if (options.onEvent) agent.subscribe(options.onEvent);

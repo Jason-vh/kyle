@@ -3,13 +3,13 @@ import { ApiOverloadedError } from "#server/agent/index.ts";
 import { runConversationTurn, ConversationNotFoundError } from "#server/agent/conversation.ts";
 import { timingSafeEqual } from "crypto";
 import { errorFields } from "#server/errors.ts";
+import { getActiveUser } from "#server/auth/account.ts";
 
 const log = createLogger("chat");
 
 interface ChatRequest {
   message: string;
   conversationId?: string;
-  userId?: string;
 }
 
 export async function handleChat(req: Request): Promise<Response> {
@@ -30,6 +30,12 @@ export async function handleChat(req: Request): Promise<Response> {
     }
   }
 
+  const userId = process.env.CHAT_USER_ID;
+  const user = userId ? await getActiveUser(userId) : null;
+  if (!user) {
+    return Response.json({ error: "An active CHAT_USER_ID is required" }, { status: 403 });
+  }
+
   let body: ChatRequest;
   try {
     body = (await req.json()) as ChatRequest;
@@ -45,7 +51,9 @@ export async function handleChat(req: Request): Promise<Response> {
     const { conversationId, responseText } = await runConversationTurn({
       interfaceType: "http",
       conversationId: body.conversationId,
-      platformUserId: body.userId,
+      appUserId: user.id,
+      platformUserId: user.id,
+      context: { userId: user.id, username: user.displayName, interfaceType: "http" },
       text: body.message,
     });
     return Response.json({ conversationId, response: responseText });
