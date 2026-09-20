@@ -151,7 +151,7 @@ server/
   qbittorrent/               → api, tools (torrents)
   brave/                     → types, api, utils, tools (web search)
   plex/                      → plex.tv client, owner token, share list, access policy,
-                               watch history, watch time, addition counts
+                               watch history, watch time, addition counts, title catalog
   webhooks/
     announce.ts              → announce(): tells everyone who asked, however they asked
     types.ts                 → Webhook payload types + MediaNotificationInfo
