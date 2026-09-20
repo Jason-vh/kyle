@@ -62,7 +62,7 @@ speaks on a change of condition and then at most twice a day, so a disk that sta
 does not fill Slack as well. The Ultra service on the seedbox was dead for months before
 anyone noticed; this is what notices.
 
-## Just landed — `server/dashboard/activity.ts`
+## Recently downloaded — `server/dashboard/activity.ts`
 
 Radarr's and Sonarr's own history, filtered to `downloadFolderImported` — history is
 noisy with grabs, failures and renames, and only an import means it landed. Plex is not
@@ -103,6 +103,10 @@ among equals the furthest along.
 
 A state carries `detail` (what the service said: a stall, a rejection, a bad file),
 `expectedAt`, and `since`. `RequestRow.vue` is the one place they are put into words.
+
+The home page shows only what is still coming — `stillComing` in
+`server/dashboard/service.ts` drops `removed`, which is over and not on its way. The
+requests page keeps it, where knowing a title left and who took it is the point.
 
 Radarr and Sonarr forget a title the moment it is removed, so `media_removals`
 (`server/db/removals.ts`) records who took it out and when, written by the one removal path

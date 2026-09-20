@@ -11,5 +11,5 @@ export const NAV_LINKS: NavLink[] = [
   { to: "/home", label: "Home", icon: "home" },
   { to: "/discover", label: "Request", icon: "search" },
   { to: "/library", label: "Library", icon: "library" },
-  { to: "/requests", label: "Yours", icon: "requests" },
+  { to: "/requests", label: "Requests", icon: "requests" },
 ];

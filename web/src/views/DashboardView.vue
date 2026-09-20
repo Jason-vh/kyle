@@ -53,7 +53,7 @@
       </section>
 
       <section>
-        <SectionHeading title="Just landed" />
+        <SectionHeading title="Recently downloaded" />
         <QueryState :empty="activity.length === 0" empty-text="Nothing has arrived this week.">
           <div class="stagger flex flex-col gap-2">
             <ActivityRow v-for="item in activity" :key="item.id" :item="item" />

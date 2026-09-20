@@ -1,4 +1,4 @@
-import type { DashboardResponse } from "#shared/types.ts";
+import type { DashboardResponse, MediaRequest } from "#shared/types.ts";
 import { getMediaRequestsForUser } from "#server/db/requests.ts";
 import { withState } from "#server/requests/state.ts";
 import { tryGetAdditions } from "#server/plex/additions.ts";
@@ -15,6 +15,15 @@ const WINDOW_DAYS = 7;
 
 /** Enough of the feed to scroll on a phone without it becoming a second library. */
 const ACTIVITY_LIMIT = 20;
+
+/**
+ * A title that has left the library is no longer on its way, and the section is
+ * about what is coming. It stays on the requests page, where the history of it
+ * is the point.
+ */
+export function stillComing(requests: MediaRequest[]): MediaRequest[] {
+  return requests.filter((request) => request.state !== "removed");
+}
 
 /** Resolves to a fallback rather than failing, naming the source if it did. */
 async function tolerate<T>(
@@ -50,7 +59,9 @@ export async function getDashboard(viewerId: string): Promise<DashboardResponse>
     tolerate("Ultra", undefined, getStorage),
     tolerate("Radarr and Sonarr", undefined, getRequestedBytes),
     tolerate("Activity", [], () => getActivity(viewerId, since)),
-    tolerate("Requests", [], async () => withState(await getMediaRequestsForUser(viewerId))),
+    tolerate("Requests", [], async () =>
+      stillComing(await withState(await getMediaRequestsForUser(viewerId))),
+    ),
   ]);
 
   return {
