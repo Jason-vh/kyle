@@ -95,7 +95,7 @@ server/
     result-tables.ts         → extractTable(): a tool result rendered as tabular data
     replies.ts               → What a user sees when a turn is empty or fails
     system-prompt.ts         → Kyle's system prompt + AgentContext
-    requests-tool.ts         → get_requests_for_user tool
+    requests-tool.ts         → get_requests_for_user + get_request_states tools
     unsubscribe-tool.ts      → unsubscribe_notifications tool
   db/
     index.ts                 → Drizzle connection + query(): raw rows, either driver
@@ -119,7 +119,7 @@ server/
       auth-plex.ts           → Plex sign-in, account linking, callback
       users.ts               → User listing, platform link management (admin)
       plex-members.ts        → Who the Plex server is shared with; invites and removals
-      requests.ts            → GET /api/discover, GET/POST /api/requests
+      requests.ts            → GET /api/discover, GET/POST /api/requests, retry
       library.ts             → GET /api/library, DELETE /api/library/:type/:id
       dashboard.ts           → GET /api/dashboard
       notifications.ts       → GET /api/notifications, POST /api/notifications/read
@@ -128,6 +128,8 @@ server/
     search.ts                → TMDB search annotated with library status + requesters
     library.ts               → Cached index of what Radarr and Sonarr already hold
     state.ts                 → Where a request has got to, derived from library + queues
+    queue.ts                 → A queue record read as downloading/stalled/blocked/importing
+    retry.ts                 → Search again, dropping a stalled release first
   library/
     service.ts               → listLibrary()/removeLibraryItem() behind /api/library
   dashboard/
@@ -508,6 +510,7 @@ rather than passed to the agent as an opaque ID.
 | `GET /api/discover?q=`                | JWT                   | Search TMDB for something to request            |
 | `POST /api/requests`                  | JWT                   | Request a title `{ mediaType, tmdbId }`         |
 | `GET /api/requests`                   | JWT                   | Your requests, or all with `?all=true` as admin |
+| `POST /api/requests/:type/:id/retry`  | JWT                   | Search again; drops a stalled release first     |
 | `GET /api/library`                    | JWT                   | Everything Radarr and Sonarr hold               |
 | `DELETE /api/library/:type/:id`       | Admin                 | Remove an item, deleting files unless disabled  |
 | `GET /api/threads`                    | JWT                   | List conversation threads                       |

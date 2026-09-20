@@ -6,7 +6,7 @@ import { addSeriesPresentation, createAddSeriesTool, sonarrTools } from "#server
 import { timeTools } from "#server/time/tools.ts";
 import { tmdbTools } from "#server/tmdb/tools.ts";
 import { ultraTools } from "#server/ultra/tools.ts";
-import { getRequestsForUserTool } from "./requests-tool.ts";
+import { getRequestStatesTool, getRequestsForUserTool } from "./requests-tool.ts";
 import { unsubscribeNotificationsTool } from "./unsubscribe-tool.ts";
 import type { AgentContext } from "./system-prompt.ts";
 import type { AnyTool, ToolPresentation } from "./tool.ts";
@@ -23,6 +23,7 @@ export const allTools: AnyTool[] = [
   ...braveTools,
   ...timeTools,
   getRequestsForUserTool,
+  getRequestStatesTool,
   unsubscribeNotificationsTool,
 ];
 
