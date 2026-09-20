@@ -1,11 +1,13 @@
 import type {
   RadarrDiskSpace,
+  RadarrHistoryRecord,
   RadarrHistoryResponse,
   RadarrMovie,
+  RadarrMovieFile,
   RadarrQueueResponse,
   RadarrRootFolder,
 } from "./types.ts";
-import { createApiClient } from "#server/http/client.ts";
+import { createApiClient, optional } from "#server/http/client.ts";
 import { requireEnv } from "#server/config.ts";
 
 const request = createApiClient({
@@ -127,4 +129,20 @@ export async function removeQueueItem(id: number, blocklist: boolean): Promise<v
 
 export async function getHistory(pageSize: number = 20): Promise<RadarrHistoryResponse> {
   return request<RadarrHistoryResponse>(`/history?includeMovie=true&pageSize=${pageSize}`);
+}
+
+/** Everything Radarr did with one download: what it grabbed, and what it imported. */
+export async function getDownloadHistory(downloadId: string): Promise<RadarrHistoryRecord[]> {
+  const params = new URLSearchParams({
+    downloadId,
+    includeMovie: "true",
+    pageSize: "100",
+  });
+  const response = await request<RadarrHistoryResponse>(`/history?${params.toString()}`);
+  return response.records;
+}
+
+/** The file, or undefined once Radarr no longer has it — upgraded, or deleted. */
+export async function getMovieFile(movieFileId: number): Promise<RadarrMovieFile | undefined> {
+  return optional(() => request<RadarrMovieFile>(`/moviefile/${movieFileId}`));
 }
