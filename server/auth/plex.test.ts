@@ -45,7 +45,7 @@ describe("startPlexAuth", () => {
   test("builds an Auth App URL carrying the PIN code and callback", async () => {
     stubPlex(null);
 
-    const authUrl = await startPlexAuth({ type: "login" });
+    const authUrl = await startPlexAuth({ type: "login" }, "browser-1");
     const params = new URLSearchParams(authUrl.split("#?")[1]);
 
     expect(authUrl.startsWith("https://app.plex.tv/auth#?")).toBe(true);
@@ -60,7 +60,7 @@ describe("startPlexAuth", () => {
   test("sends the client identifier and product to plex.tv", async () => {
     const calls = stubPlex(null);
 
-    await startPlexAuth({ type: "login" });
+    await startPlexAuth({ type: "login" }, "browser-1");
 
     const headers = calls[0]!.init.headers as Record<string, string>;
     expect(calls[0]!.url).toBe("https://plex.tv/api/v2/pins?strong=true");
@@ -70,11 +70,22 @@ describe("startPlexAuth", () => {
 });
 
 describe("completePlexAuth", () => {
+  test("a copied callback cannot complete or consume another browser's flow", async () => {
+    const calls = stubPlex("plex-token");
+    const authUrl = await startPlexAuth({ type: "link", userId: "user-1" }, "browser-1");
+    const state = stateOf(authUrl);
+
+    expect(await completePlexAuth(state, undefined)).toEqual({ status: "denied" });
+    expect(await completePlexAuth(state, "browser-2")).toEqual({ status: "denied" });
+    expect(calls).toHaveLength(1);
+    expect((await completePlexAuth(state, "browser-1")).status).toBe("ok");
+  });
+
   test("returns the intent and account for a claimed PIN", async () => {
     const calls = stubPlex("plex-token");
-    const authUrl = await startPlexAuth({ type: "link", userId: "user-1" });
+    const authUrl = await startPlexAuth({ type: "link", userId: "user-1" }, "browser-1");
 
-    const result = await completePlexAuth(stateOf(authUrl));
+    const result = await completePlexAuth(stateOf(authUrl), "browser-1");
 
     expect(result).toEqual({
       status: "ok",
@@ -87,21 +98,21 @@ describe("completePlexAuth", () => {
 
   test("reports an unclaimed PIN as denied", async () => {
     stubPlex(null);
-    const authUrl = await startPlexAuth({ type: "login" });
+    const authUrl = await startPlexAuth({ type: "login" }, "browser-1");
 
-    expect(await completePlexAuth(stateOf(authUrl))).toEqual({ status: "denied" });
+    expect(await completePlexAuth(stateOf(authUrl), "browser-1")).toEqual({ status: "denied" });
   });
 
   test("rejects an unknown state", async () => {
-    expect(await completePlexAuth("nope")).toEqual({ status: "expired" });
+    expect(await completePlexAuth("nope", "browser-1")).toEqual({ status: "expired" });
   });
 
   test("consumes the state so it cannot be replayed", async () => {
     stubPlex("plex-token");
-    const authUrl = await startPlexAuth({ type: "login" });
+    const authUrl = await startPlexAuth({ type: "login" }, "browser-1");
     const state = stateOf(authUrl);
 
-    expect((await completePlexAuth(state)).status).toBe("ok");
-    expect(await completePlexAuth(state)).toEqual({ status: "expired" });
+    expect((await completePlexAuth(state, "browser-1")).status).toBe("ok");
+    expect(await completePlexAuth(state, "browser-1")).toEqual({ status: "expired" });
   });
 });

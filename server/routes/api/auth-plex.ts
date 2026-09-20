@@ -9,6 +9,7 @@ import { checkPlexAccess } from "#server/plex/access.ts";
 import type { PlexAccount } from "#server/plex/types.ts";
 import { buildJwtCookie, isLocalhost, signJwt } from "#server/auth/jwt.ts";
 import { requireAuth } from "#server/auth/middleware.ts";
+import { createFlowCookie, readFlowCookie } from "#server/auth/flow-cookie.ts";
 import {
   createPlatformLink,
   createUserWithPlatformLink,
@@ -31,13 +32,17 @@ function plexIdentityKey(account: PlexAccount): string {
   return String(account.id);
 }
 
-async function startFlow(intent: PlexAuthIntent): Promise<Response> {
+async function startFlow(req: Request, intent: PlexAuthIntent): Promise<Response> {
   if (!isPlexConfigured()) {
     return Response.json({ error: "Plex sign-in is not configured" }, { status: 503 });
   }
 
   try {
-    return Response.json({ authUrl: await startPlexAuth(intent) });
+    const { binding, cookie } = createFlowCookie(req, "kyle_plex_flow", 600, "Lax");
+    return Response.json(
+      { authUrl: await startPlexAuth(intent, binding) },
+      { headers: { "Set-Cookie": cookie } },
+    );
   } catch (error) {
     log.error("failed to start plex auth", { intent: intent.type, error: errorMessage(error) });
     return Response.json({ error: "Could not reach Plex" }, { status: 502 });
@@ -48,8 +53,8 @@ async function startFlow(intent: PlexAuthIntent): Promise<Response> {
 // POST /api/auth/plex/login/start
 // ---------------------------------------------------------------------------
 
-export async function handlePlexLoginStart(_req: Request): Promise<Response> {
-  return startFlow({ type: "login" });
+export async function handlePlexLoginStart(req: Request): Promise<Response> {
+  return startFlow(req, { type: "login" });
 }
 
 // ---------------------------------------------------------------------------
@@ -60,7 +65,7 @@ export async function handlePlexLinkStart(req: Request): Promise<Response> {
   const auth = await requireAuth(req);
   if ("error" in auth) return auth.error;
 
-  return startFlow({ type: "link", userId: auth.user.id });
+  return startFlow(req, { type: "link", userId: auth.user.id });
 }
 
 // ---------------------------------------------------------------------------
@@ -92,7 +97,7 @@ export async function handlePlexCallback(req: Request): Promise<Response> {
 
   let result;
   try {
-    result = await completePlexAuth(state);
+    result = await completePlexAuth(state, readFlowCookie(req, "kyle_plex_flow"));
   } catch (error) {
     log.error("plex callback failed", { error: errorMessage(error) });
     return redirect("/login?error=plex_failed");

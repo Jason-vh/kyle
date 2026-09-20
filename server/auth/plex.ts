@@ -10,6 +10,7 @@ export type PlexAuthIntent = { type: "login" } | { type: "link"; userId: string 
 
 interface PendingAuth {
   pinId: number;
+  binding: string;
   intent: PlexAuthIntent;
   expires: number;
 }
@@ -30,11 +31,11 @@ setInterval(() => {
  * Create a PIN and return the Plex Auth App URL to send the browser to.
  * The user returns to the callback with the `state` that resumes this flow.
  */
-export async function startPlexAuth(intent: PlexAuthIntent): Promise<string> {
+export async function startPlexAuth(intent: PlexAuthIntent, binding: string): Promise<string> {
   const pin = await createPin();
   const state = crypto.randomUUID();
 
-  pendingAuths.set(state, { pinId: pin.id, intent, expires: Date.now() + PENDING_TTL_MS });
+  pendingAuths.set(state, { pinId: pin.id, binding, intent, expires: Date.now() + PENDING_TTL_MS });
 
   const forwardUrl = `${appOrigin()}/api/auth/plex/callback?state=${state}`;
   return buildAuthAppUrl(pin.code, forwardUrl);
@@ -49,10 +50,17 @@ export type PlexAuthResult =
  * Resume a flow by its `state`: read the claimed PIN and the account behind it.
  * The Plex access token is only used here and never stored.
  */
-export async function completePlexAuth(state: string): Promise<PlexAuthResult> {
+export async function completePlexAuth(
+  state: string,
+  binding: string | undefined,
+): Promise<PlexAuthResult> {
   const pending = pendingAuths.get(state);
+  if (!pending || pending.expires < Date.now()) {
+    pendingAuths.delete(state);
+    return { status: "expired" };
+  }
+  if (!binding || pending.binding !== binding) return { status: "denied" };
   pendingAuths.delete(state);
-  if (!pending || pending.expires < Date.now()) return { status: "expired" };
 
   const pin = await getPin(pending.pinId);
   if (!pin.authToken) return { status: "denied" };
