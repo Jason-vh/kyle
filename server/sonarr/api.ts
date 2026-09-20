@@ -3,6 +3,7 @@ import type {
   SonarrCommand,
   SonarrDiskSpace,
   SonarrEpisode,
+  SonarrEpisodeFile,
   SonarrHistoryItem,
   SonarrHistoryResponse,
   SonarrManualImportItem,
@@ -11,7 +12,7 @@ import type {
   SonarrRootFolder,
   SonarrSeries,
 } from "./types.ts";
-import { createApiClient } from "#server/http/client.ts";
+import { createApiClient, optional } from "#server/http/client.ts";
 import { requireEnv } from "#server/config.ts";
 
 const request = createApiClient({
@@ -219,6 +220,25 @@ export async function getSeriesHistory(
   });
 
   return request<SonarrHistoryItem[]>(`/history/series?${params.toString()}`);
+}
+
+/** Everything Sonarr did with one download: what it grabbed, and what it imported. */
+export async function getDownloadHistory(downloadId: string): Promise<SonarrHistoryItem[]> {
+  const params = new URLSearchParams({
+    downloadId,
+    includeSeries: "true",
+    includeEpisode: "true",
+    pageSize: "200",
+  });
+  const response = await request<SonarrHistoryResponse>(`/history?${params.toString()}`);
+  return response.records;
+}
+
+/** The file, or undefined once Sonarr no longer has it — upgraded, or deleted. */
+export async function getEpisodeFile(
+  episodeFileId: number,
+): Promise<SonarrEpisodeFile | undefined> {
+  return optional(() => request<SonarrEpisodeFile>(`/episodefile/${episodeFileId}`));
 }
 
 /** Drops a download; blocklisting it stops the same release being grabbed again. */

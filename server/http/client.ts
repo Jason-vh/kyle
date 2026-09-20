@@ -51,6 +51,20 @@ export class ApiError extends Error {
   }
 }
 
+/**
+ * Undefined when the service says the thing is not there, rather than an
+ * error. Only a 404 is an absence: anything else is the service failing to
+ * answer, and a caller reading absence as "deleted" must not see it.
+ */
+export async function optional<T>(load: () => Promise<T>): Promise<T | undefined> {
+  try {
+    return await load();
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 404) return undefined;
+    throw error;
+  }
+}
+
 async function readBody(response: Response): Promise<unknown> {
   const text = await response.text().catch(() => "(unreadable)");
   if (!text) return undefined;

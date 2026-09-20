@@ -262,6 +262,8 @@ export interface SonarrHistoryItem {
   downloadId?: string;
   /** `downloadFolderImported`, `grabbed`, `episodeFileDeleted`, and so on. */
   eventType: string;
+  /** `fileId` on an import, which is how a torrent is tied to what it produced. */
+  data?: Record<string, unknown>;
   series: SonarrSeries;
   episode: SonarrEpisode;
 }
