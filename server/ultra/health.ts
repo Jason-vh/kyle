@@ -2,6 +2,7 @@ import type { StorageStat } from "#shared/types.ts";
 import { getStorage } from "#server/dashboard/storage.ts";
 import { invalidateStats } from "./api.ts";
 import { alertAdmins } from "#server/slack/alerts.ts";
+import { readState, writeState } from "#server/db/jobs.ts";
 import { createLogger } from "#server/logger.ts";
 import { errorMessage } from "#server/errors.ts";
 
@@ -62,15 +63,18 @@ export function announcement(condition: Condition, stat?: StorageStat, reason?: 
   return `:white_check_mark: *The seedbox is fine again.* ${free} left of ${total} (${percent.toFixed(1)}%).`;
 }
 
-let lastAnnounced: Announced | null = null;
-
-export function forgetAnnouncements(): void {
-  lastAnnounced = null;
-}
+/** What the last run said, and when — kept in the database, not in the process. */
+const STATE_KEY = "seedbox-health:announced";
 
 /**
  * Reads the quota and tells the admins when the answer is bad, or good again
  * after being bad. Meant for the scheduler; safe to call as often as it likes.
+ *
+ * The memory of having spoken lives in the database, written only after the
+ * send: a container that dies between the two costs a repeated alert, which
+ * is the right direction for a warning whose whole purpose is that nobody is
+ * watching. Writing first would cost a silent one. A failed write is logged
+ * by the scheduler, and the next run repeats itself.
  */
 export async function checkSeedbox(): Promise<{ condition: Condition; announced: boolean }> {
   // The quota is cached for the dashboard's sake; a health check wants to know
@@ -88,13 +92,12 @@ export async function checkSeedbox(): Promise<{ condition: Condition; announced:
 
   const condition: Condition = stat ? conditionFor(stat) : "unreachable";
   const now = Date.now();
-  const announced = shouldAnnounce(condition, lastAnnounced, now);
+  const last = await readState<Announced>(STATE_KEY);
+  const announced = shouldAnnounce(condition, last ?? null, now);
 
   if (announced) {
     await alertAdmins(announcement(condition, stat, reason));
-    lastAnnounced = { condition, at: now };
-  } else if (!lastAnnounced) {
-    lastAnnounced = { condition, at: now };
+    await writeState(STATE_KEY, { condition, at: now });
   }
 
   log.info("checked the seedbox", { condition, announced, reason });
