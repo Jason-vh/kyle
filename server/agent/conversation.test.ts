@@ -76,6 +76,50 @@ afterAll(async () => {
 });
 
 describe("runConversationTurn", () => {
+  test("concurrent turns share one conversation and replay completed turns", async () => {
+    const replayed: number[] = [];
+    script = (options) => {
+      replayed.push(options.previousMessages?.length ?? 0);
+      return assistantText(options, "reply");
+    };
+    const turn = {
+      interfaceType: "slack" as const,
+      externalId: crypto.randomUUID(),
+      text: "hello",
+    };
+    const results = await Promise.all([runConversationTurn(turn), runConversationTurn(turn)]);
+    createdConversationIds.push(results[0]!.conversationId);
+
+    expect(results[0]!.conversationId).toBe(results[1]!.conversationId);
+    expect(replayed).toEqual([0, 2]);
+    expect(await rolesAfter(results[0]!.conversationId, 4)).toEqual([
+      "user",
+      "assistant",
+      "user",
+      "assistant",
+    ]);
+  });
+
+  test("a failed turn releases its lock for the next turn", async () => {
+    let calls = 0;
+    script = (options) => {
+      if (calls++ === 0) throw new Error("failed turn");
+      return assistantText(options, "recovered");
+    };
+    const turn = {
+      interfaceType: "slack" as const,
+      externalId: crypto.randomUUID(),
+      text: "hello",
+    };
+    const results = await Promise.allSettled([
+      runConversationTurn(turn),
+      runConversationTurn(turn),
+    ]);
+    expect(results.map((result) => result.status)).toEqual(["rejected", "fulfilled"]);
+    if (results[1]!.status === "fulfilled")
+      createdConversationIds.push(results[1]!.value.conversationId);
+  });
+
   test("creates a conversation, then continues the same one by externalId", async () => {
     script = (options) => assistantText(options, "first reply");
     const first = await runConversationTurn({

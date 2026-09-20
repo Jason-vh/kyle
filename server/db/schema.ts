@@ -318,7 +318,7 @@ export const conversations = pgTable(
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
   (table) => [
-    index("conversations_external_id_idx").on(table.externalId, table.interfaceType),
+    uniqueIndex("conversations_external_id_idx").on(table.externalId, table.interfaceType),
     index("conversations_platform_user_id_idx").on(table.platformUserId),
   ],
 );

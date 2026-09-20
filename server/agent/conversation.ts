@@ -3,6 +3,7 @@ import type { AgentEvent } from "@mariozechner/pi-agent-core";
 import type { ImageContent } from "@mariozechner/pi-ai";
 import { createLogger } from "#server/logger.ts";
 import { db } from "#server/db/index.ts";
+import { withDatabaseLock } from "#server/db/lock.ts";
 import { conversations } from "#server/db/schema.ts";
 import { loadConversationHistory } from "#server/db/conversation-history.ts";
 import { createTurnWriter } from "./turn-writer.ts";
@@ -81,8 +82,16 @@ async function resolveConversationId(turn: ConversationTurn): Promise<string> {
       userId: turn.appUserId ?? null,
       metadata: turn.metadata ?? null,
     })
+    .onConflictDoNothing({ target: [conversations.externalId, conversations.interfaceType] })
     .returning();
-  return created!.id;
+  if (created) return created.id;
+  const existing = await db.query.conversations.findFirst({
+    where: and(
+      eq(conversations.externalId, turn.externalId!),
+      eq(conversations.interfaceType, turn.interfaceType),
+    ),
+  });
+  return existing!.id;
 }
 
 /**
@@ -91,6 +100,13 @@ async function resolveConversationId(turn: ConversationTurn): Promise<string> {
  */
 export async function runConversationTurn(turn: ConversationTurn): Promise<ConversationTurnResult> {
   const conversationId = await resolveConversationId(turn);
+  return withDatabaseLock(`conversation:${conversationId}`, () => runTurn(turn, conversationId));
+}
+
+async function runTurn(
+  turn: ConversationTurn,
+  conversationId: string,
+): Promise<ConversationTurnResult> {
   const history = await loadConversationHistory(conversationId);
 
   const writer = createTurnWriter({
