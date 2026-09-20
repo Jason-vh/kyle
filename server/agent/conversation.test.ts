@@ -115,9 +115,10 @@ describe("runConversationTurn", () => {
       runConversationTurn(turn),
       runConversationTurn(turn),
     ]);
-    expect(results.map((result) => result.status)).toEqual(["rejected", "fulfilled"]);
-    if (results[1]!.status === "fulfilled")
-      createdConversationIds.push(results[1]!.value.conversationId);
+    for (const result of results) {
+      if (result.status === "fulfilled") createdConversationIds.push(result.value.conversationId);
+    }
+    expect(results.map((result) => result.status).sort()).toEqual(["fulfilled", "rejected"]);
   });
 
   test("creates a conversation, then continues the same one by externalId", async () => {

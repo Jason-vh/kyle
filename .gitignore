@@ -39,3 +39,4 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 
 # stray editor and script backups
 *.bak
+.e2e/

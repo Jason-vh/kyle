@@ -53,8 +53,11 @@ jobs:
       - name: Format, lint, types and tests
         run: bun run check
 
-      - name: Build the web app
-        run: bun run build:web
+      - name: Install Chromium
+        run: bunx playwright install --with-deps chromium
+
+      - name: Browser smoke tests
+        run: bun run test:e2e
 
   deploy:
     name: Deploy to exe.dev VM

@@ -17,6 +17,7 @@
     "cli": "bun run scripts/cli.ts",
     "test": "bun test server shared",
     "test:web": "cd web && bun run test",
+    "test:e2e": "bun run build:web && playwright test",
     "fmt": "oxfmt .",
     "fmt:check": "oxfmt --check .",
     "lint": "oxlint .",
@@ -37,6 +38,7 @@
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.8",
+    "@playwright/test": "^1.63.0",
     "@types/bun": "latest",
     "drizzle-kit": "^0.31.1",
     "lefthook": "^2.1.1",

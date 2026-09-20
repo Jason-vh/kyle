@@ -33,5 +33,13 @@
       "#shared/*": ["./shared/*"]
     }
   },
-  "include": ["index.ts", "scripts/**/*", "server/**/*", "shared/**/*", "drizzle.config.ts"]
+  "include": [
+    "index.ts",
+    "scripts/**/*",
+    "server/**/*",
+    "shared/**/*",
+    "e2e/**/*",
+    "playwright.config.ts",
+    "drizzle.config.ts"
+  ]
 }

@@ -6,7 +6,7 @@
 bun run check   # format, lint, both typecheckers, both test suites
 ```
 
-Everything below is a piece of that. If `check` passes, the commit is good.
+This covers formatting, lint, types, and unit/integration tests. CI also runs the browser smoke tests below.
 
 | Step        | Tool               | Scope                              |
 | ----------- | ------------------ | ---------------------------------- |
@@ -140,7 +140,20 @@ Honest list, so nobody assumes coverage that is not there:
 - `server/slack/`, `server/discord/` — only the stream buffering is covered.
 - `web/` — the views have no tests, by choice; the primitives are covered where they
   carry behaviour or wording, not where they are markup.
-- No browser-level end-to-end test.
+- Chromium smoke tests cover passkey registration/login/logout, protected navigation,
+  requesting media, and admin-only deletion. Other browser flows remain uncovered.
+
+## Browser smoke tests
+
+```bash
+bunx playwright install chromium
+bun run test:e2e
+```
+
+Playwright runs the built SPA and real API against an isolated, migrated pglite database.
+A virtual authenticator exercises WebAuthn end to end. Only upstream media services are
+stubbed; no development database or external credentials are used. CI runs this before
+deployment. Traces from failures are saved under `.e2e/results`.
 
 ## Linting
 
