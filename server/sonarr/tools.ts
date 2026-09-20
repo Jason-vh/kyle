@@ -2,7 +2,12 @@ import { Type } from "@sinclair/typebox";
 import type { Tool, ToolPresentation } from "#server/agent/tool.ts";
 import { jsonResult } from "#server/agent/tool-result.ts";
 import { buildTable } from "#server/agent/table.ts";
-import { requestSeason, requestSeries, type Requester } from "#server/requests/service.ts";
+import {
+  releaseSeason,
+  requestSeason,
+  requestSeries,
+  type Requester,
+} from "#server/requests/service.ts";
 import { recordRemoval } from "#server/db/removals.ts";
 import { episodeCode, episodeLabel, titleWithYear } from "#shared/media.ts";
 import * as sonarr from "./api.ts";
@@ -277,38 +282,12 @@ export const removeSeasonTool: Tool<typeof removeSeasonParams> = {
     return `Removed ${seriesName(payload)}${season} from Sonarr`;
   },
   async execute(_toolCallId, params) {
-    const series = await sonarr.getSeries(params.seriesId);
-    const episodes = await sonarr.getEpisodes(params.seriesId);
-
-    // Filter to episodes in the target season that have files
-    const seasonEpisodes = episodes.filter(
-      (ep) => ep.seasonNumber === params.seasonNumber && ep.hasFile && ep.episodeFileId,
-    );
-
-    // Delete all episode files for this season
-    for (const episode of seasonEpisodes) {
-      if (episode.episodeFileId) {
-        await sonarr.deleteEpisodeFile(episode.episodeFileId);
-      }
-    }
-
-    // Unmonitor the season
-    const season = series.seasons.find((s) => s.seasonNumber === params.seasonNumber);
-
-    if (!season) {
-      throw new Error(`Season ${params.seasonNumber} not found in series ${params.seriesId}`);
-    }
-
-    season.monitored = false;
-    await sonarr.updateSeries(params.seriesId, series);
+    const { series, filesDeleted } = await releaseSeason(params.seriesId, params.seasonNumber);
 
     return jsonResult({
       success: true,
-      message:
-        seasonEpisodes.length > 0
-          ? `Removed season ${params.seasonNumber} from series ${params.seriesId}, deleted ${seasonEpisodes.length} episode file${seasonEpisodes.length === 1 ? "" : "s"} and unmonitored the season`
-          : `Unmonitored season ${params.seasonNumber} from series ${params.seriesId} (no files to delete)`,
-      filesDeleted: seasonEpisodes.length,
+      message: `Released season ${params.seasonNumber} of ${series.title} and deleted ${filesDeleted} files.`,
+      filesDeleted,
       title: series.title,
       tvdbId: series.tvdbId,
       tmdbId: series.tmdbId,

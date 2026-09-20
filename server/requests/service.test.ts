@@ -9,6 +9,7 @@ import {
   requestSeries,
 } from "./service.ts";
 import { db } from "#server/db/index.ts";
+import { removeSeasonTool } from "#server/sonarr/tools.ts";
 import { createTestUser, deleteTestUser } from "#server/db/testing.ts";
 import {
   conversations,
@@ -449,6 +450,23 @@ describe("requestEpisode", () => {
 });
 
 describe("releaseSeason", () => {
+  test("chat removal shares the release path and deletes shared files once", async () => {
+    stubSonarr();
+    await requestSeason({ tmdbId: 95396, seasonNumber: 3, requestedBy: { userId } });
+    const calls = stubSonarr({
+      "/episode?seriesId=": [
+        { seasonNumber: 3, episodeFileId: 55 },
+        { seasonNumber: 3, episodeFileId: 55 },
+      ],
+    });
+    await removeSeasonTool.execute("call", { seriesId: 9, seasonNumber: 3 });
+
+    expect(calls.filter((call) => call.method === "DELETE")).toHaveLength(1);
+    expect(
+      await db.select().from(mediaRequests).where(eq(mediaRequests.userId, userId)),
+    ).toHaveLength(0);
+  });
+
   test("deletes a multi-episode file once and completes the release", async () => {
     const calls = stubSonarr({
       "/episode?seriesId=": [
