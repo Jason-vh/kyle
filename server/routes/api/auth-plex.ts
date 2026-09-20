@@ -136,7 +136,7 @@ async function loginWithPlexAccount(req: Request, account: PlexAccount): Promise
   const token = await signJwt({ id: user.id, name: user.displayName, admin: user.isAdmin });
 
   log.info("plex login successful", { userId: user.id, name: user.displayName });
-  return redirect("/threads", { "Set-Cookie": buildJwtCookie(token, isLocalhost(req)) });
+  return redirect("/home", { "Set-Cookie": buildJwtCookie(token, isLocalhost(req)) });
 }
 
 /** Attaches this Plex account to the user who started the link flow. */

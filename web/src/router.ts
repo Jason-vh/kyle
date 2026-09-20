@@ -63,13 +63,13 @@ export const router = createRouter({
       path: "/threads",
       name: "threads",
       component: () => import("./views/ThreadListView.vue"),
-      meta: { requiresAuth: true },
+      meta: { requiresAuth: true, requiresAdmin: true },
     },
     {
       path: "/threads/:id",
       name: "thread",
       component: () => import("./views/ThreadDetailView.vue"),
-      meta: { requiresAuth: true },
+      meta: { requiresAuth: true, requiresAdmin: true },
     },
   ],
 });
@@ -86,4 +86,6 @@ router.beforeEach(async (to) => {
   const { data } = await cache.refresh(cache.ensure(sessionQuery));
 
   if (!data?.authenticated) return { name: "login" };
+
+  if (to.meta.requiresAdmin && !data.user?.admin) return { name: "home" };
 });

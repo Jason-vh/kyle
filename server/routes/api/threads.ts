@@ -1,7 +1,7 @@
 import { createLogger } from "#server/logger.ts";
 import { safeJsonParse } from "#server/json.ts";
 import { mediaHref } from "#server/media-links.ts";
-import { requireAuth } from "#server/auth/middleware.ts";
+import { requireAdmin } from "#server/auth/middleware.ts";
 import { signThreadSig, verifyThreadSig } from "#server/routes/threads-auth.ts";
 import {
   findConversation,
@@ -31,9 +31,9 @@ async function shareUrlFor(origin: string, id: string): Promise<string | null> {
   return sig ? `${origin}/threads/${id}?sig=${sig}` : null;
 }
 
-/** GET /api/threads */
+/** GET /api/threads — every conversation on the server, so admins only. */
 export async function handleApiThreadList(req: Request): Promise<Response> {
-  const authResult = await requireAuth(req);
+  const authResult = await requireAdmin(req);
   if ("error" in authResult) return authResult.error;
 
   const origin = new URL(req.url).origin;
@@ -78,14 +78,15 @@ export async function handleApiThreadDetail(req: Request, id: string): Promise<R
 
   const url = new URL(req.url);
 
-  // A signed URL grants access to this one thread; otherwise a session is required.
+  // A signed URL grants access to this one thread, which is the point of
+  // sharing one; reading any thread unasked is an admin's to do.
   const sig = url.searchParams.get("sig");
   if (sig) {
     if (!(await verifyThreadSig(id, sig))) {
       return Response.json({ error: "Invalid or expired link" }, { status: 403 });
     }
   } else {
-    const authResult = await requireAuth(req);
+    const authResult = await requireAdmin(req);
     if ("error" in authResult) return authResult.error;
   }
 

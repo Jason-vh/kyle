@@ -27,14 +27,12 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-function stubAuth(authenticated: boolean) {
+function stubAuth(authenticated: boolean, admin = false) {
   const calls = { count: 0 };
   globalThis.fetch = vi.fn(() => {
     calls.count++;
     return Promise.resolve(
-      new Response(
-        JSON.stringify({ authenticated, user: { id: "u1", name: "Jane", admin: false } }),
-      ),
+      new Response(JSON.stringify({ authenticated, user: { id: "u1", name: "Jane", admin } })),
     );
   }) as unknown as typeof fetch;
   return calls;
@@ -110,5 +108,49 @@ describe("the auth guard", () => {
 
     expect(router.currentRoute.value.name).toBe("thread");
     expect(calls.count).toBe(0);
+  });
+});
+
+// Threads are everyone's conversations with Kyle, not everyone's to read.
+describe("the admin guard", () => {
+  test("lets an admin read the threads", async () => {
+    stubAuth(true, true);
+
+    await router.push("/threads");
+
+    expect(router.currentRoute.value.name).toBe("threads");
+  });
+
+  test("sends anyone else home", async () => {
+    stubAuth(true, false);
+
+    await router.push("/threads");
+
+    expect(router.currentRoute.value.name).toBe("home");
+  });
+
+  test("guards one thread as closely as the list", async () => {
+    stubAuth(true, false);
+
+    await router.push("/threads/abc");
+
+    expect(router.currentRoute.value.name).toBe("home");
+  });
+
+  // The link was shared with them on purpose, admin or not.
+  test("still opens a thread shared by signed link", async () => {
+    stubAuth(true, false);
+
+    await router.push("/threads/abc?sig=signature");
+
+    expect(router.currentRoute.value.name).toBe("thread");
+  });
+
+  test("leaves pages that are everyone's alone", async () => {
+    stubAuth(true, false);
+
+    await router.push("/library");
+
+    expect(router.currentRoute.value.name).toBe("library");
   });
 });
