@@ -18,7 +18,7 @@ export async function handleGetLibrary(req: Request): Promise<Response> {
 
   try {
     const listing = await listLibrary(auth.user.id);
-    return Response.json(listing, { headers: auth.refreshHeaders });
+    return Response.json(listing);
   } catch (error) {
     log.error("could not list the library", { error: errorMessage(error) });
     return errorResponse(error, 502, "Could not read the library");
@@ -53,7 +53,7 @@ export async function handleRemoveLibraryItem(
     await removeLibraryItem(mediaType, serviceId, deleteFiles, auth.user.name);
 
     log.info("library item removed", { by: auth.user.id, mediaType, serviceId, deleteFiles });
-    return Response.json({ success: true }, { headers: auth.refreshHeaders });
+    return Response.json({ success: true });
   } catch (error) {
     log.error("could not remove library item", {
       mediaType,
@@ -86,7 +86,7 @@ export async function handleReleaseSeason(
     const { filesDeleted } = await releaseSeason(serviceId, seasonNumber);
 
     log.info("season released", { by: auth.user.id, serviceId, seasonNumber, filesDeleted });
-    return Response.json({ success: true, filesDeleted }, { headers: auth.refreshHeaders });
+    return Response.json({ success: true, filesDeleted });
   } catch (error) {
     if (error instanceof MediaNotFoundError) {
       return Response.json({ error: error.message }, { status: 404 });

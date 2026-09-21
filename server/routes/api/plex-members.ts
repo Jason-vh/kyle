@@ -100,10 +100,9 @@ export async function handleGetPlexMembers(req: Request): Promise<Response> {
   try {
     const [members, inviters] = await Promise.all([listPlexMembers(), getPlexInviters()]);
     const visible = members.filter(visibleTo(auth.user, inviters));
-    return Response.json(
-      { members: visible.map((member) => memberView(member, auth.user, inviters)) },
-      { headers: auth.refreshHeaders },
-    );
+    return Response.json({
+      members: visible.map((member) => memberView(member, auth.user, inviters)),
+    });
   } catch (error) {
     log.error("could not list plex members", { error: errorMessage(error) });
     return errorResponse(error, 502, "Could not reach Plex");
@@ -147,7 +146,7 @@ export async function handleCreatePlexInvite(req: Request): Promise<Response> {
       await recordPlexInvite(email.toLowerCase(), auth.user.id);
 
       log.info("plex invite sent", { by: auth.user.id });
-      return Response.json({ invited: email }, { headers: auth.refreshHeaders });
+      return Response.json({ invited: email });
     });
   } catch (error) {
     if (error instanceof PlexRefusedError) {
@@ -181,7 +180,7 @@ export async function handleRemovePlexMember(req: Request, handle: string): Prom
     await removePlexMember(member);
 
     log.info("plex member removed", { by: auth.user.id, status: member.status });
-    return Response.json({ removed: member.handle }, { headers: auth.refreshHeaders });
+    return Response.json({ removed: member.handle });
   } catch (error) {
     if (error instanceof PlexRefusedError) {
       return Response.json({ error: error.message }, { status: 400 });

@@ -19,7 +19,7 @@ export async function handleGetNotifications(req: Request): Promise<Response> {
       listNotifications(auth.user.id),
       countUnread(auth.user.id),
     ]);
-    return Response.json({ notifications, unread }, { headers: auth.refreshHeaders });
+    return Response.json({ notifications, unread });
   } catch (error) {
     log.error("could not list notifications", { error: errorMessage(error) });
     return errorResponse(error, 500, "Could not load notifications");
@@ -48,7 +48,7 @@ export async function handleMarkNotificationsRead(req: Request): Promise<Respons
 
   try {
     const read = await markRead(auth.user.id, ids);
-    return Response.json({ read }, { headers: auth.refreshHeaders });
+    return Response.json({ read });
   } catch (error) {
     log.error("could not mark notifications read", { error: errorMessage(error) });
     return errorResponse(error, 500, "Could not update notifications");

@@ -15,7 +15,7 @@ export async function handleGetDashboard(req: Request): Promise<Response> {
 
   try {
     const dashboard = await getDashboard(auth.user.id);
-    return Response.json(dashboard, { headers: auth.refreshHeaders });
+    return Response.json(dashboard);
   } catch (error) {
     log.error("could not build the dashboard", { error: errorMessage(error) });
     return errorResponse(error, 502, "Could not load the dashboard");

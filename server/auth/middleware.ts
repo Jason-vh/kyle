@@ -36,13 +36,12 @@ export function withSessionRefresh<Args extends unknown[]>(
   };
 }
 
-export type AuthResult =
-  | { user: JwtUser; refreshHeaders?: Record<string, string> }
-  | { error: Response };
+export type AuthResult = { user: JwtUser } | { error: Response };
 
 /**
- * Require authentication. Returns the user or an error response.
- * Also handles JWT sliding window refresh.
+ * Require authentication. Returns the user or an error response. A session
+ * near its expiry is renewed here and the cookie left for `withSessionRefresh`
+ * to attach, so no handler has to remember to carry it.
  */
 export async function requireAuth(req: Request): Promise<AuthResult> {
   const user = await optionalAuth(req);
@@ -53,17 +52,13 @@ export async function requireAuth(req: Request): Promise<AuthResult> {
   const rateLimit = userRateLimit(req, user.id);
   if (rateLimit) return { error: rateLimit };
 
-  // Check sliding window refresh
-  const result: AuthResult = { user };
   const jwtToken = getJwtFromRequest(req);
   if (jwtToken && (await shouldRefreshJwt(jwtToken))) {
     const newToken = await signJwt(user);
-    const cookie = buildJwtCookie(newToken, isLocalhost(req));
-    refreshCookies.set(req, cookie);
-    result.refreshHeaders = { "Set-Cookie": cookie };
+    refreshCookies.set(req, buildJwtCookie(newToken, isLocalhost(req)));
   }
 
-  return result;
+  return { user };
 }
 
 /**

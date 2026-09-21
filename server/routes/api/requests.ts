@@ -146,7 +146,7 @@ export async function handleCreateRequest(req: Request): Promise<Response> {
       body.posterPath,
       { seasonNumber: body.seasonNumber, episodeNumber: body.episodeNumber },
     );
-    return Response.json(outcome, { headers: auth.refreshHeaders });
+    return Response.json(outcome);
   } catch (error) {
     if (error instanceof MediaNotFoundError) {
       return Response.json({ error: error.message }, { status: 404 });
@@ -174,7 +174,7 @@ export async function handleGetRequests(req: Request): Promise<Response> {
   const all = new URL(req.url).searchParams.get("all") === "true" && auth.user.admin;
   const rows = all ? await getAllMediaRequests() : await getMediaRequestsForUser(auth.user.id);
 
-  return Response.json({ requests: await withState(rows) }, { headers: auth.refreshHeaders });
+  return Response.json({ requests: await withState(rows) });
 }
 
 // ---------------------------------------------------------------------------
@@ -223,7 +223,7 @@ export async function handleRetryRequest(
 
   try {
     const outcome = await retryRequest(mediaType, entry.serviceId, seasonNumber);
-    return Response.json(outcome, { headers: auth.refreshHeaders });
+    return Response.json(outcome);
   } catch (error) {
     log.error("retry failed", { mediaType, tmdbId, error: errorMessage(error) });
     return errorResponse(error, 502, "Could not search again");
@@ -272,7 +272,7 @@ export async function handleReportRequest(
       reportedBy: auth.user.name,
       seasonNumber,
     });
-    return Response.json(outcome, { headers: auth.refreshHeaders });
+    return Response.json(outcome);
   } catch (error) {
     log.error("report failed", { mediaType, tmdbId, error: errorMessage(error) });
     return errorResponse(error, 502, "Could not pass this on");
