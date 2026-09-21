@@ -40,7 +40,7 @@ jobs:
 
       - uses: oven-sh/setup-bun@v2
         with:
-          bun-version: latest
+          bun-version-file: .bun-version
 
       - name: Install dependencies
         run: |
@@ -121,10 +121,16 @@ jobs:
           cd "$DEPLOY_DIR"
           docker compose --env-file .env.production run --rm app bun run server/db/migrate.ts
 
-      - name: Start app
+      - name: Start and verify app
+        env:
+          EXPECTED_DEPLOY_ID: ${{ github.sha }}
         run: |
           cd "$DEPLOY_DIR"
-          docker compose --env-file .env.production up -d --remove-orphans
+          if ! docker compose --env-file .env.production up -d --remove-orphans --wait --wait-timeout 240; then
+            docker compose --env-file .env.production logs --tail 100 app
+            exit 1
+          fi
+          docker compose --env-file .env.production exec -T -e EXPECTED_DEPLOY_ID="$EXPECTED_DEPLOY_ID" app bun run server/healthcheck.ts
           docker compose --env-file .env.production ps
 
       - name: Reload Caddy (picks up deploy/caddy.snippet)

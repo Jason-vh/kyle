@@ -646,7 +646,9 @@ Every push to `main`:
 4. `docker compose build` — multi-stage image (web SPA + server).
 5. **Migrations**: `docker compose run --rm app bun run server/db/migrate.ts` in a one-shot
    container. On failure the previous deploy keeps serving.
-6. `docker compose up -d --remove-orphans` — starts the long-running app.
+6. `docker compose up -d --remove-orphans --wait --wait-timeout 240` — waits for a healthy
+   app, then verifies that `/health` reports the expected commit. Failures stop deployment
+   and print app logs; there is no automatic rollback.
 7. `caddy validate` + `systemctl reload caddy` so changes to `deploy/caddy.snippet` apply.
 
 `WEBAUTHN_ORIGIN` / `WEBAUTHN_RP_ID` matter for passkeys — passkeys are origin-bound, so
@@ -678,7 +680,8 @@ curl https://kyle.vhtm.eu/health
 
 Returns JSON including `deployId` — the commit SHA the running container was built from
 (`dev` when `DEPLOY_ID` is unset, e.g. local runs). Compare against `git rev-parse HEAD` to
-confirm a deploy landed.
+confirm a deploy landed. Failed deliveries or jobs more than five minutes overdue return
+503, with persisted queue metrics under `deliveries`. See [access and delivery](docs/security.md).
 
 ### GitHub Actions secrets
 
@@ -701,7 +704,8 @@ This repo is public, so most app config lives in GitHub Actions secrets:
 
 ## Conventions
 
-- **Runtime**: Bun — `bun run`, `bun test`, `bun install`. Bun auto-loads `.env`.
+- **Runtime**: Bun — version pinned in `.bun-version` and `Dockerfile`. Use `bun run`,
+  `bun test`, `bun install`. Bun auto-loads `.env`.
 - **HTTP**: `Bun.serve()` — no Express.
 - **Database**: `postgres` package with Drizzle ORM — no `pg`.
 - **File I/O**: prefer `Bun.file` over `node:fs`.

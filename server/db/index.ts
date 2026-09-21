@@ -1,5 +1,5 @@
 import { drizzle as drizzlePostgres } from "drizzle-orm/postgres-js";
-import { sql, type SQL } from "drizzle-orm";
+import type { SQL } from "drizzle-orm";
 import type { PgDatabase, PgQueryResultHKT } from "drizzle-orm/pg-core";
 import postgres from "postgres";
 import * as schema from "./schema.ts";
@@ -52,13 +52,4 @@ export async function query<T>(statement: SQL): Promise<T[]> {
   const result: unknown = await db.execute(statement);
   if (Array.isArray(result)) return result as T[];
   return (result as { rows: T[] }).rows;
-}
-
-export async function checkDatabaseHealth(): Promise<boolean> {
-  try {
-    await db.execute(sql`SELECT 1`);
-    return true;
-  } catch {
-    return false;
-  }
 }

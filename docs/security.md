@@ -4,6 +4,10 @@
 
 The session migration requires everyone to sign in again. Old stateless JWTs are rejected.
 
+Bun is pinned in `.bun-version` and the Dockerfile. Deployment waits up to four minutes
+for container health, then checks that `/health` reports the expected commit. Failures
+stop the workflow; they do not automatically roll back the app.
+
 Set `CHAT_USER_ID` to the Kyle user UUID whose permissions the HTTP/CLI client should use,
 and configure the matching GitHub Actions secret. `CHAT_API_KEY` alone no longer grants
 administrator access. Missing `CHAT_API_KEY` or `WEBHOOK_AUTH` disables that endpoint with
@@ -64,6 +68,11 @@ chat message. Inspect `webhook_jobs.last_error`, `attempts`, and `completed_at` 
 
 Worker initialization retries every thirty seconds after database failures. Workers start
 independently; `/health` reports degraded status until initialization or a failed run recovers.
+It also returns 503 while any pending Slack event or webhook has a recorded failure, or is
+more than five minutes past its next scheduled attempt. Future episode batches and retry
+backoff are not counted as overdue. Delivery metrics include pending, failed and overdue
+counts, the highest attempt count, and the oldest pending creation time. They are read from
+PostgreSQL, survive restarts, and exclude completed jobs. Raw errors remain private.
 
 Conversation turns and media writes are serialized across processes with PostgreSQL advisory
 locks. Each nesting depth has its own connection pool, so parent operations cannot exhaust
