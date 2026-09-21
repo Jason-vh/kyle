@@ -1,13 +1,22 @@
 import { afterEach, beforeEach, expect, test } from "bun:test";
+import { eq } from "drizzle-orm";
+import { db } from "#server/db/index.ts";
+import { users } from "#server/db/schema.ts";
 import {
+  createPlatformLink,
   createUserWithPlatformLink,
+  deletePlatformLink,
   getPlatformIdentity,
-  invalidateAllPlatformCache,
 } from "#server/db/users.ts";
 import { createTestUser, deleteTestUser } from "#server/db/testing.ts";
 import { buildJwtCookie, signJwt, verifyJwt } from "#server/auth/jwt.ts";
 import { invalidatePlexAccessCache } from "#server/plex/access.ts";
-import { handlePlexCallback, handlePlexLinkStart, handlePlexLoginStart } from "./auth-plex.ts";
+import {
+  handlePlexCallback,
+  handlePlexLinkStart,
+  handlePlexLoginStart,
+  handlePlexUnlink,
+} from "./auth-plex.ts";
 
 const originalFetch = globalThis.fetch;
 const envNames = [
@@ -58,7 +67,6 @@ afterEach(async () => {
     else process.env[name] = saved[name];
   }
   for (const id of userIds.splice(0)) await deleteTestUser(id);
-  invalidateAllPlatformCache();
 });
 
 async function flow(response: Response) {
@@ -79,6 +87,81 @@ async function plexUser() {
   userIds.push(user.id);
   return user;
 }
+
+async function loginWithPlex() {
+  const login = await flow(await handlePlexLoginStart(new Request("http://localhost/start")));
+  return handlePlexCallback(new Request(login.callback, { headers: { cookie: login.cookie } }));
+}
+
+async function userFromResponse(response: Response) {
+  expect(response.headers.get("location")).toBe("/home");
+  const cookie = response.headers.getSetCookie().find((value) => value.startsWith("kyle_auth="))!;
+  return verifyJwt(cookie.split(";")[0]!.slice("kyle_auth=".length));
+}
+
+test("Plex sign-in recovers the same account after unlinking its only credential", async () => {
+  const user = await plexUser();
+  const auth = buildJwtCookie(await signJwt({ id: user.id, name: "Member", admin: false }), true);
+  const response = await handlePlexUnlink(
+    new Request("http://localhost/api/auth/plex/link", {
+      method: "DELETE",
+      headers: { cookie: auth },
+    }),
+  );
+  expect(response.status).toBe(200);
+  expect(await getPlatformIdentity(user.id, "plex")).toBeUndefined();
+  expect(await userFromResponse(await loginWithPlex())).toMatchObject({ id: user.id });
+  expect((await getPlatformIdentity(user.id, "plex"))?.platformUserId).toBe("999");
+  expect(await db.select().from(users).where(eq(users.plexAccountId, "999"))).toHaveLength(1);
+});
+
+test("recovers the most recently linked account, including accounts not created through Plex", async () => {
+  const original = await plexUser();
+  await deletePlatformLink((await getPlatformIdentity(original.id, "plex"))!.id);
+  const latestId = await createTestUser("Latest account");
+  userIds.push(latestId);
+  const { link } = await createPlatformLink(latestId, "plex", "999", "member");
+  await deletePlatformLink(link.id);
+
+  expect(await userFromResponse(await loginWithPlex())).toMatchObject({ id: latestId });
+  expect(await getPlatformIdentity(original.id, "plex")).toBeUndefined();
+});
+
+test.each(["disabled", "removed"])("recovery cannot bypass %s access", async (reason) => {
+  const user = await plexUser();
+  await deletePlatformLink((await getPlatformIdentity(user.id, "plex"))!.id);
+  if (reason === "disabled") {
+    await db.update(users).set({ isDisabled: true }).where(eq(users.id, user.id));
+  } else {
+    shared = false;
+    invalidatePlexAccessCache();
+  }
+
+  const response = await loginWithPlex();
+  expect(response.headers.get("location")).toBe("/login?error=plex_no_access");
+  expect(response.headers.get("set-cookie")).toBeNull();
+  expect(await getPlatformIdentity(user.id, "plex")).toBeUndefined();
+  expect(await db.select().from(users).where(eq(users.plexAccountId, "999"))).toHaveLength(1);
+});
+
+test("recovery does not replace another Plex account already linked to the user", async () => {
+  const user = await plexUser();
+  await deletePlatformLink((await getPlatformIdentity(user.id, "plex"))!.id);
+  await createPlatformLink(user.id, "plex", "123", "other");
+
+  expect((await loginWithPlex()).headers.get("location")).toBe("/login?error=plex_exists");
+  expect((await getPlatformIdentity(user.id, "plex"))?.platformUserId).toBe("123");
+});
+
+test("concurrent recovery callbacks relink one account", async () => {
+  const user = await plexUser();
+  await deletePlatformLink((await getPlatformIdentity(user.id, "plex"))!.id);
+  const responses = await Promise.all([loginWithPlex(), loginWithPlex()]);
+  for (const response of responses) {
+    expect(await userFromResponse(response)).toMatchObject({ id: user.id });
+  }
+  expect(await db.select().from(users).where(eq(users.plexAccountId, "999"))).toHaveLength(1);
+});
 
 test("an existing Plex user is refused after server access is removed", async () => {
   await plexUser();

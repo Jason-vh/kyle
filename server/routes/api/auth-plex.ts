@@ -9,12 +9,15 @@ import { checkPlexAccess } from "#server/plex/access.ts";
 import type { PlexAccount } from "#server/plex/types.ts";
 import { buildJwtCookie, isLocalhost, signJwt } from "#server/auth/jwt.ts";
 import { requireAuth } from "#server/auth/middleware.ts";
+import { getActiveUser } from "#server/auth/account.ts";
+import { withDatabaseLock } from "#server/db/lock.ts";
 import { createFlowCookie, readFlowCookie } from "#server/auth/flow-cookie.ts";
 import {
   createPlatformLink,
   createUserWithPlatformLink,
   deletePlatformLink,
   getPlatformIdentity,
+  getPreviousPlexUser,
   getUserById,
   resolveAppUserId,
 } from "#server/db/users.ts";
@@ -106,9 +109,12 @@ export async function handlePlexCallback(req: Request): Promise<Response> {
   if (result.status !== "ok") return redirect(`/login?error=plex_${result.status}`);
 
   const { intent, account } = result;
-  return intent.type === "login"
-    ? loginWithPlexAccount(req, account)
-    : linkPlexAccount(intent.userId, account);
+  return withDatabaseLock(`plex-account:${plexIdentityKey(account)}`, () => {
+    if (intent.type === "login") return loginWithPlexAccount(req, account);
+    return withDatabaseLock(`plex-user:${intent.userId}`, () =>
+      linkPlexAccount(intent.userId, account),
+    );
+  });
 }
 
 /**
@@ -118,10 +124,10 @@ export async function handlePlexCallback(req: Request): Promise<Response> {
 async function loginWithPlexAccount(req: Request, account: PlexAccount): Promise<Response> {
   const identityKey = plexIdentityKey(account);
   const userId = await resolveAppUserId(PLEX_PLATFORM, identityKey);
-  let user = userId ? await getUserById(userId) : undefined;
+  let user = userId ? await getUserById(userId) : await getPreviousPlexUser(identityKey);
 
   const access = await checkPlexAccess(identityKey);
-  if (!access.allowed || user?.isDisabled) {
+  if (!access.allowed || (user && !(await getActiveUser(user.id)))) {
     log.warn("plex login refused, no access to the server", {
       plexUsername: account.username,
     });
@@ -136,6 +142,14 @@ async function loginWithPlexAccount(req: Request, account: PlexAccount): Promise
       platformUserId: identityKey,
       platformUsername: account.username,
     });
+  } else if (!userId) {
+    const recoveredUserId = user.id;
+    const relinked = await withDatabaseLock(`plex-user:${recoveredUserId}`, async () => {
+      if (await getPlatformIdentity(recoveredUserId, PLEX_PLATFORM)) return false;
+      await createPlatformLink(recoveredUserId, PLEX_PLATFORM, identityKey, account.username);
+      return true;
+    });
+    if (!relinked) return redirect("/login?error=plex_exists");
   }
 
   const token = await signJwt({ id: user.id, name: user.displayName, admin: user.isAdmin });
@@ -146,6 +160,7 @@ async function loginWithPlexAccount(req: Request, account: PlexAccount): Promise
 
 /** Attaches this Plex account to the user who started the link flow. */
 async function linkPlexAccount(userId: string, account: PlexAccount): Promise<Response> {
+  if (!(await getActiveUser(userId))) return redirect("/login?error=plex_no_access");
   const linkedTo = await resolveAppUserId(PLEX_PLATFORM, plexIdentityKey(account));
   if (linkedTo === userId) return redirect("/account");
   if (linkedTo) {

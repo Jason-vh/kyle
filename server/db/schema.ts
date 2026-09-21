@@ -49,6 +49,13 @@ export const users = pgTable("users", {
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
+export const plexAccountOwners = pgTable("plex_account_owners", {
+  plexAccountId: text("plex_account_id").primaryKey(),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+});
+
 export const authSessions = pgTable(
   "auth_sessions",
   {

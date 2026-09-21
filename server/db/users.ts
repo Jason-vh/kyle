@@ -1,16 +1,9 @@
 import { eq, and, sql } from "drizzle-orm";
 import { createLogger } from "#server/logger.ts";
 import { db, query } from "./index.ts";
-import { users, platformIdentities, userCredentials } from "./schema.ts";
+import { users, platformIdentities, plexAccountOwners, userCredentials } from "./schema.ts";
 
 const log = createLogger("db-users");
-
-// In-memory cache: "platform:platformUserId" → app user UUID
-const platformCache = new Map<string, string>();
-
-function cacheKey(platform: string, platformUserId: string): string {
-  return `${platform}:${platformUserId}`;
-}
 
 /**
  * Resolve a platform identity to an app user UUID.
@@ -20,10 +13,6 @@ export async function resolveAppUserId(
   platform: string,
   platformUserId: string,
 ): Promise<string | null> {
-  const key = cacheKey(platform, platformUserId);
-  const cached = platformCache.get(key);
-  if (cached !== undefined) return cached;
-
   const row = await db.query.platformIdentities.findFirst({
     where: and(
       eq(platformIdentities.platform, platform),
@@ -31,26 +20,14 @@ export async function resolveAppUserId(
     ),
   });
 
-  if (row) {
-    platformCache.set(key, row.userId);
-    return row.userId;
-  }
-
-  return null;
+  return row?.userId ?? null;
 }
 
-/**
- * Invalidate the platform identity cache for a specific link.
- */
-export function invalidatePlatformCache(platform: string, platformUserId: string): void {
-  platformCache.delete(cacheKey(platform, platformUserId));
-}
-
-/**
- * Invalidate the entire platform identity cache.
- */
-export function invalidateAllPlatformCache(): void {
-  platformCache.clear();
+export async function getPreviousPlexUser(plexAccountId: string) {
+  const owner = await db.query.plexAccountOwners.findFirst({
+    where: eq(plexAccountOwners.plexAccountId, plexAccountId),
+  });
+  return owner ? getUserById(owner.userId) : undefined;
 }
 
 /**
@@ -186,15 +163,20 @@ export async function createPlatformLink(
   platformUserId: string,
   platformUsername?: string,
 ) {
-  const [link] = await db
-    .insert(platformIdentities)
-    .values({ userId, platform, platformUserId, platformUsername })
-    .returning();
+  const link = await db.transaction(async (tx) => {
+    const [created] = await tx
+      .insert(platformIdentities)
+      .values({ userId, platform, platformUserId, platformUsername })
+      .returning();
+    if (platform === "plex") {
+      await tx
+        .insert(plexAccountOwners)
+        .values({ plexAccountId: platformUserId, userId })
+        .onConflictDoUpdate({ target: plexAccountOwners.plexAccountId, set: { userId } });
+    }
+    return created!;
+  });
 
-  // Cache the new link
-  platformCache.set(cacheKey(platform, platformUserId), userId);
-
-  // Run backfill
   const counts = await backfillUserFromPlatformLink(userId, platform, platformUserId);
 
   return { link: link!, counts };
@@ -228,10 +210,17 @@ export async function createUserWithPlatformLink(input: {
       platformUsername: input.platformUsername,
     });
 
+    if (input.platform === "plex") {
+      await tx
+        .insert(plexAccountOwners)
+        .values({ plexAccountId: input.platformUserId, userId: created!.id })
+        .onConflictDoUpdate({
+          target: plexAccountOwners.plexAccountId,
+          set: { userId: created!.id },
+        });
+    }
     return created!;
   });
-
-  platformCache.set(cacheKey(input.platform, input.platformUserId), user.id);
 
   log.info("user created from platform identity", {
     userId: user.id,
@@ -250,10 +239,6 @@ export async function deletePlatformLink(linkId: string) {
     .delete(platformIdentities)
     .where(eq(platformIdentities.id, linkId))
     .returning();
-
-  if (link) {
-    invalidatePlatformCache(link.platform, link.platformUserId);
-  }
 
   return link;
 }

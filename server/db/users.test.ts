@@ -1,8 +1,8 @@
 import { afterEach, expect, test } from "bun:test";
 import { eq, inArray } from "drizzle-orm";
 import { db } from "./index.ts";
-import { conversations, messages, users } from "./schema.ts";
-import { backfillUserFromPlatformLink } from "./users.ts";
+import { conversations, messages, platformIdentities, users } from "./schema.ts";
+import { backfillUserFromPlatformLink, createPlatformLink, resolveAppUserId } from "./users.ts";
 import { createTestUser, deleteTestUser } from "./testing.ts";
 
 const userIds: string[] = [];
@@ -14,6 +14,27 @@ afterEach(async () => {
   }
   for (const id of userIds.splice(0)) await deleteTestUser(id);
 });
+
+test.each(["slack", "discord", "plex"])(
+  "%s identity resolution sees links changed by another process",
+  async (platform) => {
+    const firstId = await createTestUser();
+    const secondId = await createTestUser();
+    userIds.push(firstId, secondId);
+    const platformUserId = crypto.randomUUID();
+    const { link } = await createPlatformLink(firstId, platform, platformUserId);
+    expect(await resolveAppUserId(platform, platformUserId)).toBe(firstId);
+
+    await db
+      .update(platformIdentities)
+      .set({ userId: secondId })
+      .where(eq(platformIdentities.id, link.id));
+    expect(await resolveAppUserId(platform, platformUserId)).toBe(secondId);
+
+    await db.delete(platformIdentities).where(eq(platformIdentities.id, link.id));
+    expect(await resolveAppUserId(platform, platformUserId)).toBeNull();
+  },
+);
 
 test("backfills conversations and messages only on the linked platform", async () => {
   const userId = await createTestUser();

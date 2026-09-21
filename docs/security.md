@@ -14,6 +14,13 @@ administrator access. Missing `CHAT_API_KEY` or `WEBHOOK_AUTH` disables that end
 - Sessions live in `auth_sessions`. Logout revokes the current session; `revokeUserSessions`
   revokes all sessions for an account. A revoked session cannot refresh itself.
 - Permissions and disabled status come from the current user row, not JWT claims.
+- Platform identity resolution reads PostgreSQL on every call, so unlinking or reassignment
+  takes effect across replicas without cache invalidation.
+- Plex sign-in reconnects the last linked Kyle account after unlinking, preserving its data.
+  `plex_account_owners` retains that association; disabled accounts and lost Plex access are
+  still refused. Recovery will not replace a different Plex account already linked to the user.
+  The migration backfills current links and the latest Plex-created account for each Plex ID.
+  Previously deleted links to accounts created outside Plex cannot be reconstructed.
 - Accounts onboarded through Plex retain their original Plex access requirement even if
   they unlink Plex or add a passkey. Existing linked accounts are migrated to this policy.
 - Plex access checks cache for five minutes. Removing a member through Kyle invalidates
