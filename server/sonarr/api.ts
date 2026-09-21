@@ -229,7 +229,7 @@ export async function getSeriesHistory(
 /** Everything Sonarr did with one download: what it grabbed, and what it imported. */
 export async function getDownloadHistory(downloadId: string): Promise<SonarrHistoryItem[]> {
   const params = new URLSearchParams({
-    downloadId,
+    downloadId: downloadId.toUpperCase(),
     includeSeries: "true",
     includeEpisode: "true",
     pageSize: "200",
