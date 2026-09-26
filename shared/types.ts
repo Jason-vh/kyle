@@ -80,6 +80,10 @@ export interface MediaDetail {
   library?: LibraryState;
   /** Only for a series in the library, newest concern first: specials last. */
   seasons?: SeasonSummary[];
+  /** A series in the library: whether seasons announced later are grabbed too. */
+  following?: boolean;
+  /** A series in the library: something new is still coming. */
+  continuing?: boolean;
   /** 0–1, while downloading. */
   progress?: number;
   /** What the download client thinks is left, e.g. "00:12:31". */

@@ -7,7 +7,8 @@
     <SwitchRoot
       :id="id"
       :model-value="modelValue"
-      class="relative h-7 w-12 shrink-0 rounded-full bg-border-secondary transition-colors focus-visible:ring-2 focus-visible:ring-accent-purple/40 focus-visible:outline-none data-[state=checked]:bg-accent-purple"
+      :disabled="disabled"
+      class="relative h-7 w-12 shrink-0 rounded-full bg-border-secondary transition-colors focus-visible:ring-2 focus-visible:ring-accent-purple/40 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:bg-accent-purple"
       @update:model-value="emit('update:modelValue', $event)"
     >
       <SwitchThumb
@@ -21,7 +22,7 @@
 import { useId } from "vue";
 import { Label, SwitchRoot, SwitchThumb } from "reka-ui";
 
-defineProps<{ modelValue: boolean; label: string; description?: string }>();
+defineProps<{ modelValue: boolean; label: string; description?: string; disabled?: boolean }>();
 
 const emit = defineEmits<{ "update:modelValue": [boolean] }>();
 

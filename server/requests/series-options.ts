@@ -4,7 +4,8 @@ import type { TMDBTVSeason } from "#server/tmdb/types.ts";
 import * as sonarr from "#server/sonarr/api.ts";
 import * as tmdb from "#server/tmdb/api.ts";
 import { yearOf } from "#server/tmdb/utils.ts";
-import { isContinuing, MediaNotFoundError } from "./service.ts";
+import { isContinuing } from "#server/sonarr/utils.ts";
+import { MediaNotFoundError } from "./service.ts";
 import { createLogger } from "#server/logger.ts";
 import { errorMessage } from "#server/errors.ts";
 

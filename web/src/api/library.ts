@@ -36,3 +36,16 @@ export async function releaseSeason(season: ReleasableSeason): Promise<void> {
     method: "DELETE",
   });
 }
+
+/** Keep up with a series already held: seasons announced later are grabbed too. */
+export interface FollowChange {
+  serviceId: number;
+  follow: boolean;
+}
+
+export async function followSeries(change: FollowChange): Promise<void> {
+  await apiFetch(`/api/library/series/${change.serviceId}/follow`, {
+    method: "PUT",
+    body: JSON.stringify({ follow: change.follow }),
+  });
+}

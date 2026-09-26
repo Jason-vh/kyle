@@ -1,9 +1,10 @@
 import { afterAll, afterEach, beforeAll, describe, expect, test } from "bun:test";
-import { handleGetLibrary, handleRemoveLibraryItem } from "./library.ts";
+import { handleFollowSeries, handleGetLibrary, handleRemoveLibraryItem } from "./library.ts";
 import { buildJwtCookie, signJwt } from "#server/auth/jwt.ts";
 import { createTestUser, deleteTestUser } from "#server/db/testing.ts";
 import { db } from "#server/db/index.ts";
 import { mediaRequests } from "#server/db/schema.ts";
+import { eq } from "drizzle-orm";
 import { invalidateStats } from "#server/ultra/api.ts";
 
 // No mocks: the route runs the real service, with Radarr and Sonarr stubbed at
@@ -253,5 +254,70 @@ describe("DELETE /api/library/:type/:id", () => {
 
     expect((await remove(asAdmin, "movie", "twelve")).status).toBe(400);
     expect(calls).toEqual([]);
+  });
+});
+
+describe("PUT /api/library/series/:id/follow", () => {
+  const SEVERANCE = {
+    id: 9,
+    title: "Severance",
+    year: 2022,
+    tvdbId: 371980,
+    tmdbId: 95396,
+    monitored: true,
+    monitorNewItems: "all",
+    seasons: [],
+  };
+
+  function follow(body: unknown, cookie?: string): Request {
+    return new Request("http://localhost/api/library/series/9/follow", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", ...(cookie ? { Cookie: cookie } : {}) },
+      body: JSON.stringify(body),
+    });
+  }
+
+  afterEach(async () => {
+    await db.delete(mediaRequests).where(eq(mediaRequests.userId, userId));
+  });
+
+  test("a signed-out visitor is refused", async () => {
+    stubServices({ "/series/9": SEVERANCE });
+
+    expect((await handleFollowSeries(follow({ follow: true }), "9")).status).toBe(401);
+  });
+
+  test("refuses a follow that is not a boolean", async () => {
+    expect((await handleFollowSeries(follow({ follow: "yes" }, asUser), "9")).status).toBe(400);
+  });
+
+  // Following is asking for more, which anyone may do.
+  test("anyone may start following, and is recorded as having asked", async () => {
+    const calls = stubServices({ "/series/9": { ...SEVERANCE, monitorNewItems: "none" } });
+
+    const res = await handleFollowSeries(follow({ follow: true }, asUser), "9");
+
+    expect(res.status).toBe(200);
+    expect(calls.some((call) => call.method === "PUT")).toBe(true);
+    const rows = await db.select().from(mediaRequests).where(eq(mediaRequests.userId, userId));
+    expect(rows).toMatchObject([{ tmdbId: 95396, seasonNumber: null }]);
+  });
+
+  test("someone who did not ask for it cannot stop following it", async () => {
+    const calls = stubServices({ "/series/9": SEVERANCE });
+
+    const res = await handleFollowSeries(follow({ follow: false }, asUser), "9");
+
+    expect(res.status).toBe(403);
+    expect(calls.some((call) => call.method === "PUT")).toBe(false);
+  });
+
+  test("an admin may stop following", async () => {
+    const calls = stubServices({ "/series/9": SEVERANCE });
+
+    const res = await handleFollowSeries(follow({ follow: false }, asAdmin), "9");
+
+    expect(res.status).toBe(200);
+    expect(calls.some((call) => call.method === "PUT")).toBe(true);
   });
 });

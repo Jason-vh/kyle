@@ -2,6 +2,7 @@ import type { RadarrMovie } from "#server/radarr/types.ts";
 import type { SonarrEpisode, SonarrSeries } from "#server/sonarr/types.ts";
 import * as radarr from "#server/radarr/api.ts";
 import * as sonarr from "#server/sonarr/api.ts";
+import { isContinuing, isFollowing } from "#server/sonarr/utils.ts";
 import type { SeriesAddition } from "#server/sonarr/api.ts";
 import { deleteSeasonRequests, saveMediaRequest } from "#server/db/requests.ts";
 import { clearRemoval } from "#server/db/removals.ts";
@@ -196,11 +197,6 @@ export function regularSeasons(series: SonarrSeries): number[] {
     .filter((seasonNumber) => seasonNumber > 0);
 }
 
-/** Still airing, or yet to start: something new is coming, so there is something to follow. */
-export function isContinuing(series: SonarrSeries): boolean {
-  return series.status === "continuing" || series.status === "upcoming";
-}
-
 function assertSeasons(series: SonarrSeries, seasonNumbers: number[]): void {
   for (const seasonNumber of seasonNumbers) seasonOf(series, seasonNumber);
 }
@@ -275,11 +271,6 @@ async function wantSeasons(series: SonarrSeries, seasonNumbers: number[]): Promi
   }
   if (changed) invalidateLibraryIndex();
   return changed;
-}
-
-/** Sonarr grabs nothing for an unmonitored series, so following needs both. */
-export function isFollowing(series: SonarrSeries): boolean {
-  return series.monitored && series.monitorNewItems === "all";
 }
 
 /** Whether seasons announced later are monitored. Says whether anything changed. */

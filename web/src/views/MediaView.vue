@@ -106,6 +106,16 @@
 
         <template v-if="media.seasons?.length">
           <SectionHeading title="Seasons" class="mt-6" />
+          <AppCard v-if="followable" class="mb-2">
+            <AppSwitch
+              :model-value="following"
+              label="Follow new seasons"
+              :description="followHint"
+              :disabled="changingFollow || (following && !canUnfollow)"
+              @update:model-value="onFollow"
+            />
+            <p v-if="followError" class="mt-2 text-xs text-accent-red">{{ followError }}</p>
+          </AppCard>
           <SeasonList
             :seasons="media.seasons"
             :tmdb-id="media.tmdbId"
@@ -156,6 +166,7 @@ import AppButton from "#web/components/ui/AppButton.vue";
 import AppCard from "#web/components/ui/AppCard.vue";
 import AppNotice from "#web/components/ui/AppNotice.vue";
 import AppPage from "#web/components/ui/AppPage.vue";
+import AppSwitch from "#web/components/ui/AppSwitch.vue";
 import ConfirmDialog from "#web/components/ui/ConfirmDialog.vue";
 import MediaPoster from "#web/components/ui/MediaPoster.vue";
 import QueryState from "#web/components/ui/QueryState.vue";
@@ -163,7 +174,12 @@ import SectionHeading from "#web/components/ui/SectionHeading.vue";
 import Skeleton from "#web/components/ui/Skeleton.vue";
 import StatusPill from "#web/components/ui/StatusPill.vue";
 import type { Tone } from "#web/components/ui/types";
-import { useMediaActivity, useMediaDetail, useRemoveLibraryItem } from "#web/queries/media";
+import {
+  useFollowSeries,
+  useMediaActivity,
+  useMediaDetail,
+  useRemoveLibraryItem,
+} from "#web/queries/media";
 import { useSession } from "#web/queries/session";
 
 const route = useRoute();
@@ -232,6 +248,45 @@ async function onRemove() {
     actionError.value = e instanceof Error ? e.message : "Could not remove this";
   } finally {
     removing.value = false;
+  }
+}
+
+/** Worth offering while something new is coming, and while it is on, so it can be turned off. */
+const followable = computed(() => {
+  const item = media.value;
+  if (!item?.library || item.mediaType !== "series") return false;
+  return item.continuing === true || item.following === true;
+});
+
+const changingFollow = ref(false);
+const followError = ref("");
+const followOverride = ref<boolean | null>(null);
+const following = computed(() => followOverride.value ?? media.value?.following === true);
+
+/** Starting is asking for more, which anyone may do; stopping is for whoever asked. */
+const canUnfollow = computed(() => isAdmin.value || media.value?.requestedByMe === true);
+
+const followHint = computed(() => {
+  if (following.value && !canUnfollow.value) return "Only whoever asked for it can stop this.";
+  return "Grab new seasons as they're announced.";
+});
+
+const follow = useFollowSeries();
+
+async function onFollow(value: boolean) {
+  const library = media.value?.library;
+  if (!library) return;
+
+  followError.value = "";
+  followOverride.value = value;
+  changingFollow.value = true;
+  try {
+    await follow.mutateAsync({ serviceId: library.serviceId, follow: value });
+  } catch (e) {
+    followError.value = e instanceof Error ? e.message : "Could not change following";
+  } finally {
+    followOverride.value = null;
+    changingFollow.value = false;
   }
 }
 

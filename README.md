@@ -120,9 +120,11 @@ server/
       auth-plex.ts           → Plex sign-in, account linking, callback
       users.ts               → User listing, platform link management (admin)
       plex-members.ts        → Who the Plex server is shared with; invites and removals
-      requests.ts            → GET /api/discover, GET/POST /api/requests, retry
+      requests.ts            → GET /api/discover, GET/POST /api/requests, retry,
+                               GET /api/requests/series/:tmdbId/options
       library.ts             → GET /api/library, DELETE /api/library/:type/:id,
-                               DELETE /api/library/series/:id/seasons/:n
+                               DELETE /api/library/series/:id/seasons/:n,
+                               PUT /api/library/series/:id/follow
       media.ts               → GET /api/media/:type/:id, GET /api/media/:type/:id/activity
       dashboard.ts           → GET /api/dashboard
       notifications.ts       → GET /api/notifications, POST /api/notifications/read
@@ -130,6 +132,7 @@ server/
     service.ts               → requestMovie()/requestSeries()/requestSeason(): the one
                                write path, plus releaseSeason() as its inverse
     search.ts                → TMDB search annotated with library status + requesters
+    series-options.ts        → The seasons a series request can choose between
     library.ts               → Cached index of what Radarr and Sonarr already hold
     state.ts                 → Where a request has got to, derived from library + queues
     queue.ts                 → A queue record read as downloading/stalled/blocked/importing

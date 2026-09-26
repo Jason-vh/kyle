@@ -34,6 +34,7 @@ import {
   handleRetryRequest,
 } from "./routes/api/requests.ts";
 import {
+  handleFollowSeries,
   handleGetLibrary,
   handleReleaseSeason,
   handleRemoveLibraryItem,
@@ -142,6 +143,9 @@ export function startServer(port: number) {
           req.params.mediaType,
           req.params.serviceId,
         ),
+    },
+    "/api/library/series/:serviceId/follow": {
+      PUT: (req) => withSessionRefresh(handleFollowSeries)(req, req.params.serviceId),
     },
     "/api/library/series/:serviceId/seasons/:seasonNumber": {
       DELETE: (req) =>

@@ -5,8 +5,10 @@ import { toValue } from "vue";
 import type { LibraryMediaType } from "#shared/types";
 import { getDashboard } from "#web/api/dashboard";
 import {
+  followSeries,
   getLibrary,
   releaseSeason,
+  type FollowChange,
   removeLibraryItem,
   type ReleasableSeason,
   type RemovableItem,
@@ -169,6 +171,14 @@ export function useReleaseSeason() {
   const invalidate = useMediaInvalidation();
   return useMutation({
     mutation: (season: ReleasableSeason) => releaseSeason(season),
+    onSettled: invalidate,
+  });
+}
+
+export function useFollowSeries() {
+  const invalidate = useMediaInvalidation();
+  return useMutation({
+    mutation: (change: FollowChange) => followSeries(change),
     onSettled: invalidate,
   });
 }

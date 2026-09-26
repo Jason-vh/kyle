@@ -5,7 +5,6 @@ import { buildTable } from "#server/agent/table.ts";
 import {
   releaseSeason,
   requestSeason,
-  isFollowing,
   requestSeries,
   type Requester,
 } from "#server/requests/service.ts";
@@ -13,6 +12,7 @@ import { removeLibraryItem } from "#server/library/service.ts";
 import { episodeCode, episodeLabel, titleWithYear } from "#shared/media.ts";
 import * as sonarr from "./api.ts";
 import {
+  isFollowing,
   toPartialSeries,
   toSeriesLookupResult,
   toPartialEpisode,

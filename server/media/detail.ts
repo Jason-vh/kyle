@@ -1,6 +1,7 @@
 import type { LibraryMediaType, LibraryState, MediaDetail, SeasonSummary } from "#shared/types.ts";
 import * as radarr from "#server/radarr/api.ts";
 import * as sonarr from "#server/sonarr/api.ts";
+import { isContinuing, isFollowing } from "#server/sonarr/utils.ts";
 import * as tmdb from "#server/tmdb/api.ts";
 import { yearOf } from "#server/tmdb/utils.ts";
 import { movieState, seriesState } from "#server/library/item.ts";
@@ -70,6 +71,8 @@ async function describe(mediaType: LibraryMediaType, tmdbId: number): Promise<De
 interface Held {
   state: LibraryState;
   seasons?: SeasonSummary[];
+  following?: boolean;
+  continuing?: boolean;
 }
 
 /** Who asked for which season; a series-wide request belongs to no season. */
@@ -113,7 +116,12 @@ async function heldState(
   ]);
   const context: SeasonContext = { requestedBy: seasonRequesters, queues, plex };
 
-  return { state: seriesState(series), seasons: buildSeasons(series, episodes, context) };
+  return {
+    state: seriesState(series),
+    seasons: buildSeasons(series, episodes, context),
+    following: isFollowing(series),
+    continuing: isContinuing(series),
+  };
 }
 
 export function serviceName(mediaType: LibraryMediaType): string {
@@ -159,6 +167,8 @@ export async function getMediaDetail(
     ...description,
     library,
     seasons: held?.seasons && withEpisodeWatchers(held.seasons, key, watchers),
+    following: held?.following,
+    continuing: held?.continuing,
     progress: download?.progress,
     eta: download?.eta,
     plexUrl: places?.get(key),

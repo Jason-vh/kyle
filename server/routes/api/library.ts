@@ -1,8 +1,8 @@
 import { isLibraryMediaType } from "#shared/types.ts";
-import { isInteger } from "#server/http/input.ts";
+import { isInteger, readJsonObject } from "#server/http/input.ts";
 import { requireAdmin, requireAuth } from "#server/auth/middleware.ts";
 import { isRequester, listLibrary, removeLibraryItem } from "#server/library/service.ts";
-import { MediaNotFoundError, releaseSeason } from "#server/requests/service.ts";
+import { followSeries, MediaNotFoundError, releaseSeason } from "#server/requests/service.ts";
 import { createLogger } from "#server/logger.ts";
 import { errorMessage, errorResponse } from "#server/errors.ts";
 
@@ -100,5 +100,55 @@ export async function handleReleaseSeason(
       error: errorMessage(error),
     });
     return errorResponse(error, 502, "Could not release this season");
+  }
+}
+
+// ---------------------------------------------------------------------------
+// PUT /api/library/series/:serviceId/follow — keep up with a series, or stop
+// ---------------------------------------------------------------------------
+
+/**
+ * Following is asking for what comes next, which anyone may do; stopping
+ * takes it away from whoever asked, so only they or an admin may.
+ */
+export async function handleFollowSeries(req: Request, rawServiceId: string): Promise<Response> {
+  const auth = await requireAuth(req);
+  if ("error" in auth) return auth.error;
+
+  const serviceId = Number(rawServiceId);
+  if (!isInteger(serviceId, 1)) {
+    return Response.json({ error: "Invalid id" }, { status: 400 });
+  }
+
+  let body: Record<string, unknown>;
+  try {
+    body = await readJsonObject(req);
+  } catch {
+    return Response.json({ error: "Invalid JSON" }, { status: 400 });
+  }
+  const { follow } = body;
+  if (typeof follow !== "boolean") {
+    return Response.json({ error: "follow must be a boolean" }, { status: 400 });
+  }
+
+  try {
+    if (!follow && !auth.user.admin && !(await isRequester(auth.user.id, "series", serviceId))) {
+      return Response.json(
+        { error: "Only whoever asked for this, or an admin, can stop following it" },
+        { status: 403 },
+      );
+    }
+
+    const { changed } = await followSeries({
+      serviceId,
+      follow,
+      requestedBy: { userId: auth.user.id },
+    });
+
+    log.info("series following set", { by: auth.user.id, serviceId, follow, changed });
+    return Response.json({ following: follow });
+  } catch (error) {
+    log.error("could not set following", { serviceId, follow, error: errorMessage(error) });
+    return errorResponse(error, 502, "Could not change following");
   }
 }

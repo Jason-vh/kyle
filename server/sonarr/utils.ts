@@ -7,6 +7,16 @@ import type {
   SonarrSeries,
 } from "./types.ts";
 
+/** Still airing, or yet to start: something new is coming, so there is something to follow. */
+export function isContinuing(series: SonarrSeries): boolean {
+  return series.status === "continuing" || series.status === "upcoming";
+}
+
+/** Sonarr grabs nothing for an unmonitored series, so following needs both. */
+export function isFollowing(series: SonarrSeries): boolean {
+  return series.monitored && series.monitorNewItems === "all";
+}
+
 export function toPartialSeries(series: SonarrSeries) {
   return {
     id: series.id,
