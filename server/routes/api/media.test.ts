@@ -105,20 +105,13 @@ function stubServices(handlers: Record<string, unknown>): string[] {
 }
 
 let userId = "";
-let adminId = "";
 let cookie = "";
-let adminCookie = "";
 
 beforeAll(async () => {
   userId = await createTestUser("Media Route");
   cookie = buildJwtCookie(await signJwt({ id: userId, name: "Jane", admin: false }), true).split(
     ";",
   )[0]!;
-  adminId = await createTestUser("Media Admin", true);
-  adminCookie = buildJwtCookie(
-    await signJwt({ id: adminId, name: "Ada", admin: true }),
-    true,
-  ).split(";")[0]!;
 });
 
 afterEach(() => {
@@ -127,7 +120,6 @@ afterEach(() => {
 
 afterAll(async () => {
   await deleteTestUser(userId);
-  await deleteTestUser(adminId);
 });
 
 function get(mediaType: string, tmdbId: string, auth = cookie): Promise<Response> {
@@ -378,16 +370,5 @@ describe("where a title stands", () => {
     const body = (await (await get("movie", "27205")).json()) as MediaDetail;
 
     expect(body.releases).toEqual({ cinema: "2010-07-16", digital: "2010-12-07" });
-  });
-
-  test("links an admin to the title in Radarr, and nobody else", async () => {
-    stubServices(movieHeld({ titleSlug: "inception-27205" }));
-    const member = (await (await get("movie", "27205")).json()) as MediaDetail;
-
-    stubServices(movieHeld({ titleSlug: "inception-27205" }));
-    const admin = (await (await get("movie", "27205", adminCookie)).json()) as MediaDetail;
-
-    expect(member.serviceUrl).toBeUndefined();
-    expect(admin.serviceUrl).toBe("http://radarr.test/movie/inception-27205");
   });
 });

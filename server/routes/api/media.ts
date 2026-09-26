@@ -41,7 +41,7 @@ export async function handleGetMediaDetail(
   if ("error" in target) return target.error;
 
   try {
-    const detail = await getMediaDetail(target.mediaType, target.tmdbId, auth.user);
+    const detail = await getMediaDetail(target.mediaType, target.tmdbId, auth.user.id);
     return Response.json(detail);
   } catch (error) {
     // A title TMDB has never heard of is a wrong link, not a broken service.

@@ -30,18 +30,6 @@
       <RequestAction v-if="requestable" :item="media" block class="flex-1" />
 
       <AppButton
-        v-if="media.plexUrl && state === 'ready'"
-        variant="primary"
-        class="flex-1"
-        as-child
-      >
-        <a :href="media.plexUrl" target="_blank" rel="noopener">
-          <IconPlay class="size-4" aria-hidden="true" />
-          Play on Plex
-        </a>
-      </AppButton>
-
-      <AppButton
         v-if="action"
         :variant="action.variant"
         :loading="busy"
@@ -69,7 +57,6 @@ import ReleaseTimeline from "./ReleaseTimeline.vue";
 import RequestAction from "./RequestAction.vue";
 import AppButton from "./ui/AppButton.vue";
 import AppCard from "./ui/AppCard.vue";
-import IconPlay from "~icons/ph/play-fill";
 
 const props = defineProps<{ media: MediaDetail }>();
 
@@ -226,9 +213,7 @@ const action = computed<Action | undefined>(() => {
   }
 });
 
-const hasActions = computed(
-  () => requestable.value || !!action.value || (state.value === "ready" && !!props.media.plexUrl),
-);
+const hasActions = computed(() => requestable.value || !!action.value);
 
 const busy = ref(false);
 const done = ref(false);

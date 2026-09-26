@@ -82,8 +82,6 @@ export interface MediaDetail {
   library?: LibraryState;
   /** A movie on disk: its resolution, e.g. "4K" or "1080p". */
   quality?: string;
-  /** Admins only: the title's own page in Radarr or Sonarr. */
-  serviceUrl?: string;
   /** Only for a series in the library, newest concern first: specials last. */
   seasons?: SeasonSummary[];
   /** A series in the library: whether seasons announced later are grabbed too. */

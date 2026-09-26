@@ -25,7 +25,6 @@ import {
 import type { QueueStatus } from "#server/requests/queue.ts";
 import { getRequestersForMedia } from "#server/db/requests.ts";
 import { getRemoval } from "#server/db/removals.ts";
-import { mediaHref } from "#server/media-links.ts";
 import { getWatchers, watchKey } from "#server/plex/history.ts";
 import { getPlexPlaces } from "#server/plex/catalog.ts";
 import { createLogger } from "#server/logger.ts";
@@ -102,7 +101,6 @@ interface Held {
   following?: boolean;
   continuing?: boolean;
   quality?: string;
-  titleSlug: string;
 }
 
 function heldMovie(movie: RadarrMovie): Held {
@@ -110,7 +108,6 @@ function heldMovie(movie: RadarrMovie): Held {
     state: movieState(movie),
     entry: movieEntry(movie),
     quality: resolutionLabel(movie.movieFile?.quality.quality.resolution),
-    titleSlug: movie.titleSlug,
   };
 }
 
@@ -158,7 +155,6 @@ async function heldState(
   return {
     state: seriesState(series),
     entry: seriesEntry(series),
-    titleSlug: series.titleSlug,
     seasons: buildSeasons(series, episodes, context),
     following: isFollowing(series),
     continuing: isContinuing(series),
@@ -196,11 +192,6 @@ async function statusOf(
   return { state, detail, since, expectedAt, missing };
 }
 
-export interface Viewer {
-  id: string;
-  admin: boolean;
-}
-
 /**
  * One title in full. TMDB is the page, so a failure there fails the request;
  * everything else is an annotation, and its service being down costs only that
@@ -209,7 +200,7 @@ export interface Viewer {
 export async function getMediaDetail(
   mediaType: LibraryMediaType,
   tmdbId: number,
-  viewer: Viewer,
+  viewerId: string,
 ): Promise<MediaDetail> {
   const [requesters, places] = await Promise.all([
     getRequestersForMedia(mediaType, tmdbId),
@@ -234,8 +225,6 @@ export async function getMediaDetail(
   const download = library ? await queueStatusFor(mediaType, library.serviceId) : undefined;
   const status = await statusOf(mediaType, tmdbId, held, download, plex);
   const key = watchKey(mediaType, tmdbId);
-  const serviceUrl =
-    viewer.admin && held ? mediaHref(mediaType, { titleSlug: held.titleSlug }) : null;
 
   return {
     mediaType,
@@ -244,7 +233,6 @@ export async function getMediaDetail(
     status,
     library,
     quality: held?.quality,
-    serviceUrl: serviceUrl ?? undefined,
     seasons: held?.seasons && withEpisodeWatchers(held.seasons, key, watchers),
     following: held?.following,
     continuing: held?.continuing,
@@ -252,7 +240,7 @@ export async function getMediaDetail(
     eta: download?.eta,
     plexUrl: places?.get(key),
     requestedBy: [...new Set(requesters.map((requester) => requester.name))],
-    requestedByMe: requesters.some((requester) => requester.userId === viewer.id),
+    requestedByMe: requesters.some((requester) => requester.userId === viewerId),
     watchedBy: watchers.get(key) ?? [],
     unavailable: held === null ? [serviceName(mediaType)] : [],
   };

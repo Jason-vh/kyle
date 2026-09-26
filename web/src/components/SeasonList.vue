@@ -111,7 +111,6 @@
     <MediaMenu
       :open="menuFor !== null"
       :title="menuFor ? seasonName(menuFor.seasonNumber) : ''"
-      service-name="Sonarr"
       :search="menuSearch"
       :removal="menuFor ? removal(menuFor) : undefined"
       @update:open="menuFor = null"

@@ -115,8 +115,6 @@
         <MediaMenu
           v-model:open="menuOpen"
           :title="media.title"
-          :service-name="serviceName"
-          :service-url="media.serviceUrl"
           :search="search"
           :removal="removal"
           @remove="confirming = true"
@@ -188,8 +186,6 @@ useTitle(() => (media.value ? `${media.value.title} — Kyle` : "Kyle"));
 const poster = computed(() => posterUrl(media.value?.posterPath ?? null));
 const backdrop = computed(() => backdropUrl(media.value?.backdropPath ?? null));
 
-const serviceName = computed(() => (mediaType.value === "movie" ? "Radarr" : "Sonarr"));
-
 /** The one-line summary under the title, skipping whatever TMDB does not know. */
 const facts = computed(() => {
   const item = media.value;
@@ -226,7 +222,7 @@ const removal = computed(() => {
   return { label: "Remove", hint: size > 0 ? `Frees ${formatSize(size)}` : undefined };
 });
 
-const hasMenu = computed(() => !!search.value || !!media.value?.serviceUrl || !!removal.value);
+const hasMenu = computed(() => !!search.value || !!removal.value);
 
 const confirmText = computed(() => {
   const item = media.value;
