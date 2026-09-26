@@ -98,9 +98,16 @@
                   </template>
                   <template v-if="status">
                     ·
-                    <span class="font-semibold" :class="TONE_TEXT[status.tone]">{{
-                      status.label
-                    }}</span>
+                    <span class="font-semibold" :class="TONE_TEXT[status.tone]">
+                      <template v-if="status.downloading">
+                        <IconDownload
+                          class="mr-0.5 inline size-3.5 align-[-2px]"
+                          aria-hidden="true"
+                        />
+                        <span class="sr-only">Downloading</span>
+                      </template>
+                      {{ status.label }}
+                    </span>
                   </template>
                   <template v-if="!item.monitored"> · unmonitored</template>
                 </p>
@@ -192,6 +199,7 @@ import QueryState from "#web/components/ui/QueryState.vue";
 import SwipeActions from "#web/components/ui/SwipeActions.vue";
 import type { Tone } from "#web/components/ui/types";
 import { useLibrary, useRemoveLibraryItem } from "#web/queries/media";
+import IconDownload from "~icons/ph/download-simple-bold";
 import IconSliders from "~icons/ph/sliders-horizontal";
 import IconTrash from "~icons/ph/trash";
 import IconX from "~icons/ph/x";

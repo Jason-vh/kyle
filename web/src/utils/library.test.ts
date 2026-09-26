@@ -178,6 +178,7 @@ describe("downloadStatus", () => {
     expect(downloadStatus(item({ availability: "missing" }))).toEqual({
       label: "Not downloaded",
       tone: "red",
+      downloading: false,
     });
   });
 
@@ -186,11 +187,19 @@ describe("downloadStatus", () => {
       availability: "missing",
       download: { state: "downloading", progress: 0.424 },
     });
-    expect(downloadStatus(downloading)?.label).toBe("Downloading 42%");
+    expect(downloadStatus(downloading)).toEqual({
+      label: "42%",
+      tone: "amber",
+      downloading: true,
+    });
   });
 
   test("names a download that needs a hand", () => {
     const stuck = item({ availability: "partial", download: { state: "blocked" } });
-    expect(downloadStatus(stuck)).toEqual({ label: "Can't import", tone: "red" });
+    expect(downloadStatus(stuck)).toEqual({
+      label: "Can't import",
+      tone: "red",
+      downloading: false,
+    });
   });
 });

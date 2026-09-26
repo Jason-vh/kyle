@@ -142,13 +142,19 @@ export function watchedLabel(watchers: Watcher[]): string {
   return `Watched by ${watchers.length} people`;
 }
 
-export function downloadStatus(item: LibraryItem): StateBadge | undefined {
-  if (item.download) {
-    const badge = REQUEST_STATES[item.download.state];
+export interface LibraryStatus extends StateBadge {
+  downloading: boolean;
+}
+
+export function downloadStatus(item: LibraryItem): LibraryStatus | undefined {
+  if (item.download?.state === "downloading") {
     const { progress } = item.download;
-    if (item.download.state !== "downloading" || progress === undefined) return badge;
-    return { ...badge, label: `${badge.label} ${Math.round(progress * 100)}%` };
+    const label = progress === undefined ? "" : `${Math.round(progress * 100)}%`;
+    return { label, tone: REQUEST_STATES.downloading.tone, downloading: true };
   }
-  if (item.availability === "missing") return { label: "Not downloaded", tone: "red" };
+  if (item.download) return { ...REQUEST_STATES[item.download.state], downloading: false };
+  if (item.availability === "missing") {
+    return { label: "Not downloaded", tone: "red", downloading: false };
+  }
   return undefined;
 }
