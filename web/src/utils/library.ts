@@ -127,7 +127,7 @@ export function changedFilters(view: LibraryView): LibraryFilterKey[] {
 }
 
 export function librarySummary(item: LibraryItem): string {
-  const parts = [item.mediaType === "movie" ? "Movie" : "Series"];
+  const parts: string[] = [];
   if (item.sizeOnDisk > 0) parts.push(formatSize(item.sizeOnDisk));
   if (item.availability === "available" && item.episodes) {
     parts.push(`${item.episodes.total} ${item.episodes.total === 1 ? "episode" : "episodes"}`);

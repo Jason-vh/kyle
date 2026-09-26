@@ -128,8 +128,8 @@ describe("the view in the URL", () => {
 describe("librarySummary", () => {
   const GB = 1000 ** 3;
 
-  test("gives the type and the size on disk", () => {
-    expect(librarySummary(item({ sizeOnDisk: 19 * GB }))).toBe("Movie · 19 GB");
+  test("gives the size on disk", () => {
+    expect(librarySummary(item({ sizeOnDisk: 19 * GB }))).toBe("19 GB");
   });
 
   test("counts the episodes of a complete series", () => {
@@ -138,7 +138,7 @@ describe("librarySummary", () => {
       sizeOnDisk: 321 * GB,
       episodes: { present: 103, total: 103 },
     });
-    expect(librarySummary(series)).toBe("Series · 321 GB · 103 episodes");
+    expect(librarySummary(series)).toBe("321 GB · 103 episodes");
   });
 
   test("leaves the count of an incomplete series to be shown on its own", () => {
@@ -147,7 +147,7 @@ describe("librarySummary", () => {
       availability: "partial",
       episodes: { present: 34, total: 93 },
     });
-    expect(librarySummary(series)).toBe("Series");
+    expect(librarySummary(series)).toBe("");
   });
 });
 

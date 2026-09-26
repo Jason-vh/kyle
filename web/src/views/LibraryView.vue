@@ -61,7 +61,7 @@
 
       <div class="stagger flex flex-col gap-2">
         <SwipeActions
-          v-for="{ item, statuses } in rows"
+          v-for="{ item, summary, statuses } in rows"
           :key="key(item)"
           :open="swiped === key(item)"
           :disabled="!isAdmin && !item.requestedByMe"
@@ -69,7 +69,19 @@
         >
           <AppCard :interactive="!!item.tmdbId" class="relative">
             <div class="flex gap-3">
-              <MediaPoster :src="item.posterUrl" :alt="item.title" />
+              <div class="relative shrink-0 self-start">
+                <MediaPoster :src="item.posterUrl" :alt="item.title" />
+                <span
+                  class="absolute -top-1.5 -left-1.5 flex size-6 items-center justify-center rounded-full border border-border-primary bg-bg-surface text-text-secondary shadow-card"
+                >
+                  <component
+                    :is="item.mediaType === 'movie' ? IconFilmSlate : IconTelevision"
+                    class="size-3.5"
+                    aria-hidden="true"
+                  />
+                  <span class="sr-only">{{ item.mediaType === "movie" ? "Movie" : "Series" }}</span>
+                </span>
+              </div>
 
               <div class="flex min-w-0 flex-1 flex-col justify-between">
                 <MediaTitle
@@ -80,9 +92,9 @@
                   wrap
                 />
                 <p class="text-xs text-text-muted">
-                  {{ librarySummary(item) }}
+                  {{ summary }}
                   <template v-if="item.watchedBy.length">
-                    ·
+                    <template v-if="summary"> · </template>
                     <span class="whitespace-nowrap">
                       <IconUserCheck class="inline size-3.5 align-[-2px]" aria-hidden="true" />
                       <span class="sr-only">{{ watchedLabel(item.watchedBy.length) }}</span>
@@ -185,6 +197,8 @@ import SwipeActions from "#web/components/ui/SwipeActions.vue";
 import type { Tone } from "#web/components/ui/types";
 import { useLibrary, useRemoveLibraryItem } from "#web/queries/media";
 import IconDownload from "~icons/ph/download-simple-bold";
+import IconFilmSlate from "~icons/ph/film-slate";
+import IconTelevision from "~icons/ph/television-simple";
 import IconSliders from "~icons/ph/sliders-horizontal";
 import IconTrash from "~icons/ph/trash";
 import IconUserCheck from "~icons/ph/user-check";
@@ -234,7 +248,13 @@ const confirmText = computed(() => {
 const key = (item: LibraryItem) => `${item.mediaType}-${item.serviceId}`;
 
 const shown = computed(() => applyLibraryView(items.value, view.value));
-const rows = computed(() => shown.value.map((item) => ({ item, statuses: libraryStatuses(item) })));
+const rows = computed(() =>
+  shown.value.map((item) => ({
+    item,
+    summary: librarySummary(item),
+    statuses: libraryStatuses(item),
+  })),
+);
 const changed = computed(() => changedFilters(view.value));
 const totalSize = computed(() => shown.value.reduce((sum, item) => sum + item.sizeOnDisk, 0));
 
