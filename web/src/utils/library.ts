@@ -1,7 +1,6 @@
 import type { LocationQuery } from "vue-router";
-import type { Watcher } from "#shared/types";
 import type { LibraryItem } from "#web/api/library";
-import { formatNames, formatSize } from "./format";
+import { formatSize } from "./format";
 import { REQUEST_STATES, type StateBadge } from "./states";
 
 export type LibrarySort = "title" | "size";
@@ -136,10 +135,8 @@ export function librarySummary(item: LibraryItem): string {
   return parts.join(" · ");
 }
 
-export function watchedLabel(watchers: Watcher[]): string {
-  if (watchers.length === 0) return "Not watched yet";
-  if (watchers.length <= 2) return `Watched by ${formatNames(watchers.map((w) => w.name))}`;
-  return `Watched by ${watchers.length} people`;
+export function watchedLabel(count: number): string {
+  return `Watched by ${count} ${count === 1 ? "person" : "people"}`;
 }
 
 export interface LibraryStatus extends StateBadge {

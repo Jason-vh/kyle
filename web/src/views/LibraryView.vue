@@ -112,7 +112,7 @@
                   <template v-if="!item.monitored"> · unmonitored</template>
                 </p>
                 <p v-if="item.watchedBy.length" class="mt-1 text-xs text-text-muted">
-                  {{ watchedLabel(item.watchedBy) }}
+                  {{ watchedLabel(item.watchedBy.length) }}
                 </p>
                 <p v-if="failures[key(item)]" class="mt-1 text-xs text-accent-red">
                   {{ failures[key(item)] }}

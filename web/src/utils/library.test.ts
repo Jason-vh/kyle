@@ -152,20 +152,9 @@ describe("librarySummary", () => {
 });
 
 describe("watchedLabel", () => {
-  const sue = { name: "Sue" };
-  const bob = { name: "Bob" };
-
-  test("says so when nobody has watched", () => {
-    expect(watchedLabel([])).toBe("Not watched yet");
-  });
-
-  test("names one or two people", () => {
-    expect(watchedLabel([sue])).toBe("Watched by Sue");
-    expect(watchedLabel([sue, bob])).toBe("Watched by Sue and Bob");
-  });
-
-  test("counts any more than that", () => {
-    expect(watchedLabel([sue, bob, { name: "Ann" }])).toBe("Watched by 3 people");
+  test("counts people rather than naming them", () => {
+    expect(watchedLabel(1)).toBe("Watched by 1 person");
+    expect(watchedLabel(5)).toBe("Watched by 5 people");
   });
 });
 
