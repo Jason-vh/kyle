@@ -67,22 +67,20 @@
           :disabled="!isAdmin && !item.requestedByMe"
           @update:open="swiped = $event ? key(item) : ''"
         >
-          <AppCard :interactive="!!item.tmdbId" class="relative">
-            <div class="flex gap-3">
-              <div class="relative shrink-0 self-start">
-                <MediaPoster :src="item.posterUrl" :alt="item.title" />
-                <span
-                  class="absolute -top-1.5 -left-1.5 flex size-6 items-center justify-center rounded-full border border-border-primary bg-bg-surface text-text-secondary shadow-card"
-                >
-                  <component
-                    :is="item.mediaType === 'movie' ? IconFilmSlate : IconTelevision"
-                    class="size-3.5"
-                    aria-hidden="true"
-                  />
-                  <span class="sr-only">{{ item.mediaType === "movie" ? "Movie" : "Series" }}</span>
-                </span>
-              </div>
+          <AppCard :interactive="!!item.tmdbId" class="relative overflow-hidden">
+            <LibraryPoster :src="item.posterUrl" />
+            <span
+              class="absolute top-2 left-2 flex size-6 items-center justify-center rounded-full border border-border-primary bg-bg-surface/90 text-text-secondary shadow-card backdrop-blur-sm"
+            >
+              <component
+                :is="item.mediaType === 'movie' ? IconFilmSlate : IconTelevision"
+                class="size-3.5"
+                aria-hidden="true"
+              />
+              <span class="sr-only">{{ item.mediaType === "movie" ? "Movie" : "Series" }}</span>
+            </span>
 
+            <div class="relative flex min-h-18 gap-3 pl-16">
               <div class="flex min-w-0 flex-1 flex-col justify-between">
                 <MediaTitle
                   :media-type="item.mediaType"
@@ -181,6 +179,7 @@ import {
   watchedLabel,
 } from "#web/utils/library";
 import LibraryFilterSheet from "#web/components/LibraryFilterSheet.vue";
+import LibraryPoster from "#web/components/LibraryPoster.vue";
 import MediaRowSkeleton from "#web/components/MediaRowSkeleton.vue";
 import MediaTitle from "#web/components/MediaTitle.vue";
 import WatcherAvatars from "#web/components/WatcherAvatars.vue";
@@ -190,7 +189,6 @@ import AppInput from "#web/components/ui/AppInput.vue";
 import AppNotice from "#web/components/ui/AppNotice.vue";
 import AppPage from "#web/components/ui/AppPage.vue";
 import ConfirmDialog from "#web/components/ui/ConfirmDialog.vue";
-import MediaPoster from "#web/components/ui/MediaPoster.vue";
 import PageHeader from "#web/components/ui/PageHeader.vue";
 import QueryState from "#web/components/ui/QueryState.vue";
 import SwipeActions from "#web/components/ui/SwipeActions.vue";
