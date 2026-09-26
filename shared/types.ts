@@ -29,6 +29,7 @@ export interface LibraryState {
   availability: LibraryAvailability;
   /** Episode progress for a series, e.g. "12/90 episodes". */
   detail?: string;
+  episodes?: { present: number; total: number };
 }
 
 export interface LibraryItem extends LibraryState {
@@ -37,16 +38,19 @@ export interface LibraryItem extends LibraryState {
   title: string;
   year?: number;
   posterUrl?: string;
-  /** Names of anyone who requested it through Kyle; empty for older media. */
-  requestedBy: string[];
+  /** Anyone who requested it through Kyle; empty for older media. */
+  requestedBy: Person[];
   requestedByMe: boolean;
   /** Anyone who has played it on the Plex server. */
   watchedBy: Watcher[];
 }
 
-export interface Watcher {
+export interface Person {
   name: string;
   thumb?: string;
+}
+
+export interface Watcher extends Person {
   /** ISO 8601 of their most recent play; absent when Plex did not say. */
   watchedAt?: string;
 }
@@ -239,7 +243,7 @@ export interface ActivityItem {
   detail?: string;
   posterUrl?: string;
   at: string;
-  requestedBy: string[];
+  requestedBy: Person[];
   requestedByMe: boolean;
 }
 

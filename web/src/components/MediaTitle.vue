@@ -17,6 +17,7 @@
       {{ title }}
     </RouterLink>
     <template v-else>{{ title }}</template>
+    <span v-if="year" class="font-normal text-text-muted"> ({{ year }})</span>
   </h3>
 </template>
 
@@ -27,6 +28,7 @@ defineProps<{
   mediaType: LibraryMediaType;
   tmdbId?: number;
   title: string;
+  year?: number;
   wrap?: boolean;
 }>();
 </script>

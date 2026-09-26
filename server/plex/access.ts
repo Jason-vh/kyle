@@ -140,6 +140,23 @@ export async function getPlexAvatar(accountId: string): Promise<string | undefin
   }
 }
 
+export async function getPlexAvatars(): Promise<Map<string, string>> {
+  if (!isPlexServerConfigured()) return new Map();
+
+  try {
+    const access = await loadAccess();
+    const avatars = new Map<string, string>();
+    if (access.ownerThumb) avatars.set(access.ownerAccountId, access.ownerThumb);
+    for (const [accountId, member] of access.members) {
+      if (member.thumb) avatars.set(accountId, member.thumb);
+    }
+    return avatars;
+  } catch (error) {
+    log.error("could not read plex avatars", { error: errorMessage(error) });
+    return new Map();
+  }
+}
+
 /** Names for the account ids a Plex server reports against playback. */
 export async function getServerAccountNames(): Promise<Map<string, PlexPerson>> {
   if (!isPlexServerConfigured()) return new Map();

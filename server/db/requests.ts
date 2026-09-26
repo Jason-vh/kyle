@@ -100,6 +100,7 @@ export async function getAllRequesters() {
       tmdbId: mediaRequests.tmdbId,
       userId: mediaRequests.userId,
       name: users.displayName,
+      plexAccountId: users.plexAccountId,
     })
     .from(mediaRequests)
     .innerJoin(users, eq(mediaRequests.userId, users.id));

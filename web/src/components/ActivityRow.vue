@@ -12,7 +12,12 @@
         <p class="mt-0.5 truncate text-xs text-text-muted">
           {{ relativeTime(item.at) }}
           <template v-if="item.requestedBy.length">
-            · for {{ item.requestedByMe ? "you" : formatNames(item.requestedBy) }}
+            · for
+            {{
+              item.requestedByMe
+                ? "you"
+                : formatNames(item.requestedBy.map((person) => person.name))
+            }}
           </template>
         </p>
       </div>

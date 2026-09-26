@@ -10,6 +10,7 @@ import { withDatabaseLock } from "#server/db/lock.ts";
 import { invalidateLibraryIndex } from "#server/requests/library.ts";
 import { annotateRequesters } from "#server/requests/requesters.ts";
 import { getWatchers, watchKey } from "#server/plex/history.ts";
+import { getPlexAvatars } from "#server/plex/access.ts";
 import { posterOf } from "#server/media-images.ts";
 import { createLogger } from "#server/logger.ts";
 import { errorMessage } from "#server/errors.ts";
@@ -76,8 +77,12 @@ export async function listLibrary(viewerId: string): Promise<LibraryListing> {
     a.title.localeCompare(b.title),
   );
 
-  const [requesters, watchers] = await Promise.all([getAllRequesters(), getWatchers()]);
-  annotateRequesters(items, viewerId, requesters);
+  const [requesters, watchers, avatars] = await Promise.all([
+    getAllRequesters(),
+    getWatchers(),
+    getPlexAvatars(),
+  ]);
+  annotateRequesters(items, viewerId, requesters, avatars);
 
   for (const item of items) {
     if (item.tmdbId === undefined) continue;

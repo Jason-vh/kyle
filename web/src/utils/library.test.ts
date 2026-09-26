@@ -5,8 +5,10 @@ import {
   changedFilters,
   DEFAULT_LIBRARY_VIEW,
   filterLabel,
+  librarySummary,
   viewFromQuery,
   viewToQuery,
+  watchedLabel,
 } from "./library";
 
 const item = (overrides: Partial<LibraryItem>): LibraryItem => ({
@@ -119,5 +121,49 @@ describe("the view in the URL", () => {
 
   test("reads the first of a repeated key", () => {
     expect(viewFromQuery({ type: ["movie", "series"] }).type).toBe("movie");
+  });
+});
+
+describe("librarySummary", () => {
+  const GB = 1000 ** 3;
+
+  test("gives the type and the size on disk", () => {
+    expect(librarySummary(item({ sizeOnDisk: 19 * GB }))).toBe("Movie · 19 GB");
+  });
+
+  test("counts the episodes of a complete series", () => {
+    const series = item({
+      mediaType: "series",
+      sizeOnDisk: 321 * GB,
+      episodes: { present: 103, total: 103 },
+    });
+    expect(librarySummary(series)).toBe("Series · 321 GB · 103 episodes");
+  });
+
+  test("leaves the count of an incomplete series to be shown on its own", () => {
+    const series = item({
+      mediaType: "series",
+      availability: "partial",
+      episodes: { present: 34, total: 93 },
+    });
+    expect(librarySummary(series)).toBe("Series");
+  });
+});
+
+describe("watchedLabel", () => {
+  const sue = { name: "Sue" };
+  const bob = { name: "Bob" };
+
+  test("says so when nobody has watched", () => {
+    expect(watchedLabel([])).toBe("Not watched yet");
+  });
+
+  test("names one or two people", () => {
+    expect(watchedLabel([sue])).toBe("Watched by Sue");
+    expect(watchedLabel([sue, bob])).toBe("Watched by Sue and Bob");
+  });
+
+  test("counts any more than that", () => {
+    expect(watchedLabel([sue, bob, { name: "Ann" }])).toBe("Watched by 3 people");
   });
 });

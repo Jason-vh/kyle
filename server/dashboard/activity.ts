@@ -4,6 +4,7 @@ import * as radarr from "#server/radarr/api.ts";
 import * as sonarr from "#server/sonarr/api.ts";
 import { getAllRequesters } from "#server/db/requests.ts";
 import { annotateRequesters } from "#server/requests/requesters.ts";
+import { getPlexAvatars } from "#server/plex/access.ts";
 import { posterOf } from "#server/media-images.ts";
 import { episodeLabel } from "#shared/media.ts";
 import { createLogger } from "#server/logger.ts";
@@ -61,10 +62,11 @@ async function settle<T>(name: string, load: () => Promise<T>): Promise<T | unde
  * Plex, because only they know the title behind a file.
  */
 export async function getActivity(viewerId: string, since: Date): Promise<ActivityItem[]> {
-  const [movies, series, requesters] = await Promise.all([
+  const [movies, series, requesters, avatars] = await Promise.all([
     settle("Radarr", () => radarr.getHistory(HISTORY_PAGE)),
     settle("Sonarr", () => sonarr.getHistory(1, HISTORY_PAGE)),
     getAllRequesters(),
+    getPlexAvatars(),
   ]);
 
   const items: ActivityItem[] = [];
@@ -114,7 +116,7 @@ export async function getActivity(viewerId: string, since: Date): Promise<Activi
     });
   }
 
-  annotateRequesters(items, viewerId, requesters);
+  annotateRequesters(items, viewerId, requesters, avatars);
 
   const recent = items.sort((a, b) => b.at.localeCompare(a.at));
 

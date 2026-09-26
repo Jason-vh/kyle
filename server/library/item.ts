@@ -27,5 +27,6 @@ export function seriesState(series: SonarrSeries): LibraryState {
     sizeOnDisk: series.statistics?.sizeOnDisk ?? 0,
     availability: seriesAvailability(present, total),
     detail: total > 0 ? `${present}/${total} episodes` : undefined,
+    episodes: total > 0 ? { present, total } : undefined,
   };
 }

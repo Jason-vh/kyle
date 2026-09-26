@@ -72,37 +72,44 @@
               <MediaPoster :src="item.posterUrl" :alt="item.title" />
 
               <div class="min-w-0 flex-1">
-                <MediaTitle
-                  :media-type="item.mediaType"
-                  :tmdb-id="item.tmdbId"
-                  :title="item.title"
-                  wrap
-                />
+                <div class="flex items-start gap-2">
+                  <MediaTitle
+                    :media-type="item.mediaType"
+                    :tmdb-id="item.tmdbId"
+                    :title="item.title"
+                    :year="item.year"
+                    wrap
+                    class="min-w-0 flex-1"
+                  />
+                  <WatcherAvatars
+                    :watchers="item.requestedBy"
+                    :max="2"
+                    verb="requested this"
+                    class="relative"
+                  />
+                </div>
                 <p class="mt-0.5 text-xs text-text-muted">
-                  {{ describe(item) }}
-                  <template v-if="item.availability === 'partial'">
-                    · <span class="font-semibold text-accent-amber">{{ item.detail }}</span>
+                  {{ librarySummary(item) }}
+                  <template v-if="item.availability === 'partial' && item.episodes">
+                    ·
+                    <span class="font-semibold text-accent-amber">
+                      {{ item.episodes.present }}/{{ item.episodes.total }} episodes
+                    </span>
                   </template>
                   <template v-if="item.availability === 'missing'">
                     · <span class="font-semibold text-accent-red">Not on disk</span>
                   </template>
+                  <template v-if="!item.monitored"> · unmonitored</template>
                 </p>
-                <p v-if="item.requestedBy.length" class="mt-0.5 truncate text-xs text-text-muted">
-                  Requested by {{ formatNames(item.requestedBy) }}
+                <p
+                  v-if="item.watchedBy.length || item.availability !== 'missing'"
+                  class="mt-1 text-xs text-text-muted"
+                >
+                  {{ watchedLabel(item.watchedBy) }}
                 </p>
                 <p v-if="failures[key(item)]" class="mt-1 text-xs text-accent-red">
                   {{ failures[key(item)] }}
                 </p>
-              </div>
-
-              <div class="flex shrink-0 flex-col items-end gap-1.5">
-                <span
-                  v-if="item.sizeOnDisk > 0"
-                  class="text-sm font-semibold text-text-primary tabular-nums"
-                >
-                  {{ formatSize(item.sizeOnDisk) }}
-                </span>
-                <WatcherAvatars :watchers="item.watchedBy" class="relative" />
               </div>
 
               <div v-if="isAdmin" class="relative hidden pointer-fine:block">
@@ -152,16 +159,18 @@ import { computed, ref } from "vue";
 import { useEventListener, useTitle } from "@vueuse/core";
 import { useRoute, useRouter } from "vue-router";
 import type { LibraryItem } from "#web/api/library";
-import { formatNames, formatSize } from "#web/utils/format";
+import { formatSize } from "#web/utils/format";
 import {
   applyLibraryView,
   changedFilters,
   DEFAULT_LIBRARY_VIEW,
   filterLabel,
+  librarySummary,
   type LibraryFilterKey,
   type LibraryView,
   viewFromQuery,
   viewToQuery,
+  watchedLabel,
 } from "#web/utils/library";
 import LibraryFilterSheet from "#web/components/LibraryFilterSheet.vue";
 import MediaRowSkeleton from "#web/components/MediaRowSkeleton.vue";
@@ -224,13 +233,6 @@ const filterButtonLabel = computed(() => {
   if (changed.value.length === 0) return "Sort & filter";
   return `Sort & filter, ${changed.value.length} active`;
 });
-
-function describe(item: LibraryItem): string {
-  const parts = [item.mediaType === "movie" ? "Movie" : "Series"];
-  if (item.year) parts.push(String(item.year));
-  if (!item.monitored) parts.push("unmonitored");
-  return parts.join(" · ");
-}
 
 function clearFilter(filterKey: LibraryFilterKey) {
   view.value = { ...view.value, [filterKey]: DEFAULT_LIBRARY_VIEW[filterKey] };

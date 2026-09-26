@@ -46,7 +46,10 @@ import { formatNames } from "#web/utils/format";
 import { relativeTime } from "#web/composables/useRelativeTime";
 import WatcherAvatar from "./WatcherAvatar.vue";
 
-const props = withDefaults(defineProps<{ watchers: Watcher[]; max?: number }>(), { max: 4 });
+const props = withDefaults(defineProps<{ watchers: Watcher[]; max?: number; verb?: string }>(), {
+  max: 4,
+  verb: "watched this",
+});
 
 const shown = computed(() => props.watchers.slice(0, props.max));
 const overflow = computed(() => props.watchers.length - shown.value.length);
@@ -54,7 +57,7 @@ const overflow = computed(() => props.watchers.length - shown.value.length);
 /** "Bob, Jane and Sue have watched this". */
 const summary = computed(() => {
   const names = props.watchers.map((watcher) => watcher.name);
-  return `${formatNames(names)} ${names.length === 1 ? "has" : "have"} watched this`;
+  return `${formatNames(names)} ${names.length === 1 ? "has" : "have"} ${props.verb}`;
 });
 </script>
 
