@@ -42,6 +42,19 @@ const arrival = {
   sizeOnDisk: 0,
   digitalRelease: "2016-11-11",
 };
+const severance = {
+  title: "Severance",
+  year: 2022,
+  tvdbId: 371980,
+  tmdbId: 95396,
+  status: "continuing",
+  images: [],
+  seasons: [
+    { seasonNumber: 0, monitored: false },
+    { seasonNumber: 1, monitored: true },
+    { seasonNumber: 2, monitored: true },
+  ],
+};
 let held = false;
 globalThis.fetch = (async (input: string | URL | Request, init: RequestInit = {}) => {
   const url = new URL(input instanceof Request ? input.url : input);
@@ -57,8 +70,31 @@ globalThis.fetch = (async (input: string | URL | Request, init: RequestInit = {}
           overview: "A linguist meets visitors.",
           poster_path: null,
         },
+        {
+          id: severance.tmdbId,
+          media_type: "tv",
+          name: severance.title,
+          first_air_date: "2022-02-18",
+          overview: "Work and life, severed.",
+          poster_path: null,
+        },
       ],
     });
+  }
+  if (path.endsWith(`/tv/${severance.tmdbId}`)) {
+    return Response.json({
+      id: severance.tmdbId,
+      name: severance.title,
+      status: "Returning Series",
+      seasons: [
+        { season_number: 1, episode_count: 9, air_date: "2022-02-18" },
+        { season_number: 2, episode_count: 10, air_date: "2025-01-17" },
+      ],
+    });
+  }
+  if (path.endsWith("/series/lookup")) return Response.json([severance]);
+  if (path.endsWith("/series") && init.method === "POST") {
+    return Response.json({ ...severance, id: 12 });
   }
   if (path.endsWith(`/movie/${arrival.tmdbId}`)) {
     return Response.json({

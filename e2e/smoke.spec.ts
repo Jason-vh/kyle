@@ -68,7 +68,7 @@ test("members can request media, and only whoever asked can remove it", async ({
   await page.goto("/discover");
   await page.getByPlaceholder("Search for a movie or series…").fill("Arrival");
   await expect(page.getByRole("link", { name: "Arrival", exact: true })).toBeVisible();
-  await page.getByRole("button", { name: "Request", exact: true }).click();
+  await page.getByRole("button", { name: "Request", exact: true }).first().click();
   await expect(page.getByRole("button", { name: "Requested", exact: true })).toBeVisible();
   await page.goto("/requests");
   await expect(page.getByRole("link", { name: "Arrival", exact: true })).toBeVisible();
@@ -84,4 +84,28 @@ test("members can request media, and only whoever asked can remove it", async ({
   await page.getByRole("button", { name: "Remove", exact: true }).click();
   await page.getByRole("alertdialog").getByRole("button", { name: "Remove", exact: true }).click();
   await expect(page.getByText("Not in the library", { exact: true })).toBeVisible();
+});
+
+test("a series asks which seasons to download before it is requested", async ({
+  page,
+  context,
+}) => {
+  await signIn(context, "requester");
+  await page.goto("/discover");
+  await page.getByPlaceholder("Search for a movie or series…").fill("Severance");
+  await expect(page.getByRole("link", { name: "Severance", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Request", exact: true }).nth(1).click();
+
+  const sheet = page.getByRole("dialog");
+  await expect(sheet.getByRole("checkbox", { name: "Season 1" })).toBeChecked();
+  await expect(sheet.getByRole("checkbox", { name: "Specials" })).not.toBeChecked();
+  await expect(sheet.getByText("9 episodes · 2022")).toBeVisible();
+
+  await sheet.getByRole("button", { name: "Latest", exact: true }).click();
+  await sheet.getByRole("switch", { name: "Follow new seasons" }).click();
+  await sheet.getByRole("button", { name: "Request Season 2", exact: true }).click();
+
+  await expect(page.getByRole("button", { name: "Requested", exact: true })).toBeVisible();
+  await page.goto("/requests");
+  await expect(page.getByText(/Season 2/)).toBeVisible();
 });

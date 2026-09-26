@@ -1,7 +1,13 @@
-import type { MediaRequest } from "#shared/types";
+import type { MediaRequest, SeriesRequestOptions } from "#shared/types";
 import { apiFetch } from "./client";
 
-export type { MediaRequest, MissingSeason, RequestState } from "#shared/types";
+export type {
+  MediaRequest,
+  MissingSeason,
+  RequestState,
+  SeasonOption,
+  SeriesRequestOptions,
+} from "#shared/types";
 
 export type RequestableMediaType = "movie" | "series";
 export type LibraryStatus = "available" | "pending" | "unknown";
@@ -25,6 +31,9 @@ export interface RequestInput {
   /** A series only: one season of it, or one episode of that season. */
   seasonNumber?: number;
   episodeNumber?: number;
+  /** A series only: the seasons wanted now, and whether to keep up with it. */
+  seasons?: number[];
+  follow?: boolean;
 }
 
 export interface RequestOutcome {
@@ -50,8 +59,14 @@ export async function requestMedia(item: RequestInput): Promise<RequestOutcome> 
       posterPath: item.posterPath ?? undefined,
       seasonNumber: item.seasonNumber,
       episodeNumber: item.episodeNumber,
+      seasons: item.seasons,
+      follow: item.follow,
     }),
   });
+}
+
+export async function getSeriesRequestOptions(tmdbId: number): Promise<SeriesRequestOptions> {
+  return apiFetch<SeriesRequestOptions>(`/api/requests/series/${tmdbId}/options`);
 }
 
 /** What a retry did, so the UI can say whether a release was given up on. */

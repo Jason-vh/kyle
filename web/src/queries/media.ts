@@ -15,6 +15,7 @@ import { getMediaActivity, getMediaDetail } from "#web/api/media";
 import {
   discover,
   getRequests,
+  getSeriesRequestOptions,
   reportRequest,
   requestMedia,
   retryRequest,
@@ -78,6 +79,16 @@ export const mediaActivityQuery = defineQueryOptions(
   }),
 );
 
+/** Only fetched once someone opens the sheet it fills, since it asks Sonarr and TMDB. */
+export const seriesRequestOptionsQuery = defineQueryOptions(
+  ({ tmdbId, enabled }: { tmdbId: number; enabled: boolean }) => ({
+    key: ["series-options", String(tmdbId)],
+    query: () => getSeriesRequestOptions(tmdbId),
+    enabled,
+    staleTime: 5 * 60_000,
+  }),
+);
+
 export function useDashboard() {
   return useAccountQuery(dashboardQuery);
 }
@@ -109,6 +120,15 @@ export function useMediaActivity(
 ) {
   return useAccountQuery(() =>
     mediaActivityQuery({ mediaType: toValue(mediaType), tmdbId: toValue(tmdbId) }),
+  );
+}
+
+export function useSeriesRequestOptions(
+  tmdbId: MaybeRefOrGetter<number>,
+  enabled: MaybeRefOrGetter<boolean>,
+) {
+  return useAccountQuery(() =>
+    seriesRequestOptionsQuery({ tmdbId: toValue(tmdbId), enabled: toValue(enabled) }),
   );
 }
 

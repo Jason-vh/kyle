@@ -52,6 +52,7 @@ Two things to keep in mind when adding a token:
 | `AppCard`        | any bordered surface. `:padded="false"` when the content owns its padding |
 | `AppButton`      | `variant`: primary, secondary, ghost, danger. `size`: sm, md              |
 | `AppInput`       | text and search inputs                                                    |
+| `AppCheckbox`    | one choice inside a Reka `CheckboxGroupRoot`, with a label and a hint     |
 | `FilterChips`    | a single-choice pill row. Scrolls sideways on a phone                     |
 | `StatusPill`     | a small badge, by `tone`                                                  |
 | `AppNotice`      | an inline message block, by `tone`                                        |
@@ -73,6 +74,7 @@ cannot export a type itself.
 | `MediaPoster`                                     | `AspectRatio`              | 2:3 from the ratio rather than a hardcoded height per width                                                    |
 | `StatCard`                                        | `Progress`                 | `role="progressbar"` with real aria values on the fill bar                                                     |
 | `AppInput`                                        | `Label` + `VisuallyHidden` | a real label, since a placeholder is not one                                                                   |
+| `AppCheckbox`                                     | `CheckboxRoot`             | `role="checkbox"`, a label that toggles it, and arrow keys between choices when inside a `CheckboxGroupRoot`   |
 | `AppButton`, `AppCard`, `AppNotice`, `StatusPill` | `Primitive`                | `as` and `asChild`, so a card can be an `<li>` or wrap a link                                                  |
 
 `AppPage`, `PageHeader`, `SectionHeading`, `NavIcon` and `QueryState` use no Reka: there

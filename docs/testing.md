@@ -141,7 +141,7 @@ Honest list, so nobody assumes coverage that is not there:
 - `web/` — the views have no tests, by choice; the primitives are covered where they
   carry behaviour or wording, not where they are markup.
 - Chromium smoke tests cover passkey registration/login/logout, protected navigation,
-  requesting media, and admin-only deletion. Other browser flows remain uncovered.
+  requesting media, choosing a series' seasons, and admin-only deletion. Other browser flows remain uncovered.
 
 ## Browser smoke tests
 
