@@ -41,8 +41,8 @@ import AppCard from "./ui/AppCard.vue";
 import IconCheck from "~icons/ph/check-bold";
 import IconDownload from "~icons/ph/download-simple-bold";
 import IconEye from "~icons/ph/eye-fill";
-import IconPlus from "~icons/ph/plus-bold";
 import IconTrash from "~icons/ph/trash-bold";
+import IconUserCirclePlus from "~icons/ph/user-circle-plus-bold";
 
 defineProps<{ events: MediaActivity[] }>();
 
@@ -57,7 +57,7 @@ interface Look {
 
 const LOOKS: Record<MediaActivityKind, Look> = {
   requested: {
-    icon: IconPlus,
+    icon: IconUserCirclePlus,
     tint: "bg-accent-purple-light text-accent-purple",
     verb: "requested",
     unattributed: "Requested",
