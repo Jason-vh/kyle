@@ -1,4 +1,4 @@
-import type { LibraryItem, LibraryMediaType } from "#shared/types.ts";
+import type { LibraryItem, LibraryMediaType, StorageStat } from "#shared/types.ts";
 import type { RadarrMovie } from "#server/radarr/types.ts";
 import type { SonarrSeries } from "#server/sonarr/types.ts";
 import * as radarr from "#server/radarr/api.ts";
@@ -13,6 +13,7 @@ import { queuesByService, serviceKey } from "#server/requests/state.ts";
 import { getWatchers, watchKey } from "#server/plex/history.ts";
 import { getPlexAvatars } from "#server/plex/access.ts";
 import { posterOf } from "#server/media-images.ts";
+import { getStorage } from "#server/dashboard/storage.ts";
 import { createLogger } from "#server/logger.ts";
 import { errorMessage } from "#server/errors.ts";
 
@@ -50,6 +51,7 @@ export interface LibraryListing {
   items: LibraryItem[];
   /** Services that could not be reached, so the listing is incomplete. */
   unavailable: string[];
+  storage?: StorageStat;
 }
 
 /** Resolves to an empty list rather than failing, naming the service if it did. */
@@ -62,14 +64,24 @@ async function tryList<T>(name: string, load: () => Promise<T[]>): Promise<[T[],
   }
 }
 
+async function tryStorage(): Promise<StorageStat | undefined> {
+  try {
+    return await getStorage();
+  } catch (error) {
+    log.error("storage unavailable", { error: errorMessage(error) });
+    return undefined;
+  }
+}
+
 /**
  * Everything Radarr and Sonarr hold, annotated with who asked for it.
  * One service being down hides its half rather than the whole library.
  */
 export async function listLibrary(viewerId: string): Promise<LibraryListing> {
-  const [[movies, moviesDown], [series, seriesDown]] = await Promise.all([
+  const [[movies, moviesDown], [series, seriesDown], storage] = await Promise.all([
     tryList("Radarr", radarr.getMovies),
     tryList("Sonarr", sonarr.getAllSeries),
+    tryStorage(),
   ]);
 
   const unavailable = [moviesDown, seriesDown].filter((name) => name !== undefined);
@@ -96,7 +108,7 @@ export async function listLibrary(viewerId: string): Promise<LibraryListing> {
     }
   }
 
-  return { items, unavailable };
+  return { items, unavailable, storage };
 }
 
 export async function isRequester(

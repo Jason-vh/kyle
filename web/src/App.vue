@@ -3,7 +3,7 @@
     <header
       class="sticky top-0 z-10 border-b border-border-primary bg-bg-surface/90 backdrop-blur-sm"
     >
-      <div class="mx-auto flex max-w-page items-center gap-3 px-4 py-2.5 sm:px-6">
+      <div class="mx-auto flex h-header max-w-page items-center gap-3 px-4 sm:px-6">
         <router-link to="/" class="flex items-center gap-2.5 no-underline">
           <div
             class="flex size-8 items-center justify-center rounded-control bg-accent-purple text-sm font-bold text-text-inverse"

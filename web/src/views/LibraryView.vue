@@ -2,17 +2,25 @@
   <AppPage>
     <PageHeader title="Library">
       <template #aside>
-        <span v-if="!isPending" class="text-sm text-text-muted">
-          {{ shown.length }} of {{ items.length }} · {{ formatSize(totalSize) }}
-        </span>
+        <span v-if="!isPending" class="text-sm text-text-muted tabular-nums">{{ countLabel }}</span>
       </template>
     </PageHeader>
 
-    <div class="mb-3 flex gap-2">
+    <LibraryStorage
+      v-if="storage"
+      :storage="storage"
+      :movie-bytes="movieBytes"
+      :series-bytes="seriesBytes"
+      class="-mt-2 mb-3"
+    />
+
+    <div
+      class="sticky top-header z-5 -mx-4 flex gap-2 bg-bg-base/85 px-4 py-2 backdrop-blur-md sm:-mx-6 sm:px-6"
+    >
       <AppInput
         :model-value="view.search"
         @update:model-value="view = { ...view, search: $event }"
-        placeholder="Filter by title…"
+        placeholder="Search library"
         class="flex-1"
       />
       <AppButton
@@ -32,7 +40,7 @@
       </AppButton>
     </div>
 
-    <div v-if="changed.length" class="mb-4 flex flex-wrap items-center gap-1.5">
+    <div v-if="changed.length" class="mt-1 mb-2 flex flex-wrap items-center gap-1.5">
       <button
         v-for="filterKey in changed"
         :key="filterKey"
@@ -46,7 +54,7 @@
       </button>
     </div>
 
-    <AppNotice v-if="unavailable.length" tone="amber" class="mb-4">
+    <AppNotice v-if="unavailable.length" tone="amber" class="my-2">
       {{ unavailable.join(" and ") }} {{ unavailable.length === 1 ? "is" : "are" }} unreachable, so
       part of the library is missing here.
     </AppNotice>
@@ -59,109 +67,30 @@
     >
       <template #loading><MediaRowSkeleton :count="6" /></template>
 
-      <div class="stagger flex flex-col gap-2">
-        <SwipeActions
-          v-for="{ item, summary, statuses } in rows"
-          :key="key(item)"
-          :open="swiped === key(item)"
-          :disabled="!isAdmin && !item.requestedByMe"
-          @update:open="swiped = $event ? key(item) : ''"
-        >
-          <AppCard :interactive="!!item.tmdbId" class="relative overflow-hidden">
-            <LibraryPoster :src="item.posterUrl" />
-            <span
-              class="absolute top-2 left-2 flex size-6 items-center justify-center rounded-full border border-border-primary bg-bg-surface/90 text-text-secondary shadow-card backdrop-blur-sm"
-            >
-              <component
-                :is="item.mediaType === 'movie' ? IconFilmSlate : IconTelevision"
-                class="size-3.5"
-                aria-hidden="true"
-              />
-              <span class="sr-only">{{ item.mediaType === "movie" ? "Movie" : "Series" }}</span>
-            </span>
-
-            <div class="relative flex min-h-18 gap-3 pl-16">
-              <div class="flex min-w-0 flex-1 flex-col justify-between">
-                <MediaTitle
-                  :media-type="item.mediaType"
-                  :tmdb-id="item.tmdbId"
-                  :title="item.title"
-                  :year="item.year"
-                  wrap
-                />
-                <p class="text-xs text-text-muted">
-                  {{ summary }}
-                  <template v-if="item.watchedBy.length">
-                    <template v-if="summary"> · </template>
-                    <span class="whitespace-nowrap">
-                      <IconUserCheck class="inline size-3.5 align-[-2px]" aria-hidden="true" />
-                      <span class="sr-only">{{ watchedLabel(item.watchedBy.length) }}</span>
-                      <span aria-hidden="true">{{ item.watchedBy.length }}</span>
-                    </span>
-                  </template>
-                </p>
-                <p class="min-h-4 text-xs text-text-muted">
-                  <template v-for="(status, index) in statuses" :key="status.label">
-                    <template v-if="index > 0"> · </template>
-                    <span
-                      :class="[
-                        TONE_TEXT[status.tone],
-                        status.tone === 'neutral' ? '' : 'font-semibold',
-                      ]"
-                    >
-                      <template v-if="status.downloading">
-                        <IconDownload
-                          class="mr-0.5 inline size-3.5 align-[-2px]"
-                          aria-hidden="true"
-                        />
-                        <span class="sr-only">Downloading</span>
-                      </template>
-                      {{ status.label }}
-                    </span>
-                  </template>
-                </p>
-                <p v-if="failures[key(item)]" class="mt-1 text-xs text-accent-red">
-                  {{ failures[key(item)] }}
-                </p>
-              </div>
-
-              <div class="relative shrink-0 self-start">
-                <WatcherAvatars :watchers="item.requestedBy" :max="2" verb="requested this" />
-              </div>
-            </div>
+      <div class="stagger flex flex-col pt-2" @touchstart.passive="enablePressFeedback">
+        <section v-for="group in groups" :key="group.letter">
+          <h2 v-if="group.letter" class="px-1 pt-3 pb-1.5 text-xs font-bold text-text-muted">
+            {{ group.letter }}
+          </h2>
+          <AppCard as="ul" :padded="false">
+            <LibraryRow
+              v-for="item in group.items"
+              :key="`${item.mediaType}-${item.serviceId}`"
+              :item="item"
+              :size-first="view.sort === 'size'"
+            />
           </AppCard>
-
-          <template #action>
-            <button
-              type="button"
-              class="flex aspect-square w-full flex-col items-center justify-center gap-0.5 rounded-card bg-accent-red text-[11px] font-semibold text-white"
-              @click="onRemove(item)"
-            >
-              <IconTrash class="size-5" aria-hidden="true" />
-              Remove
-            </button>
-          </template>
-        </SwipeActions>
+        </section>
       </div>
     </QueryState>
 
     <LibraryFilterSheet v-model:open="sheetOpen" v-model:view="view" :count="shown.length" />
-
-    <ConfirmDialog
-      v-model:open="confirming"
-      title="Remove from the library?"
-      :description="confirmText"
-      confirm-label="Remove"
-      busy-label="Removing…"
-      :busy="removing !== ''"
-      @confirm="confirmRemove"
-    />
   </AppPage>
 </template>
 
 <script setup lang="ts">
 import { computed, ref } from "vue";
-import { useEventListener, useTitle } from "@vueuse/core";
+import { useTitle } from "@vueuse/core";
 import { useRoute, useRouter } from "vue-router";
 import type { LibraryItem } from "#web/api/library";
 import { formatSize } from "#web/utils/format";
@@ -170,56 +99,35 @@ import {
   changedFilters,
   DEFAULT_LIBRARY_VIEW,
   filterLabel,
-  librarySummary,
-  libraryStatuses,
+  groupByLetter,
+  type LetterGroup,
   type LibraryFilterKey,
   type LibraryView,
   viewFromQuery,
   viewToQuery,
-  watchedLabel,
 } from "#web/utils/library";
 import LibraryFilterSheet from "#web/components/LibraryFilterSheet.vue";
-import LibraryPoster from "#web/components/LibraryPoster.vue";
+import LibraryRow from "#web/components/LibraryRow.vue";
+import LibraryStorage from "#web/components/LibraryStorage.vue";
 import MediaRowSkeleton from "#web/components/MediaRowSkeleton.vue";
-import MediaTitle from "#web/components/MediaTitle.vue";
-import WatcherAvatars from "#web/components/WatcherAvatars.vue";
 import AppButton from "#web/components/ui/AppButton.vue";
 import AppCard from "#web/components/ui/AppCard.vue";
 import AppInput from "#web/components/ui/AppInput.vue";
 import AppNotice from "#web/components/ui/AppNotice.vue";
 import AppPage from "#web/components/ui/AppPage.vue";
-import ConfirmDialog from "#web/components/ui/ConfirmDialog.vue";
 import PageHeader from "#web/components/ui/PageHeader.vue";
 import QueryState from "#web/components/ui/QueryState.vue";
-import SwipeActions from "#web/components/ui/SwipeActions.vue";
-import type { Tone } from "#web/components/ui/types";
-import { useLibrary, useRemoveLibraryItem } from "#web/queries/media";
-import IconDownload from "~icons/ph/download-simple-bold";
-import IconFilmSlate from "~icons/ph/film-slate";
-import IconTelevision from "~icons/ph/television-simple";
+import { useLibrary } from "#web/queries/media";
 import IconSliders from "~icons/ph/sliders-horizontal";
-import IconTrash from "~icons/ph/trash";
-import IconUserCheck from "~icons/ph/user-check";
 import IconX from "~icons/ph/x";
-import { useSession } from "#web/queries/session";
 
 useTitle("Library — Kyle");
 
-const TONE_TEXT: Record<Tone, string> = {
-  neutral: "text-text-muted",
-  green: "text-accent-green",
-  amber: "text-accent-amber",
-  red: "text-accent-red",
-  purple: "text-accent-purple",
-  blue: "text-accent-blue",
-};
-
 const { data, error, isPending } = useLibrary();
-const { isAdmin } = useSession();
-const remove = useRemoveLibraryItem();
 
 const items = computed(() => data.value?.items ?? []);
 const unavailable = computed(() => data.value?.unavailable ?? []);
+const storage = computed(() => data.value?.storage);
 const route = useRoute();
 const router = useRouter();
 const view = computed<LibraryView>({
@@ -227,34 +135,31 @@ const view = computed<LibraryView>({
   set: (next) => router.replace({ query: viewToQuery(next) }),
 });
 const sheetOpen = ref(false);
-const swiped = ref("");
-const removing = ref("");
-const failures = ref<Record<string, string>>({});
-
-const pending = ref<LibraryItem | null>(null);
-const confirming = ref(false);
-
-useEventListener(window, "scroll", () => (swiped.value = ""), { passive: true });
-
-const confirmText = computed(() => {
-  const item = pending.value;
-  if (!item) return "";
-  const size = item.sizeOnDisk > 0 ? ` and delete ${formatSize(item.sizeOnDisk)} from disk` : "";
-  return `This removes “${item.title}” from the library${size}.`;
-});
-
-const key = (item: LibraryItem) => `${item.mediaType}-${item.serviceId}`;
 
 const shown = computed(() => applyLibraryView(items.value, view.value));
-const rows = computed(() =>
-  shown.value.map((item) => ({
-    item,
-    summary: librarySummary(item),
-    statuses: libraryStatuses(item),
-  })),
-);
+const groups = computed<LetterGroup[]>(() => {
+  if (view.value.sort === "title" && !view.value.search.trim()) return groupByLetter(shown.value);
+  return [{ letter: "", items: shown.value }];
+});
 const changed = computed(() => changedFilters(view.value));
-const totalSize = computed(() => shown.value.reduce((sum, item) => sum + item.sizeOnDisk, 0));
+
+const bytesOf = (list: LibraryItem[]) => list.reduce((sum, item) => sum + item.sizeOnDisk, 0);
+const totalSize = computed(() => bytesOf(shown.value));
+const movieBytes = computed(() =>
+  bytesOf(items.value.filter((item) => item.mediaType === "movie")),
+);
+const seriesBytes = computed(() =>
+  bytesOf(items.value.filter((item) => item.mediaType === "series")),
+);
+
+const countLabel = computed(() => {
+  const size = formatSize(totalSize.value);
+  if (shown.value.length === items.value.length) {
+    const noun = items.value.length === 1 ? "title" : "titles";
+    return `${items.value.length} ${noun} · ${size}`;
+  }
+  return `${shown.value.length} of ${items.value.length} · ${size}`;
+});
 
 const filterButtonLabel = computed(() => {
   if (changed.value.length === 0) return "Sort & filter";
@@ -265,26 +170,5 @@ function clearFilter(filterKey: LibraryFilterKey) {
   view.value = { ...view.value, [filterKey]: DEFAULT_LIBRARY_VIEW[filterKey] };
 }
 
-function onRemove(item: LibraryItem) {
-  swiped.value = "";
-  pending.value = item;
-  confirming.value = true;
-}
-
-async function confirmRemove() {
-  const item = pending.value;
-  if (!item) return;
-
-  removing.value = key(item);
-  delete failures.value[key(item)];
-  try {
-    await remove.mutateAsync(item);
-    confirming.value = false;
-  } catch (e) {
-    failures.value[key(item)] = e instanceof Error ? e.message : "Could not remove this";
-    confirming.value = false;
-  } finally {
-    removing.value = "";
-  }
-}
+function enablePressFeedback() {}
 </script>

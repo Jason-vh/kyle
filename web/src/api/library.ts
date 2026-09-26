@@ -1,4 +1,4 @@
-import type { LibraryItem, LibraryMediaType } from "#shared/types";
+import type { LibraryItem, LibraryMediaType, StorageStat } from "#shared/types";
 import { apiFetch } from "./client";
 
 export type { LibraryItem, LibraryMediaType };
@@ -6,6 +6,7 @@ export type { LibraryItem, LibraryMediaType };
 export interface LibraryListing {
   items: LibraryItem[];
   unavailable: string[];
+  storage?: StorageStat;
 }
 
 export async function getLibrary(): Promise<LibraryListing> {

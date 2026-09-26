@@ -5,7 +5,8 @@ import {
   changedFilters,
   DEFAULT_LIBRARY_VIEW,
   filterLabel,
-  librarySummary,
+  groupByLetter,
+  libraryDetails,
   libraryStatuses,
   viewFromQuery,
   viewToQuery,
@@ -44,8 +45,26 @@ const library = [arrival, dune, inception, boys];
 const titles = (items: LibraryItem[]) => items.map((shown) => shown.title);
 
 describe("applyLibraryView", () => {
-  test("keeps the order it was given by default", () => {
-    expect(titles(applyLibraryView(library, DEFAULT_LIBRARY_VIEW))).toEqual(titles(library));
+  test("sorts by title, ignoring a leading article", () => {
+    expect(titles(applyLibraryView(library, DEFAULT_LIBRARY_VIEW))).toEqual([
+      "Arrival",
+      "The Boys",
+      "Dune",
+      "Inception",
+    ]);
+  });
+
+  test("sorts numbers by value", () => {
+    const numbered = [
+      item({ title: "1883" }),
+      item({ title: "28 Days Later" }),
+      item({ title: "9-1-1" }),
+    ];
+    expect(titles(applyLibraryView(numbered, DEFAULT_LIBRARY_VIEW))).toEqual([
+      "9-1-1",
+      "28 Days Later",
+      "1883",
+    ]);
   });
 
   test("puts the largest first when sorting by size", () => {
@@ -56,6 +75,20 @@ describe("applyLibraryView", () => {
   test("matches the search anywhere in the title, ignoring case", () => {
     const shown = applyLibraryView(library, { ...DEFAULT_LIBRARY_VIEW, search: " BOY " });
     expect(titles(shown)).toEqual(["The Boys"]);
+  });
+
+  test("ignores punctuation and accents in the search", () => {
+    const titled = [
+      item({ title: "9-1-1" }),
+      item({ title: "Dash & Lily" }),
+      item({ title: "Shōgun" }),
+    ];
+    const search = (term: string) =>
+      titles(applyLibraryView(titled, { ...DEFAULT_LIBRARY_VIEW, search: term }));
+
+    expect(search("911")).toEqual(["9-1-1"]);
+    expect(search("dash lily")).toEqual(["Dash & Lily"]);
+    expect(search("shogun")).toEqual(["Shōgun"]);
   });
 
   test("combines filters", () => {
@@ -125,11 +158,31 @@ describe("the view in the URL", () => {
   });
 });
 
-describe("librarySummary", () => {
+describe("groupByLetter", () => {
+  test("groups by the first letter after a leading article", () => {
+    const groups = groupByLetter([arrival, boys, dune, item({ title: "Die Hard" })]);
+    expect(groups.map((group) => [group.letter, titles(group.items)])).toEqual([
+      ["A", ["Arrival"]],
+      ["B", ["The Boys"]],
+      ["D", ["Dune", "Die Hard"]],
+    ]);
+  });
+
+  test("puts titles that start with a number or symbol under #", () => {
+    const groups = groupByLetter([item({ title: "1883" }), item({ title: "Ōzark" })]);
+    expect(groups.map((group) => group.letter)).toEqual(["#", "O"]);
+  });
+});
+
+describe("libraryDetails", () => {
   const GB = 1000 ** 3;
 
-  test("gives the size on disk", () => {
-    expect(librarySummary(item({ sizeOnDisk: 19 * GB }))).toBe("19 GB");
+  test("gives the year, type and size on disk", () => {
+    expect(libraryDetails(item({ year: 2016, sizeOnDisk: 19 * GB }))).toEqual([
+      "2016",
+      "Movie",
+      "19 GB",
+    ]);
   });
 
   test("counts the episodes of a complete series", () => {
@@ -138,16 +191,24 @@ describe("librarySummary", () => {
       sizeOnDisk: 321 * GB,
       episodes: { present: 103, total: 103 },
     });
-    expect(librarySummary(series)).toBe("321 GB · 103 episodes");
+    expect(libraryDetails(series)).toEqual(["Series", "103 ep", "321 GB"]);
   });
 
-  test("leaves the count of an incomplete series to be shown on its own", () => {
+  test("leaves the count of an incomplete series to its status", () => {
     const series = item({
       mediaType: "series",
       availability: "partial",
       episodes: { present: 34, total: 93 },
     });
-    expect(librarySummary(series)).toBe("");
+    expect(libraryDetails(series)).toEqual(["Series"]);
+  });
+
+  test("leads with the size when asked", () => {
+    expect(libraryDetails(item({ year: 2016, sizeOnDisk: 19 * GB }), true)).toEqual([
+      "19 GB",
+      "2016",
+      "Movie",
+    ]);
   });
 });
 
@@ -165,9 +226,9 @@ describe("libraryStatuses", () => {
     expect(libraryStatuses(item({}))).toEqual([]);
   });
 
-  test("calls a title with nothing on disk and nothing queued not downloaded", () => {
+  test("says a title with nothing on disk and nothing queued is not on disk", () => {
     expect(libraryStatuses(item({ availability: "missing" }))).toEqual([
-      { label: "Not downloaded", tone: "red", downloading: false },
+      { label: "Not on disk", tone: "neutral", downloading: false },
     ]);
   });
 
@@ -190,7 +251,7 @@ describe("libraryStatuses", () => {
     });
   });
 
-  test("lists episodes, download and monitoring in that order", () => {
+  test("lists episodes before the download, and says nothing of monitoring", () => {
     const series = item({
       mediaType: "series",
       availability: "partial",
@@ -198,6 +259,6 @@ describe("libraryStatuses", () => {
       episodes: { present: 34, total: 93 },
       download: { state: "downloading", progress: 0.5 },
     });
-    expect(labels(series)).toEqual(["34/93 episodes", "50%", "unmonitored"]);
+    expect(labels(series)).toEqual(["34 of 93 episodes", "50%"]);
   });
 });

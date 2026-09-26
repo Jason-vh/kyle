@@ -51,6 +51,8 @@
 
   /* The reading column every page shares. */
   --container-page: 46rem;
+
+  --spacing-header: 3.25rem;
 }
 
 /*

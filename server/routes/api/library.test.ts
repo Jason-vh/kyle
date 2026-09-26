@@ -4,6 +4,7 @@ import { buildJwtCookie, signJwt } from "#server/auth/jwt.ts";
 import { createTestUser, deleteTestUser } from "#server/db/testing.ts";
 import { db } from "#server/db/index.ts";
 import { mediaRequests } from "#server/db/schema.ts";
+import { invalidateStats } from "#server/ultra/api.ts";
 
 // No mocks: the route runs the real service, with Radarr and Sonarr stubbed at
 // the network. Plex is left unconfigured, which the watch index treats as
@@ -14,6 +15,8 @@ process.env.RADARR_HOST = "http://radarr.test";
 process.env.RADARR_API_KEY = "k";
 process.env.SONARR_HOST = "http://sonarr.test";
 process.env.SONARR_API_KEY = "k";
+process.env.ULTRA_HOST = "http://ultra.test";
+process.env.ULTRA_API_TOKEN = "t";
 
 const realFetch = globalThis.fetch;
 
@@ -57,6 +60,7 @@ beforeAll(async () => {
 
 afterEach(() => {
   globalThis.fetch = realFetch;
+  invalidateStats();
 });
 
 afterAll(async () => {
@@ -100,6 +104,42 @@ describe("GET /api/library", () => {
 
     expect(body.unavailable).toEqual(["Radarr"]);
     expect(body.items).toHaveLength(1);
+  });
+
+  test("includes the seedbox quota", async () => {
+    stubServices({
+      ...LIBRARY,
+      "ultra.test": {
+        service_stats_info: {
+          free_storage_bytes: 2_000_000_000_000,
+          total_storage_value: 8,
+          total_storage_unit: "T",
+        },
+      },
+    });
+
+    const body = (await (
+      await handleGetLibrary(request("/api/library", "GET", asUser))
+    ).json()) as { storage?: unknown; unavailable: string[] };
+
+    expect(body.storage).toEqual({ freeBytes: 2_000_000_000_000, totalBytes: 8 * 1024 ** 4 });
+    expect(body.unavailable).toEqual([]);
+  });
+
+  test("leaves the quota out when the seedbox cannot be read", async () => {
+    stubServices(LIBRARY);
+
+    const res = await handleGetLibrary(request("/api/library", "GET", asUser));
+    const body = (await res.json()) as {
+      items: unknown[];
+      storage?: unknown;
+      unavailable: string[];
+    };
+
+    expect(res.status).toBe(200);
+    expect(body.items).toHaveLength(2);
+    expect(body.storage).toBeUndefined();
+    expect(body.unavailable).toEqual([]);
   });
 
   test("says how far along a title with nothing on disk is downloading", async () => {

@@ -63,8 +63,43 @@ export function filterLabel(key: LibraryFilterKey, view: LibraryView): string {
   }
 }
 
+export function searchKey(text: string): string {
+  return text
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]/gu, "");
+}
+
+export function sortTitle(title: string): string {
+  return title.replace(/^(the|a|an)\s+/i, "");
+}
+
+const titleOrder = new Intl.Collator("en", { numeric: true, sensitivity: "base" });
+
+export function letterOf(item: LibraryItem): string {
+  const first = searchKey(sortTitle(item.title)).charAt(0).toUpperCase();
+  return /[A-Z]/.test(first) ? first : "#";
+}
+
+export interface LetterGroup {
+  letter: string;
+  items: LibraryItem[];
+}
+
+export function groupByLetter(items: LibraryItem[]): LetterGroup[] {
+  const groups: LetterGroup[] = [];
+  for (const item of items) {
+    const letter = letterOf(item);
+    const last = groups.at(-1);
+    if (last?.letter === letter) last.items.push(item);
+    else groups.push({ letter, items: [item] });
+  }
+  return groups;
+}
+
 function matches(item: LibraryItem, view: LibraryView, term: string): boolean {
-  if (term && !item.title.toLowerCase().includes(term)) return false;
+  if (term && !searchKey(item.title).includes(term)) return false;
   if (view.type !== "all" && item.mediaType !== view.type) return false;
   if (view.availability !== "all" && item.availability !== view.availability) return false;
   if (view.requestedByMe && !item.requestedByMe) return false;
@@ -75,10 +110,10 @@ function matches(item: LibraryItem, view: LibraryView, term: string): boolean {
 }
 
 export function applyLibraryView(items: LibraryItem[], view: LibraryView): LibraryItem[] {
-  const term = view.search.trim().toLowerCase();
+  const term = searchKey(view.search);
   const shown = items.filter((item) => matches(item, view, term));
-  if (view.sort === "title") return shown;
-  return shown.toSorted((a, b) => b.sizeOnDisk - a.sizeOnDisk);
+  if (view.sort === "size") return shown.toSorted((a, b) => b.sizeOnDisk - a.sizeOnDisk);
+  return shown.toSorted((a, b) => titleOrder.compare(sortTitle(a.title), sortTitle(b.title)));
 }
 
 function first(query: LocationQuery, key: string): string | undefined {
@@ -126,13 +161,17 @@ export function changedFilters(view: LibraryView): LibraryFilterKey[] {
   return keys.filter((key) => view[key] !== DEFAULT_LIBRARY_VIEW[key]);
 }
 
-export function librarySummary(item: LibraryItem): string {
-  const parts: string[] = [];
-  if (item.sizeOnDisk > 0) parts.push(formatSize(item.sizeOnDisk));
-  if (item.availability === "available" && item.episodes) {
-    parts.push(`${item.episodes.total} ${item.episodes.total === 1 ? "episode" : "episodes"}`);
+export function libraryDetails(item: LibraryItem, sizeFirst = false): string[] {
+  const details: string[] = [];
+  if (item.year) details.push(String(item.year));
+  details.push(item.mediaType === "movie" ? "Movie" : "Series");
+  if (item.availability === "available" && item.episodes) details.push(`${item.episodes.total} ep`);
+  if (item.sizeOnDisk > 0) {
+    const size = formatSize(item.sizeOnDisk);
+    if (sizeFirst) details.unshift(size);
+    else details.push(size);
   }
-  return parts.join(" · ");
+  return details;
 }
 
 export function watchedLabel(count: number): string {
@@ -151,7 +190,7 @@ function downloadStatus(item: LibraryItem): LibraryStatus | undefined {
   }
   if (item.download) return { ...REQUEST_STATES[item.download.state], downloading: false };
   if (item.availability === "missing") {
-    return { label: "Not downloaded", tone: "red", downloading: false };
+    return { label: "Not on disk", tone: "neutral", downloading: false };
   }
   return undefined;
 }
@@ -159,11 +198,10 @@ function downloadStatus(item: LibraryItem): LibraryStatus | undefined {
 export function libraryStatuses(item: LibraryItem): LibraryStatus[] {
   const statuses: LibraryStatus[] = [];
   if (item.availability === "partial" && item.episodes) {
-    const label = `${item.episodes.present}/${item.episodes.total} episodes`;
+    const label = `${item.episodes.present} of ${item.episodes.total} episodes`;
     statuses.push({ label, tone: "amber", downloading: false });
   }
   const download = downloadStatus(item);
   if (download) statuses.push(download);
-  if (!item.monitored) statuses.push({ label: "unmonitored", tone: "neutral", downloading: false });
   return statuses;
 }
