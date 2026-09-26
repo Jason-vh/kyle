@@ -1,13 +1,18 @@
 import { afterEach, describe, expect, test, vi } from "vitest";
-import { mount } from "@vue/test-utils";
+import { mount, type VueWrapper } from "@vue/test-utils";
 import { createPinia } from "pinia";
 import { PiniaColada } from "@pinia/colada";
 import type { EpisodeSummary, SeasonSummary } from "#shared/types";
+import { HOLD_MS } from "#web/directives/longPress";
 import SeasonList from "./SeasonList.vue";
 
 const realFetch = globalThis.fetch;
 
+const mounted: VueWrapper[] = [];
+
 afterEach(() => {
+  // A menu left open outlives its test otherwise, and patches a document already emptied.
+  for (const wrapper of mounted.splice(0)) wrapper.unmount();
   globalThis.fetch = realFetch;
   document.body.innerHTML = "";
   vi.restoreAllMocks();
@@ -54,12 +59,13 @@ function season(overrides: Partial<SeasonSummary> = {}): SeasonSummary {
 }
 
 /** The accordion hides its content until opened, so the test opens it. */
-async function render(seasons: SeasonSummary[], serviceId?: number) {
+async function render(seasons: SeasonSummary[], serviceId?: number, canManage = false) {
   const list = mount(SeasonList, {
-    props: { seasons, tmdbId: 95396, posterPath: "/p.jpg", serviceId },
+    props: { seasons, tmdbId: 95396, posterPath: "/p.jpg", serviceId, canManage },
     global: { plugins: [createPinia(), [PiniaColada, {}]] },
     attachTo: document.body,
   });
+  mounted.push(list);
   for (const trigger of list.findAll("[data-reka-collection-item]")) {
     await trigger.trigger("click");
   }
@@ -296,5 +302,86 @@ describe("deleting a season", () => {
 
     expect(menuText()).toContain("Search again");
     expect(menuText()).not.toContain("Delete season");
+  });
+});
+
+describe("monitoring a season", () => {
+  test("whoever manages the series may stop a season being looked for", async () => {
+    const posted = stubApi();
+
+    await render([season()], 9, true);
+    await openMenu();
+    await clickMenuItem("Stop monitoring");
+
+    expect(posted[0]).toMatchObject({ url: "/api/library/series/9/seasons/1", method: "PUT" });
+    expect(JSON.parse(posted[0]!.body!)).toEqual({ monitored: false });
+  });
+
+  test("a season on disk nobody watches for can be looked for again", async () => {
+    const posted = stubApi();
+
+    await render([season({ monitored: false, state: "paused" })], 9, true);
+    await openMenu();
+    await clickMenuItem("Start monitoring");
+
+    expect(JSON.parse(posted[0]!.body!)).toEqual({ monitored: true });
+  });
+
+  // Asking for a season nobody wants is what the Request button is for.
+  test("a season nobody asked for offers no monitoring of its own", async () => {
+    stubApi();
+
+    await render(
+      [season({ monitored: false, state: "unrequested", episodeFileCount: 0 })],
+      9,
+      true,
+    );
+
+    expect(menuButton()).toBeNull();
+  });
+
+  test("anyone else is not offered it", async () => {
+    stubApi();
+
+    await render([season()], 9, false);
+
+    expect(menuButton()).toBeNull();
+  });
+});
+
+describe("holding a season down", () => {
+  const header = () =>
+    document.querySelector<HTMLElement>("[data-reka-collection-item]")!.parentElement!
+      .parentElement!;
+
+  test("opens its menu, and does not also open the season", async () => {
+    stubApi(true);
+    const list = await render([season({ sizeOnDisk: 5e9 })], 9, true);
+    const openBefore = list.find('[data-state="open"]').exists();
+
+    vi.useFakeTimers();
+    header().dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, button: 0 }));
+    vi.advanceTimersByTime(HOLD_MS);
+    header().dispatchEvent(new PointerEvent("pointerup", { bubbles: true }));
+    header().querySelector("button")!.click();
+    vi.useRealTimers();
+    await flush();
+
+    expect(menuText()).toContain("Delete season");
+    expect(list.find('[data-state="open"]').exists()).toBe(openBefore);
+  });
+
+  test("a quick tap is only a tap", async () => {
+    stubApi(true);
+    await render([season({ sizeOnDisk: 5e9 })], 9, true);
+
+    vi.useFakeTimers();
+    header().dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, button: 0 }));
+    vi.advanceTimersByTime(HOLD_MS / 2);
+    header().dispatchEvent(new PointerEvent("pointerup", { bubbles: true }));
+    vi.useRealTimers();
+    await flush();
+
+    expect(menuText()).toBe("");
   });
 });

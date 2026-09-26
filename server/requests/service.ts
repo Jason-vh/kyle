@@ -237,23 +237,53 @@ function seasonOf(series: SonarrSeries, seasonNumber: number) {
   return season;
 }
 
-/** Monitoring the episodes too, since Sonarr searches for the monitored ones. */
-async function monitorSeason(series: SonarrSeries, seasonNumber: number): Promise<boolean> {
+/** The episodes follow the season, since Sonarr searches for the monitored ones. */
+async function monitorSeason(
+  series: SonarrSeries,
+  seasonNumber: number,
+  monitored = true,
+): Promise<boolean> {
   const season = seasonOf(series, seasonNumber);
-  const wasMonitored = season.monitored;
+  const seasonChanged = season.monitored !== monitored;
 
-  if (!wasMonitored) {
-    season.monitored = true;
+  if (seasonChanged) {
+    season.monitored = monitored;
     await sonarr.updateSeries(series.id, series);
   }
 
   const episodes = await sonarr.getEpisodes(series.id);
-  const unmonitored = episodes
-    .filter((episode) => episode.seasonNumber === seasonNumber && !episode.monitored)
+  const out = episodes
+    .filter((episode) => episode.seasonNumber === seasonNumber && episode.monitored !== monitored)
     .map((episode) => episode.id);
-  if (unmonitored.length > 0) await sonarr.monitorEpisodes(unmonitored, true);
+  if (out.length > 0) await sonarr.monitorEpisodes(out, monitored);
 
-  return !wasMonitored || unmonitored.length > 0;
+  return seasonChanged || out.length > 0;
+}
+
+/**
+ * Stop looking for a season, or start again, leaving whatever is on disk where
+ * it is. Starting does not search: asking for a season is what requesting is for.
+ */
+export async function setSeasonMonitored(
+  seriesId: number,
+  seasonNumber: number,
+  monitored: boolean,
+): Promise<{ changed: boolean }> {
+  const { tvdbId } = await sonarr.getSeries(seriesId);
+  return withDatabaseLock(`media:series:${tvdbId}`, async () => {
+    const series = await sonarr.getSeries(seriesId);
+    const changed = await monitorSeason(series, seasonNumber, monitored);
+    if (changed) invalidateLibraryIndex();
+
+    log.info("season monitoring set", {
+      title: series.title,
+      serviceId: seriesId,
+      seasonNumber,
+      monitored,
+      changed,
+    });
+    return { changed };
+  });
 }
 
 /**

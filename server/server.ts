@@ -36,6 +36,7 @@ import {
 import {
   handleFollowSeries,
   handleGetLibrary,
+  handleMonitorSeason,
   handleReleaseSeason,
   handleRemoveLibraryItem,
 } from "./routes/api/library.ts";
@@ -148,6 +149,8 @@ export function startServer(port: number) {
       PUT: (req) => withSessionRefresh(handleFollowSeries)(req, req.params.serviceId),
     },
     "/api/library/series/:serviceId/seasons/:seasonNumber": {
+      PUT: (req) =>
+        withSessionRefresh(handleMonitorSeason)(req, req.params.serviceId, req.params.seasonNumber),
       DELETE: (req) =>
         withSessionRefresh(handleReleaseSeason)(req, req.params.serviceId, req.params.seasonNumber),
     },

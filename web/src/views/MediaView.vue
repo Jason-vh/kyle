@@ -117,6 +117,7 @@
               :tmdb-id="media.tmdbId"
               :poster-path="media.posterPath"
               :service-id="media.library?.serviceId"
+              :can-manage="canManage"
             />
           </section>
 
@@ -147,13 +148,7 @@
           </section>
         </div>
 
-        <MediaMenu
-          v-model:open="menuOpen"
-          :title="media.title"
-          :search="search"
-          :removal="removal"
-          @remove="confirming = true"
-        />
+        <MediaMenu v-model:open="menuOpen" :title="media.title" :actions="menuActions" />
 
         <ConfirmDialog
           v-model:open="confirming"
@@ -199,6 +194,9 @@ import {
 import { useSession } from "#web/queries/session";
 import IconBack from "~icons/ph/arrow-left-bold";
 import IconMore from "~icons/ph/dots-three-bold";
+import IconSearch from "~icons/ph/arrow-clockwise";
+import IconTrash from "~icons/ph/trash";
+import type { MenuAction } from "#web/components/menu";
 
 /** A round button that stays legible over whatever the artwork is. */
 const GLASS =
@@ -241,24 +239,40 @@ const menuOpen = ref(false);
 
 const retry = useRetryRequest();
 
-/** Anything held can be looked for again; a service that is down cannot be asked. */
-const search = computed(() => {
-  const item = media.value;
-  if (!item?.library || item.status?.state === "unknown") return undefined;
-  return () => retry.mutateAsync({ mediaType: item.mediaType, tmdbId: item.tmdbId });
-});
-
-const canRemove = computed(
+/** An admin, or whoever asked for it, decides what happens to it. */
+const canManage = computed(
   () => !!media.value?.library && (isAdmin.value || media.value.requestedByMe),
 );
 
-const removal = computed(() => {
-  const size = media.value?.library?.sizeOnDisk ?? 0;
-  if (!canRemove.value) return undefined;
-  return { label: "Remove", hint: size > 0 ? `Frees ${formatSize(size)}` : undefined };
+/** Anything held can be looked for again; a service that is down cannot be asked. */
+const menuActions = computed<MenuAction[]>(() => {
+  const item = media.value;
+  if (!item?.library) return [];
+
+  const actions: MenuAction[] = [];
+  if (item.status?.state !== "unknown") {
+    actions.push({
+      label: "Search again",
+      icon: IconSearch,
+      run: () => retry.mutateAsync({ mediaType: item.mediaType, tmdbId: item.tmdbId }),
+    });
+  }
+  if (canManage.value) {
+    const size = item.library.sizeOnDisk;
+    actions.push({
+      label: "Remove",
+      hint: size > 0 ? `Frees ${formatSize(size)}` : undefined,
+      icon: IconTrash,
+      danger: true,
+      run: () => {
+        confirming.value = true;
+      },
+    });
+  }
+  return actions;
 });
 
-const hasMenu = computed(() => !!search.value || !!removal.value);
+const hasMenu = computed(() => menuActions.value.length > 0);
 
 const confirmText = computed(() => {
   const item = media.value;

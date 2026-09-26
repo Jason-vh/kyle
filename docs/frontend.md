@@ -15,6 +15,7 @@ web/src/
   components/        → app components (RequestRow, ActivityRow, MediaCard, …)
   components/ui/     → the design system primitives
   composables/       → useRelativeTime
+  directives/        → v-long-press
   utils/             → format (names, sizes, durations), markdown
 ```
 

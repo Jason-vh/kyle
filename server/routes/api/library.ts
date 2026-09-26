@@ -2,7 +2,12 @@ import { isLibraryMediaType } from "#shared/types.ts";
 import { isInteger, readJsonObject } from "#server/http/input.ts";
 import { requireAdmin, requireAuth } from "#server/auth/middleware.ts";
 import { isRequester, listLibrary, removeLibraryItem } from "#server/library/service.ts";
-import { followSeries, MediaNotFoundError, releaseSeason } from "#server/requests/service.ts";
+import {
+  followSeries,
+  MediaNotFoundError,
+  releaseSeason,
+  setSeasonMonitored,
+} from "#server/requests/service.ts";
 import { createLogger } from "#server/logger.ts";
 import { errorMessage, errorResponse } from "#server/errors.ts";
 
@@ -100,6 +105,68 @@ export async function handleReleaseSeason(
       error: errorMessage(error),
     });
     return errorResponse(error, 502, "Could not release this season");
+  }
+}
+
+// ---------------------------------------------------------------------------
+// PUT /api/library/series/:serviceId/seasons/:seasonNumber — look for it, or stop
+// ---------------------------------------------------------------------------
+
+/** Whether a season is looked for is the requester's call, or an admin's. */
+export async function handleMonitorSeason(
+  req: Request,
+  rawServiceId: string,
+  rawSeasonNumber: string,
+): Promise<Response> {
+  const auth = await requireAuth(req);
+  if ("error" in auth) return auth.error;
+
+  const serviceId = Number(rawServiceId);
+  const seasonNumber = Number(rawSeasonNumber);
+  if (!isInteger(serviceId, 1) || !isInteger(seasonNumber)) {
+    return Response.json({ error: "Invalid id" }, { status: 400 });
+  }
+
+  let body: Record<string, unknown>;
+  try {
+    body = await readJsonObject(req);
+  } catch {
+    return Response.json({ error: "Invalid JSON" }, { status: 400 });
+  }
+  const { monitored } = body;
+  if (typeof monitored !== "boolean") {
+    return Response.json({ error: "monitored must be a boolean" }, { status: 400 });
+  }
+
+  try {
+    if (!auth.user.admin && !(await isRequester(auth.user.id, "series", serviceId))) {
+      return Response.json(
+        { error: "Only whoever asked for this, or an admin, can change it" },
+        { status: 403 },
+      );
+    }
+
+    const { changed } = await setSeasonMonitored(serviceId, seasonNumber, monitored);
+
+    log.info("season monitoring set", {
+      by: auth.user.id,
+      serviceId,
+      seasonNumber,
+      monitored,
+      changed,
+    });
+    return Response.json({ monitored });
+  } catch (error) {
+    if (error instanceof MediaNotFoundError) {
+      return Response.json({ error: error.message }, { status: 404 });
+    }
+    log.error("could not set season monitoring", {
+      serviceId,
+      seasonNumber,
+      monitored,
+      error: errorMessage(error),
+    });
+    return errorResponse(error, 502, "Could not change this season");
   }
 }
 

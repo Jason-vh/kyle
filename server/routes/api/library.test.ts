@@ -1,5 +1,10 @@
 import { afterAll, afterEach, beforeAll, describe, expect, test } from "bun:test";
-import { handleFollowSeries, handleGetLibrary, handleRemoveLibraryItem } from "./library.ts";
+import {
+  handleFollowSeries,
+  handleGetLibrary,
+  handleMonitorSeason,
+  handleRemoveLibraryItem,
+} from "./library.ts";
 import { buildJwtCookie, signJwt } from "#server/auth/jwt.ts";
 import { createTestUser, deleteTestUser } from "#server/db/testing.ts";
 import { db } from "#server/db/index.ts";
@@ -319,5 +324,74 @@ describe("PUT /api/library/series/:id/follow", () => {
 
     expect(res.status).toBe(200);
     expect(calls.some((call) => call.method === "PUT")).toBe(true);
+  });
+});
+
+describe("PUT /api/library/series/:id/seasons/:season", () => {
+  const SEVERANCE = {
+    id: 9,
+    title: "Severance",
+    tvdbId: 371980,
+    tmdbId: 95396,
+    monitored: true,
+    seasons: [{ seasonNumber: 1, monitored: true }],
+  };
+  const EPISODES = [
+    { id: 101, seasonNumber: 1, monitored: true },
+    { id: 102, seasonNumber: 1, monitored: true },
+    { id: 201, seasonNumber: 2, monitored: true },
+  ];
+
+  function monitor(body: unknown, cookie?: string, season = "1"): Request {
+    return new Request(`http://localhost/api/library/series/9/seasons/${season}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", ...(cookie ? { Cookie: cookie } : {}) },
+      body: JSON.stringify(body),
+    });
+  }
+
+  test("a signed-out visitor is refused", async () => {
+    expect((await handleMonitorSeason(monitor({ monitored: false }), "9", "1")).status).toBe(401);
+  });
+
+  test("refuses a monitored flag that is not a boolean", async () => {
+    const res = await handleMonitorSeason(monitor({ monitored: "no" }, asAdmin), "9", "1");
+    expect(res.status).toBe(400);
+  });
+
+  test("someone who did not ask for it cannot change it", async () => {
+    const calls = stubServices({ "/series/9": SEVERANCE, "/episode": EPISODES });
+
+    const res = await handleMonitorSeason(monitor({ monitored: false }, asUser), "9", "1");
+
+    expect(res.status).toBe(403);
+    expect(calls.some((call) => call.method === "PUT")).toBe(false);
+  });
+
+  // Sonarr searches for monitored episodes, so the season's go with it and no other's.
+  test("an admin may stop monitoring a season, its episodes with it", async () => {
+    const bodies: { url: string; body?: string }[] = [];
+    globalThis.fetch = ((url: string, init: RequestInit = {}) => {
+      if (init.method === "PUT") bodies.push({ url, body: init.body as string });
+      if (url.includes("/episode/monitor")) return Promise.resolve(Response.json([]));
+      if (url.includes("/episode")) return Promise.resolve(Response.json(EPISODES));
+      return Promise.resolve(Response.json(SEVERANCE));
+    }) as unknown as typeof fetch;
+
+    const res = await handleMonitorSeason(monitor({ monitored: false }, asAdmin), "9", "1");
+
+    expect(res.status).toBe(200);
+    const series = bodies.find((call) => call.url.includes("/series/9"));
+    expect(JSON.parse(series!.body!).seasons).toEqual([{ seasonNumber: 1, monitored: false }]);
+    const episodes = bodies.find((call) => call.url.includes("/episode/monitor"));
+    expect(JSON.parse(episodes!.body!)).toEqual({ episodeIds: [101, 102], monitored: false });
+  });
+
+  test("a season the series does not have is a miss", async () => {
+    stubServices({ "/series/9": SEVERANCE });
+
+    const res = await handleMonitorSeason(monitor({ monitored: false }, asAdmin, "7"), "9", "7");
+
+    expect(res.status).toBe(404);
   });
 });

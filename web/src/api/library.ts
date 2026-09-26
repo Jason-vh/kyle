@@ -37,6 +37,20 @@ export async function releaseSeason(season: ReleasableSeason): Promise<void> {
   });
 }
 
+/** Whether Sonarr keeps looking for a season; what is on disk stays either way. */
+export interface SeasonMonitoring {
+  serviceId: number;
+  seasonNumber: number;
+  monitored: boolean;
+}
+
+export async function setSeasonMonitored(change: SeasonMonitoring): Promise<void> {
+  await apiFetch(`/api/library/series/${change.serviceId}/seasons/${change.seasonNumber}`, {
+    method: "PUT",
+    body: JSON.stringify({ monitored: change.monitored }),
+  });
+}
+
 /** Keep up with a series already held: seasons announced later are grabbed too. */
 export interface FollowChange {
   serviceId: number;

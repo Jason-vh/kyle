@@ -12,6 +12,8 @@ import {
   removeLibraryItem,
   type ReleasableSeason,
   type RemovableItem,
+  type SeasonMonitoring,
+  setSeasonMonitored,
 } from "#web/api/library";
 import { getMediaActivity, getMediaDetail } from "#web/api/media";
 import {
@@ -171,6 +173,14 @@ export function useReleaseSeason() {
   const invalidate = useMediaInvalidation();
   return useMutation({
     mutation: (season: ReleasableSeason) => releaseSeason(season),
+    onSettled: invalidate,
+  });
+}
+
+export function useMonitorSeason() {
+  const invalidate = useMediaInvalidation();
+  return useMutation({
+    mutation: (change: SeasonMonitoring) => setSeasonMonitored(change),
     onSettled: invalidate,
   });
 }

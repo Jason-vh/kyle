@@ -7,7 +7,12 @@
       as-child
     >
       <AppCard :padded="false" class="group">
-        <AccordionHeader as="div" class="relative p-3.5">
+        <!-- Held down, the season offers its menu, as the ⋯ button does. -->
+        <AccordionHeader
+          v-long-press="() => openMenu(season)"
+          as="div"
+          class="relative p-3.5 select-none [-webkit-touch-callout:none]"
+        >
           <div class="flex items-center gap-2">
             <!-- Stretched over the header, so a tap anywhere but a button opens the season. -->
             <AccordionTrigger
@@ -39,7 +44,7 @@
             </AppButton>
 
             <AppButton
-              v-if="hasMenu(season)"
+              v-if="actionsFor(season).length"
               variant="ghost"
               size="sm"
               class="relative size-8 px-0"
@@ -111,10 +116,8 @@
     <MediaMenu
       :open="menuFor !== null"
       :title="menuFor ? seasonName(menuFor.seasonNumber) : ''"
-      :search="menuSearch"
-      :removal="menuFor ? removal(menuFor) : undefined"
+      :actions="menuFor ? actionsFor(menuFor) : []"
       @update:open="menuFor = null"
-      @remove="confirming = menuFor"
     />
 
     <ConfirmDialog
@@ -143,9 +146,16 @@ import type { EpisodeSummary, SeasonState, SeasonSummary } from "#shared/types";
 import { seasonName } from "#shared/media";
 import { formatDate, formatSize } from "#web/utils/format";
 import { SEASON_STATES } from "#web/utils/states";
-import { useReleaseSeason, useRequestMedia, useRetryRequest } from "#web/queries/media";
+import {
+  useMonitorSeason,
+  useReleaseSeason,
+  useRequestMedia,
+  useRetryRequest,
+} from "#web/queries/media";
 import { useSession } from "#web/queries/session";
+import { vLongPress } from "#web/directives/longPress";
 import EpisodeBar from "./EpisodeBar.vue";
+import type { MenuAction } from "./menu";
 import MediaMenu from "./MediaMenu.vue";
 import AppButton from "./ui/AppButton.vue";
 import AppCard from "./ui/AppCard.vue";
@@ -155,13 +165,19 @@ import { unaired } from "#web/utils/episodes";
 import IconCaret from "~icons/ph/caret-down-bold";
 import IconCheck from "~icons/ph/check-bold";
 import IconMore from "~icons/ph/dots-three-bold";
+import IconMonitor from "~icons/ph/eye";
+import IconUnmonitor from "~icons/ph/eye-slash";
+import IconSearch from "~icons/ph/arrow-clockwise";
+import IconTrash from "~icons/ph/trash";
 
 const props = defineProps<{
   seasons: SeasonSummary[];
   tmdbId: number;
   posterPath: string | null;
-  /** Sonarr's id for the series, without which a season cannot be deleted. */
+  /** Sonarr's id for the series, without which a season cannot be changed. */
   serviceId?: number;
+  /** An admin, or whoever asked for the series, and so may say what it keeps looking for. */
+  canManage?: boolean;
 }>();
 
 /** Only what needs a look gets colour; everything else is said in words. */
@@ -177,6 +193,7 @@ const { isAdmin } = useSession();
 const request = useRequestMedia();
 const retry = useRetryRequest();
 const release = useReleaseSeason();
+const monitor = useMonitorSeason();
 
 const busy = ref("");
 const errors = ref(new Map<number, string>());
@@ -224,14 +241,60 @@ function canRelease(season: SeasonSummary): boolean {
   return isAdmin.value && props.serviceId !== undefined && season.episodeFileCount > 0;
 }
 
-function hasMenu(season: SeasonSummary): boolean {
-  return searchable(season) || canRelease(season);
+/** Monitoring can be switched off, and back on for a season nobody would request again. */
+function monitoringAction(season: SeasonSummary): MenuAction | undefined {
+  const serviceId = props.serviceId;
+  if (!props.canManage || serviceId === undefined) return undefined;
+
+  const change = (monitored: boolean) => () =>
+    monitor.mutateAsync({ serviceId, seasonNumber: season.seasonNumber, monitored });
+
+  if (season.monitored) {
+    return {
+      label: "Stop monitoring",
+      hint: "Keeps what is on disk",
+      icon: IconUnmonitor,
+      run: change(false),
+    };
+  }
+  if (requestable(season)) return undefined;
+  return { label: "Start monitoring", icon: IconMonitor, run: change(true) };
 }
 
-function removal(season: SeasonSummary): { label: string; hint?: string } | undefined {
-  if (!canRelease(season)) return undefined;
-  const hint = season.sizeOnDisk > 0 ? `Frees ${formatSize(season.sizeOnDisk)}` : undefined;
-  return { label: "Delete season", hint };
+function actionsFor(season: SeasonSummary): MenuAction[] {
+  const actions: MenuAction[] = [];
+  if (searchable(season)) {
+    actions.push({
+      label: "Search again",
+      icon: IconSearch,
+      run: () =>
+        retry.mutateAsync({
+          mediaType: "series",
+          tmdbId: props.tmdbId,
+          seasonNumber: season.seasonNumber,
+        }),
+    });
+  }
+
+  const monitoring = monitoringAction(season);
+  if (monitoring) actions.push(monitoring);
+
+  if (canRelease(season)) {
+    actions.push({
+      label: "Delete season",
+      hint: season.sizeOnDisk > 0 ? `Frees ${formatSize(season.sizeOnDisk)}` : undefined,
+      icon: IconTrash,
+      danger: true,
+      run: () => {
+        confirming.value = season;
+      },
+    });
+  }
+  return actions;
+}
+
+function openMenu(season: SeasonSummary) {
+  if (actionsFor(season).length) menuFor.value = season;
 }
 
 function failed(seasonNumber: number): string | undefined {
@@ -241,18 +304,6 @@ function failed(seasonNumber: number): string | undefined {
 function fail(seasonNumber: number, error: unknown, fallback: string): void {
   errors.value.set(seasonNumber, error instanceof Error ? error.message : fallback);
 }
-
-/** Looks again for whatever the open menu's season is still short of. */
-const menuSearch = computed(() => {
-  const season = menuFor.value;
-  if (!season || !searchable(season)) return undefined;
-  return () =>
-    retry.mutateAsync({
-      mediaType: "series",
-      tmdbId: props.tmdbId,
-      seasonNumber: season.seasonNumber,
-    });
-});
 
 async function onRequestSeason(season: SeasonSummary): Promise<void> {
   errors.value.delete(season.seasonNumber);
