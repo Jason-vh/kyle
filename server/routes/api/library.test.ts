@@ -2,6 +2,8 @@ import { afterAll, afterEach, beforeAll, describe, expect, test } from "bun:test
 import { handleGetLibrary, handleRemoveLibraryItem } from "./library.ts";
 import { buildJwtCookie, signJwt } from "#server/auth/jwt.ts";
 import { createTestUser, deleteTestUser } from "#server/db/testing.ts";
+import { db } from "#server/db/index.ts";
+import { mediaRequests } from "#server/db/schema.ts";
 
 // No mocks: the route runs the real service, with Radarr and Sonarr stubbed at
 // the network. Plex is left unconfigured, which the watch index treats as
@@ -150,11 +152,25 @@ describe("DELETE /api/library/:type/:id", () => {
     expect(calls).toEqual([]);
   });
 
-  test("a signed-in non-admin is refused, and nothing is called", async () => {
-    const calls = stubServices(LIBRARY);
+  test("someone who did not request it is refused, and nothing is removed", async () => {
+    const calls = stubServices({
+      "/api/v3/movie/42": { id: 42, title: "Inception", tmdbId: 27205, hasFile: true },
+    });
 
     expect((await remove(asUser)).status).toBe(403);
-    expect(calls).toEqual([]);
+    expect(calls.filter((call) => call.method === "DELETE")).toEqual([]);
+  });
+
+  test("whoever requested it may remove it", async () => {
+    await db
+      .insert(mediaRequests)
+      .values({ userId, mediaType: "movie", tmdbId: 27205, title: "Inception" });
+    const calls = stubServices({
+      "/api/v3/movie/42": { id: 42, title: "Inception", tmdbId: 27205, hasFile: true },
+    });
+
+    expect((await remove(asUser)).status).toBe(200);
+    expect(calls.some((call) => call.method === "DELETE")).toBe(true);
   });
 
   test("an admin may remove, and the files go with it", async () => {

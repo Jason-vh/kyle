@@ -60,7 +60,10 @@ test("a real passkey can register and sign in, and logout revokes the old cookie
   expect((await page.request.get("/api/threads")).status()).toBe(403);
 });
 
-test("members can request media but only admins can remove it", async ({ page, context }) => {
+test("members can request media, and only whoever asked can remove it", async ({
+  page,
+  context,
+}) => {
   await signIn(context, "requester");
   await page.goto("/discover");
   await page.getByPlaceholder("Search for a movie or series…").fill("Arrival");
@@ -69,13 +72,16 @@ test("members can request media but only admins can remove it", async ({ page, c
   await expect(page.getByRole("button", { name: "Requested", exact: true })).toBeVisible();
   await page.goto("/requests");
   await expect(page.getByRole("link", { name: "Arrival", exact: true })).toBeVisible();
+
+  await signIn(context, "bystander");
   expect((await page.request.delete("/api/library/movie/7")).status()).toBe(403);
-  await page.goto("/library");
+  await page.goto("/media/movie/329865");
+  await expect(page.getByRole("heading", { name: "Arrival", level: 1 })).toBeVisible();
   await expect(page.getByRole("button", { name: "Remove", exact: true })).toHaveCount(0);
 
-  await signIn(context, "admin");
+  await signIn(context, "requester");
   await page.reload();
   await page.getByRole("button", { name: "Remove", exact: true }).click();
   await page.getByRole("alertdialog").getByRole("button", { name: "Remove", exact: true }).click();
-  await expect(page.getByText("Nothing matches.", { exact: true })).toBeVisible();
+  await expect(page.getByText("Not in the library", { exact: true })).toBeVisible();
 });

@@ -60,6 +60,21 @@ globalThis.fetch = (async (input: string | URL | Request, init: RequestInit = {}
       ],
     });
   }
+  if (path.endsWith(`/movie/${arrival.tmdbId}`)) {
+    return Response.json({
+      id: arrival.tmdbId,
+      title: arrival.title,
+      release_date: "2016-11-11",
+      overview: "A linguist meets visitors.",
+      poster_path: null,
+      backdrop_path: null,
+      runtime: 116,
+      genres: [],
+      vote_count: 0,
+      vote_average: 0,
+      status: "Released",
+    });
+  }
   if (path.endsWith("/movie/lookup/tmdb")) return Response.json(arrival);
   if (path.endsWith("/movie/7")) {
     if (init.method === "DELETE") held = false;
@@ -84,7 +99,7 @@ const { db } = await import("../server/db/index.ts");
 const { users } = await import("../server/db/schema.ts");
 const { signJwt } = await import("../server/auth/jwt.ts");
 const sessions: Record<string, string> = {};
-for (const name of ["member", "requester", "admin"]) {
+for (const name of ["member", "requester", "bystander", "admin"]) {
   const admin = name === "admin";
   const [user] = await db.insert(users).values({ displayName: name, isAdmin: admin }).returning();
   sessions[name] = await signJwt({ id: user!.id, name, admin });

@@ -4,7 +4,7 @@ import type { SonarrSeries } from "#server/sonarr/types.ts";
 import * as radarr from "#server/radarr/api.ts";
 import * as sonarr from "#server/sonarr/api.ts";
 import { movieState, seriesState } from "./item.ts";
-import { getAllRequesters } from "#server/db/requests.ts";
+import { getAllRequesters, getRequestersForMedia } from "#server/db/requests.ts";
 import { recordRemoval } from "#server/db/removals.ts";
 import { withDatabaseLock } from "#server/db/lock.ts";
 import { invalidateLibraryIndex } from "#server/requests/library.ts";
@@ -97,6 +97,18 @@ export async function listLibrary(viewerId: string): Promise<LibraryListing> {
   }
 
   return { items, unavailable };
+}
+
+export async function isRequester(
+  userId: string,
+  mediaType: LibraryMediaType,
+  serviceId: number,
+): Promise<boolean> {
+  const { tmdbId } =
+    mediaType === "movie" ? await radarr.getMovie(serviceId) : await sonarr.getSeries(serviceId);
+  if (!tmdbId) return false;
+  const requesters = await getRequestersForMedia(mediaType, tmdbId);
+  return requesters.some((requester) => requester.userId === userId);
 }
 
 /**

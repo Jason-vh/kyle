@@ -1,7 +1,7 @@
 import { isLibraryMediaType } from "#shared/types.ts";
 import { isInteger } from "#server/http/input.ts";
 import { requireAdmin, requireAuth } from "#server/auth/middleware.ts";
-import { listLibrary, removeLibraryItem } from "#server/library/service.ts";
+import { isRequester, listLibrary, removeLibraryItem } from "#server/library/service.ts";
 import { MediaNotFoundError, releaseSeason } from "#server/requests/service.ts";
 import { createLogger } from "#server/logger.ts";
 import { errorMessage, errorResponse } from "#server/errors.ts";
@@ -26,7 +26,7 @@ export async function handleGetLibrary(req: Request): Promise<Response> {
 }
 
 // ---------------------------------------------------------------------------
-// DELETE /api/library/:mediaType/:serviceId — admin only
+// DELETE /api/library/:mediaType/:serviceId — an admin, or whoever requested it
 // ---------------------------------------------------------------------------
 
 export async function handleRemoveLibraryItem(
@@ -34,8 +34,7 @@ export async function handleRemoveLibraryItem(
   mediaType: string,
   rawServiceId: string,
 ): Promise<Response> {
-  // Browsing is for everyone; removing things is not.
-  const auth = await requireAdmin(req);
+  const auth = await requireAuth(req);
   if ("error" in auth) return auth.error;
 
   if (!isLibraryMediaType(mediaType)) {
@@ -50,6 +49,10 @@ export async function handleRemoveLibraryItem(
   const deleteFiles = new URL(req.url).searchParams.get("deleteFiles") !== "false";
 
   try {
+    if (!auth.user.admin && !(await isRequester(auth.user.id, mediaType, serviceId))) {
+      return Response.json({ error: "Forbidden" }, { status: 403 });
+    }
+
     await removeLibraryItem(mediaType, serviceId, deleteFiles, auth.user.name);
 
     log.info("library item removed", { by: auth.user.id, mediaType, serviceId, deleteFiles });

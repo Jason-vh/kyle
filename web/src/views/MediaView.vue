@@ -93,7 +93,7 @@
           <RequestAction v-if="!media.library" :item="media" />
 
           <AppButton
-            v-if="isAdmin && media.library"
+            v-if="(isAdmin || media.requestedByMe) && media.library"
             variant="danger"
             :loading="removing"
             @click="confirming = true"

@@ -64,10 +64,10 @@
           v-for="{ item, statuses } in rows"
           :key="key(item)"
           :open="swiped === key(item)"
-          :disabled="!isAdmin"
+          :disabled="!isAdmin && !item.requestedByMe"
           @update:open="swiped = $event ? key(item) : ''"
         >
-          <AppCard :interactive="!!item.tmdbId" class="group relative">
+          <AppCard :interactive="!!item.tmdbId" class="relative">
             <div class="flex gap-3">
               <MediaPoster :src="item.posterUrl" :alt="item.title" />
 
@@ -117,18 +117,6 @@
 
               <div class="relative shrink-0 self-start">
                 <WatcherAvatars :watchers="item.requestedBy" :max="2" verb="requested this" />
-              </div>
-
-              <div v-if="isAdmin" class="relative hidden self-center pointer-fine:block">
-                <AppButton
-                  variant="ghost"
-                  aria-label="Remove"
-                  size="icon"
-                  class="text-text-muted opacity-0 group-hover:opacity-100 focus-visible:opacity-100 hover:text-accent-red"
-                  @click="onRemove(item)"
-                >
-                  <IconTrash class="size-5" aria-hidden="true" />
-                </AppButton>
               </div>
             </div>
           </AppCard>

@@ -2,7 +2,7 @@
   <div class="relative" @focusout="onFocusOut">
     <div
       v-if="!disabled"
-      class="absolute inset-y-0 right-0 flex items-center pointer-fine:hidden"
+      class="absolute inset-y-0 right-0 flex items-center"
       :class="{ 'transition-[scale] duration-300 ease-out': drag === null }"
       :style="{ width: `${ACTION_WIDTH}px`, scale: actionScale }"
       @focusin="emit('update:open', true)"
