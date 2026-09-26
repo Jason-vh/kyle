@@ -1,5 +1,7 @@
+import type { DownloadState } from "#shared/types.ts";
+
 /** What a title's download is doing, as opposed to where its file is. */
-export type QueueState = "found" | "downloading" | "stalled" | "blocked" | "importing";
+export type QueueState = DownloadState;
 
 export interface QueueStatus {
   state: QueueState;

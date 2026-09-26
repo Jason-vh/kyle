@@ -61,7 +61,7 @@
 
       <div class="stagger flex flex-col gap-2">
         <SwipeActions
-          v-for="item in shown"
+          v-for="{ item, status } in rows"
           :key="key(item)"
           :open="swiped === key(item)"
           :disabled="!isAdmin"
@@ -96,8 +96,11 @@
                       {{ item.episodes.present }}/{{ item.episodes.total }} episodes
                     </span>
                   </template>
-                  <template v-if="item.availability === 'missing'">
-                    · <span class="font-semibold text-accent-red">Not on disk</span>
+                  <template v-if="status">
+                    ·
+                    <span class="font-semibold" :class="TONE_TEXT[status.tone]">{{
+                      status.label
+                    }}</span>
                   </template>
                   <template v-if="!item.monitored"> · unmonitored</template>
                 </p>
@@ -164,6 +167,7 @@ import {
   applyLibraryView,
   changedFilters,
   DEFAULT_LIBRARY_VIEW,
+  downloadStatus,
   filterLabel,
   librarySummary,
   type LibraryFilterKey,
@@ -186,6 +190,7 @@ import MediaPoster from "#web/components/ui/MediaPoster.vue";
 import PageHeader from "#web/components/ui/PageHeader.vue";
 import QueryState from "#web/components/ui/QueryState.vue";
 import SwipeActions from "#web/components/ui/SwipeActions.vue";
+import type { Tone } from "#web/components/ui/types";
 import { useLibrary, useRemoveLibraryItem } from "#web/queries/media";
 import IconSliders from "~icons/ph/sliders-horizontal";
 import IconTrash from "~icons/ph/trash";
@@ -193,6 +198,15 @@ import IconX from "~icons/ph/x";
 import { useSession } from "#web/queries/session";
 
 useTitle("Library — Kyle");
+
+const TONE_TEXT: Record<Tone, string> = {
+  neutral: "text-text-muted",
+  green: "text-accent-green",
+  amber: "text-accent-amber",
+  red: "text-accent-red",
+  purple: "text-accent-purple",
+  blue: "text-accent-blue",
+};
 
 const { data, error, isPending } = useLibrary();
 const { isAdmin } = useSession();
@@ -226,6 +240,7 @@ const confirmText = computed(() => {
 const key = (item: LibraryItem) => `${item.mediaType}-${item.serviceId}`;
 
 const shown = computed(() => applyLibraryView(items.value, view.value));
+const rows = computed(() => shown.value.map((item) => ({ item, status: downloadStatus(item) })));
 const changed = computed(() => changedFilters(view.value));
 const totalSize = computed(() => shown.value.reduce((sum, item) => sum + item.sizeOnDisk, 0));
 

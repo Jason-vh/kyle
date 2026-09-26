@@ -72,6 +72,7 @@ describe("toSeries", () => {
     const item = toSeries(series({ statistics: { episodeFileCount: 4, episodeCount: 13 } }));
 
     expect(item.detail).toBe("4/13 episodes");
+    expect(item.episodes).toEqual({ present: 4, total: 13 });
     expect(item.availability).toBe("partial");
   });
 

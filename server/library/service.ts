@@ -9,6 +9,7 @@ import { recordRemoval } from "#server/db/removals.ts";
 import { withDatabaseLock } from "#server/db/lock.ts";
 import { invalidateLibraryIndex } from "#server/requests/library.ts";
 import { annotateRequesters } from "#server/requests/requesters.ts";
+import { queuesByService, serviceKey } from "#server/requests/state.ts";
 import { getWatchers, watchKey } from "#server/plex/history.ts";
 import { getPlexAvatars } from "#server/plex/access.ts";
 import { posterOf } from "#server/media-images.ts";
@@ -77,16 +78,22 @@ export async function listLibrary(viewerId: string): Promise<LibraryListing> {
     a.title.localeCompare(b.title),
   );
 
-  const [requesters, watchers, avatars] = await Promise.all([
+  const [requesters, watchers, avatars, queues] = await Promise.all([
     getAllRequesters(),
     getWatchers(),
     getPlexAvatars(),
+    queuesByService(),
   ]);
   annotateRequesters(items, viewerId, requesters, avatars);
 
   for (const item of items) {
-    if (item.tmdbId === undefined) continue;
-    item.watchedBy = watchers.get(watchKey(item.mediaType, item.tmdbId)) ?? [];
+    const queued = queues.get(serviceKey(item.mediaType, item.serviceId));
+    if (queued && item.availability !== "available") {
+      item.download = { state: queued.state, progress: queued.progress };
+    }
+    if (item.tmdbId !== undefined) {
+      item.watchedBy = watchers.get(watchKey(item.mediaType, item.tmdbId)) ?? [];
+    }
   }
 
   return { items, unavailable };

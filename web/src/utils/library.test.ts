@@ -3,6 +3,7 @@ import type { LibraryItem } from "#web/api/library";
 import {
   applyLibraryView,
   changedFilters,
+  downloadStatus,
   DEFAULT_LIBRARY_VIEW,
   filterLabel,
   librarySummary,
@@ -165,5 +166,31 @@ describe("watchedLabel", () => {
 
   test("counts any more than that", () => {
     expect(watchedLabel([sue, bob, { name: "Ann" }])).toBe("Watched by 3 people");
+  });
+});
+
+describe("downloadStatus", () => {
+  test("says nothing about a title that is all there", () => {
+    expect(downloadStatus(item({}))).toBeUndefined();
+  });
+
+  test("calls a title with nothing on disk and nothing queued not downloaded", () => {
+    expect(downloadStatus(item({ availability: "missing" }))).toEqual({
+      label: "Not downloaded",
+      tone: "red",
+    });
+  });
+
+  test("gives how far along a download is", () => {
+    const downloading = item({
+      availability: "missing",
+      download: { state: "downloading", progress: 0.424 },
+    });
+    expect(downloadStatus(downloading)?.label).toBe("Downloading 42%");
+  });
+
+  test("names a download that needs a hand", () => {
+    const stuck = item({ availability: "partial", download: { state: "blocked" } });
+    expect(downloadStatus(stuck)).toEqual({ label: "Can't import", tone: "red" });
   });
 });

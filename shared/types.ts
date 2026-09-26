@@ -43,6 +43,7 @@ export interface LibraryItem extends LibraryState {
   requestedByMe: boolean;
   /** Anyone who has played it on the Plex server. */
   watchedBy: Watcher[];
+  download?: Download;
 }
 
 export interface Person {
@@ -146,6 +147,13 @@ export interface EpisodeSummary {
  * Where a request has got to, worked out live rather than stored. Each says
  * what the requester should expect next, not where the file is.
  */
+export type DownloadState = "found" | "downloading" | "stalled" | "blocked" | "importing";
+
+export interface Download {
+  state: DownloadState;
+  progress?: number;
+}
+
 export type RequestState =
   | "unknown"
   | "unreleased"

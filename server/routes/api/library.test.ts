@@ -99,6 +99,39 @@ describe("GET /api/library", () => {
     expect(body.unavailable).toEqual(["Radarr"]);
     expect(body.items).toHaveLength(1);
   });
+
+  test("says how far along a title with nothing on disk is downloading", async () => {
+    stubServices({
+      "radarr.test/api/v3/queue": {
+        records: [
+          {
+            id: 1,
+            movie: { id: 43 },
+            status: "downloading",
+            trackedDownloadStatus: "ok",
+            trackedDownloadState: "downloading",
+            size: 100,
+            sizeleft: 25,
+          },
+        ],
+        totalRecords: 1,
+      },
+      "sonarr.test/api/v3/queue": { records: [], totalRecords: 0 },
+      "/api/v3/movie": [
+        ...LIBRARY["/api/v3/movie"],
+        { id: 43, title: "Arrival", year: 2016, tmdbId: 329865, hasFile: false },
+      ],
+      "/api/v3/series": LIBRARY["/api/v3/series"],
+    });
+
+    const body = (await (
+      await handleGetLibrary(request("/api/library", "GET", asUser))
+    ).json()) as { items: { title: string; download?: unknown }[] };
+
+    const byTitle = Object.fromEntries(body.items.map((item) => [item.title, item.download]));
+    expect(byTitle.Arrival).toEqual({ state: "downloading", progress: 0.75 });
+    expect(byTitle.Inception).toBeUndefined();
+  });
 });
 
 describe("DELETE /api/library/:type/:id", () => {

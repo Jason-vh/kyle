@@ -109,7 +109,11 @@ export async function queueStatusBySeason(seriesId: number): Promise<Map<number,
 }
 
 /** A season has a queue of its own, and rolls up into the series' own key. */
-function key(mediaType: string, serviceId: number, seasonNumber?: number | null): string {
+export function serviceKey(
+  mediaType: string,
+  serviceId: number,
+  seasonNumber?: number | null,
+): string {
   const scope = seasonNumber === undefined || seasonNumber === null ? "" : `:${seasonNumber}`;
   return `${mediaType}:${serviceId}${scope}`;
 }
@@ -147,14 +151,14 @@ function collect<K>(records: Map<K, QueueRecord[]>, at: K, record: QueueRecord):
  * What every queue is doing, keyed by the service id a request resolves to.
  * An unreachable service simply contributes nothing.
  */
-async function queuesByService(): Promise<Map<string, QueueStatus>> {
+export async function queuesByService(): Promise<Map<string, QueueStatus>> {
   const records = new Map<string, QueueRecord[]>();
 
   const [movies, series] = await Promise.allSettled([radarr.getQueue(), sonarr.getQueue()]);
 
   if (movies.status === "fulfilled") {
     for (const item of movies.value.records) {
-      if (item.movie?.id) collect(records, key("movie", item.movie.id), item);
+      if (item.movie?.id) collect(records, serviceKey("movie", item.movie.id), item);
     }
   } else {
     log.warn("radarr queue unavailable", { error: errorMessage(movies.reason) });
@@ -165,11 +169,11 @@ async function queuesByService(): Promise<Map<string, QueueStatus>> {
   if (series.status === "fulfilled") {
     for (const item of series.value.records) {
       if (!item.seriesId) continue;
-      collect(records, key("series", item.seriesId), item);
+      collect(records, serviceKey("series", item.seriesId), item);
 
       const seasonNumber = item.seasonNumber ?? item.episode?.seasonNumber;
       if (seasonNumber !== undefined) {
-        collect(records, key("series", item.seriesId, seasonNumber), item);
+        collect(records, serviceKey("series", item.seriesId, seasonNumber), item);
       }
     }
   } else {
@@ -262,9 +266,9 @@ export async function withState(requests: StatelessRequest[]): Promise<MediaRequ
     const entry = library[request.mediaType].get(request.tmdbId);
     const scope = scopeOf(entry, request.seasonNumber);
     const queue = entry
-      ? queues.get(key(request.mediaType, entry.serviceId, request.seasonNumber))
+      ? queues.get(serviceKey(request.mediaType, entry.serviceId, request.seasonNumber))
       : undefined;
-    const removal = removals.get(key(request.mediaType, request.tmdbId));
+    const removal = removals.get(serviceKey(request.mediaType, request.tmdbId));
 
     return {
       ...request,
