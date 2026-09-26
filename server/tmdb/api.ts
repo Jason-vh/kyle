@@ -61,7 +61,7 @@ export async function searchMulti(
 }
 
 export async function getMovie(movieId: number): Promise<TMDBMovieDetails> {
-  return request<TMDBMovieDetails>(`/movie/${movieId}`);
+  return request<TMDBMovieDetails>(`/movie/${movieId}?append_to_response=release_dates`);
 }
 
 export async function getTVShow(tvId: number): Promise<TMDBTVShowDetails> {

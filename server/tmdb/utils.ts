@@ -7,6 +7,42 @@ import type {
   TMDBTVShowDetails,
 } from "./types.ts";
 
+export type ReleaseKind = "premiere" | "cinema" | "digital" | "physical" | "tv";
+
+export type Releases = Record<ReleaseKind, string | null>;
+
+const RELEASE_KIND_BY_TYPE: Record<number, ReleaseKind> = {
+  1: "premiere",
+  2: "cinema",
+  3: "cinema",
+  4: "digital",
+  5: "physical",
+  6: "tv",
+};
+
+export function earliestReleases(movie: TMDBMovieDetails): Releases {
+  const earliest: Releases = {
+    premiere: null,
+    cinema: null,
+    digital: null,
+    physical: null,
+    tv: null,
+  };
+
+  for (const country of movie.release_dates?.results ?? []) {
+    for (const release of country.release_dates) {
+      const kind = RELEASE_KIND_BY_TYPE[release.type];
+      if (!kind) continue;
+
+      const date = release.release_date.slice(0, 10);
+      const current = earliest[kind];
+      if (current === null || date < current) earliest[kind] = date;
+    }
+  }
+
+  return earliest;
+}
+
 /** The year of a TMDB date, which is empty for anything unreleased. */
 export function yearOf(date?: string | null): number | undefined {
   const year = Number(date?.slice(0, 4));
@@ -76,6 +112,7 @@ export const toPartialMovieDetails = (movie: TMDBMovieDetails) => {
     title: movie.title,
     overview: movie.overview,
     release_date: movie.release_date,
+    releases: earliestReleases(movie),
     runtime: movie.runtime,
     vote_average: movie.vote_average,
     popularity: movie.popularity,

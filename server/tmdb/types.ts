@@ -88,6 +88,18 @@ export interface TMDBSpokenLanguage {
   name: string;
 }
 
+export interface TMDBReleaseDate {
+  release_date: string;
+  type: number;
+  note: string;
+  certification: string;
+}
+
+export interface TMDBCountryReleases {
+  iso_3166_1: string;
+  release_dates: TMDBReleaseDate[];
+}
+
 export interface TMDBMovieDetails extends Omit<TMDBMovie, "genre_ids"> {
   budget: number;
   revenue: number;
@@ -100,6 +112,7 @@ export interface TMDBMovieDetails extends Omit<TMDBMovie, "genre_ids"> {
   spoken_languages: TMDBSpokenLanguage[];
   imdb_id: string | null;
   homepage: string | null;
+  release_dates?: { results: TMDBCountryReleases[] };
 }
 
 export interface TMDBTVSeason {
