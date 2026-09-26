@@ -3,15 +3,50 @@
     <QueryState :loading="isPending" :error="error">
       <template #loading>
         <div class="stagger">
-          <Skeleton class="-mx-4 -mt-4 h-56 rounded-none sm:mx-0 sm:mt-0 sm:h-72 sm:rounded-card" />
-          <div class="-mt-16 flex items-end gap-4 px-0.5">
-            <Skeleton class="h-33 w-22 shrink-0 rounded-lg" />
-            <div class="min-w-0 flex-1 space-y-2.5 pb-1">
-              <Skeleton class="h-6 w-2/3" />
-              <Skeleton class="h-3.5 w-1/2" />
+          <div class="relative -mx-4 -mt-4 sm:mx-0 sm:mt-0">
+            <div class="relative h-56 overflow-hidden sm:h-72 sm:rounded-card">
+              <Skeleton class="size-full rounded-none" />
+              <div
+                class="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-bg-base"
+              />
+            </div>
+            <div class="absolute inset-x-0 top-0 p-3">
+              <button type="button" :class="GLASS" aria-label="Back" @click="goBack">
+                <IconBack class="size-5" aria-hidden="true" />
+              </button>
             </div>
           </div>
-          <Skeleton class="mt-5 h-28 w-full rounded-card" />
+
+          <div class="relative z-10 -mt-20 flex items-end gap-4">
+            <!-- Its own edge and shadow, so it reads as sitting on the artwork rather than part of it. -->
+            <div
+              class="aspect-[2/3] w-22 shrink-0 overflow-hidden rounded-lg border border-border-primary bg-bg-surface shadow-raised"
+            >
+              <Skeleton class="size-full rounded-none" />
+            </div>
+            <div class="min-w-0 flex-1 space-y-2.5 pb-1.5">
+              <Skeleton class="h-6 w-3/5" />
+              <Skeleton class="h-3.5 w-2/5" />
+            </div>
+          </div>
+
+          <AppCard :padded="false" class="mt-5 p-4">
+            <div class="flex items-center gap-2.5">
+              <Skeleton class="size-2 rounded-full" />
+              <Skeleton class="h-4 w-24" />
+              <Skeleton class="ml-auto h-3 w-16" />
+            </div>
+            <Skeleton class="mt-4 h-11 w-full rounded-control" />
+          </AppCard>
+
+          <div class="mt-7">
+            <Skeleton class="mb-3.5 h-3.5 w-16" />
+            <div class="space-y-2.5">
+              <Skeleton class="h-3.5 w-full" />
+              <Skeleton class="h-3.5 w-11/12" />
+              <Skeleton class="h-3.5 w-3/5" />
+            </div>
+          </div>
         </div>
       </template>
 
@@ -145,6 +180,7 @@ import MediaActivityLog from "#web/components/MediaActivityLog.vue";
 import MediaMenu from "#web/components/MediaMenu.vue";
 import MediaStatus from "#web/components/MediaStatus.vue";
 import SeasonList from "#web/components/SeasonList.vue";
+import AppCard from "#web/components/ui/AppCard.vue";
 import AppNotice from "#web/components/ui/AppNotice.vue";
 import AppPage from "#web/components/ui/AppPage.vue";
 import AppSwitch from "#web/components/ui/AppSwitch.vue";
