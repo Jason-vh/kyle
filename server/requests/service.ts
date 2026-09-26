@@ -2,7 +2,7 @@ import type { RadarrMovie } from "#server/radarr/types.ts";
 import type { SonarrEpisode, SonarrSeries } from "#server/sonarr/types.ts";
 import * as radarr from "#server/radarr/api.ts";
 import * as sonarr from "#server/sonarr/api.ts";
-import type { MonitorOption } from "#server/sonarr/api.ts";
+import type { SeriesAddition } from "#server/sonarr/api.ts";
 import { deleteSeasonRequests, saveMediaRequest } from "#server/db/requests.ts";
 import { clearRemoval } from "#server/db/removals.ts";
 import {
@@ -22,6 +22,14 @@ export type RequestableMediaType = "movie" | "series";
 
 /** `existing` means it was already in the library, so nothing was added. */
 export type RequestStatus = "added" | "existing";
+
+/** A request that would add a series and want nothing of it. */
+export class NothingRequestedError extends Error {
+  constructor() {
+    super("Choose a season to download, or follow the series");
+    this.name = "NothingRequestedError";
+  }
+}
 
 export class MediaNotFoundError extends Error {
   constructor(mediaType: RequestableMediaType, ref: string | number) {
@@ -173,30 +181,50 @@ function seriesTerm(ref: SeriesRef): string {
   throw new MediaNotFoundError("series", "no TMDB or TVDB id");
 }
 
-/**
- * The series in Sonarr, added with the given monitoring if it is not there yet.
- * Sonarr's lookup reports its own id for a series it already holds, so one call
- * answers both what the series is and whether it is there.
- */
-async function findOrAddSeries(
-  ref: SeriesRef,
-  monitorOption: MonitorOption,
-): Promise<{ status: RequestStatus; series: SonarrSeries }> {
+/** Sonarr's own view of a series, which reports its id when it already holds it. */
+async function lookupSeries(ref: SeriesRef): Promise<SonarrSeries> {
   const term = seriesTerm(ref);
   const [lookup] = await sonarr.searchSeries(term);
   if (!lookup?.tvdbId) throw new MediaNotFoundError("series", term);
+  return lookup;
+}
 
-  if (lookup.id) return { status: "existing", series: await sonarr.getSeries(lookup.id) };
+/** Every season but the specials, which nobody means by "the series". */
+export function regularSeasons(series: SonarrSeries): number[] {
+  return (series.seasons ?? [])
+    .map((season) => season.seasonNumber)
+    .filter((seasonNumber) => seasonNumber > 0);
+}
+
+/** Still airing, or yet to start: something new is coming, so there is something to follow. */
+export function isContinuing(series: SonarrSeries): boolean {
+  return series.status === "continuing" || series.status === "upcoming";
+}
+
+function assertSeasons(series: SonarrSeries, seasonNumbers: number[]): void {
+  for (const seasonNumber of seasonNumbers) seasonOf(series, seasonNumber);
+}
+
+/**
+ * The series in Sonarr, added with the given seasons and following if it is
+ * not there yet. What a held series should become is the caller's business.
+ */
+async function findOrAddSeries(
+  ref: SeriesRef,
+  lookup: SonarrSeries,
+  addition: SeriesAddition,
+): Promise<{ added: boolean; series: SonarrSeries }> {
+  if (lookup.id) return { added: false, series: await sonarr.getSeries(lookup.id) };
 
   let series: SonarrSeries;
   try {
-    series = await sonarr.addSeries(lookup.title, lookup.year, lookup.tvdbId, monitorOption);
+    series = await sonarr.addSeries(lookup, addition);
   } catch (error) {
     if (!(error instanceof ApiError) || ![400, 409].includes(error.status)) throw error;
     const [held] = await sonarr.searchSeries(`tvdb:${lookup.tvdbId}`);
     if (!held?.id) throw error;
     invalidateLibraryIndex();
-    return { status: "existing", series: await sonarr.getSeries(held.id) };
+    return { added: false, series: await sonarr.getSeries(held.id) };
   }
   invalidateLibraryIndex();
 
@@ -204,44 +232,7 @@ async function findOrAddSeries(
   const tmdbId = series.tmdbId ?? ref.tmdbId;
   if (tmdbId !== undefined) await clearRemoval("series", tmdbId);
 
-  return { status: "added", series };
-}
-
-/**
- * Add a series to the library and record who asked for it. A series already
- * there is left as it is — asking for more of it is asking for a season.
- */
-export async function requestSeries(input: {
-  tmdbId?: number;
-  tvdbId?: number;
-  monitorOption?: MonitorOption;
-  requestedBy?: Requester;
-  posterPath?: string;
-}): Promise<{ status: RequestStatus; series: SonarrSeries }> {
-  return withRequestedSeriesLock(input, async () => {
-    const { status, series } = await findOrAddSeries(input, input.monitorOption ?? "all");
-
-    if (input.requestedBy) {
-      await recordRequest({
-        requester: input.requestedBy,
-        mediaType: "series",
-        tmdbId: series.tmdbId ?? input.tmdbId,
-        serviceId: series.id,
-        title: series.title,
-        year: series.year || undefined,
-        posterPath: input.posterPath,
-      });
-    }
-
-    log.info("series requested", {
-      status,
-      term: seriesTerm(input),
-      title: series.title,
-      serviceId: series.id,
-      userId: input.requestedBy?.userId,
-    });
-    return { status, series };
-  });
+  return { added: true, series };
 }
 
 function seasonOf(series: SonarrSeries, seasonNumber: number) {
@@ -270,9 +261,163 @@ async function monitorSeason(series: SonarrSeries, seasonNumber: number): Promis
 }
 
 /**
+ * Seasons of a series Sonarr already holds, monitored and searched for. Says
+ * whether any of them was not wanted before.
+ */
+async function wantSeasons(series: SonarrSeries, seasonNumbers: number[]): Promise<boolean> {
+  let changed = false;
+  for (const seasonNumber of seasonNumbers) {
+    if (await monitorSeason(series, seasonNumber)) changed = true;
+    // Asking again for a season half-stuck in the queue means the stuck release
+    // has to go, or the search finds the same one and nothing moves.
+    await discardStalled("series", series.id, seasonNumber);
+    await sonarr.searchEpisodes(series.id, undefined, seasonNumber);
+  }
+  if (changed) invalidateLibraryIndex();
+  return changed;
+}
+
+/** Sonarr grabs nothing for an unmonitored series, so following needs both. */
+export function isFollowing(series: SonarrSeries): boolean {
+  return series.monitored && series.monitorNewItems === "all";
+}
+
+/** Whether seasons announced later are monitored. Says whether anything changed. */
+async function setFollowing(series: SonarrSeries, follow: boolean): Promise<boolean> {
+  if (isFollowing(series) === follow) return false;
+
+  series.monitorNewItems = follow ? "all" : "none";
+  if (follow) series.monitored = true;
+  await sonarr.updateSeries(series.id, series);
+  invalidateLibraryIndex();
+  return true;
+}
+
+interface SeriesRequestInput extends SeriesRef {
+  /** Seasons wanted now. Absent is every regular season, or nothing new for a series already held. */
+  seasons?: number[];
+  /** Keep up with new seasons. Absent follows a series still airing, or leaves a held one as it is. */
+  follow?: boolean;
+  requestedBy?: Requester;
+  posterPath?: string;
+}
+
+/**
+ * What a series request is recorded as. Everything, or following it, is the
+ * series as a whole; a few seasons are those seasons, so each can be released
+ * on its own.
+ */
+function requestScopes(
+  series: SonarrSeries,
+  seasons: number[] | undefined,
+  follow: boolean,
+): (number | undefined)[] {
+  const regular = regularSeasons(series);
+  const whole = seasons === undefined || regular.every((season) => seasons.includes(season));
+
+  const scopes: (number | undefined)[] = [];
+  if (whole || follow) scopes.push(undefined);
+  if (!whole && seasons) scopes.push(...seasons);
+  return scopes;
+}
+
+/**
+ * Add a series with the seasons asked for, and whether to keep up with it, and
+ * record who asked. For a series already held, the seasons asked for are
+ * searched for and following is set as asked; nothing else changes.
+ */
+export async function requestSeries(
+  input: SeriesRequestInput,
+): Promise<{ status: RequestStatus; series: SonarrSeries }> {
+  return withRequestedSeriesLock(input, async () => {
+    const lookup = await lookupSeries(input);
+    if (input.seasons) assertSeasons(lookup, input.seasons);
+
+    const addition: SeriesAddition = {
+      seasons: input.seasons ?? regularSeasons(lookup),
+      follow: input.follow ?? isContinuing(lookup),
+    };
+    if (!lookup.id && addition.seasons.length === 0 && !addition.follow) {
+      throw new NothingRequestedError();
+    }
+
+    const { added, series } = await findOrAddSeries(input, lookup, addition);
+
+    let changed = false;
+    if (!added && input.seasons) changed = await wantSeasons(series, input.seasons);
+    if (!added && input.follow !== undefined) {
+      changed = (await setFollowing(series, input.follow)) || changed;
+    }
+    const status: RequestStatus = added || changed ? "added" : "existing";
+
+    if (input.requestedBy) {
+      const follow = added ? addition.follow : input.follow === true;
+      for (const seasonNumber of requestScopes(series, input.seasons, follow)) {
+        await recordRequest({
+          requester: input.requestedBy,
+          mediaType: "series",
+          tmdbId: series.tmdbId ?? input.tmdbId,
+          serviceId: series.id,
+          title: series.title,
+          year: series.year || undefined,
+          posterPath: input.posterPath,
+          seasonNumber,
+        });
+      }
+    }
+
+    log.info("series requested", {
+      status,
+      term: seriesTerm(input),
+      title: series.title,
+      serviceId: series.id,
+      seasons: input.seasons,
+      follow: input.follow,
+      userId: input.requestedBy?.userId,
+    });
+    return { status, series };
+  });
+}
+
+/**
+ * Keep up with a series already held, or stop. Following is asking for what
+ * comes next, so whoever turns it on is recorded as having asked for the series.
+ */
+export async function followSeries(input: {
+  serviceId: number;
+  follow: boolean;
+  requestedBy?: Requester;
+}): Promise<{ series: SonarrSeries; changed: boolean }> {
+  const { tvdbId } = await sonarr.getSeries(input.serviceId);
+  return withDatabaseLock(`media:series:${tvdbId}`, async () => {
+    const series = await sonarr.getSeries(input.serviceId);
+    const changed = await setFollowing(series, input.follow);
+
+    if (input.follow && input.requestedBy) {
+      await recordRequest({
+        requester: input.requestedBy,
+        mediaType: "series",
+        tmdbId: series.tmdbId,
+        serviceId: series.id,
+        title: series.title,
+        year: series.year || undefined,
+      });
+    }
+
+    log.info("series following set", {
+      title: series.title,
+      serviceId: series.id,
+      follow: input.follow,
+      changed,
+    });
+    return { series, changed };
+  });
+}
+
+/**
  * Ask for one season: the unit people actually want, and the unit ownership is
- * kept in. The series is added unmonitored when it is missing, so nothing but
- * the asked-for season is ever pulled in by adding it.
+ * kept in. A series Sonarr does not hold is added with that season alone
+ * monitored, so nothing else is ever pulled in by adding it.
  */
 export async function requestSeason(input: {
   tmdbId?: number;
@@ -283,14 +428,14 @@ export async function requestSeason(input: {
 }): Promise<{ status: RequestStatus; series: SonarrSeries; seasonNumber: number }> {
   return withRequestedSeriesLock(input, async () => {
     const { seasonNumber } = input;
-    const { status: seriesStatus, series } = await findOrAddSeries(input, "none");
+    const lookup = await lookupSeries(input);
+    assertSeasons(lookup, [seasonNumber]);
 
-    const monitoringChanged = await monitorSeason(series, seasonNumber);
-    // Asking again for a season half-stuck in the queue means the stuck release
-    // has to go, or the search finds the same one and nothing moves.
-    await discardStalled("series", series.id, seasonNumber);
-    await sonarr.searchEpisodes(series.id, undefined, seasonNumber);
-    if (monitoringChanged) invalidateLibraryIndex();
+    const { added, series } = await findOrAddSeries(input, lookup, {
+      seasons: [seasonNumber],
+      follow: false,
+    });
+    const changed = !added && (await wantSeasons(series, [seasonNumber]));
 
     if (input.requestedBy) {
       await recordRequest({
@@ -305,8 +450,7 @@ export async function requestSeason(input: {
       });
     }
 
-    const status: RequestStatus =
-      seriesStatus === "added" || monitoringChanged ? "added" : "existing";
+    const status: RequestStatus = added || changed ? "added" : "existing";
     log.info("season requested", {
       status,
       term: seriesTerm(input),
@@ -349,7 +493,9 @@ export async function requestEpisode(input: {
 }): Promise<{ status: RequestStatus; series: SonarrSeries }> {
   return withRequestedSeriesLock(input, async () => {
     const { seasonNumber, episodeNumber } = input;
-    const { status, series } = await findOrAddSeries(input, "none");
+    const lookup = await lookupSeries(input);
+    const { added, series } = await findOrAddSeries(input, lookup, { seasons: [], follow: false });
+    const status: RequestStatus = added ? "added" : "existing";
 
     const episodes = await sonarr.getEpisodes(series.id);
     const episode = episodeOf(episodes, seasonNumber, episodeNumber, series);

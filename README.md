@@ -218,16 +218,19 @@ web/                         → Vue 3 + Vite + Tailwind CSS 4 SPA
   app user still adds, but attributes nothing.
 - **A season is the unit** — `media_requests.season_number` (null = the series as a whole)
   makes "I want season 3" recordable, and ownership is per season: two people on S1–S3 and
-  one on S4 is a thing the table can say. `requestSeason()` adds a series Sonarr does not
-  hold with `monitor: none` first, so asking for one season never drags in the rest, then
-  monitors that season and its episodes and runs a `SeasonSearch` — which is also the only
-  way to ask for more of a series already in the library, since adding one Sonarr holds
-  does nothing. `releaseSeason()` is its inverse: files deleted, season unmonitored, the
-  series and its other seasons untouched. The state model reads a season the same way it
-  reads a title: `LibraryEntry` carries one entry per season, and a queue record is filed
-  under its season as well as its series, so `resolveState()` answers both. A season adds
-  two states of its own — `unrequested`, which nothing is looking for, and `airing`, which
-  is up to date with a broadcast still running.
+  one on S4 is a thing the table can say. A series is added in one call that says exactly
+  which seasons to monitor and whether to follow it (`monitorNewItems`), with
+  `addOptions.monitor: "skip"` — any other value makes Sonarr rewrite the season flags once
+  it has refreshed the series, which happens after the add returns and would undo anything
+  done in between. `requestSeries({ seasons, follow })` is what the request sheet and
+  `add_series` call; `requestSeason()` adds with that one season alone. For a series already
+  held, a season is monitored with its episodes and searched with a `SeasonSearch`, and
+  `followSeries()` turns following on or off. `releaseSeason()` is the inverse: files deleted,
+  season unmonitored, the series and its other seasons untouched. The state model reads a
+  season the same way it reads a title: `LibraryEntry` carries one entry per season, and a
+  queue record is filed under its season as well as its series, so `resolveState()` answers
+  both. A season adds two states of its own — `unrequested`, which nothing is looking for,
+  and `airing`, which is up to date with a broadcast still running.
 - **Everyone hears, however they asked** — `announce()` in `server/webhooks/announce.ts`
   is the one place media arriving turns into someone being told. It records an in-app
   notification for every subscriber, and additionally replies in Slack or Discord where

@@ -85,6 +85,8 @@ export interface SonarrSeries {
   languageProfileId: number;
   seasonFolder: boolean;
   monitored: boolean;
+  /** Whether a season announced after the series was added is monitored. */
+  monitorNewItems?: "all" | "none";
   useSceneNumbering: boolean;
   runtime: number;
   tvdbId: number;

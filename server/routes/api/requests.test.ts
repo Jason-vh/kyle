@@ -100,6 +100,19 @@ describe("POST /api/requests", () => {
     expect(await requestsFor()).toMatchObject([{ mediaType: "series", tmdbId: 95396 }]);
   });
 
+  test("a series nothing is wanted of is refused, and nothing is added", async () => {
+    stubServices({
+      "/series/lookup": [{ title: "Severance", tvdbId: 371980, id: null, seasons: [] }],
+    });
+
+    const res = await handleCreateRequest(
+      post({ mediaType: "series", tmdbId: 95396, seasons: [], follow: false }, asUser),
+    );
+
+    expect(res.status).toBe(400);
+    expect(await requestsFor()).toEqual([]);
+  });
+
   // The browser sends what it already has, so the request list has art before
   // the services have anything at all.
   test("keeps the poster the browser sent", async () => {
@@ -121,6 +134,14 @@ describe("POST /api/requests", () => {
     ["an invalid poster", { mediaType: "movie", tmdbId: 1, posterPath: {} }],
     ["a null season", { mediaType: "series", tmdbId: 1, seasonNumber: null }],
     ["an invalid episode", { mediaType: "series", tmdbId: 1, seasonNumber: 1, episodeNumber: "1" }],
+    ["seasons for a movie", { mediaType: "movie", tmdbId: 1, seasons: [1] }],
+    ["seasons that are not numbers", { mediaType: "series", tmdbId: 1, seasons: ["1"] }],
+    ["a season named twice", { mediaType: "series", tmdbId: 1, seasons: [1, 1] }],
+    ["a follow that is not a boolean", { mediaType: "series", tmdbId: 1, follow: "yes" }],
+    [
+      "seasons alongside one season",
+      { mediaType: "series", tmdbId: 1, seasons: [1], seasonNumber: 1 },
+    ],
     ["an unknown media type", { mediaType: "album", tmdbId: 1 }],
     ["a missing media type", { tmdbId: 1 }],
     ["a missing id", { mediaType: "movie" }],

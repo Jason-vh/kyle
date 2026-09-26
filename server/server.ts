@@ -29,6 +29,7 @@ import {
   handleDiscoverSearch,
   handleCreateRequest,
   handleGetRequests,
+  handleGetSeriesRequestOptions,
   handleReportRequest,
   handleRetryRequest,
 } from "./routes/api/requests.ts";
@@ -156,6 +157,9 @@ export function startServer(port: number) {
     "/api/requests": {
       GET: withSessionRefresh(handleGetRequests),
       POST: withSessionRefresh(handleCreateRequest),
+    },
+    "/api/requests/series/:tmdbId/options": {
+      GET: (req) => withSessionRefresh(handleGetSeriesRequestOptions)(req, req.params.tmdbId),
     },
     "/api/requests/:mediaType/:tmdbId/retry": {
       POST: (req) =>

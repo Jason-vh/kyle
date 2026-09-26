@@ -54,7 +54,9 @@ describe("a tool's result and the event extracted from it", () => {
 
   test("add_series", async () => {
     stub({
-      "/series/lookup": [{ title: "Severance", year: 2022, tvdbId: 371980 }],
+      "/series/lookup": [
+        { title: "Severance", year: 2022, tvdbId: 371980, seasons: [{ seasonNumber: 1 }] },
+      ],
       "/qualityprofile": [{ id: 1 }],
       "/rootfolder": [{ path: "/tv" }],
       "/api/v3/series": {
@@ -66,7 +68,7 @@ describe("a tool's result and the event extracted from it", () => {
       },
     });
 
-    const args = { tvdbId: 371980, monitorOption: "all" as const };
+    const args = { tvdbId: 371980 };
     const output = await createAddSeriesTool().execute("call-2", args);
 
     expect(extractMediaEvent("add_series", args, output)).toEqual({

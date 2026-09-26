@@ -3,6 +3,7 @@ import { isInteger, readJsonObject } from "#server/http/input.ts";
 import { searchRequestableMedia } from "#server/requests/search.ts";
 import {
   MediaNotFoundError,
+  NothingRequestedError,
   requestEpisode,
   requestMovie,
   requestSeason,
@@ -12,6 +13,7 @@ import {
 } from "#server/requests/service.ts";
 import { getAllMediaRequests, getMediaRequestsForUser } from "#server/db/requests.ts";
 import { getLibraryIndex } from "#server/requests/library.ts";
+import { getSeriesRequestOptions } from "#server/requests/series-options.ts";
 import { reportProblem } from "#server/requests/report.ts";
 import { retryRequest } from "#server/requests/retry.ts";
 import { withState } from "#server/requests/state.ts";
@@ -52,6 +54,9 @@ interface RequestBody {
   /** A series only: which season is wanted, and which episode of it. */
   seasonNumber?: number;
   episodeNumber?: number;
+  /** A series only: the seasons wanted now, and whether to keep up with it. */
+  seasons?: number[];
+  follow?: boolean;
 }
 
 function isRequestableType(value: unknown): value is RequestableMediaType {
@@ -61,6 +66,8 @@ function isRequestableType(value: unknown): value is RequestableMediaType {
 interface Scope {
   seasonNumber?: number;
   episodeNumber?: number;
+  seasons?: number[];
+  follow?: boolean;
 }
 
 /** What the browser needs to know about a request it just made. */
@@ -89,16 +96,43 @@ async function addForUser(
     return { status, title: series.title, year: series.year || undefined, seasonNumber };
   }
 
-  const { status, series } = await requestSeries(common);
+  const { status, series } = await requestSeries({
+    ...common,
+    seasons: scope.seasons,
+    follow: scope.follow,
+  });
   return { status, title: series.title, year: series.year || undefined };
 }
 
-/** A season is 0 or more (0 is Sonarr's specials); an episode is 1 or more. */
-function scopeError(body: RequestBody): string | undefined {
-  const { mediaType, seasonNumber, episodeNumber } = body;
+/** Seasons are 0 or more (0 is Sonarr's specials), each named once. */
+function isSeasonList(value: unknown): value is number[] {
+  return (
+    Array.isArray(value) &&
+    value.length <= 200 &&
+    value.every((season) => isInteger(season)) &&
+    new Set(value).size === value.length
+  );
+}
 
-  if (seasonNumber === undefined && episodeNumber === undefined) return undefined;
+/** Which seasons, or which season and episode, or what to do with a whole series. */
+function scopeError(body: RequestBody): string | undefined {
+  const { mediaType, seasonNumber, episodeNumber, seasons, follow } = body;
+
+  const scoped = [seasonNumber, episodeNumber, seasons, follow].some((part) => part !== undefined);
+  if (!scoped) return undefined;
   if (mediaType !== "series") return "Only a series has seasons";
+
+  if (seasons !== undefined || follow !== undefined) {
+    if (seasonNumber !== undefined || episodeNumber !== undefined) {
+      return "seasons and follow are for a whole series, not one season";
+    }
+    if (seasons !== undefined && !isSeasonList(seasons)) {
+      return "seasons must be distinct non-negative integers";
+    }
+    if (follow !== undefined && typeof follow !== "boolean") return "follow must be a boolean";
+    return undefined;
+  }
+
   if (seasonNumber !== undefined && !isInteger(seasonNumber)) {
     return "seasonNumber must be a non-negative integer";
   }
@@ -144,12 +178,20 @@ export async function handleCreateRequest(req: Request): Promise<Response> {
       body.tmdbId,
       { userId: auth.user.id },
       body.posterPath,
-      { seasonNumber: body.seasonNumber, episodeNumber: body.episodeNumber },
+      {
+        seasonNumber: body.seasonNumber,
+        episodeNumber: body.episodeNumber,
+        seasons: body.seasons,
+        follow: body.follow,
+      },
     );
     return Response.json(outcome);
   } catch (error) {
     if (error instanceof MediaNotFoundError) {
       return Response.json({ error: error.message }, { status: 404 });
+    }
+    if (error instanceof NothingRequestedError) {
+      return Response.json({ error: error.message }, { status: 400 });
     }
     log.error("request failed", {
       userId: auth.user.id,
@@ -160,6 +202,33 @@ export async function handleCreateRequest(req: Request): Promise<Response> {
       error: errorMessage(error),
     });
     return errorResponse(error, 502, "Could not add this to the library");
+  }
+}
+
+// ---------------------------------------------------------------------------
+// GET /api/requests/series/:tmdbId/options — what can be asked of a series
+// ---------------------------------------------------------------------------
+
+export async function handleGetSeriesRequestOptions(
+  req: Request,
+  rawTmdbId: string,
+): Promise<Response> {
+  const auth = await requireAuth(req);
+  if ("error" in auth) return auth.error;
+
+  const tmdbId = Number(rawTmdbId);
+  if (!isInteger(tmdbId, 1)) {
+    return Response.json({ error: "Invalid id" }, { status: 400 });
+  }
+
+  try {
+    return Response.json(await getSeriesRequestOptions(tmdbId));
+  } catch (error) {
+    if (error instanceof MediaNotFoundError) {
+      return Response.json({ error: error.message }, { status: 404 });
+    }
+    log.error("could not read series options", { tmdbId, error: errorMessage(error) });
+    return errorResponse(error, 502, "Could not read this series' seasons");
   }
 }
 

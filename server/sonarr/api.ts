@@ -39,22 +39,23 @@ export async function searchSeries(term: string): Promise<SonarrSeries[]> {
   return request<SonarrSeries[]>(`/series/lookup?term=${encodeURIComponent(term)}`);
 }
 
-export type MonitorOption =
-  | "all"
-  | "future"
-  | "missing"
-  | "existing"
-  | "pilot"
-  | "firstSeason"
-  | "lastSeason"
-  | "monitorSpecials"
-  | "none";
+/** What to ask of a series being added, in terms Sonarr applies in one go. */
+export interface SeriesAddition {
+  /** Seasons to monitor and search for now; every other season is left alone. */
+  seasons: number[];
+  /** Monitor seasons announced later, so the series is kept up with. */
+  follow: boolean;
+}
 
+/**
+ * Add a series from Sonarr's own lookup, so its seasons are numbered as Sonarr
+ * numbers them. `monitor: "skip"` makes Sonarr take the season flags as given —
+ * any other value rewrites them once the series has been refreshed, which
+ * happens after this call returns and would undo anything done in between.
+ */
 export async function addSeries(
-  title: string,
-  year: number,
-  tvdbId: number,
-  monitorOption: MonitorOption,
+  lookup: SonarrSeries,
+  { seasons, follow }: SeriesAddition,
 ): Promise<SonarrSeries> {
   const [qualityProfiles, rootFolders] = await Promise.all([
     getQualityProfiles(),
@@ -69,18 +70,24 @@ export async function addSeries(
     throw new Error("No root folders found");
   }
 
+  const wanted = new Set(seasons);
   const seriesData = {
-    title,
-    year,
-    tvdbId,
+    title: lookup.title,
+    year: lookup.year,
+    tvdbId: lookup.tvdbId,
     qualityProfileId: qualityProfiles[0]!.id,
     languageProfileId: 1,
     rootFolderPath: rootFolders[0]!.path,
     monitored: true,
+    monitorNewItems: follow ? "all" : "none",
     seasonFolder: true,
+    seasons: (lookup.seasons ?? []).map((season) => ({
+      seasonNumber: season.seasonNumber,
+      monitored: wanted.has(season.seasonNumber),
+    })),
     addOptions: {
-      monitor: monitorOption,
-      searchForMissingEpisodes: true,
+      monitor: "skip",
+      searchForMissingEpisodes: wanted.size > 0,
       searchForCutoffUnmetEpisodes: false,
     },
   };

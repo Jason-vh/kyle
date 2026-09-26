@@ -189,6 +189,23 @@ export type RequestState =
   | "paused"
   | "removed";
 
+/** One season on offer when requesting a series, numbered as Sonarr numbers it. */
+export interface SeasonOption {
+  /** 0 is specials. */
+  seasonNumber: number;
+  /** From TMDB, where its numbering agrees. */
+  episodeCount?: number;
+  year?: number;
+}
+
+/** What someone can choose between when requesting a series. */
+export interface SeriesRequestOptions {
+  /** Regular seasons in order, specials last. */
+  seasons: SeasonOption[];
+  /** Something new is still coming, so following it means something. */
+  continuing: boolean;
+}
+
 /** A season of a series that is monitored, aired, and not all there. */
 export interface MissingSeason {
   season: number;

@@ -1,7 +1,9 @@
 import { afterAll, afterEach, beforeAll, describe, expect, test } from "bun:test";
 import { and, eq } from "drizzle-orm";
 import {
+  followSeries,
   MediaNotFoundError,
+  NothingRequestedError,
   releaseSeason,
   requestEpisode,
   requestMovie,
@@ -202,7 +204,15 @@ describe("asking twice", () => {
 describe("requestSeries", () => {
   test("resolves a series through Sonarr's own TMDB lookup", async () => {
     const calls = stubServices({
-      "/series/lookup": [{ title: "Severance", year: 2022, tvdbId: 371980, id: null }],
+      "/series/lookup": [
+        {
+          title: "Severance",
+          year: 2022,
+          tvdbId: 371980,
+          id: null,
+          seasons: [{ seasonNumber: 1 }],
+        },
+      ],
       "/qualityprofile": [{ id: 1 }],
       "/rootfolder": [{ path: "/tv" }],
       "/api/v3/series": { title: "Severance", year: 2022, id: 9, tmdbId: 95396 },
@@ -234,6 +244,130 @@ describe("requestSeries", () => {
     stubServices({ "/series/lookup": [] });
 
     expect(requestSeries({ tmdbId: 1 })).rejects.toThrow(MediaNotFoundError);
+  });
+});
+
+/** Sonarr without Severance, which has specials, two seasons, and is still airing. */
+function stubUnheld(status = "continuing") {
+  const lookup = {
+    title: "Severance",
+    year: 2022,
+    tvdbId: 371980,
+    id: null,
+    status,
+    seasons: [
+      { seasonNumber: 0, monitored: false },
+      { seasonNumber: 1, monitored: true },
+      { seasonNumber: 2, monitored: true },
+    ],
+  };
+  return stubServices({
+    "/series/lookup": [lookup],
+    "/qualityprofile": [{ id: 1 }],
+    "/rootfolder": [{ path: "/tv" }],
+    "/api/v3/series": { ...lookup, id: 9, tmdbId: 95396 },
+  });
+}
+
+function addedSeries(calls: { url: string; method: string; body?: string }[]) {
+  const add = calls.find((call) => call.method === "POST" && call.url.endsWith("/series"));
+  return JSON.parse(add!.body!);
+}
+
+describe("requestSeries, adding", () => {
+  // Any other monitor option makes Sonarr rewrite the season flags once it has
+  // refreshed the series, which it does after the add has returned.
+  test("adds the seasons chosen, exactly as chosen, and searches for them", async () => {
+    const calls = stubUnheld();
+
+    await requestSeries({ tmdbId: 95396, seasons: [2], follow: false });
+
+    const body = addedSeries(calls);
+    expect(body.seasons).toEqual([
+      { seasonNumber: 0, monitored: false },
+      { seasonNumber: 1, monitored: false },
+      { seasonNumber: 2, monitored: true },
+    ]);
+    expect(body.monitorNewItems).toBe("none");
+    expect(body.addOptions).toEqual({
+      monitor: "skip",
+      searchForMissingEpisodes: true,
+      searchForCutoffUnmetEpisodes: false,
+    });
+  });
+
+  test("asked nothing, takes every regular season and follows a series still airing", async () => {
+    const calls = stubUnheld();
+
+    await requestSeries({ tmdbId: 95396 });
+
+    const body = addedSeries(calls);
+    expect(body.seasons.filter((s: { monitored: boolean }) => s.monitored)).toEqual([
+      { seasonNumber: 1, monitored: true },
+      { seasonNumber: 2, monitored: true },
+    ]);
+    expect(body.monitorNewItems).toBe("all");
+  });
+
+  test("does not follow an ended series unless asked to", async () => {
+    const calls = stubUnheld("ended");
+
+    await requestSeries({ tmdbId: 95396 });
+
+    expect(addedSeries(calls).monitorNewItems).toBe("none");
+  });
+
+  test("following alone adds the series without searching for anything", async () => {
+    const calls = stubUnheld();
+
+    await requestSeries({ tmdbId: 95396, seasons: [], follow: true });
+
+    const body = addedSeries(calls);
+    expect(body.monitorNewItems).toBe("all");
+    expect(body.addOptions.searchForMissingEpisodes).toBe(false);
+  });
+
+  test("refuses to add a series that nothing is wanted of", async () => {
+    const calls = stubUnheld();
+
+    expect(requestSeries({ tmdbId: 95396, seasons: [], follow: false })).rejects.toThrow(
+      NothingRequestedError,
+    );
+    expect(calls.some((call) => call.method === "POST")).toBe(false);
+  });
+
+  test("refuses a season the series does not have", () => {
+    stubUnheld();
+
+    expect(requestSeries({ tmdbId: 95396, seasons: [7] })).rejects.toThrow(MediaNotFoundError);
+  });
+
+  test("a few seasons are recorded as those seasons", async () => {
+    stubUnheld();
+
+    await requestSeries({ tmdbId: 95396, seasons: [2], follow: false, requestedBy: { userId } });
+
+    const rows = await db.select().from(mediaRequests).where(eq(mediaRequests.userId, userId));
+    expect(rows.map((row) => row.seasonNumber)).toEqual([2]);
+  });
+
+  test("every season is recorded as the series as a whole", async () => {
+    stubUnheld();
+
+    await requestSeries({ tmdbId: 95396, seasons: [1, 2], follow: false, requestedBy: { userId } });
+
+    const rows = await db.select().from(mediaRequests).where(eq(mediaRequests.userId, userId));
+    expect(rows.map((row) => row.seasonNumber)).toEqual([null]);
+  });
+
+  // Following is wanting whatever comes next, which no season stands for.
+  test("following a few seasons is recorded as the series and those seasons", async () => {
+    stubUnheld();
+
+    await requestSeries({ tmdbId: 95396, seasons: [2], follow: true, requestedBy: { userId } });
+
+    const rows = await db.select().from(mediaRequests).where(eq(mediaRequests.userId, userId));
+    expect(rows.map((row) => row.seasonNumber).sort()).toEqual([2, null]);
   });
 });
 
@@ -309,7 +443,29 @@ describe("requestSeason", () => {
 
   // The whole point: a series Sonarr does not hold yet must not drag in every
   // season of it just because someone asked for one.
-  test("adds a series it does not hold with nothing monitored", async () => {
+  test("adds a series it does not hold with that season alone monitored", async () => {
+    const calls = stubSonarr({
+      "/series/lookup": [{ ...SEVERANCE, id: null }],
+      "/qualityprofile": [{ id: 1 }],
+      "/rootfolder": [{ path: "/tv" }],
+      "/api/v3/series": { ...SEVERANCE, seasons: SEVERANCE.seasons.map((s) => ({ ...s })) },
+    });
+
+    const { status } = await requestSeason({ tmdbId: 95396, seasonNumber: 3 });
+
+    const body = addedSeries(calls);
+    expect(body.seasons).toEqual([
+      { seasonNumber: 1, monitored: false },
+      { seasonNumber: 3, monitored: true },
+    ]);
+    expect(body.monitorNewItems).toBe("none");
+    expect(body.addOptions.searchForMissingEpisodes).toBe(true);
+    expect(status).toBe("added");
+  });
+
+  // Sonarr searches once it has refreshed the series; anything done before
+  // then would be undone by that refresh.
+  test("leaves a series it has just added to Sonarr", async () => {
     const calls = stubSonarr({
       "/series/lookup": [{ ...SEVERANCE, id: null }],
       "/qualityprofile": [{ id: 1 }],
@@ -319,8 +475,7 @@ describe("requestSeason", () => {
 
     await requestSeason({ tmdbId: 95396, seasonNumber: 3 });
 
-    const add = calls.find((call) => call.method === "POST" && call.url.endsWith("/series"));
-    expect(JSON.parse(add!.body!).addOptions.monitor).toBe("none");
+    expect(calls.filter((call) => call.method !== "GET")).toHaveLength(1);
   });
 
   test("records the season against whoever asked, and subscribes them to it", async () => {
@@ -414,6 +569,77 @@ describe("requestSeason", () => {
     stubSonarr();
 
     expect(requestSeason({ tmdbId: 95396, seasonNumber: 7 })).rejects.toThrow(MediaNotFoundError);
+  });
+});
+
+describe("requestSeries, held", () => {
+  test("searches for the seasons asked for", async () => {
+    const calls = stubSonarr();
+
+    const { status } = await requestSeries({ tmdbId: 95396, seasons: [3] });
+
+    const search = calls.find((call) => call.url.includes("/command"));
+    expect(JSON.parse(search!.body!)).toMatchObject({ name: "SeasonSearch", seasonNumber: 3 });
+    expect(status).toBe("added");
+  });
+
+  test("starts following when asked to, and changes nothing else", async () => {
+    const calls = stubSonarr();
+
+    await requestSeries({ tmdbId: 95396, follow: true });
+
+    const updates = calls.filter((call) => call.method === "PUT");
+    expect(updates).toHaveLength(1);
+    expect(JSON.parse(updates[0]!.body!)).toMatchObject({
+      monitorNewItems: "all",
+      monitored: true,
+    });
+  });
+
+  test("asked nothing in particular, leaves it as it is", async () => {
+    const calls = stubSonarr();
+
+    const { status } = await requestSeries({ tmdbId: 95396 });
+
+    expect(status).toBe("existing");
+    expect(calls.every((call) => call.method === "GET")).toBe(true);
+  });
+});
+
+describe("followSeries", () => {
+  test("stops following without touching the seasons", async () => {
+    const calls = stubSonarr({
+      "/api/v3/series/9": { ...SEVERANCE, monitored: true, monitorNewItems: "all" },
+    });
+
+    const { changed } = await followSeries({ serviceId: 9, follow: false });
+
+    const update = calls.find((call) => call.method === "PUT");
+    expect(JSON.parse(update!.body!)).toMatchObject({
+      monitorNewItems: "none",
+      seasons: SEVERANCE.seasons,
+    });
+    expect(changed).toBe(true);
+  });
+
+  test("whoever starts following has asked for the series", async () => {
+    stubSonarr();
+
+    await followSeries({ serviceId: 9, follow: true, requestedBy: { userId } });
+
+    const rows = await db.select().from(mediaRequests).where(eq(mediaRequests.userId, userId));
+    expect(rows).toMatchObject([{ tmdbId: 95396, seasonNumber: null }]);
+  });
+
+  test("following what is already followed changes nothing", async () => {
+    const calls = stubSonarr({
+      "/api/v3/series/9": { ...SEVERANCE, monitored: true, monitorNewItems: "all" },
+    });
+
+    const { changed } = await followSeries({ serviceId: 9, follow: true });
+
+    expect(changed).toBe(false);
+    expect(calls.every((call) => call.method === "GET")).toBe(true);
   });
 });
 

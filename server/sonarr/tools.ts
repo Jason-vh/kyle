@@ -5,6 +5,7 @@ import { buildTable } from "#server/agent/table.ts";
 import {
   releaseSeason,
   requestSeason,
+  isFollowing,
   requestSeries,
   type Requester,
 } from "#server/requests/service.ts";
@@ -128,22 +129,17 @@ export const searchSeriesTool: Tool<typeof searchSeriesParams> = {
 
 const addSeriesParams = Type.Object({
   tvdbId: Type.Number({ description: "The TVDB ID of the series to add" }),
-  monitorOption: Type.Union(
-    [
-      Type.Literal("all"),
-      Type.Literal("future"),
-      Type.Literal("missing"),
-      Type.Literal("existing"),
-      Type.Literal("pilot"),
-      Type.Literal("firstSeason"),
-      Type.Literal("lastSeason"),
-      Type.Literal("monitorSpecials"),
-      Type.Literal("none"),
-    ],
-    {
+  seasons: Type.Optional(
+    Type.Array(Type.Number(), {
       description:
-        "Which episodes to monitor and download: 'all' (entire series), 'lastSeason' (latest season only), 'firstSeason' (first season only), 'future' (upcoming episodes), 'missing' (missing episodes), 'existing' (existing episodes), 'pilot' (pilot episode only), 'monitorSpecials' (specials only), 'none' (don't download)",
-    },
+        "Season numbers to download now (0 is specials). Omit for every regular season; [] for none, to only follow it.",
+    }),
+  ),
+  follow: Type.Optional(
+    Type.Boolean({
+      description:
+        "Keep up with the series: grab seasons announced later. Omit to follow a series still airing and not an ended one.",
+    }),
   ),
 });
 
@@ -160,19 +156,23 @@ export function createAddSeriesTool(requestedBy?: Requester): Tool<typeof addSer
   return {
     ...addSeriesPresentation,
     description:
-      "Add a TV series to Sonarr. Requires TVDB ID and a monitor option, which determines which episodes to download: 'all' for entire series, 'lastSeason' for only the latest season, 'future' for upcoming episodes only, 'missing' for missing episodes, 'existing' for existing episodes, or 'none' to add without downloading. Adding a series already in the library is safe and changes nothing.",
+      "Add a TV series to Sonarr and record who asked for it: which seasons to download now, and whether to follow it for new seasons. For a series Sonarr already holds, the seasons given are searched for and following is set as given; nothing else changes. To ask for one season, prefer request_season.",
     parameters: addSeriesParams,
     async execute(_toolCallId, params) {
       const { status, series } = await requestSeries({
         tvdbId: params.tvdbId,
-        monitorOption: params.monitorOption,
+        seasons: params.seasons,
+        follow: params.follow,
         requestedBy,
       });
       const name = titleWithYear(series.title, series.year);
       return jsonResult({
         series: toPartialSeries(series),
+        following: isFollowing(series),
         message:
-          status === "existing" ? `${name} is already in Sonarr.` : `Added ${name} to Sonarr.`,
+          status === "existing"
+            ? `${name} is already in Sonarr as asked; nothing changed.`
+            : `Requested ${name}.`,
       });
     },
   };
