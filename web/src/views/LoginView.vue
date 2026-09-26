@@ -36,7 +36,7 @@
             class="flex w-full items-center justify-center gap-2 rounded-lg border border-border-primary px-4 py-2.5 text-sm font-semibold text-text-primary transition-colors hover:bg-bg-input disabled:opacity-50"
             @click="onPlexLogin"
           >
-            <PlexIcon class="text-[#e5a00d]" />
+            <IconPlex class="size-4 shrink-0 text-[#e5a00d]" aria-hidden="true" />
             Sign in with Plex
           </button>
         </template>
@@ -52,7 +52,7 @@ import { useRoute, useRouter } from "vue-router";
 
 import { passkeyLogin } from "#web/api/passkey";
 import { plexErrorMessage, startPlexLogin } from "#web/api/plex";
-import PlexIcon from "#web/components/PlexIcon.vue";
+import IconPlex from "~icons/cib/plex";
 import { useSession, useSessionRefresh } from "#web/queries/session";
 
 useTitle("Sign in — Kyle");

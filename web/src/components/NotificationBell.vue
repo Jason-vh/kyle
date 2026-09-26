@@ -4,11 +4,7 @@
       class="relative flex size-9 items-center justify-center rounded-control text-text-muted transition-colors hover:bg-bg-elevated hover:text-text-primary"
       :aria-label="unread > 0 ? `Notifications, ${unread} unread` : 'Notifications'"
     >
-      <svg class="size-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-        <path
-          d="M12 2a6 6 0 0 0-6 6v3.6l-1.7 3.4A1 1 0 0 0 5.2 17h13.6a1 1 0 0 0 .9-1.4L18 11.6V8a6 6 0 0 0-6-6Zm0 20a3 3 0 0 0 2.8-2H9.2a3 3 0 0 0 2.8 2Z"
-        />
-      </svg>
+      <IconBell class="size-5" aria-hidden="true" />
       <span
         v-if="unread > 0"
         class="absolute top-1.5 right-1.5 min-w-4 rounded-full bg-accent-purple px-1 text-[10px] leading-4 font-bold text-text-inverse"
@@ -50,6 +46,7 @@
 </template>
 
 <script setup lang="ts">
+import IconBell from "~icons/ph/bell";
 import { computed, ref } from "vue";
 import { PopoverContent, PopoverPortal, PopoverRoot, PopoverTrigger } from "reka-ui";
 import { relativeTime } from "#web/composables/useRelativeTime";

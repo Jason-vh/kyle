@@ -21,19 +21,7 @@
         :aria-label="filterButtonLabel"
         @click="sheetOpen = true"
       >
-        <svg
-          class="size-6"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="1.8"
-          stroke-linecap="round"
-          aria-hidden="true"
-        >
-          <path d="M4 7h9M19 7h1M4 17h3M13 17h7" />
-          <circle cx="16" cy="7" r="2.5" />
-          <circle cx="10" cy="17" r="2.5" />
-        </svg>
+        <IconSliders class="size-6" aria-hidden="true" />
         <span
           v-if="changed.length"
           class="absolute -top-1.5 -right-1.5 flex size-5 items-center justify-center rounded-full bg-accent-purple text-[10px] font-bold text-text-inverse"
@@ -54,11 +42,7 @@
         @click="clearFilter(filterKey)"
       >
         {{ filterLabel(filterKey, view) }}
-        <svg class="size-3.5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-          <path
-            d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z"
-          />
-        </svg>
+        <IconX class="size-3.5" aria-hidden="true" />
       </button>
     </div>
 
@@ -129,9 +113,7 @@
                   class="text-text-muted opacity-0 group-hover:opacity-100 focus-visible:opacity-100 hover:text-accent-red"
                   @click="onRemove(item)"
                 >
-                  <svg class="size-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                    <path :d="TRASH_PATH" />
-                  </svg>
+                  <IconTrash class="size-5" aria-hidden="true" />
                 </AppButton>
               </div>
             </div>
@@ -143,9 +125,7 @@
               class="flex aspect-square w-full flex-col items-center justify-center gap-0.5 rounded-card bg-accent-red text-[11px] font-semibold text-white"
               @click="onRemove(item)"
             >
-              <svg class="size-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                <path :d="TRASH_PATH" />
-              </svg>
+              <IconTrash class="size-5" aria-hidden="true" />
               Remove
             </button>
           </template>
@@ -198,12 +178,12 @@ import PageHeader from "#web/components/ui/PageHeader.vue";
 import QueryState from "#web/components/ui/QueryState.vue";
 import SwipeActions from "#web/components/ui/SwipeActions.vue";
 import { useLibrary, useRemoveLibraryItem } from "#web/queries/media";
+import IconSliders from "~icons/ph/sliders-horizontal";
+import IconTrash from "~icons/ph/trash";
+import IconX from "~icons/ph/x";
 import { useSession } from "#web/queries/session";
 
 useTitle("Library — Kyle");
-
-const TRASH_PATH =
-  "M8.75 1A2.75 2.75 0 0 0 6 3.75v.443c-.795.077-1.584.176-2.365.298a.75.75 0 1 0 .23 1.482l.149-.022.841 10.518A2.75 2.75 0 0 0 7.596 19h4.807a2.75 2.75 0 0 0 2.742-2.53l.841-10.52.149.023a.75.75 0 0 0 .23-1.482A41.03 41.03 0 0 0 14 4.193V3.75A2.75 2.75 0 0 0 11.25 1h-2.5ZM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25v.325C8.327 4.025 9.16 4 10 4ZM8.58 7.72a.75.75 0 0 0-1.5.06l.3 7.5a.75.75 0 1 0 1.5-.06l-.3-7.5Zm4.34.06a.75.75 0 1 0-1.5-.06l-.3 7.5a.75.75 0 1 0 1.5.06l.3-7.5Z";
 
 const { data, error, isPending } = useLibrary();
 const { isAdmin } = useSession();

@@ -62,7 +62,11 @@
           class="flex flex-1 flex-col items-center gap-0.5 py-2 text-[11px] font-medium no-underline transition-colors"
           :class="isActive(link.to) ? 'text-accent-purple' : 'text-text-muted'"
         >
-          <NavIcon :name="link.icon" />
+          <component
+            :is="isActive(link.to) ? link.activeIcon : link.icon"
+            class="size-6"
+            aria-hidden="true"
+          />
           {{ link.label }}
         </router-link>
       </div>
@@ -74,7 +78,6 @@
 import { RouterView, useRoute } from "vue-router";
 import NotificationBell from "./components/NotificationBell.vue";
 import UserAvatar from "./components/UserAvatar.vue";
-import NavIcon from "./components/ui/NavIcon.vue";
 import { NAV_LINKS } from "./nav";
 import { useSession } from "./queries/session";
 

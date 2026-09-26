@@ -9,7 +9,7 @@
     <AppCard :padded="false" class="divide-y divide-border-primary">
       <section v-if="plexEnabled" class="flex items-center justify-between gap-4 p-4">
         <div class="flex items-center gap-3">
-          <PlexIcon class="text-[#e5a00d]" />
+          <IconPlex class="size-4 shrink-0 text-[#e5a00d]" aria-hidden="true" />
           <div>
             <p class="text-sm font-medium text-text-primary">Plex</p>
             <p class="text-sm text-text-muted">
@@ -58,7 +58,7 @@ import { useRoute, useRouter } from "vue-router";
 import { logout } from "#web/api/auth";
 import { passkeyRegisterExisting } from "#web/api/passkey";
 import { plexErrorMessage, startPlexLink, unlinkPlex } from "#web/api/plex";
-import PlexIcon from "#web/components/PlexIcon.vue";
+import IconPlex from "~icons/cib/plex";
 import AppButton from "#web/components/ui/AppButton.vue";
 import AppCard from "#web/components/ui/AppCard.vue";
 import AppNotice from "#web/components/ui/AppNotice.vue";

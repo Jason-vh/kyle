@@ -6,7 +6,7 @@
     class="webhook-block message-block fade-in relative mb-4 cursor-pointer border-l-2 border-accent-green pl-3 scroll-mt-4"
   >
     <summary class="flex items-center gap-2 list-none text-sm text-text-muted">
-      <DownloadIcon />
+      <IconDownload class="size-3.5 shrink-0 text-accent-green" aria-hidden="true" />
       <span>
         Downloaded {{ episodes.length }} episodes of
         <span class="font-medium text-text-secondary">{{ notification.payload.title }}</span>
@@ -38,7 +38,7 @@
     class="webhook-block message-block fade-in relative mb-4 border-l-2 border-accent-green pl-3 scroll-mt-4"
   >
     <div class="flex items-center gap-2 text-sm text-text-muted">
-      <DownloadIcon />
+      <IconDownload class="size-3.5 shrink-0 text-accent-green" aria-hidden="true" />
       <span>
         Downloaded
         <span class="font-medium text-text-secondary">{{ notification.payload.title }}</span>
@@ -61,7 +61,7 @@ import { computed } from "vue";
 import { relativeTime } from "#web/composables/useRelativeTime";
 import type { ThreadWebhook } from "#shared/types";
 import { episodeCode } from "#shared/media";
-import DownloadIcon from "./DownloadIcon.vue";
+import IconDownload from "~icons/ph/download-simple";
 
 const props = defineProps<{ notification: ThreadWebhook }>();
 

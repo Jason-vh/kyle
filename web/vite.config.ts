@@ -1,10 +1,11 @@
 import { defineConfig } from "vitest/config";
 import vue from "@vitejs/plugin-vue";
 import tailwindcss from "@tailwindcss/vite";
+import icons from "unplugin-icons/vite";
 import path from "path";
 
 export default defineConfig({
-  plugins: [vue(), tailwindcss()],
+  plugins: [vue(), tailwindcss(), icons({ compiler: "vue3" })],
   resolve: {
     alias: {
       // `#` names a source root, matching the server's package.json imports.
