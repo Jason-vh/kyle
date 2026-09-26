@@ -123,6 +123,7 @@ server/
       requests.ts            → GET /api/discover, GET/POST /api/requests, retry
       library.ts             → GET /api/library, DELETE /api/library/:type/:id,
                                DELETE /api/library/series/:id/seasons/:n
+      media.ts               → GET /api/media/:type/:id, GET /api/media/:type/:id/activity
       dashboard.ts           → GET /api/dashboard
       notifications.ts       → GET /api/notifications, POST /api/notifications/read
   requests/
@@ -136,6 +137,11 @@ server/
     report.ts                → Hand a stuck request to whoever can act on it
   library/
     service.ts               → listLibrary()/removeLibraryItem() behind /api/library
+  media/
+    detail.ts                → getMediaDetail(): one title in full
+    seasons.ts               → A series' seasons and episodes, with who watched them
+    activity.ts              → getMediaActivity(): requested, grabbed, imported, watched,
+                               removed — one line per sitting
   dashboard/
     service.ts               → getDashboard(): the home screen, source by source
     activity.ts              → What landed recently, and who asked for it

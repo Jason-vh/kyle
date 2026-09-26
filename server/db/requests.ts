@@ -116,7 +116,9 @@ export async function getRequestersForMedia(mediaType: "movie" | "series", tmdbI
     .select({
       userId: mediaRequests.userId,
       name: users.displayName,
+      plexAccountId: users.plexAccountId,
       seasonNumber: mediaRequests.seasonNumber,
+      createdAt: mediaRequests.createdAt,
     })
     .from(mediaRequests)
     .innerJoin(users, eq(mediaRequests.userId, users.id))

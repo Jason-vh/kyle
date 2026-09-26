@@ -1,5 +1,6 @@
 import { getServerAccountNames, type PlexPerson } from "./access.ts";
 import type { Watcher } from "#shared/types.ts";
+import type { EpisodeRef } from "#shared/media.ts";
 import { listPlexTitles, tmdbIdOf } from "./catalog.ts";
 import { episodeWatchKey, titleKey, watchKey } from "./keys.ts";
 import { pmsRequest } from "./server.ts";
@@ -108,18 +109,44 @@ function byMostRecent(a: Watcher, b: Watcher): number {
   return (b.watchedAt ?? "").localeCompare(a.watchedAt ?? "");
 }
 
-async function buildWatchers(): Promise<Map<string, Watcher[]>> {
-  const [index, names, history] = await Promise.all([
-    buildTitleIndex(),
-    getServerAccountNames(),
-    pmsRequest<{ MediaContainer: { Metadata?: HistoryEntry[] } }>(
-      "/status/sessions/history/all?sort=viewedAt:desc",
-    ),
-  ]);
+/** One time someone played something, as the activity log tells it. */
+export interface Play {
+  person: PlexPerson;
+  /** ISO 8601. */
+  at: string;
+  /** Absent for a movie. */
+  episode?: EpisodeRef;
+}
 
+export interface WatchHistory {
+  /** Who has watched each title and each episode, latest play per person. */
+  watchers: Map<string, Watcher[]>;
+  /** Every dated play of each title, oldest first. */
+  plays: Map<string, Play[]>;
+}
+
+function playOf(entry: HistoryEntry, person: PlexPerson): Play | undefined {
+  if (!entry.viewedAt || entry.viewedAt <= 0) return undefined;
+
+  const at = new Date(entry.viewedAt * 1000).toISOString();
+  const { parentIndex: seasonNumber, index: episodeNumber } = entry;
+  if (entry.type !== "episode" || seasonNumber === undefined || episodeNumber === undefined) {
+    return { person, at };
+  }
+
+  return { person, at, episode: { seasonNumber, episodeNumber, title: entry.title } };
+}
+
+/** Plex's history rows, resolved to the titles they belong to and the people who played them. */
+export function indexHistory(
+  entries: HistoryEntry[],
+  index: TitleIndex,
+  names: Map<string, PlexPerson>,
+): WatchHistory {
   // Accumulate each account's latest play per title first, so one person
   // watching a whole series counts once rather than once per episode.
   const accountsByKey = new Map<string, Map<string, number>>();
+  const plays = new Map<string, Play[]>();
 
   const record = (key: string, entry: HistoryEntry): void => {
     const accounts = accountsByKey.get(key) ?? new Map<string, number>();
@@ -129,7 +156,7 @@ async function buildWatchers(): Promise<Map<string, Watcher[]>> {
     accountsByKey.set(key, accounts);
   };
 
-  for (const entry of history.MediaContainer.Metadata ?? []) {
+  for (const entry of entries) {
     const key = resolveHistoryKey(entry, index);
     if (!key) continue;
 
@@ -137,6 +164,10 @@ async function buildWatchers(): Promise<Map<string, Watcher[]>> {
 
     const episode = resolveEpisodeKey(entry, key);
     if (episode) record(episode, entry);
+
+    const person = names.get(String(entry.accountID));
+    const play = person && playOf(entry, person);
+    if (play) plays.set(key, [...(plays.get(key) ?? []), play]);
   }
 
   const watchers = new Map<string, Watcher[]>();
@@ -148,31 +179,54 @@ async function buildWatchers(): Promise<Map<string, Watcher[]>> {
     if (people.length > 0) watchers.set(key, people);
   }
 
-  log.info("built plex watch index", {
-    titles: index.byRatingKey.size,
-    watched: watchers.size,
-    people: names.size,
-  });
-  return watchers;
+  for (const titlePlays of plays.values()) titlePlays.sort((a, b) => a.at.localeCompare(b.at));
+
+  return { watchers, plays };
 }
 
-let cached: { value: Map<string, Watcher[]>; expires: number } | null = null;
+async function buildWatchHistory(): Promise<WatchHistory> {
+  const [index, names, history] = await Promise.all([
+    buildTitleIndex(),
+    getServerAccountNames(),
+    pmsRequest<{ MediaContainer: { Metadata?: HistoryEntry[] } }>(
+      "/status/sessions/history/all?sort=viewedAt:desc",
+    ),
+  ]);
 
-/**
- * Who has watched each title, keyed by media type and TMDB id. An unreachable
- * server yields an empty map, which simply shows no avatars.
- */
-export async function getWatchers(): Promise<Map<string, Watcher[]>> {
+  const value = indexHistory(history.MediaContainer.Metadata ?? [], index, names);
+
+  log.info("built plex watch index", {
+    titles: index.byRatingKey.size,
+    watched: value.watchers.size,
+    people: names.size,
+  });
+  return value;
+}
+
+let cached: { value: WatchHistory; expires: number } | null = null;
+
+/** An unreachable server yields no history, which simply shows nobody watching. */
+async function getWatchHistory(): Promise<WatchHistory> {
   if (cached && cached.expires > Date.now()) return cached.value;
 
   try {
-    const value = await buildWatchers();
+    const value = await buildWatchHistory();
     cached = { value, expires: Date.now() + CACHE_TTL_MS };
     return value;
   } catch (error) {
     log.error("could not read plex watch history", { error: errorMessage(error) });
-    return new Map();
+    return { watchers: new Map(), plays: new Map() };
   }
+}
+
+/** Who has watched each title, keyed by media type and TMDB id. */
+export async function getWatchers(): Promise<Map<string, Watcher[]>> {
+  return (await getWatchHistory()).watchers;
+}
+
+/** Every dated play of one title, oldest first. */
+export async function getPlays(key: string): Promise<Play[]> {
+  return (await getWatchHistory()).plays.get(key) ?? [];
 }
 
 export function invalidateWatchers(): void {

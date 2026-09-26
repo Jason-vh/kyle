@@ -11,7 +11,7 @@ import {
   type ReleasableSeason,
   type RemovableItem,
 } from "#web/api/library";
-import { getMediaDetail } from "#web/api/media";
+import { getMediaActivity, getMediaDetail } from "#web/api/media";
 import {
   discover,
   getRequests,
@@ -69,6 +69,15 @@ export const mediaDetailQuery = defineQueryOptions(
   }),
 );
 
+/** Under the title's own key, so whatever refreshes the title refreshes its log too. */
+export const mediaActivityQuery = defineQueryOptions(
+  ({ mediaType, tmdbId }: { mediaType: LibraryMediaType; tmdbId: number }) => ({
+    key: ["media", mediaType, String(tmdbId), "activity"],
+    query: () => getMediaActivity(mediaType, tmdbId),
+    staleTime: 60_000,
+  }),
+);
+
 export function useDashboard() {
   return useAccountQuery(dashboardQuery);
 }
@@ -91,6 +100,15 @@ export function useMediaDetail(
 ) {
   return useAccountQuery(() =>
     mediaDetailQuery({ mediaType: toValue(mediaType), tmdbId: toValue(tmdbId) }),
+  );
+}
+
+export function useMediaActivity(
+  mediaType: MaybeRefOrGetter<LibraryMediaType>,
+  tmdbId: MaybeRefOrGetter<number>,
+) {
+  return useAccountQuery(() =>
+    mediaActivityQuery({ mediaType: toValue(mediaType), tmdbId: toValue(tmdbId) }),
   );
 }
 

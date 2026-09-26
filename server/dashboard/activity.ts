@@ -6,7 +6,7 @@ import { getAllRequesters } from "#server/db/requests.ts";
 import { annotateRequesters } from "#server/requests/requesters.ts";
 import { getPlexAvatars } from "#server/plex/access.ts";
 import { posterOf } from "#server/media-images.ts";
-import { episodeLabel } from "#shared/media.ts";
+import { episodesLabel } from "#shared/media.ts";
 import { createLogger } from "#server/logger.ts";
 import { errorMessage } from "#server/errors.ts";
 
@@ -21,20 +21,6 @@ const HISTORY_PAGE = 60;
 /** Episodes are grouped under the series they belong to, by whatever names it. */
 function seriesKey(series: SonarrSeries): string {
   return series.tmdbId ? `tmdb-${series.tmdbId}` : `title-${series.title}`;
-}
-
-/** One episode reads as itself; several read as a count, by season where they share one. */
-function episodesLabel(episodes: SonarrEpisode[]): string {
-  const only = episodes[0];
-  if (episodes.length === 1 && only) {
-    return episodeLabel(only.seasonNumber, only.episodeNumber, only.title);
-  }
-
-  const seasons = new Set(episodes.map((episode) => episode.seasonNumber));
-  const count = `${episodes.length} episodes`;
-  const season = [...seasons][0];
-
-  return seasons.size === 1 && season !== undefined ? `Season ${season} · ${count}` : count;
 }
 
 /**

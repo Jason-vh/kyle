@@ -114,6 +114,18 @@
           />
         </template>
 
+        <template v-if="activity?.events.length">
+          <SectionHeading title="Activity" class="mt-6" />
+          <AppNotice
+            v-if="activity.unavailable.length && !media.unavailable.length"
+            tone="amber"
+            class="mb-2.5"
+          >
+            {{ activity.unavailable.join(" and ") }} is unreachable, so downloads are missing.
+          </AppNotice>
+          <MediaActivityLog :events="activity.events" />
+        </template>
+
         <ConfirmDialog
           v-model:open="confirming"
           title="Remove from the library?"
@@ -136,6 +148,7 @@ import type { LibraryMediaType } from "#shared/types";
 import { backdropUrl, posterUrl } from "#web/utils/images";
 import { formatDuration, formatNames, formatSize } from "#web/utils/format";
 import DownloadProgress from "#web/components/DownloadProgress.vue";
+import MediaActivityLog from "#web/components/MediaActivityLog.vue";
 import RequestAction from "#web/components/RequestAction.vue";
 import SeasonList from "#web/components/SeasonList.vue";
 import WatcherAvatars from "#web/components/WatcherAvatars.vue";
@@ -150,7 +163,7 @@ import SectionHeading from "#web/components/ui/SectionHeading.vue";
 import Skeleton from "#web/components/ui/Skeleton.vue";
 import StatusPill from "#web/components/ui/StatusPill.vue";
 import type { Tone } from "#web/components/ui/types";
-import { useMediaDetail, useRemoveLibraryItem } from "#web/queries/media";
+import { useMediaActivity, useMediaDetail, useRemoveLibraryItem } from "#web/queries/media";
 import { useSession } from "#web/queries/session";
 
 const route = useRoute();
@@ -160,6 +173,7 @@ const mediaType = computed(() => route.params.mediaType as LibraryMediaType);
 const tmdbId = computed(() => Number(route.params.tmdbId));
 
 const { data: media, error, isPending } = useMediaDetail(mediaType, tmdbId);
+const { data: activity } = useMediaActivity(mediaType, tmdbId);
 const { isAdmin } = useSession();
 
 useTitle(() => (media.value ? `${media.value.title} — Kyle` : "Kyle"));

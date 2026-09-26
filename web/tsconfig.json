@@ -14,5 +14,6 @@
       "#shared/*": ["../shared/*"]
     }
   },
-  "include": ["src/**/*", "src/**/*.vue", "../shared/**/*", "env.d.ts"]
+  "include": ["src/**/*", "src/**/*.vue", "../shared/**/*", "env.d.ts"],
+  "exclude": ["../shared/**/*.test.ts"]
 }

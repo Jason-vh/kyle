@@ -93,6 +93,27 @@ export interface MediaDetail {
   unavailable: string[];
 }
 
+export type MediaActivityKind = "requested" | "grabbed" | "imported" | "watched" | "removed";
+
+/** One thing that happened to a title. Episodes handled in one sitting read as one. */
+export interface MediaActivity {
+  id: string;
+  kind: MediaActivityKind;
+  /** ISO 8601; the latest moment, for several episodes. */
+  at: string;
+  /** Absent for what the services did on their own. */
+  person?: Person;
+  /** "Season 2 · 8 episodes", "S01E03 Pilot", "Bluray-1080p" */
+  detail?: string;
+}
+
+export interface MediaActivityResponse {
+  /** Newest first. */
+  events: MediaActivity[];
+  /** Services that could not be reached, so part of the log is missing. */
+  unavailable: string[];
+}
+
 /**
  * Where a season stands: everything a request can be, plus the two answers
  * only a season gives. `unrequested` is one nobody has asked for and nothing

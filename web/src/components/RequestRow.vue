@@ -48,6 +48,7 @@ import { computed } from "vue";
 import type { MediaRequest, MissingSeason, RequestState } from "#web/api/requests";
 import { posterUrl } from "#web/utils/images";
 import { formatDate } from "#web/utils/format";
+import { seasonName } from "#shared/media";
 import { REQUEST_STATES } from "#web/utils/states";
 import { relativeTime } from "#web/composables/useRelativeTime";
 import DownloadProgress from "./DownloadProgress.vue";
@@ -108,6 +109,6 @@ const scope = computed(() => {
   const { mediaType, seasonNumber } = props.request;
   if (mediaType === "movie") return "Movie";
   if (seasonNumber === null) return "Series";
-  return seasonNumber === 0 ? "Specials" : `Season ${seasonNumber}`;
+  return seasonName(seasonNumber);
 });
 </script>

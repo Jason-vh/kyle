@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { clearRemoval, getRemovals, recordRemoval } from "./removals.ts";
+import { clearRemoval, getRemoval, getRemovals, recordRemoval } from "./removals.ts";
 import { db } from "./index.ts";
 import { mediaRemovals } from "./schema.ts";
 
@@ -57,5 +57,18 @@ describe("removals", () => {
     await clearRemoval("movie", 27205);
 
     expect((await getRemovals()).size).toBe(0);
+  });
+
+  test("reads one title's removal, and only that title's", async () => {
+    await recordRemoval({
+      mediaType: "movie",
+      tmdbId: 27205,
+      title: "Inception",
+      removedBy: "Jason",
+      deletedFiles: true,
+    });
+
+    expect(await getRemoval("movie", 27205)).toMatchObject({ removedBy: "Jason" });
+    expect(await getRemoval("series", 27205)).toBeUndefined();
   });
 });

@@ -37,7 +37,7 @@ import {
   handleReleaseSeason,
   handleRemoveLibraryItem,
 } from "./routes/api/library.ts";
-import { handleGetMediaDetail } from "./routes/api/media.ts";
+import { handleGetMediaActivity, handleGetMediaDetail } from "./routes/api/media.ts";
 import { handleGetDashboard } from "./routes/api/dashboard.ts";
 import { handleGetNotifications, handleMarkNotificationsRead } from "./routes/api/notifications.ts";
 
@@ -129,6 +129,10 @@ export function startServer(port: number) {
     "/api/media/:mediaType/:tmdbId": {
       GET: (req) =>
         withSessionRefresh(handleGetMediaDetail)(req, req.params.mediaType, req.params.tmdbId),
+    },
+    "/api/media/:mediaType/:tmdbId/activity": {
+      GET: (req) =>
+        withSessionRefresh(handleGetMediaActivity)(req, req.params.mediaType, req.params.tmdbId),
     },
     "/api/library/:mediaType/:serviceId": {
       DELETE: (req) =>

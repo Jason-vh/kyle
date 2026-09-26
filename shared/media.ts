@@ -22,6 +22,25 @@ export function episodeLabel(
   return title ? `${code} ${title}` : code;
 }
 
+/** "Season 2", with Sonarr's season 0 called what it is. */
+export function seasonName(seasonNumber: number): string {
+  return seasonNumber === 0 ? "Specials" : `Season ${seasonNumber}`;
+}
+
+/** One episode reads as itself; several read as a count, by season where they share one. */
+export function episodesLabel(episodes: EpisodeRef[]): string {
+  const only = episodes[0];
+  if (episodes.length === 1 && only) {
+    return episodeLabel(only.seasonNumber, only.episodeNumber, only.title);
+  }
+
+  const seasons = new Set(episodes.map((episode) => episode.seasonNumber));
+  const count = `${episodes.length} episodes`;
+  const season = [...seasons][0];
+
+  return seasons.size === 1 && season !== undefined ? `${seasonName(season)} · ${count}` : count;
+}
+
 /** "Severance (2022)", dropping the year when it is unknown. */
 export function titleWithYear(title: string | undefined, year?: number): string {
   if (!title) return "—";

@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import {
   episodeWatchKey,
+  indexHistory,
   resolveEpisodeKey,
   resolveHistoryKey,
   watchKey,
@@ -155,5 +156,82 @@ describe("episodeWatchKey", () => {
     const specials = episodeWatchKey(watchKey("series", 1220), 0, 1);
 
     expect(specials).not.toBe(episodeWatchKey(watchKey("series", 1220), 1, 1));
+  });
+});
+
+describe("indexHistory", () => {
+  const names = new Map([
+    ["1", { name: "Alice" }],
+    ["2", { name: "Bob", thumb: "https://plex.tv/bob.png" }],
+  ]);
+  const MARCH_1 = Date.parse("2026-03-01T20:00:00Z") / 1000;
+
+  // Plex lists history newest first.
+  const history = [
+    {
+      type: "episode",
+      accountID: 1,
+      title: "Half Loop",
+      grandparentKey: "/library/metadata/14026",
+      index: 2,
+      parentIndex: 1,
+      viewedAt: MARCH_1 + 3600,
+    },
+    {
+      type: "episode",
+      accountID: 1,
+      title: "Good News",
+      grandparentKey: "/library/metadata/14026",
+      index: 1,
+      parentIndex: 1,
+      viewedAt: MARCH_1,
+    },
+    { type: "movie", accountID: 2, ratingKey: "15682", viewedAt: MARCH_1 },
+  ];
+
+  test("keeps every play of a series, oldest first, with the episode it was", () => {
+    const { plays } = indexHistory(history, index, names);
+
+    expect(plays.get(watchKey("series", 75219))).toEqual([
+      {
+        person: { name: "Alice" },
+        at: "2026-03-01T20:00:00.000Z",
+        episode: { seasonNumber: 1, episodeNumber: 1, title: "Good News" },
+      },
+      {
+        person: { name: "Alice" },
+        at: "2026-03-01T21:00:00.000Z",
+        episode: { seasonNumber: 1, episodeNumber: 2, title: "Half Loop" },
+      },
+    ]);
+  });
+
+  test("keeps a movie play without an episode", () => {
+    const { plays } = indexHistory(history, index, names);
+
+    expect(plays.get(watchKey("movie", 9880))).toEqual([
+      { person: { name: "Bob", thumb: "https://plex.tv/bob.png" }, at: "2026-03-01T20:00:00.000Z" },
+    ]);
+  });
+
+  test("still counts a person once per title among the watchers", () => {
+    const { watchers } = indexHistory(history, index, names);
+
+    expect(watchers.get(watchKey("series", 75219))).toEqual([
+      { name: "Alice", watchedAt: "2026-03-01T21:00:00.000Z" },
+    ]);
+  });
+
+  // An account the server no longer shares with has no name to show.
+  test("drops plays by accounts nobody can be named for", () => {
+    const stranger = [{ type: "movie", accountID: 99, ratingKey: "15682", viewedAt: MARCH_1 }];
+
+    expect(indexHistory(stranger, index, names).plays.size).toBe(0);
+  });
+
+  test("leaves an undated play out of the log", () => {
+    const undated = [{ type: "movie", accountID: 2, ratingKey: "15682" }];
+
+    expect(indexHistory(undated, index, names).plays.size).toBe(0);
   });
 });

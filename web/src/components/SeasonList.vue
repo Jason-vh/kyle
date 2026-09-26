@@ -12,7 +12,9 @@
             class="group flex min-w-0 flex-1 items-center gap-3 p-3.5 text-left transition-colors hover:bg-bg-elevated"
           >
             <div class="min-w-0 flex-1">
-              <p class="text-sm font-semibold text-text-primary">{{ seasonName(season) }}</p>
+              <p class="text-sm font-semibold text-text-primary">
+                {{ seasonName(season.seasonNumber) }}
+              </p>
               <p class="mt-0.5 text-xs text-text-muted">
                 {{ season.episodeFileCount }}/{{ season.episodeCount }} episodes
                 <template v-if="season.sizeOnDisk > 0">
@@ -131,7 +133,7 @@ import {
   AccordionTrigger,
 } from "reka-ui";
 import type { EpisodeSummary, SeasonState, SeasonSummary } from "#shared/types";
-import { episodeCode } from "#shared/media";
+import { episodeCode, seasonName } from "#shared/media";
 import { formatNames, formatSize } from "#web/utils/format";
 import { SEASON_STATES } from "#web/utils/states";
 import { useReleaseSeason, useRequestMedia } from "#web/queries/media";
@@ -173,10 +175,6 @@ const releasing = ref<number | null>(null);
 /** Which button is working, since every season has its own. */
 function scope(seasonNumber: number, episodeNumber?: number): string {
   return episodeNumber === undefined ? `${seasonNumber}` : `${seasonNumber}:${episodeNumber}`;
-}
-
-function seasonName(season: SeasonSummary): string {
-  return season.seasonNumber === 0 ? "Specials" : `Season ${season.seasonNumber}`;
 }
 
 /** Asking again for a season already asked for is a retry, and says so. */
@@ -243,7 +241,7 @@ const releaseText = computed(() => {
   const season = confirming.value;
   if (!season) return "";
   const size = season.sizeOnDisk > 0 ? ` and frees ${formatSize(season.sizeOnDisk)}` : "";
-  return `This deletes ${seasonName(season).toLowerCase()}${size}. The rest of the series stays.`;
+  return `This deletes ${seasonName(season.seasonNumber).toLowerCase()}${size}. The rest of the series stays.`;
 });
 
 async function onRelease(): Promise<void> {

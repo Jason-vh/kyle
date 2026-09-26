@@ -135,6 +135,11 @@ export async function getHistory(pageSize: number = 20): Promise<RadarrHistoryRe
   return request<RadarrHistoryResponse>(`/history?includeMovie=true&pageSize=${pageSize}`);
 }
 
+/** Everything Radarr has done with one movie. */
+export async function getMovieHistory(movieId: number): Promise<RadarrHistoryRecord[]> {
+  return request<RadarrHistoryRecord[]>(`/history/movie?movieId=${movieId}`);
+}
+
 /** Everything Radarr did with one download: what it grabbed, and what it imported. */
 export async function getDownloadHistory(downloadId: string): Promise<RadarrHistoryRecord[]> {
   const params = new URLSearchParams({

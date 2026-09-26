@@ -116,7 +116,7 @@ async function heldState(
   return { state: seriesState(series), seasons: buildSeasons(series, episodes, context) };
 }
 
-function serviceName(mediaType: LibraryMediaType): string {
+export function serviceName(mediaType: LibraryMediaType): string {
   return mediaType === "movie" ? "Radarr" : "Sonarr";
 }
 

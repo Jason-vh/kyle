@@ -69,6 +69,23 @@ export async function getRemovals(): Promise<Map<string, Removal>> {
   );
 }
 
+/** Why one title left, if it has. */
+export async function getRemoval(
+  mediaType: LibraryMediaType,
+  tmdbId: number,
+): Promise<Removal | undefined> {
+  const [row] = await db
+    .select({
+      removedBy: mediaRemovals.removedBy,
+      deletedFiles: mediaRemovals.deletedFiles,
+      at: mediaRemovals.createdAt,
+    })
+    .from(mediaRemovals)
+    .where(and(eq(mediaRemovals.mediaType, mediaType), eq(mediaRemovals.tmdbId, tmdbId)));
+
+  return row;
+}
+
 /** Forgets a removal, for a title that has been asked for again. */
 export async function clearRemoval(mediaType: LibraryMediaType, tmdbId: number): Promise<void> {
   try {
