@@ -86,6 +86,15 @@
               <dt class="text-xs text-text-muted">Watched by</dt>
               <dd><WatcherAvatars :watchers="media.watchedBy" /></dd>
             </div>
+            <div v-if="lastWatched">
+              <dt class="text-xs text-text-muted">Last watched</dt>
+              <dd class="text-text-primary">
+                <time :datetime="lastWatched.watchedAt" :title="fullDate(lastWatched.watchedAt)">
+                  {{ relativeOrDate(lastWatched.watchedAt) }}
+                </time>
+                · {{ lastWatched.name }}
+              </dd>
+            </div>
           </dl>
         </AppCard>
 
@@ -157,6 +166,8 @@ import { useTitle } from "@vueuse/core";
 import type { LibraryMediaType } from "#shared/types";
 import { backdropUrl, posterUrl } from "#web/utils/images";
 import { formatDuration, formatNames, formatSize } from "#web/utils/format";
+import { lastWatch } from "#web/utils/watch";
+import { relativeOrDate } from "#web/composables/useRelativeTime";
 import DownloadProgress from "#web/components/DownloadProgress.vue";
 import MediaActivityLog from "#web/components/MediaActivityLog.vue";
 import RequestAction from "#web/components/RequestAction.vue";
@@ -196,6 +207,12 @@ useTitle(() => (media.value ? `${media.value.title} — Kyle` : "Kyle"));
 
 const poster = computed(() => posterUrl(media.value?.posterPath ?? null));
 const backdrop = computed(() => backdropUrl(media.value?.backdropPath ?? null));
+
+const lastWatched = computed(() => lastWatch(media.value?.watchedBy ?? []));
+
+function fullDate(iso: string): string {
+  return new Date(iso).toLocaleString();
+}
 
 /** The one-line summary under the title, skipping whatever TMDB does not know. */
 const facts = computed(() => {

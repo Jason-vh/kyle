@@ -2,8 +2,10 @@ import type { LocationQuery } from "vue-router";
 import type { LibraryItem } from "#web/api/library";
 import { formatSize } from "./format";
 import { REQUEST_STATES, type StateBadge } from "./states";
+import { lastWatch } from "./watch";
+import { relativeOrDate } from "#web/composables/useRelativeTime";
 
-export type LibrarySort = "title" | "size";
+export type LibrarySort = "title" | "size" | "watched";
 export type LibraryType = "all" | LibraryItem["mediaType"];
 export type LibraryAvailabilityFilter = "all" | LibraryItem["availability"];
 
@@ -30,6 +32,7 @@ export const DEFAULT_LIBRARY_VIEW: LibraryView = {
 export const SORT_OPTIONS: { value: LibrarySort; label: string }[] = [
   { value: "title", label: "Title" },
   { value: "size", label: "Size" },
+  { value: "watched", label: "Last watched" },
 ];
 
 export const TYPE_OPTIONS: { value: LibraryType; label: string }[] = [
@@ -45,13 +48,19 @@ export const AVAILABILITY_OPTIONS: { value: LibraryAvailabilityFilter; label: st
   { value: "missing", label: "Missing" },
 ];
 
+const SORT_LABELS: Record<LibrarySort, string> = {
+  title: "A–Z",
+  size: "Largest first",
+  watched: "Recently watched",
+};
+
 const labelOf = <T extends string>(options: { value: T; label: string }[], value: T) =>
   options.find((option) => option.value === value)?.label ?? value;
 
 export function filterLabel(key: LibraryFilterKey, view: LibraryView): string {
   switch (key) {
     case "sort":
-      return view.sort === "size" ? "Largest first" : "A–Z";
+      return SORT_LABELS[view.sort];
     case "type":
       return labelOf(TYPE_OPTIONS, view.type);
     case "availability":
@@ -109,11 +118,23 @@ function matches(item: LibraryItem, view: LibraryView, term: string): boolean {
   return true;
 }
 
+function byTitle(a: LibraryItem, b: LibraryItem): number {
+  return titleOrder.compare(sortTitle(a.title), sortTitle(b.title));
+}
+
+/** Most recently played first; what nobody has played follows, by title. */
+function byLastWatched(a: LibraryItem, b: LibraryItem): number {
+  const latestA = lastWatch(a.watchedBy)?.watchedAt ?? "";
+  const latestB = lastWatch(b.watchedBy)?.watchedAt ?? "";
+  return latestB.localeCompare(latestA) || byTitle(a, b);
+}
+
 export function applyLibraryView(items: LibraryItem[], view: LibraryView): LibraryItem[] {
   const term = searchKey(view.search);
   const shown = items.filter((item) => matches(item, view, term));
   if (view.sort === "size") return shown.toSorted((a, b) => b.sizeOnDisk - a.sizeOnDisk);
-  return shown.toSorted((a, b) => titleOrder.compare(sortTitle(a.title), sortTitle(b.title)));
+  if (view.sort === "watched") return shown.toSorted(byLastWatched);
+  return shown.toSorted(byTitle);
 }
 
 function first(query: LocationQuery, key: string): string | undefined {
@@ -161,16 +182,19 @@ export function changedFilters(view: LibraryView): LibraryFilterKey[] {
   return keys.filter((key) => view[key] !== DEFAULT_LIBRARY_VIEW[key]);
 }
 
-export function libraryDetails(item: LibraryItem, sizeFirst = false): string[] {
+/** What a row says about an item, leading with whatever it is sorted by. */
+export function libraryDetails(item: LibraryItem, sort: LibrarySort = "title"): string[] {
   const details: string[] = [];
   if (item.year) details.push(String(item.year));
   details.push(item.mediaType === "movie" ? "Movie" : "Series");
   if (item.availability === "available" && item.episodes) details.push(`${item.episodes.total} ep`);
   if (item.sizeOnDisk > 0) {
     const size = formatSize(item.sizeOnDisk);
-    if (sizeFirst) details.unshift(size);
+    if (sort === "size") details.unshift(size);
     else details.push(size);
   }
+  const latest = lastWatch(item.watchedBy);
+  if (sort === "watched" && latest) details.unshift(relativeOrDate(latest.watchedAt));
   return details;
 }
 

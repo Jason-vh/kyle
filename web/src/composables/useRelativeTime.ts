@@ -1,3 +1,4 @@
+import { formatDate } from "#web/utils/format";
 import { ref, onMounted, onUnmounted } from "vue";
 
 function computeRelativeTime(iso: string): string {
@@ -47,4 +48,12 @@ export function useRelativeTime(iso: string) {
 // Non-reactive helper for use outside setup context (e.g. computed)
 export function relativeTime(iso: string): string {
   return computeRelativeTime(iso);
+}
+
+const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+
+/** Relative while recent; a date once "Tuesday" would be ambiguous. */
+export function relativeOrDate(iso: string): string {
+  if (Date.now() - Date.parse(iso) < WEEK_MS) return computeRelativeTime(iso);
+  return formatDate(iso);
 }

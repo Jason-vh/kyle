@@ -25,7 +25,7 @@
           :title="new Date(event.at).toLocaleString()"
           class="shrink-0 text-xs text-text-muted"
         >
-          {{ when(event.at) }}
+          {{ relativeOrDate(event.at) }}
         </time>
       </li>
     </ol>
@@ -35,8 +35,7 @@
 <script setup lang="ts">
 import type { Component } from "vue";
 import type { MediaActivity, MediaActivityKind } from "#shared/types";
-import { relativeTime } from "#web/composables/useRelativeTime";
-import { formatDate } from "#web/utils/format";
+import { relativeOrDate } from "#web/composables/useRelativeTime";
 import AppCard from "./ui/AppCard.vue";
 import IconCheck from "~icons/ph/check-bold";
 import IconDownload from "~icons/ph/download-simple-bold";
@@ -87,12 +86,4 @@ const LOOKS: Record<MediaActivityKind, Look> = {
     unattributed: "Removed outside Kyle",
   },
 };
-
-const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
-
-/** Relative while recent; a date once "Tuesday" would be ambiguous. */
-function when(iso: string): string {
-  if (Date.now() - Date.parse(iso) < WEEK_MS) return relativeTime(iso);
-  return formatDate(iso);
-}
 </script>

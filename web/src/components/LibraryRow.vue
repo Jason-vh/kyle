@@ -41,7 +41,12 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import type { LibraryItem } from "#web/api/library";
-import { libraryDetails, libraryStatuses, watchedLabel } from "#web/utils/library";
+import {
+  libraryDetails,
+  libraryStatuses,
+  watchedLabel,
+  type LibrarySort,
+} from "#web/utils/library";
 import LibraryPoster from "./LibraryPoster.vue";
 import MediaTitle from "./MediaTitle.vue";
 import WatcherAvatars from "./WatcherAvatars.vue";
@@ -49,9 +54,9 @@ import StatusPill from "./ui/StatusPill.vue";
 import IconDownload from "~icons/ph/download-simple-bold";
 import IconEye from "~icons/ph/eye-fill";
 
-const props = defineProps<{ item: LibraryItem; sizeFirst: boolean }>();
+const props = defineProps<{ item: LibraryItem; sort: LibrarySort }>();
 
 const missing = computed(() => props.item.availability === "missing" && !props.item.download);
-const details = computed(() => libraryDetails(props.item, props.sizeFirst));
+const details = computed(() => libraryDetails(props.item, props.sort));
 const statuses = computed(() => libraryStatuses(props.item));
 </script>

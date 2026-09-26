@@ -77,7 +77,7 @@
               v-for="item in group.items"
               :key="`${item.mediaType}-${item.serviceId}`"
               :item="item"
-              :size-first="view.sort === 'size'"
+              :sort="view.sort"
             />
           </AppCard>
         </section>

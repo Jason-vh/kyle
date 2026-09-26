@@ -72,6 +72,21 @@ describe("applyLibraryView", () => {
     expect(titles(shown)).toEqual(["The Boys", "Dune", "Arrival", "Inception"]);
   });
 
+  test("puts the most recently watched first, and what nobody watched last by title", () => {
+    const watched = (title: string, ...dates: string[]) =>
+      item({ title, watchedBy: dates.map((watchedAt) => ({ name: "Sue", watchedAt })) });
+    const shown = applyLibraryView(
+      [
+        item({ title: "Zodiac" }),
+        watched("Heat", "2024-01-01T00:00:00Z"),
+        item({ title: "Alien" }),
+        watched("Dune", "2023-01-01T00:00:00Z", "2025-01-01T00:00:00Z"),
+      ],
+      { ...DEFAULT_LIBRARY_VIEW, sort: "watched" },
+    );
+    expect(titles(shown)).toEqual(["Dune", "Heat", "Alien", "Zodiac"]);
+  });
+
   test("matches the search anywhere in the title, ignoring case", () => {
     const shown = applyLibraryView(library, { ...DEFAULT_LIBRARY_VIEW, search: " BOY " });
     expect(titles(shown)).toEqual(["The Boys"]);
@@ -126,6 +141,7 @@ describe("filterLabel", () => {
   test("describes the chosen value", () => {
     const view = { ...DEFAULT_LIBRARY_VIEW, sort: "size" as const, type: "series" as const };
     expect(filterLabel("sort", view)).toBe("Largest first");
+    expect(filterLabel("sort", { ...view, sort: "watched" })).toBe("Recently watched");
     expect(filterLabel("type", view)).toBe("Series");
   });
 });
@@ -204,11 +220,28 @@ describe("libraryDetails", () => {
   });
 
   test("leads with the size when asked", () => {
-    expect(libraryDetails(item({ year: 2016, sizeOnDisk: 19 * GB }), true)).toEqual([
+    expect(libraryDetails(item({ year: 2016, sizeOnDisk: 19 * GB }), "size")).toEqual([
       "19 GB",
       "2016",
       "Movie",
     ]);
+  });
+});
+
+describe("libraryDetails, sorted by last watched", () => {
+  test("leads with when it was last played", () => {
+    const watched = item({
+      year: 2016,
+      watchedBy: [
+        { name: "Sue", watchedAt: "2020-03-06T20:00:00Z" },
+        { name: "Bob", watchedAt: "2021-05-01T20:00:00Z" },
+      ],
+    });
+    expect(libraryDetails(watched, "watched")).toEqual(["1 May 2021", "2016", "Movie"]);
+  });
+
+  test("adds nothing for what nobody has played", () => {
+    expect(libraryDetails(item({ year: 2016 }), "watched")).toEqual(["2016", "Movie"]);
   });
 });
 
