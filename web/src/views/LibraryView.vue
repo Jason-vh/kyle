@@ -68,10 +68,10 @@
           @update:open="swiped = $event ? key(item) : ''"
         >
           <AppCard :interactive="!!item.tmdbId" class="group relative">
-            <div class="flex items-start gap-3">
+            <div class="flex gap-3">
               <MediaPoster :src="item.posterUrl" :alt="item.title" />
 
-              <div class="min-w-0 flex-1">
+              <div class="flex min-w-0 flex-1 flex-col justify-between">
                 <MediaTitle
                   :media-type="item.mediaType"
                   :tmdb-id="item.tmdbId"
@@ -79,7 +79,7 @@
                   :year="item.year"
                   wrap
                 />
-                <p class="mt-0.5 text-xs text-text-muted">
+                <p class="text-xs text-text-muted">
                   {{ librarySummary(item) }}
                   <template v-if="item.watchedBy.length">
                     ·
@@ -90,7 +90,7 @@
                     </span>
                   </template>
                 </p>
-                <p v-if="statuses.length" class="mt-1 text-xs text-text-muted">
+                <p class="min-h-4 text-xs text-text-muted">
                   <template v-for="(status, index) in statuses" :key="status.label">
                     <template v-if="index > 0"> · </template>
                     <span
@@ -115,14 +115,11 @@
                 </p>
               </div>
 
-              <WatcherAvatars
-                :watchers="item.requestedBy"
-                :max="2"
-                verb="requested this"
-                class="relative shrink-0"
-              />
+              <div class="relative shrink-0 self-start">
+                <WatcherAvatars :watchers="item.requestedBy" :max="2" verb="requested this" />
+              </div>
 
-              <div v-if="isAdmin" class="relative hidden pointer-fine:block">
+              <div v-if="isAdmin" class="relative hidden self-center pointer-fine:block">
                 <AppButton
                   variant="ghost"
                   aria-label="Remove"
