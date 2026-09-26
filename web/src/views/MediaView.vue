@@ -1,149 +1,126 @@
 <template>
   <AppPage>
-    <AppButton variant="ghost" size="sm" class="mb-3 -ml-2.5" @click="goBack">← Back</AppButton>
-
     <QueryState :loading="isPending" :error="error">
       <template #loading>
         <div class="stagger">
-          <Skeleton class="mb-4 h-40 w-full rounded-card sm:h-56" />
-          <div class="flex gap-4">
-            <Skeleton class="h-27 w-18 shrink-0 rounded-lg" />
-            <div class="min-w-0 flex-1 space-y-2.5">
+          <Skeleton class="-mx-4 -mt-4 h-56 rounded-none sm:mx-0 sm:mt-0 sm:h-72 sm:rounded-card" />
+          <div class="-mt-16 flex items-end gap-4 px-0.5">
+            <Skeleton class="h-33 w-22 shrink-0 rounded-lg" />
+            <div class="min-w-0 flex-1 space-y-2.5 pb-1">
               <Skeleton class="h-6 w-2/3" />
               <Skeleton class="h-3.5 w-1/2" />
-              <Skeleton class="h-5 w-24 rounded-full" />
             </div>
           </div>
-          <Skeleton class="mt-4 h-16 w-full" />
+          <Skeleton class="mt-5 h-28 w-full rounded-card" />
         </div>
       </template>
 
       <article v-if="media" class="stagger">
-        <div
-          v-if="backdrop"
-          class="relative mb-4 overflow-hidden rounded-card border border-border-primary"
-        >
-          <img :src="backdrop" :alt="media.title" class="h-40 w-full object-cover sm:h-56" />
-          <!-- The title sits on the artwork, so the artwork needs a floor to sit on. -->
-          <div class="absolute inset-0 bg-gradient-to-t from-bg-base to-transparent" />
+        <div :class="backdrop ? 'relative -mx-4 -mt-4 sm:mx-0 sm:mt-0' : 'mb-4'">
+          <div v-if="backdrop" class="relative h-56 overflow-hidden sm:h-72 sm:rounded-card">
+            <img :src="backdrop" alt="" class="size-full object-cover" />
+            <!-- The title sits on the artwork, so the artwork fades into a floor for it. -->
+            <div
+              class="absolute inset-0 bg-gradient-to-b from-bg-base/40 via-transparent to-bg-base"
+            />
+          </div>
+
+          <div
+            class="flex items-center justify-between"
+            :class="backdrop ? 'absolute inset-x-0 top-0 p-3' : ''"
+          >
+            <button type="button" :class="GLASS" aria-label="Back" @click="goBack">
+              <IconBack class="size-5" aria-hidden="true" />
+            </button>
+            <button
+              v-if="hasMenu"
+              type="button"
+              :class="GLASS"
+              aria-label="More actions"
+              @click="menuOpen = true"
+            >
+              <IconMore class="size-5" aria-hidden="true" />
+            </button>
+          </div>
         </div>
 
-        <header class="flex gap-4">
-          <MediaPoster :src="poster" :alt="media.title" size="lg" />
+        <header class="relative flex items-end gap-4" :class="backdrop ? '-mt-20' : ''">
+          <MediaPoster :src="poster" :alt="media.title" size="xl" class="shadow-raised" />
 
-          <div class="min-w-0 flex-1">
-            <h1 class="text-xl font-semibold text-text-primary">
+          <div class="min-w-0 flex-1 pb-0.5">
+            <h1 class="text-xl leading-tight font-semibold text-text-primary sm:text-2xl">
               {{ media.title }}
-              <span v-if="media.year" class="font-normal text-text-muted">{{ media.year }}</span>
+              <span v-if="media.year" class="font-normal text-text-secondary">
+                {{ media.year }}
+              </span>
             </h1>
-            <p class="mt-1 text-sm text-text-muted">{{ facts.join(" · ") }}</p>
-            <p v-if="media.tagline" class="mt-1 text-sm text-text-secondary italic">
-              {{ media.tagline }}
-            </p>
-
-            <div class="mt-2 flex flex-wrap items-center gap-2">
-              <StatusPill :tone="status.tone">{{ status.label }}</StatusPill>
-              <StatusPill v-if="media.requestedByMe" tone="purple">Yours</StatusPill>
-              <StatusPill v-if="media.library && !media.library.monitored">Unmonitored</StatusPill>
-            </div>
+            <p class="mt-1 text-sm text-text-secondary">{{ facts.join(" · ") }}</p>
           </div>
         </header>
 
-        <DownloadProgress
-          v-if="media.progress !== undefined"
-          :progress="media.progress"
-          :eta="media.eta"
-          class="mt-4"
-        />
+        <div class="mt-5 flex flex-col gap-7">
+          <div>
+            <MediaStatus :media="media" @refresh="refetch()" />
+            <p v-if="actionError" class="mt-2 text-sm text-accent-red">{{ actionError }}</p>
+          </div>
 
-        <AppNotice v-if="media.unavailable.length" tone="amber" class="mt-4">
-          {{ media.unavailable.join(" and ") }} is unreachable, so what we hold of this is unknown.
-        </AppNotice>
+          <section v-if="media.seasons?.length">
+            <SectionHeading title="Seasons">
+              <template v-if="followable" #aside>
+                <AppSwitch
+                  :model-value="following"
+                  label="Follow new seasons"
+                  size="sm"
+                  :disabled="changingFollow || (following && !canUnfollow)"
+                  @update:model-value="onFollow"
+                />
+              </template>
+            </SectionHeading>
+            <p v-if="followError" class="mb-2 text-xs text-accent-red">{{ followError }}</p>
+            <SeasonList
+              :seasons="media.seasons"
+              :tmdb-id="media.tmdbId"
+              :poster-path="media.posterPath"
+              :service-id="media.library?.serviceId"
+            />
+          </section>
 
-        <p v-if="media.overview" class="mt-4 text-sm leading-relaxed text-text-secondary">
-          {{ media.overview }}
-        </p>
+          <section v-if="media.overview">
+            <SectionHeading title="About" />
+            <p
+              class="text-sm leading-relaxed text-text-secondary"
+              :class="overviewOpen ? '' : 'line-clamp-3'"
+            >
+              {{ media.overview }}
+            </p>
+            <button
+              v-if="!overviewOpen && media.overview.length > OVERVIEW_PREVIEW"
+              type="button"
+              class="mt-1 text-sm font-semibold text-text-primary"
+              @click="overviewOpen = true"
+            >
+              More
+            </button>
+          </section>
 
-        <AppCard class="mt-4">
-          <dl class="grid grid-cols-2 gap-3 text-sm sm:grid-cols-3">
-            <div v-if="media.library">
-              <dt class="text-xs text-text-muted">On disk</dt>
-              <dd class="text-text-primary">{{ formatSize(media.library.sizeOnDisk) }}</dd>
-            </div>
-            <div v-if="media.library?.detail">
-              <dt class="text-xs text-text-muted">Episodes</dt>
-              <dd class="text-text-primary">{{ media.library.detail }}</dd>
-            </div>
-            <div v-if="media.status">
-              <dt class="text-xs text-text-muted">Status</dt>
-              <dd class="text-text-primary">{{ media.status }}</dd>
-            </div>
-            <div v-if="media.requestedBy.length">
-              <dt class="text-xs text-text-muted">Requested by</dt>
-              <dd class="text-text-primary">{{ formatNames(media.requestedBy) }}</dd>
-            </div>
-            <div v-if="media.watchedBy.length">
-              <dt class="text-xs text-text-muted">Watched by</dt>
-              <dd><WatcherAvatars :watchers="media.watchedBy" /></dd>
-            </div>
-            <div v-if="lastWatched">
-              <dt class="text-xs text-text-muted">Last watched</dt>
-              <dd class="text-text-primary">
-                <time :datetime="lastWatched.watchedAt" :title="fullDate(lastWatched.watchedAt)">
-                  {{ relativeOrDate(lastWatched.watchedAt) }}
-                </time>
-                · {{ lastWatched.name }}
-              </dd>
-            </div>
-          </dl>
-        </AppCard>
-
-        <div class="mt-4 flex flex-wrap items-start gap-2">
-          <RequestAction v-if="!media.library" :item="media" />
-
-          <AppButton
-            v-if="(isAdmin || media.requestedByMe) && media.library"
-            variant="danger"
-            :loading="removing"
-            @click="confirming = true"
-          >
-            {{ removing ? "Removing…" : "Remove" }}
-          </AppButton>
+          <section v-if="activity?.events.length">
+            <SectionHeading title="Activity" />
+            <AppNotice v-if="activity.unavailable.length" tone="amber" class="mb-3">
+              {{ activity.unavailable.join(" and ") }} is unreachable, so downloads are missing.
+            </AppNotice>
+            <MediaActivityLog :events="activity.events" />
+          </section>
         </div>
 
-        <p v-if="actionError" class="mt-2 text-sm text-accent-red">{{ actionError }}</p>
-
-        <template v-if="media.seasons?.length">
-          <SectionHeading title="Seasons" class="mt-6" />
-          <AppCard v-if="followable" class="mb-2">
-            <AppSwitch
-              :model-value="following"
-              label="Follow new seasons"
-              :description="followHint"
-              :disabled="changingFollow || (following && !canUnfollow)"
-              @update:model-value="onFollow"
-            />
-            <p v-if="followError" class="mt-2 text-xs text-accent-red">{{ followError }}</p>
-          </AppCard>
-          <SeasonList
-            :seasons="media.seasons"
-            :tmdb-id="media.tmdbId"
-            :poster-path="media.posterPath"
-            :service-id="media.library?.serviceId"
-          />
-        </template>
-
-        <template v-if="activity?.events.length">
-          <SectionHeading title="Activity" class="mt-6" />
-          <AppNotice
-            v-if="activity.unavailable.length && !media.unavailable.length"
-            tone="amber"
-            class="mb-2.5"
-          >
-            {{ activity.unavailable.join(" and ") }} is unreachable, so downloads are missing.
-          </AppNotice>
-          <MediaActivityLog :events="activity.events" />
-        </template>
+        <MediaMenu
+          v-model:open="menuOpen"
+          :title="media.title"
+          :service-name="serviceName"
+          :service-url="media.serviceUrl"
+          :search="search"
+          :removal="removal"
+          @remove="confirming = true"
+        />
 
         <ConfirmDialog
           v-model:open="confirming"
@@ -165,16 +142,11 @@ import { useRoute, useRouter } from "vue-router";
 import { useTitle } from "@vueuse/core";
 import type { LibraryMediaType } from "#shared/types";
 import { backdropUrl, posterUrl } from "#web/utils/images";
-import { formatDuration, formatNames, formatSize } from "#web/utils/format";
-import { lastWatch } from "#web/utils/watch";
-import { relativeOrDate } from "#web/composables/useRelativeTime";
-import DownloadProgress from "#web/components/DownloadProgress.vue";
+import { formatDuration, formatSize } from "#web/utils/format";
 import MediaActivityLog from "#web/components/MediaActivityLog.vue";
-import RequestAction from "#web/components/RequestAction.vue";
+import MediaMenu from "#web/components/MediaMenu.vue";
+import MediaStatus from "#web/components/MediaStatus.vue";
 import SeasonList from "#web/components/SeasonList.vue";
-import WatcherAvatars from "#web/components/WatcherAvatars.vue";
-import AppButton from "#web/components/ui/AppButton.vue";
-import AppCard from "#web/components/ui/AppCard.vue";
 import AppNotice from "#web/components/ui/AppNotice.vue";
 import AppPage from "#web/components/ui/AppPage.vue";
 import AppSwitch from "#web/components/ui/AppSwitch.vue";
@@ -183,15 +155,23 @@ import MediaPoster from "#web/components/ui/MediaPoster.vue";
 import QueryState from "#web/components/ui/QueryState.vue";
 import SectionHeading from "#web/components/ui/SectionHeading.vue";
 import Skeleton from "#web/components/ui/Skeleton.vue";
-import StatusPill from "#web/components/ui/StatusPill.vue";
-import type { Tone } from "#web/components/ui/types";
 import {
   useFollowSeries,
   useMediaActivity,
   useMediaDetail,
   useRemoveLibraryItem,
+  useRetryRequest,
 } from "#web/queries/media";
 import { useSession } from "#web/queries/session";
+import IconBack from "~icons/ph/arrow-left-bold";
+import IconMore from "~icons/ph/dots-three-bold";
+
+/** A round button that stays legible over whatever the artwork is. */
+const GLASS =
+  "flex size-10 items-center justify-center rounded-full border border-white/10 bg-bg-base/60 text-text-primary backdrop-blur-md transition-colors hover:bg-bg-base/80";
+
+/** Roughly three lines on a phone; anything shorter has nothing more to show. */
+const OVERVIEW_PREVIEW = 160;
 
 const route = useRoute();
 const router = useRouter();
@@ -199,7 +179,7 @@ const router = useRouter();
 const mediaType = computed(() => route.params.mediaType as LibraryMediaType);
 const tmdbId = computed(() => Number(route.params.tmdbId));
 
-const { data: media, error, isPending } = useMediaDetail(mediaType, tmdbId);
+const { data: media, error, isPending, refetch } = useMediaDetail(mediaType, tmdbId);
 const { data: activity } = useMediaActivity(mediaType, tmdbId);
 const { isAdmin } = useSession();
 
@@ -208,11 +188,7 @@ useTitle(() => (media.value ? `${media.value.title} — Kyle` : "Kyle"));
 const poster = computed(() => posterUrl(media.value?.posterPath ?? null));
 const backdrop = computed(() => backdropUrl(media.value?.backdropPath ?? null));
 
-const lastWatched = computed(() => lastWatch(media.value?.watchedBy ?? []));
-
-function fullDate(iso: string): string {
-  return new Date(iso).toLocaleString();
-}
+const serviceName = computed(() => (mediaType.value === "movie" ? "Radarr" : "Sonarr"));
 
 /** The one-line summary under the title, skipping whatever TMDB does not know. */
 const facts = computed(() => {
@@ -221,21 +197,36 @@ const facts = computed(() => {
 
   const parts = [item.mediaType === "movie" ? "Movie" : "Series"];
   if (item.runtime) parts.push(formatDuration(item.runtime));
-  if (item.genres.length) parts.push(item.genres.slice(0, 3).join(", "));
-  if (item.rating) parts.push(`★ ${item.rating.toFixed(1)}`);
+  const [genre] = item.genres;
+  if (genre) parts.push(genre);
+  if (item.rating) parts.push(`★\u00a0${item.rating.toFixed(1)}`);
   return parts;
 });
 
-/** What we have of it, which is a different question from what TMDB says it is. */
-const status = computed<{ label: string; tone: Tone }>(() => {
+const overviewOpen = ref(false);
+
+const menuOpen = ref(false);
+
+const retry = useRetryRequest();
+
+/** Anything held can be looked for again; a service that is down cannot be asked. */
+const search = computed(() => {
   const item = media.value;
-  if (!item) return { label: "Unknown", tone: "neutral" };
-  if (item.progress !== undefined) return { label: "Downloading", tone: "amber" };
-  if (!item.library) return { label: "Not in the library", tone: "neutral" };
-  if (item.library.availability === "available") return { label: "Complete", tone: "green" };
-  if (item.library.availability === "partial") return { label: "Partial", tone: "amber" };
-  return { label: "Missing", tone: "red" };
+  if (!item?.library || item.status?.state === "unknown") return undefined;
+  return () => retry.mutateAsync({ mediaType: item.mediaType, tmdbId: item.tmdbId });
 });
+
+const canRemove = computed(
+  () => !!media.value?.library && (isAdmin.value || media.value.requestedByMe),
+);
+
+const removal = computed(() => {
+  const size = media.value?.library?.sizeOnDisk ?? 0;
+  if (!canRemove.value) return undefined;
+  return { label: "Remove", hint: size > 0 ? `Frees ${formatSize(size)}` : undefined };
+});
+
+const hasMenu = computed(() => !!search.value || !!media.value?.serviceUrl || !!removal.value);
 
 const confirmText = computed(() => {
   const item = media.value;
@@ -282,11 +273,6 @@ const following = computed(() => followOverride.value ?? media.value?.following 
 
 /** Starting is asking for more, which anyone may do; stopping is for whoever asked. */
 const canUnfollow = computed(() => isAdmin.value || media.value?.requestedByMe === true);
-
-const followHint = computed(() => {
-  if (following.value && !canUnfollow.value) return "Only whoever asked for it can stop this.";
-  return "Grab new seasons as they're announced.";
-});
 
 const follow = useFollowSeries();
 

@@ -4,6 +4,7 @@ import { buildJwtCookie, signJwt } from "#server/auth/jwt.ts";
 import { createTestUser, deleteTestUser } from "#server/db/testing.ts";
 import { db } from "#server/db/index.ts";
 import { mediaRequests } from "#server/db/schema.ts";
+import { clearRemoval, recordRemoval } from "#server/db/removals.ts";
 import type { MediaDetail } from "#shared/types.ts";
 
 // No mocks: the route runs the real service, with TMDB, Radarr and Sonarr
@@ -104,13 +105,20 @@ function stubServices(handlers: Record<string, unknown>): string[] {
 }
 
 let userId = "";
+let adminId = "";
 let cookie = "";
+let adminCookie = "";
 
 beforeAll(async () => {
   userId = await createTestUser("Media Route");
   cookie = buildJwtCookie(await signJwt({ id: userId, name: "Jane", admin: false }), true).split(
     ";",
   )[0]!;
+  adminId = await createTestUser("Media Admin", true);
+  adminCookie = buildJwtCookie(
+    await signJwt({ id: adminId, name: "Ada", admin: true }),
+    true,
+  ).split(";")[0]!;
 });
 
 afterEach(() => {
@@ -119,6 +127,7 @@ afterEach(() => {
 
 afterAll(async () => {
   await deleteTestUser(userId);
+  await deleteTestUser(adminId);
 });
 
 function get(mediaType: string, tmdbId: string, auth = cookie): Promise<Response> {
@@ -251,5 +260,134 @@ describe("GET /api/media/:mediaType/:tmdbId", () => {
     expect(body.title).toBe("Inception");
     expect(body.library).toBeUndefined();
     expect(body.unavailable).toEqual(["Radarr"]);
+  });
+});
+
+describe("where a title stands", () => {
+  const NO_QUEUE = { "/queue": { records: [], totalRecords: 0 } };
+
+  function movieHeld(movie: Record<string, unknown>) {
+    return {
+      "/movie/27205": MOVIE,
+      "/api/v3/movie?tmdbId": [{ ...HELD_MOVIE, ...movie }],
+      ...NO_QUEUE,
+    };
+  }
+
+  test("a movie on disk is ready, and says at what resolution", async () => {
+    stubServices(
+      movieHeld({
+        movieFile: { quality: { quality: { resolution: 2160 } } },
+      }),
+    );
+
+    const body = (await (await get("movie", "27205")).json()) as MediaDetail;
+
+    expect(body.status?.state).toBe("ready");
+    expect(body.quality).toBe("4K");
+  });
+
+  // What the page used to call "Missing": it is simply not out at home yet.
+  test("a movie still only in cinemas is waiting, not missing", async () => {
+    stubServices(
+      movieHeld({
+        hasFile: false,
+        status: "inCinemas",
+        inCinemas: "2026-09-23T00:00:00Z",
+      }),
+    );
+
+    const body = (await (await get("movie", "27205")).json()) as MediaDetail;
+
+    expect(body.status?.state).toBe("waiting");
+  });
+
+  test("a movie out and not found is being looked for", async () => {
+    stubServices(
+      movieHeld({ hasFile: false, status: "released", lastSearchTime: "2026-06-18T13:40:27Z" }),
+    );
+
+    const body = (await (await get("movie", "27205")).json()) as MediaDetail;
+
+    expect(body.status).toMatchObject({ state: "searching", since: "2026-06-18T13:40:27Z" });
+  });
+
+  test("a series short of episodes is ready, and says which seasons are short", async () => {
+    stubServices(HELD_SERIES);
+
+    const body = (await (await get("series", "95396")).json()) as MediaDetail;
+
+    expect(body.status).toMatchObject({ state: "ready", missing: [{ season: 2, episodes: 9 }] });
+  });
+
+  test("a title nobody holds or removed has no status", async () => {
+    await clearRemoval("movie", 27205);
+    stubServices({ "/movie/27205": MOVIE, "/api/v3/movie?tmdbId": [], ...NO_QUEUE });
+
+    const body = (await (await get("movie", "27205")).json()) as MediaDetail;
+
+    expect(body.status).toBeUndefined();
+  });
+
+  test("a title somebody removed says who", async () => {
+    await recordRemoval({
+      mediaType: "movie",
+      tmdbId: 27205,
+      title: "Inception",
+      removedBy: "Kate",
+      deletedFiles: true,
+    });
+    stubServices({ "/movie/27205": MOVIE, "/api/v3/movie?tmdbId": [], ...NO_QUEUE });
+
+    try {
+      const body = (await (await get("movie", "27205")).json()) as MediaDetail;
+      expect(body.status).toMatchObject({ state: "removed", detail: "Removed by Kate" });
+    } finally {
+      await clearRemoval("movie", 27205);
+    }
+  });
+
+  test("an unreachable service leaves the state unknown", async () => {
+    stubServices({ "/movie/27205": MOVIE });
+
+    const body = (await (await get("movie", "27205")).json()) as MediaDetail;
+
+    expect(body.status?.state).toBe("unknown");
+  });
+
+  test("gives the earliest release of each kind", async () => {
+    stubServices({
+      "/movie/27205": {
+        ...MOVIE,
+        release_dates: {
+          results: [
+            {
+              iso_3166_1: "US",
+              release_dates: [
+                { type: 3, release_date: "2010-07-16T00:00:00.000Z" },
+                { type: 4, release_date: "2010-12-07T00:00:00.000Z" },
+              ],
+            },
+          ],
+        },
+      },
+      "/api/v3/movie?tmdbId": [],
+      ...NO_QUEUE,
+    });
+
+    const body = (await (await get("movie", "27205")).json()) as MediaDetail;
+
+    expect(body.releases).toEqual({ cinema: "2010-07-16", digital: "2010-12-07" });
+  });
+
+  test("links an admin to the title in Radarr, and nobody else", async () => {
+    stubServices(movieHeld({ titleSlug: "inception-27205" }));
+    const member = (await (await get("movie", "27205")).json()) as MediaDetail;
+
+    stubServices(movieHeld({ titleSlug: "inception-27205" }));
+    const admin = (await (await get("movie", "27205", adminCookie)).json()) as MediaDetail;
+
+    expect(member.serviceUrl).toBeUndefined();
+    expect(admin.serviceUrl).toBe("http://radarr.test/movie/inception-27205");
   });
 });

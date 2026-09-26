@@ -34,3 +34,21 @@ export function formatDuration(minutes: number): string {
   if (hours === 0) return `${whole}m`;
   return `${hours}h ${whole % 60}m`;
 }
+
+/**
+ * What a download client's "00:12:31" or "1.02:00:00" leaves, read aloud:
+ * "12 min", "2h 5m", "1d 2h". Empty for anything it cannot read.
+ */
+export function formatEta(eta: string): string {
+  const match = /^(?:(\d+)\.)?(\d+):(\d+):(\d+)$/.exec(eta);
+  if (!match) return "";
+
+  const [, days = "0", hours = "0", minutes = "0"] = match;
+  const d = Number(days);
+  const h = Number(hours);
+  const m = Number(minutes);
+
+  if (d > 0) return `${d}d ${h}h`;
+  if (h > 0) return `${h}h ${m}m`;
+  return `${Math.max(1, m)} min`;
+}

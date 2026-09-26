@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { formatDate, formatDuration, formatNames, formatSize } from "./format";
+import { formatDate, formatDuration, formatEta, formatNames, formatSize } from "./format";
 
 describe("formatNames", () => {
   test("reads as a sentence at every length", () => {
@@ -60,5 +60,21 @@ describe("formatDuration", () => {
 
   test("rounds to whole minutes", () => {
     expect(formatDuration(59.6)).toBe("1h 0m");
+  });
+});
+
+describe("formatEta", () => {
+  test("reads a download client's clock as a person would say it", () => {
+    expect(formatEta("00:12:31")).toBe("12 min");
+    expect(formatEta("02:05:00")).toBe("2h 5m");
+    expect(formatEta("1.02:00:00")).toBe("1d 2h");
+  });
+
+  test("never promises it is already done", () => {
+    expect(formatEta("00:00:20")).toBe("1 min");
+  });
+
+  test("says nothing for a clock it cannot read", () => {
+    expect(formatEta("soon")).toBe("");
   });
 });

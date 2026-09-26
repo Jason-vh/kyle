@@ -1,6 +1,7 @@
 <template>
   <div class="mb-2.5 flex items-baseline justify-between gap-3">
     <h2 class="text-sm font-semibold tracking-wide text-text-muted uppercase">{{ title }}</h2>
+    <slot name="aside" />
     <router-link
       v-if="to"
       :to="to"

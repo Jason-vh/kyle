@@ -74,10 +74,16 @@ export interface MediaDetail {
   genres: string[];
   /** TMDB's average out of 10, absent when nobody has voted. */
   rating?: number;
-  /** TMDB's own wording: "Released", "Returning Series", … */
-  status?: string;
+  /** A movie only: the earliest date of each kind of release, anywhere. */
+  releases?: MovieReleases;
+  /** Where it stands, worded as a request is; absent for a title never held. */
+  status?: TitleStatus;
   /** Absent when neither Radarr nor Sonarr holds it. */
   library?: LibraryState;
+  /** A movie on disk: its resolution, e.g. "4K" or "1080p". */
+  quality?: string;
+  /** Admins only: the title's own page in Radarr or Sonarr. */
+  serviceUrl?: string;
   /** Only for a series in the library, newest concern first: specials last. */
   seasons?: SeasonSummary[];
   /** A series in the library: whether seasons announced later are grabbed too. */
@@ -97,7 +103,27 @@ export interface MediaDetail {
   unavailable: string[];
 }
 
-export type MediaActivityKind = "requested" | "grabbed" | "imported" | "watched" | "removed";
+/** ISO 8601 dates, each absent until TMDB knows one. */
+export interface MovieReleases {
+  cinema?: string;
+  digital?: string;
+  physical?: string;
+}
+
+/** Where a title stands, in the words a request uses. */
+export interface TitleStatus {
+  state: RequestState;
+  /** What the service says about the state: a stall, a rejection, who removed it. */
+  detail?: string;
+  /** ISO 8601 of when the state began, where the source knows. */
+  since?: string;
+  /** ISO 8601 of when the title becomes obtainable, while it is not. */
+  expectedAt?: string;
+  /** Seasons still short of episodes, while the rest of the series is watchable. */
+  missing?: MissingSeason[];
+}
+
+export type MediaActivityKind = "requested" | "imported" | "watched" | "removed";
 
 /** One thing that happened to a title. Episodes handled in one sitting read as one. */
 export interface MediaActivity {

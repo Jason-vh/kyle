@@ -28,12 +28,13 @@
 import { ref } from "vue";
 import { AspectRatio } from "reka-ui";
 
-type Size = "sm" | "md" | "lg";
+type Size = "sm" | "md" | "lg" | "xl";
 
 const WIDTHS: Record<Size, string> = {
   sm: "w-10",
   md: "w-12",
   lg: "w-18",
+  xl: "w-22",
 };
 
 withDefaults(defineProps<{ src?: string | null; alt: string; size?: Size }>(), { size: "md" });

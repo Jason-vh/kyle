@@ -1,13 +1,22 @@
 <template>
   <div>
-    <AppButton v-if="requested" variant="ghost" :size="size" disabled>Requested</AppButton>
+    <AppButton v-if="requested" variant="ghost" :size="size" :block="block" disabled>
+      Requested
+    </AppButton>
 
     <!-- A series already held is managed season by season on its own page. -->
     <AppButton v-else-if="choosesSeasons && held" as-child :size="size">
       <RouterLink :to="`/media/series/${item.tmdbId}`">Seasons</RouterLink>
     </AppButton>
 
-    <AppButton v-else variant="primary" :size="size" :loading="busy" @click="onRequest">
+    <AppButton
+      v-else
+      variant="primary"
+      :size="size"
+      :block="block"
+      :loading="busy"
+      @click="onRequest"
+    >
       {{ label }}
     </AppButton>
 
@@ -39,6 +48,7 @@ const props = withDefaults(
     /** Already in the library: asking again is allowed, but say so. */
     held?: boolean;
     size?: "sm" | "md";
+    block?: boolean;
   }>(),
   { size: "md" },
 );

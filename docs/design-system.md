@@ -48,7 +48,7 @@ Two things to keep in mind when adding a token:
 | ---------------- | ------------------------------------------------------------------------- |
 | `AppPage`        | the page container. Its bottom padding clears the phone tab bar           |
 | `PageHeader`     | page title, optional subtitle, optional `#aside` slot for actions         |
-| `SectionHeading` | a heading within a page, with an optional "see all" link                  |
+| `SectionHeading` | a heading within a page, with an optional "see all" link or `#aside`      |
 | `AppCard`        | any bordered surface. `:padded="false"` when the content owns its padding |
 | `AppButton`      | `variant`: primary, secondary, ghost, danger. `size`: sm, md              |
 | `AppInput`       | text and search inputs                                                    |
@@ -58,7 +58,7 @@ Two things to keep in mind when adding a token:
 | `AppNotice`      | an inline message block, by `tone`                                        |
 | `QueryState`     | the loading / failed / empty triple every list needs                      |
 | `Skeleton`       | a pulsing block standing in for content that has not arrived              |
-| `MediaPoster`    | poster art at `sm`, `md` or `lg`, with a fallback                         |
+| `MediaPoster`    | poster art at `sm`, `md`, `lg` or `xl`, with a fallback                   |
 | `StatCard`       | a labelled figure, optionally with a proportion bar                       |
 | `NavIcon`        | the tab bar glyphs                                                        |
 

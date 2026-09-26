@@ -51,27 +51,25 @@ describe("groupOccurrences", () => {
     expect(event?.detail).toBe("S01E01 Pilot");
   });
 
-  test("keeps grabbing and importing a season pack as two lines", () => {
-    const pack = (kind: "grabbed" | "imported", hours: number): Occurrence[] =>
+  test("reads a season pack as one download", () => {
+    const events = groupOccurrences(
       [1, 2].map((episodeNumber) => ({
-        kind,
-        at: at(hours),
+        kind: "imported",
+        at: at(episodeNumber),
         episode: { seasonNumber: 3, episodeNumber },
-        quality: "WEBDL-1080p",
-      }));
-
-    const events = groupOccurrences([...pack("grabbed", 0), ...pack("imported", 1)]);
+      })),
+    );
 
     expect(events.map((event) => [event.kind, event.detail])).toEqual([
-      ["grabbed", "Season 3 · 2 episodes · WEBDL-1080p"],
-      ["imported", "Season 3 · 2 episodes · WEBDL-1080p"],
+      ["imported", "Season 3 · 2 episodes"],
     ]);
   });
 
-  test("describes a movie by its quality alone", () => {
-    const [event] = groupOccurrences([{ kind: "imported", at: at(0), quality: "Bluray-1080p" }]);
+  test("leaves a movie download undescribed", () => {
+    const [event] = groupOccurrences([{ kind: "imported", at: at(0) }]);
 
-    expect(event).toMatchObject({ kind: "imported", detail: "Bluray-1080p" });
+    expect(event).toMatchObject({ kind: "imported" });
+    expect(event?.detail).toBeUndefined();
     expect(event?.person).toBeUndefined();
   });
 

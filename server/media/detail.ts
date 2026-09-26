@@ -1,18 +1,31 @@
-import type { LibraryMediaType, LibraryState, MediaDetail, SeasonSummary } from "#shared/types.ts";
+import type {
+  LibraryMediaType,
+  LibraryState,
+  MediaDetail,
+  MovieReleases,
+  SeasonSummary,
+  TitleStatus,
+} from "#shared/types.ts";
 import * as radarr from "#server/radarr/api.ts";
 import * as sonarr from "#server/sonarr/api.ts";
 import { isContinuing, isFollowing } from "#server/sonarr/utils.ts";
 import * as tmdb from "#server/tmdb/api.ts";
-import { yearOf } from "#server/tmdb/utils.ts";
+import { earliestReleases, yearOf } from "#server/tmdb/utils.ts";
+import type { RadarrMovie } from "#server/radarr/types.ts";
 import { movieState, seriesState } from "#server/library/item.ts";
+import { movieEntry, seriesEntry, type LibraryEntry } from "#server/requests/library.ts";
 import { buildSeasons, withEpisodeWatchers, type SeasonContext } from "./seasons.ts";
 import {
   placeOf,
   queueStatusBySeason,
   queueStatusFor,
+  resolveState,
   type PlexPlace,
 } from "#server/requests/state.ts";
+import type { QueueStatus } from "#server/requests/queue.ts";
 import { getRequestersForMedia } from "#server/db/requests.ts";
+import { getRemoval } from "#server/db/removals.ts";
+import { mediaHref } from "#server/media-links.ts";
 import { getWatchers, watchKey } from "#server/plex/history.ts";
 import { getPlexPlaces } from "#server/plex/catalog.ts";
 import { createLogger } from "#server/logger.ts";
@@ -32,7 +45,7 @@ type Description = Pick<
   | "runtime"
   | "genres"
   | "rating"
-  | "status"
+  | "releases"
 >;
 
 async function describe(mediaType: LibraryMediaType, tmdbId: number): Promise<Description> {
@@ -49,7 +62,7 @@ async function describe(mediaType: LibraryMediaType, tmdbId: number): Promise<De
       genres: movie.genres.map((genre) => genre.name),
       // An unrated title averages 0, which would read as the worst film ever made.
       rating: movie.vote_count > 0 ? movie.vote_average : undefined,
-      status: movie.status || undefined,
+      releases: releasesOf(earliestReleases(movie)),
     };
   }
 
@@ -64,15 +77,41 @@ async function describe(mediaType: LibraryMediaType, tmdbId: number): Promise<De
     runtime: show.episode_run_time?.[0] || undefined,
     genres: show.genres.map((genre) => genre.name),
     rating: show.vote_count > 0 ? show.vote_average : undefined,
-    status: show.status || undefined,
   };
+}
+
+function releasesOf(releases: ReturnType<typeof earliestReleases>): MovieReleases {
+  return {
+    cinema: releases.cinema ?? undefined,
+    digital: releases.digital ?? undefined,
+    physical: releases.physical ?? undefined,
+  };
+}
+
+/** "4K" rather than "2160p", since that is what a television box says. */
+export function resolutionLabel(resolution: number | undefined): string | undefined {
+  if (!resolution) return undefined;
+  return resolution >= 2160 ? "4K" : `${resolution}p`;
 }
 
 interface Held {
   state: LibraryState;
+  /** The same title as a request sees it, so both can be worded alike. */
+  entry: LibraryEntry;
   seasons?: SeasonSummary[];
   following?: boolean;
   continuing?: boolean;
+  quality?: string;
+  titleSlug: string;
+}
+
+function heldMovie(movie: RadarrMovie): Held {
+  return {
+    state: movieState(movie),
+    entry: movieEntry(movie),
+    quality: resolutionLabel(movie.movieFile?.quality.quality.resolution),
+    titleSlug: movie.titleSlug,
+  };
 }
 
 /** Who asked for which season; a series-wide request belongs to no season. */
@@ -103,7 +142,7 @@ async function heldState(
 ): Promise<Held | undefined> {
   if (mediaType === "movie") {
     const movie = await radarr.getLibraryMovieByTmdbId(tmdbId);
-    return movie ? { state: movieState(movie) } : undefined;
+    return movie ? heldMovie(movie) : undefined;
   }
 
   // Sonarr cannot look a series up by TMDB id, so its own listing is the index.
@@ -118,6 +157,8 @@ async function heldState(
 
   return {
     state: seriesState(series),
+    entry: seriesEntry(series),
+    titleSlug: series.titleSlug,
     seasons: buildSeasons(series, episodes, context),
     following: isFollowing(series),
     continuing: isContinuing(series),
@@ -129,6 +170,38 @@ export function serviceName(mediaType: LibraryMediaType): string {
 }
 
 /**
+ * Where the title stands. A service that cannot be reached says nothing, which
+ * is not the same as not holding it; a title not held is either one somebody
+ * removed, or one nobody has asked for.
+ */
+async function statusOf(
+  mediaType: LibraryMediaType,
+  tmdbId: number,
+  held: Held | undefined | null,
+  queue: QueueStatus | undefined,
+  plex: PlexPlace,
+): Promise<TitleStatus | undefined> {
+  if (held === null) return { state: "unknown" };
+
+  if (!held) {
+    const removal = await getRemoval(mediaType, tmdbId);
+    return removal ? resolveState({ removal }) : undefined;
+  }
+
+  const { state, detail, since, expectedAt, missing } = resolveState({
+    entry: held.entry,
+    queue,
+    plex,
+  });
+  return { state, detail, since, expectedAt, missing };
+}
+
+export interface Viewer {
+  id: string;
+  admin: boolean;
+}
+
+/**
  * One title in full. TMDB is the page, so a failure there fails the request;
  * everything else is an annotation, and its service being down costs only that
  * annotation.
@@ -136,7 +209,7 @@ export function serviceName(mediaType: LibraryMediaType): string {
 export async function getMediaDetail(
   mediaType: LibraryMediaType,
   tmdbId: number,
-  viewerId: string,
+  viewer: Viewer,
 ): Promise<MediaDetail> {
   const [requesters, places] = await Promise.all([
     getRequestersForMedia(mediaType, tmdbId),
@@ -159,13 +232,19 @@ export async function getMediaDetail(
 
   const library = held?.state;
   const download = library ? await queueStatusFor(mediaType, library.serviceId) : undefined;
+  const status = await statusOf(mediaType, tmdbId, held, download, plex);
   const key = watchKey(mediaType, tmdbId);
+  const serviceUrl =
+    viewer.admin && held ? mediaHref(mediaType, { titleSlug: held.titleSlug }) : null;
 
   return {
     mediaType,
     tmdbId,
     ...description,
+    status,
     library,
+    quality: held?.quality,
+    serviceUrl: serviceUrl ?? undefined,
     seasons: held?.seasons && withEpisodeWatchers(held.seasons, key, watchers),
     following: held?.following,
     continuing: held?.continuing,
@@ -173,7 +252,7 @@ export async function getMediaDetail(
     eta: download?.eta,
     plexUrl: places?.get(key),
     requestedBy: [...new Set(requesters.map((requester) => requester.name))],
-    requestedByMe: requesters.some((requester) => requester.userId === viewerId),
+    requestedByMe: requesters.some((requester) => requester.userId === viewer.id),
     watchedBy: watchers.get(key) ?? [],
     unavailable: held === null ? [serviceName(mediaType)] : [],
   };

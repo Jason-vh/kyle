@@ -78,6 +78,25 @@ const clickText = async (label: string, within = "body") => {
   await flush();
 };
 
+/** A menu item carries its consequence under its label, so it is found by how it starts. */
+const clickMenuItem = async (label: string) => {
+  const button = [...document.querySelectorAll('[role="dialog"] button')].find((candidate) =>
+    candidate.textContent?.trim().startsWith(label),
+  );
+  (button as HTMLButtonElement).click();
+  await flush();
+};
+
+const menuButton = (seasonNumber = 1) =>
+  document.querySelector<HTMLButtonElement>(`[aria-label="Season ${seasonNumber} options"]`);
+
+const openMenu = async (seasonNumber = 1) => {
+  menuButton(seasonNumber)!.click();
+  await flush();
+};
+
+const menuText = () => document.querySelector('[role="dialog"]')?.textContent ?? "";
+
 const DAY = 24 * 60 * 60 * 1000;
 const iso = (offsetDays: number) => new Date(Date.now() + offsetDays * DAY).toISOString();
 
@@ -90,16 +109,19 @@ describe("SeasonList", () => {
 
   test("counts what is on disk against what the season holds", async () => {
     const list = await render([season({ episodeFileCount: 1, episodeCount: 10, state: "airing" })]);
-    expect(list.text()).toContain("1/10 episodes");
+    expect(list.text()).toContain("1 of 10");
+  });
+
+  test("a complete season says nothing beyond its count", async () => {
+    const list = await render([season({ state: "ready" })]);
+    expect(list.text()).not.toContain("Ready");
   });
 
   test.each([
-    ["ready", "Ready"],
     ["searching", "Looking"],
     ["stalled", "Stalled"],
     ["unrequested", "Not requested"],
     ["unreleased", "Not aired yet"],
-    ["airing", "Airing"],
   ] as const)("%s reads as %s", async (state, label) => {
     expect((await render([season({ state })])).text()).toContain(label);
   });
@@ -110,16 +132,12 @@ describe("SeasonList", () => {
     expect(list.text()).toContain("next");
   });
 
-  test("passes on what the service says about a stall", async () => {
-    const list = await render([season({ state: "stalled", detail: "No seeders" })]);
+  test("draws one segment per episode", async () => {
+    const list = await render([
+      season({ episodes: [episode(), episode({ episodeNumber: 2, hasFile: false })] }),
+    ]);
 
-    expect(list.text()).toContain("No seeders");
-  });
-
-  test("names whoever asked for this season in particular", async () => {
-    const list = await render([season({ requestedBy: ["Jason", "Kate"] })]);
-
-    expect(list.text()).toContain("Jason and Kate");
+    expect(list.findAll('[role="img"] > span')).toHaveLength(2);
   });
 
   // The distinction the page exists to make: nothing is wrong with an episode
@@ -130,7 +148,6 @@ describe("SeasonList", () => {
     ]);
 
     expect(list.text()).not.toContain("Missing");
-    expect(list.find(".text-accent-red").exists()).toBe(false);
   });
 
   test("an episode that aired and never arrived is missing", async () => {
@@ -138,13 +155,13 @@ describe("SeasonList", () => {
       season({ episodes: [episode({ hasFile: false, airDate: iso(-30) })] }),
     ]);
 
-    expect(list.find(".text-accent-red").text()).toBe("Missing");
+    expect(list.text()).toContain("Missing");
   });
 
   test("an episode with no date at all is missing rather than unaired", async () => {
     const list = await render([season({ episodes: [episode({ hasFile: false })] })]);
 
-    expect(list.find(".text-accent-red").text()).toBe("Missing");
+    expect(list.text()).toContain("Missing");
   });
 
   test("numbers each episode within its season", async () => {
@@ -152,12 +169,12 @@ describe("SeasonList", () => {
       season({ seasonNumber: 2, episodes: [episode({ episodeNumber: 3 })] }),
     ]);
 
-    expect(list.text()).toContain("S02E03");
+    expect(list.find("li span").text()).toBe("3");
   });
 
   test("says so when Sonarr knows the season but not its episodes", async () => {
     const list = await render([season({ episodes: [] })]);
-    expect(list.text()).toContain("no episodes");
+    expect(list.text()).toContain("No episodes listed yet");
   });
 
   test("shows who has watched an episode", async () => {
@@ -165,7 +182,7 @@ describe("SeasonList", () => {
       season({ episodes: [episode({ watchedBy: [{ name: "Jason" }, { name: "Kate" }] })] }),
     ]);
 
-    expect(list.find("[aria-label]").attributes("aria-label")).toBe(
+    expect(list.find("[aria-label$='watched this']").attributes("aria-label")).toBe(
       "Jason and Kate have watched this",
     );
   });
@@ -173,7 +190,7 @@ describe("SeasonList", () => {
   test("shows nothing against an episode nobody has watched", async () => {
     const list = await render([season({ episodes: [episode({ watchedBy: [] })] })]);
 
-    expect(list.find("[aria-label]").exists()).toBe(false);
+    expect(list.find("[aria-label$='watched this']").exists()).toBe(false);
   });
 });
 
@@ -192,15 +209,20 @@ describe("asking for a season", () => {
     });
   });
 
-  test("a season already asked for offers a retry instead", async () => {
-    stubApi();
+  test("a season still short of episodes can be searched again from its menu", async () => {
+    const posted = stubApi();
 
     const list = await render([
       season({ state: "searching", episodeFileCount: 0, requestedBy: ["Jason"] }),
     ]);
+    await openMenu();
+    await clickMenuItem("Search again");
 
-    expect(list.text()).toContain("Retry");
     expect(list.text()).not.toContain("Request");
+    expect(posted[0]).toMatchObject({
+      url: "/api/requests/series/95396/retry?season=1",
+      method: "POST",
+    });
   });
 
   test("a complete season has nothing left to ask for", async () => {
@@ -209,18 +231,20 @@ describe("asking for a season", () => {
     const list = await render([season({ state: "ready" })]);
 
     expect(list.text()).not.toContain("Request");
-    expect(list.text()).not.toContain("Retry");
+    expect(menuButton()).toBeNull();
   });
 
-  // The single miss: the season is otherwise there, one episode never came in.
-  test("a missing episode can be asked for on its own", async () => {
+  // The single gap: an episode nobody is watching for can be asked for on its own.
+  test("an episode nobody asked for can be asked for on its own", async () => {
     const posted = stubApi();
 
     const list = await render([
       season({
         state: "airing",
         episodeFileCount: 1,
-        episodes: [episode({ episodeNumber: 7, hasFile: false, airDate: iso(-30) })],
+        episodes: [
+          episode({ episodeNumber: 7, hasFile: false, monitored: false, airDate: iso(-30) }),
+        ],
       }),
     ]);
     const buttons = list.findAll("button").filter((button) => button.text() === "Request");
@@ -234,20 +258,21 @@ describe("asking for a season", () => {
     stubApi();
 
     const list = await render([
-      season({ episodes: [episode({ hasFile: false, airDate: iso(30) })] }),
+      season({ episodes: [episode({ hasFile: false, monitored: false, airDate: iso(30) })] }),
     ]);
 
     expect(list.findAll("button").some((button) => button.text() === "Request")).toBe(false);
   });
 });
 
-describe("releasing a season", () => {
-  test("an admin may give back a season that is on disk", async () => {
+describe("deleting a season", () => {
+  test("an admin may delete a season that is on disk", async () => {
     const posted = stubApi(true);
 
     await render([season({ sizeOnDisk: 5e9 })], 9);
-    await clickText("Release");
-    await clickText("Release", '[role="alertdialog"]');
+    await openMenu();
+    await clickMenuItem("Delete season");
+    await clickText("Delete", '[role="alertdialog"]');
 
     expect(posted[0]).toMatchObject({
       url: "/api/library/series/9/seasons/1",
@@ -255,19 +280,21 @@ describe("releasing a season", () => {
     });
   });
 
-  test("anyone else sees no such button", async () => {
+  test("anyone else has no menu to do it from", async () => {
     stubApi(false);
 
-    const list = await render([season({ sizeOnDisk: 5e9 })], 9);
+    await render([season({ sizeOnDisk: 5e9 })], 9);
 
-    expect(list.text()).not.toContain("Release");
+    expect(menuButton()).toBeNull();
   });
 
-  test("a season with nothing on disk has nothing to give back", async () => {
+  test("a season with nothing on disk has nothing to delete", async () => {
     stubApi(true);
 
-    const list = await render([season({ episodeFileCount: 0, state: "searching" })], 9);
+    await render([season({ episodeFileCount: 0, state: "searching" })], 9);
+    await openMenu();
 
-    expect(list.text()).not.toContain("Release");
+    expect(menuText()).toContain("Search again");
+    expect(menuText()).not.toContain("Delete season");
   });
 });

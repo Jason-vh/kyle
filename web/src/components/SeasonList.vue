@@ -6,116 +6,124 @@
       :value="String(season.seasonNumber)"
       as-child
     >
-      <AppCard :padded="false">
-        <AccordionHeader as="h3" class="flex items-center gap-2 pr-3.5">
-          <AccordionTrigger
-            class="group flex min-w-0 flex-1 items-center gap-3 p-3.5 text-left transition-colors hover:bg-bg-elevated"
-          >
-            <div class="min-w-0 flex-1">
-              <p class="text-sm font-semibold text-text-primary">
-                {{ seasonName(season.seasonNumber) }}
-              </p>
-              <p class="mt-0.5 text-xs text-text-muted">
-                {{ season.episodeFileCount }}/{{ season.episodeCount }} episodes
-                <template v-if="season.sizeOnDisk > 0">
-                  · {{ formatSize(season.sizeOnDisk) }}</template
-                >
-                <template v-if="season.requestedBy.length">
-                  · {{ formatNames(season.requestedBy) }}</template
-                >
-                <template v-if="schedule(season)"> · {{ schedule(season) }}</template>
-                <template v-else-if="season.detail"> · {{ season.detail }}</template>
-              </p>
-            </div>
-
-            <StatusPill :tone="SEASON_STATES[season.state].tone">
-              {{ SEASON_STATES[season.state].label }}
-            </StatusPill>
-
-            <!-- Rotates to point down while the season is open. -->
-            <span
-              class="shrink-0 text-text-muted transition-transform group-data-[state=open]:rotate-90"
-              aria-hidden="true"
+      <AppCard :padded="false" class="group">
+        <AccordionHeader as="div" class="relative p-3.5">
+          <div class="flex items-center gap-2">
+            <!-- Stretched over the header, so a tap anywhere but a button opens the season. -->
+            <AccordionTrigger
+              class="min-w-0 flex-1 text-left after:absolute after:inset-0 after:rounded-card focus:outline-none focus-visible:after:ring-2 focus-visible:after:ring-accent-purple/40"
             >
-              ›
-            </span>
-          </AccordionTrigger>
+              <span class="block text-sm font-semibold text-text-primary">
+                {{ seasonName(season.seasonNumber) }}
+              </span>
+              <span class="flex items-center gap-1.5 text-xs text-text-muted">
+                <span
+                  v-if="ATTENTION[season.state]"
+                  class="size-1.5 shrink-0 rounded-full"
+                  :class="ATTENTION[season.state]"
+                  aria-hidden="true"
+                />
+                {{ summary(season) }}
+              </span>
+            </AccordionTrigger>
 
-          <AppButton
-            v-if="requestLabel(season)"
-            variant="primary"
-            size="sm"
-            :loading="busy === scope(season.seasonNumber)"
-            @click="onRequestSeason(season)"
-          >
-            {{ requestLabel(season) }}
-          </AppButton>
+            <AppButton
+              v-if="requestable(season)"
+              variant="primary"
+              size="sm"
+              class="relative"
+              :loading="busy === scope(season.seasonNumber)"
+              @click="onRequestSeason(season)"
+            >
+              Request
+            </AppButton>
 
-          <AppButton
-            v-if="canRelease(season)"
-            variant="danger"
-            size="sm"
-            :loading="releasing === season.seasonNumber"
-            @click="confirming = season"
-          >
-            Release
-          </AppButton>
+            <AppButton
+              v-if="hasMenu(season)"
+              variant="ghost"
+              size="sm"
+              class="relative size-8 px-0"
+              :aria-label="`${seasonName(season.seasonNumber)} options`"
+              @click="menuFor = season"
+            >
+              <IconMore class="size-4.5" aria-hidden="true" />
+            </AppButton>
+
+            <IconCaret
+              class="size-4 shrink-0 text-text-muted transition-transform group-data-[state=open]:rotate-180"
+              aria-hidden="true"
+            />
+          </div>
+
+          <EpisodeBar v-if="showsBar(season)" :season="season" class="mt-2.5" />
         </AccordionHeader>
-
-        <DownloadProgress
-          v-if="season.progress !== undefined"
-          :progress="season.progress"
-          :eta="season.eta"
-          class="px-3.5 pb-3"
-        />
 
         <p v-if="failed(season.seasonNumber)" class="px-3.5 pb-3 text-xs text-accent-red">
           {{ failed(season.seasonNumber) }}
         </p>
 
         <AccordionContent class="overflow-hidden">
-          <ul class="border-t border-border-primary">
+          <ul class="border-t border-border-primary py-1">
             <li
               v-for="episode in season.episodes"
               :key="episode.episodeNumber"
-              class="flex items-center gap-3 px-3.5 py-2"
+              class="flex min-h-10 items-center gap-3 px-3.5 py-1.5"
             >
-              <span class="shrink-0 text-xs tabular-nums text-text-muted">
-                {{ episodeCode(season.seasonNumber, episode.episodeNumber) }}
+              <span class="w-5 shrink-0 text-right text-xs tabular-nums text-text-muted">
+                {{ episode.episodeNumber }}
               </span>
-              <span class="min-w-0 flex-1 truncate text-sm text-text-primary">
+              <span
+                class="min-w-0 flex-1 truncate text-sm"
+                :class="episode.hasFile ? 'text-text-primary' : 'text-text-secondary'"
+              >
                 {{ episode.title }}
               </span>
               <WatcherAvatars :watchers="episode.watchedBy" :max="3" class="shrink-0" />
-              <span class="shrink-0 text-xs" :class="episodeClass(episode)">
-                {{ episodeState(episode) }}
-              </span>
 
-              <!-- The rare single miss: the rest of the season came in, this did not. -->
+              <IconCheck
+                v-if="episode.hasFile"
+                class="size-4 shrink-0 text-text-muted"
+                role="img"
+                aria-label="On disk"
+              />
+              <span v-else-if="unaired(episode)" class="shrink-0 text-xs text-text-muted">
+                {{ airDate(episode.airDate) }}
+              </span>
               <AppButton
-                v-if="missing(episode)"
+                v-else-if="!episode.monitored"
                 size="sm"
                 :loading="busy === scope(season.seasonNumber, episode.episodeNumber)"
                 @click="onRequestEpisode(season, episode)"
               >
                 Request
               </AppButton>
+              <span v-else class="shrink-0 text-xs font-medium text-text-primary">Missing</span>
             </li>
 
-            <li v-if="!season.episodes.length" class="px-3.5 py-3 text-sm text-text-muted">
-              Sonarr lists no episodes for this season yet.
+            <li v-if="!season.episodes.length" class="px-3.5 py-2 text-sm text-text-muted">
+              No episodes listed yet.
             </li>
           </ul>
         </AccordionContent>
       </AppCard>
     </AccordionItem>
 
+    <MediaMenu
+      :open="menuFor !== null"
+      :title="menuFor ? seasonName(menuFor.seasonNumber) : ''"
+      service-name="Sonarr"
+      :search="menuSearch"
+      :removal="menuFor ? removal(menuFor) : undefined"
+      @update:open="menuFor = null"
+      @remove="confirming = menuFor"
+    />
+
     <ConfirmDialog
       :open="confirming !== null"
-      title="Release this season?"
+      title="Delete this season?"
       :description="releaseText"
-      confirm-label="Release"
-      busy-label="Releasing…"
+      confirm-label="Delete"
+      busy-label="Deleting…"
       :busy="releasing !== null"
       @update:open="confirming = null"
       @confirm="onRelease"
@@ -133,42 +141,47 @@ import {
   AccordionTrigger,
 } from "reka-ui";
 import type { EpisodeSummary, SeasonState, SeasonSummary } from "#shared/types";
-import { episodeCode, seasonName } from "#shared/media";
-import { formatNames, formatSize } from "#web/utils/format";
+import { seasonName } from "#shared/media";
+import { formatDate, formatSize } from "#web/utils/format";
 import { SEASON_STATES } from "#web/utils/states";
-import { useReleaseSeason, useRequestMedia } from "#web/queries/media";
+import { useReleaseSeason, useRequestMedia, useRetryRequest } from "#web/queries/media";
 import { useSession } from "#web/queries/session";
-import DownloadProgress from "./DownloadProgress.vue";
+import EpisodeBar from "./EpisodeBar.vue";
+import MediaMenu from "./MediaMenu.vue";
 import AppButton from "./ui/AppButton.vue";
 import AppCard from "./ui/AppCard.vue";
 import ConfirmDialog from "./ui/ConfirmDialog.vue";
-import StatusPill from "./ui/StatusPill.vue";
 import WatcherAvatars from "./WatcherAvatars.vue";
+import { unaired } from "#web/utils/episodes";
+import IconCaret from "~icons/ph/caret-down-bold";
+import IconCheck from "~icons/ph/check-bold";
+import IconMore from "~icons/ph/dots-three-bold";
 
 const props = defineProps<{
   seasons: SeasonSummary[];
   tmdbId: number;
   posterPath: string | null;
-  /** Sonarr's id for the series, without which a season cannot be released. */
+  /** Sonarr's id for the series, without which a season cannot be deleted. */
   serviceId?: number;
 }>();
 
-/** States where asking for more of this season is worth offering. */
-const REQUESTABLE = new Set<SeasonState>([
-  "unrequested",
-  "unreleased",
-  "searching",
-  "stalled",
-  "paused",
-  "removed",
-]);
+/** Only what needs a look gets colour; everything else is said in words. */
+const ATTENTION: Partial<Record<SeasonState, string>> = {
+  stalled: "bg-accent-amber",
+  blocked: "bg-accent-red",
+};
+
+/** States that say more than the episode count already does. */
+const QUIET = new Set<SeasonState>(["ready", "airing"]);
 
 const { isAdmin } = useSession();
 const request = useRequestMedia();
+const retry = useRetryRequest();
 const release = useReleaseSeason();
 
 const busy = ref("");
 const errors = ref(new Map<number, string>());
+const menuFor = ref<SeasonSummary | null>(null);
 const confirming = ref<SeasonSummary | null>(null);
 const releasing = ref<number | null>(null);
 
@@ -177,21 +190,49 @@ function scope(seasonNumber: number, episodeNumber?: number): string {
   return episodeNumber === undefined ? `${seasonNumber}` : `${seasonNumber}:${episodeNumber}`;
 }
 
-/** Asking again for a season already asked for is a retry, and says so. */
-function requestLabel(season: SeasonSummary): string {
-  if (!REQUESTABLE.has(season.state)) return "";
-  return season.requestedBy.length > 0 ? "Retry" : "Request";
+/** "3 of 8 · Downloading", "Not requested", "4 of 10 · next 12 Mar". */
+function summary(season: SeasonSummary): string {
+  if (season.state === "unrequested") return SEASON_STATES.unrequested.label;
+  if (season.state === "unreleased") {
+    return season.expectedAt ? `Starts ${airDate(season.expectedAt)}` : "Not aired yet";
+  }
+
+  const parts: string[] = [];
+  if (season.episodeCount > 0) parts.push(`${season.episodeFileCount} of ${season.episodeCount}`);
+  if (season.state === "airing" && season.expectedAt) {
+    parts.push(`next ${airDate(season.expectedAt)}`);
+  }
+  if (!QUIET.has(season.state)) parts.push(SEASON_STATES[season.state].label);
+  return parts.join(" · ");
 }
 
-/** "starts 12 Mar" before it begins, "next 12 Mar" once it is running. */
-function schedule(season: SeasonSummary): string {
-  if (!season.expectedAt) return "";
-  const verb = season.state === "unreleased" ? "starts" : "next";
-  return `${verb} ${airDate(season.expectedAt)}`;
+function showsBar(season: SeasonSummary): boolean {
+  return season.episodes.length > 0 && season.state !== "unrequested";
+}
+
+/** Nobody is after this season, so asking is the thing to do. */
+function requestable(season: SeasonSummary): boolean {
+  return season.state === "unrequested" || season.state === "removed";
+}
+
+/** Something in the season is still wanted and not here. */
+function searchable(season: SeasonSummary): boolean {
+  if (!season.monitored || requestable(season)) return false;
+  return season.episodeFileCount < season.episodeCount;
 }
 
 function canRelease(season: SeasonSummary): boolean {
   return isAdmin.value && props.serviceId !== undefined && season.episodeFileCount > 0;
+}
+
+function hasMenu(season: SeasonSummary): boolean {
+  return searchable(season) || canRelease(season);
+}
+
+function removal(season: SeasonSummary): { label: string; hint?: string } | undefined {
+  if (!canRelease(season)) return undefined;
+  const hint = season.sizeOnDisk > 0 ? `Frees ${formatSize(season.sizeOnDisk)}` : undefined;
+  return { label: "Delete season", hint };
 }
 
 function failed(seasonNumber: number): string | undefined {
@@ -201,6 +242,18 @@ function failed(seasonNumber: number): string | undefined {
 function fail(seasonNumber: number, error: unknown, fallback: string): void {
   errors.value.set(seasonNumber, error instanceof Error ? error.message : fallback);
 }
+
+/** Looks again for whatever the open menu's season is still short of. */
+const menuSearch = computed(() => {
+  const season = menuFor.value;
+  if (!season || !searchable(season)) return undefined;
+  return () =>
+    retry.mutateAsync({
+      mediaType: "series",
+      tmdbId: props.tmdbId,
+      seasonNumber: season.seasonNumber,
+    });
+});
 
 async function onRequestSeason(season: SeasonSummary): Promise<void> {
   errors.value.delete(season.seasonNumber);
@@ -257,37 +310,14 @@ async function onRelease(): Promise<void> {
       seasonNumber: season.seasonNumber,
     });
   } catch (error) {
-    fail(season.seasonNumber, error, "Could not release this season");
+    fail(season.seasonNumber, error, "Could not delete this season");
   } finally {
     releasing.value = null;
   }
 }
 
-/** An episode that has not aired is not missing, it is simply not here yet. */
-function unaired(episode: EpisodeSummary): boolean {
-  return !episode.hasFile && !!episode.airDate && new Date(episode.airDate) > new Date();
-}
-
-function missing(episode: EpisodeSummary): boolean {
-  return !episode.hasFile && !unaired(episode);
-}
-
-function episodeState(episode: EpisodeSummary): string {
-  if (episode.hasFile) return "On disk";
-  if (unaired(episode)) return airDate(episode.airDate);
-  return "Missing";
-}
-
-function episodeClass(episode: EpisodeSummary): string {
-  if (episode.hasFile) return "text-accent-green";
-  return unaired(episode) ? "text-text-muted" : "text-accent-red";
-}
-
-/** "12 Mar" — the year only matters when it is not this one. */
 function airDate(date?: string): string {
   if (!date) return "Unaired";
-  const at = new Date(date);
-  const year = at.getFullYear() === new Date().getFullYear() ? undefined : "numeric";
-  return at.toLocaleDateString(undefined, { day: "numeric", month: "short", year });
+  return formatDate(date);
 }
 </script>

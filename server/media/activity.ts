@@ -22,13 +22,14 @@ const log = createLogger("media-activity");
 /** Longer than a binge, shorter than the gap between two evenings. */
 const SITTING_MS = 6 * 60 * 60 * 1000;
 
-type RepeatedKind = Extract<MediaActivityKind, "grabbed" | "imported" | "watched">;
+type RepeatedKind = Extract<MediaActivityKind, "imported" | "watched">;
 
-/** The history events worth telling; renames, deletions and failures are noise here. */
-const SERVICE_EVENTS = new Map<string, RepeatedKind>([
-  ["grabbed", "grabbed"],
-  ["downloadFolderImported", "imported"],
-]);
+/**
+ * The history events worth telling. A download is told once, when it lands:
+ * the grab before it is half of the same story, and renames, deletions and
+ * failures are noise here.
+ */
+const SERVICE_EVENTS = new Map<string, RepeatedKind>([["downloadFolderImported", "imported"]]);
 
 /** Something that happens once per file or per play, and reads better folded with its neighbours. */
 export interface Occurrence {
@@ -36,7 +37,6 @@ export interface Occurrence {
   at: string;
   person?: Person;
   episode?: EpisodeRef;
-  quality?: string;
 }
 
 function groupKey(occurrence: Occurrence): string {
@@ -59,15 +59,12 @@ function toActivity(group: [Occurrence, ...Occurrence[]]): MediaActivity {
   const latest = group[group.length - 1] ?? first;
   const episodes = uniqueEpisodes(group);
 
-  const parts = [episodes.length > 0 ? episodesLabel(episodes) : undefined, latest.quality];
-  const detail = parts.filter((part) => part !== undefined).join(" · ");
-
   return {
     id: `${groupKey(first)}|${first.at}`,
     kind: first.kind,
     at: latest.at,
     person: first.person,
-    detail: detail || undefined,
+    detail: episodes.length > 0 ? episodesLabel(episodes) : undefined,
   };
 }
 
@@ -103,7 +100,7 @@ async function movieOccurrences(movieId: number): Promise<Occurrence[]> {
   for (const record of await radarr.getMovieHistory(movieId)) {
     const kind = SERVICE_EVENTS.get(record.eventType);
     if (!kind) continue;
-    occurrences.push({ kind, at: record.date, quality: record.quality.quality.name });
+    occurrences.push({ kind, at: record.date });
   }
   return occurrences;
 }
@@ -127,7 +124,7 @@ async function seriesOccurrences(seriesId: number): Promise<Occurrence[]> {
       episodeNumber: known.episodeNumber,
       title: known.title,
     };
-    occurrences.push({ kind, at: record.date, episode, quality: record.quality.quality.name });
+    occurrences.push({ kind, at: record.date, episode });
   }
   return occurrences;
 }
