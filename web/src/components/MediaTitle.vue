@@ -1,5 +1,8 @@
 <template>
-  <h3 class="truncate text-sm font-semibold text-text-primary">
+  <h3
+    class="text-sm font-semibold text-text-primary"
+    :class="wrap ? 'line-clamp-2 leading-snug' : 'truncate'"
+  >
     <!-- Media added before Kyle, or by hand, has no TMDB id and so no page. -->
     <!--
       The link covers its whole card through `after`, so the card is clickable
@@ -20,5 +23,10 @@
 <script setup lang="ts">
 import type { LibraryMediaType } from "#shared/types";
 
-defineProps<{ mediaType: LibraryMediaType; tmdbId?: number; title: string }>();
+defineProps<{
+  mediaType: LibraryMediaType;
+  tmdbId?: number;
+  title: string;
+  wrap?: boolean;
+}>();
 </script>

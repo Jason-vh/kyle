@@ -17,7 +17,7 @@ import type { Component } from "vue";
 import { Primitive } from "reka-ui";
 
 type Variant = "primary" | "secondary" | "ghost" | "danger";
-type Size = "sm" | "md";
+type Size = "sm" | "md" | "icon";
 
 const VARIANTS: Record<Variant, string> = {
   primary: "bg-accent-purple text-text-inverse hover:opacity-90",
@@ -31,6 +31,7 @@ const VARIANTS: Record<Variant, string> = {
 const SIZES: Record<Size, string> = {
   sm: "min-h-8 px-2.5 py-1 text-xs",
   md: "min-h-11 px-4 py-2 text-sm",
+  icon: "size-11",
 };
 
 withDefaults(

@@ -41,7 +41,17 @@ function stubAuth(authenticated: boolean, admin = false) {
 describe("scrolling", () => {
   // Opening a title from halfway down the library used to land halfway down it.
   test("a new page starts at the top", () => {
-    expect(router.options.scrollBehavior?.({} as never, {} as never, null)).toEqual({ top: 0 });
+    const to = { path: "/media/movie/1" } as never;
+    const from = { path: "/library" } as never;
+
+    expect(router.options.scrollBehavior?.(to, from, null)).toEqual({ top: 0 });
+  });
+
+  test("changing only the query keeps the place", () => {
+    const to = { path: "/library" } as never;
+    const from = { path: "/library" } as never;
+
+    expect(router.options.scrollBehavior?.(to, from, null)).toBe(false);
   });
 
   test("going back returns to where you left off", () => {

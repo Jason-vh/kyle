@@ -1,0 +1,123 @@
+import { describe, expect, test } from "vitest";
+import type { LibraryItem } from "#web/api/library";
+import {
+  applyLibraryView,
+  changedFilters,
+  DEFAULT_LIBRARY_VIEW,
+  filterLabel,
+  viewFromQuery,
+  viewToQuery,
+} from "./library";
+
+const item = (overrides: Partial<LibraryItem>): LibraryItem => ({
+  mediaType: "movie",
+  serviceId: 1,
+  title: "Arrival",
+  monitored: true,
+  sizeOnDisk: 0,
+  availability: "available",
+  requestedBy: [],
+  requestedByMe: false,
+  watchedBy: [],
+  ...overrides,
+});
+
+const arrival = item({ title: "Arrival", sizeOnDisk: 20 });
+const boys = item({
+  title: "The Boys",
+  mediaType: "series",
+  sizeOnDisk: 300,
+  availability: "partial",
+});
+const dune = item({
+  title: "Dune",
+  sizeOnDisk: 60,
+  requestedByMe: true,
+  watchedBy: [{ name: "Sue" }],
+});
+const inception = item({ title: "Inception", availability: "missing" });
+const library = [arrival, dune, inception, boys];
+
+const titles = (items: LibraryItem[]) => items.map((shown) => shown.title);
+
+describe("applyLibraryView", () => {
+  test("keeps the order it was given by default", () => {
+    expect(titles(applyLibraryView(library, DEFAULT_LIBRARY_VIEW))).toEqual(titles(library));
+  });
+
+  test("puts the largest first when sorting by size", () => {
+    const shown = applyLibraryView(library, { ...DEFAULT_LIBRARY_VIEW, sort: "size" });
+    expect(titles(shown)).toEqual(["The Boys", "Dune", "Arrival", "Inception"]);
+  });
+
+  test("matches the search anywhere in the title, ignoring case", () => {
+    const shown = applyLibraryView(library, { ...DEFAULT_LIBRARY_VIEW, search: " BOY " });
+    expect(titles(shown)).toEqual(["The Boys"]);
+  });
+
+  test("combines filters", () => {
+    const shown = applyLibraryView(library, {
+      ...DEFAULT_LIBRARY_VIEW,
+      type: "movie",
+      availability: "available",
+    });
+    expect(titles(shown)).toEqual(["Arrival", "Dune"]);
+  });
+
+  test("shows only what the viewer requested", () => {
+    const shown = applyLibraryView(library, { ...DEFAULT_LIBRARY_VIEW, requestedByMe: true });
+    expect(titles(shown)).toEqual(["Dune"]);
+  });
+
+  test("counts nothing on disk as neither watched nor unwatched", () => {
+    const shown = applyLibraryView(library, { ...DEFAULT_LIBRARY_VIEW, unwatched: true });
+    expect(titles(shown)).toEqual(["Arrival", "The Boys"]);
+  });
+});
+
+describe("changedFilters", () => {
+  test("is empty for the default view, whatever the search", () => {
+    expect(changedFilters({ ...DEFAULT_LIBRARY_VIEW, search: "dune" })).toEqual([]);
+  });
+
+  test("names each filter moved off its default", () => {
+    const view = { ...DEFAULT_LIBRARY_VIEW, sort: "size" as const, unwatched: true };
+    expect(changedFilters(view)).toEqual(["sort", "unwatched"]);
+  });
+});
+
+describe("filterLabel", () => {
+  test("describes the chosen value", () => {
+    const view = { ...DEFAULT_LIBRARY_VIEW, sort: "size" as const, type: "series" as const };
+    expect(filterLabel("sort", view)).toBe("Largest first");
+    expect(filterLabel("type", view)).toBe("Series");
+  });
+});
+
+describe("the view in the URL", () => {
+  test("leaves defaults out, so the plain page has a plain address", () => {
+    expect(viewToQuery(DEFAULT_LIBRARY_VIEW)).toEqual({});
+  });
+
+  test("survives a round trip", () => {
+    const view = {
+      search: "boys",
+      sort: "size" as const,
+      type: "series" as const,
+      availability: "partial" as const,
+      requestedByMe: true,
+      unwatched: true,
+    };
+    expect(viewFromQuery(viewToQuery(view))).toEqual(view);
+  });
+
+  test("falls back to defaults for anything it does not recognise", () => {
+    expect(viewFromQuery({ sort: "rating", type: "anime", mine: "yes" })).toEqual(
+      DEFAULT_LIBRARY_VIEW,
+    );
+  });
+
+  test("reads the first of a repeated key", () => {
+    expect(viewFromQuery({ type: ["movie", "series"] }).type).toBe("movie");
+  });
+});
