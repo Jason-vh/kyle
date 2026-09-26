@@ -111,10 +111,7 @@
                   </template>
                   <template v-if="!item.monitored"> · unmonitored</template>
                 </p>
-                <p
-                  v-if="item.watchedBy.length || item.availability !== 'missing'"
-                  class="mt-1 text-xs text-text-muted"
-                >
+                <p v-if="item.watchedBy.length" class="mt-1 text-xs text-text-muted">
                   {{ watchedLabel(item.watchedBy) }}
                 </p>
                 <p v-if="failures[key(item)]" class="mt-1 text-xs text-accent-red">
