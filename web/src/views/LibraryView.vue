@@ -9,7 +9,8 @@
     </PageHeader>
 
     <AppInput v-model="search" placeholder="Filter by title…" class="mb-3" />
-    <FilterChips v-model="filter" :options="FILTERS" label="Filter the library" class="mb-5" />
+    <FilterChips v-model="filter" :options="FILTERS" label="Filter the library" class="mb-3" />
+    <FilterChips v-model="sort" :options="SORTS" label="Sort the library" class="mb-5" />
 
     <AppNotice v-if="unavailable.length" tone="amber" class="mb-4">
       {{ unavailable.join(" and ") }} {{ unavailable.length === 1 ? "is" : "are" }} unreachable, so
@@ -26,7 +27,7 @@
 
       <div class="stagger flex flex-col gap-2">
         <AppCard
-          v-for="item in filtered"
+          v-for="item in sorted"
           :key="key(item)"
           :interactive="!!item.tmdbId"
           class="relative"
@@ -129,6 +130,13 @@ const FILTERS: { value: Filter; label: string }[] = [
   { value: "unwatched", label: "Nobody has watched" },
 ];
 
+type Sort = "title" | "size";
+
+const SORTS: { value: Sort; label: string }[] = [
+  { value: "title", label: "A–Z" },
+  { value: "size", label: "Largest first" },
+];
+
 const LABELS: Record<LibraryItem["availability"], string> = {
   available: "Complete",
   partial: "Partial",
@@ -149,6 +157,7 @@ const items = computed(() => data.value?.items ?? []);
 const unavailable = computed(() => data.value?.unavailable ?? []);
 const search = ref("");
 const filter = ref<Filter>("all");
+const sort = ref<Sort>("title");
 const removing = ref("");
 const failures = ref<Record<string, string>>({});
 
@@ -181,6 +190,11 @@ const filtered = computed(() => {
     }
     return item.availability === filter.value;
   });
+});
+
+const sorted = computed(() => {
+  if (sort.value === "title") return filtered.value;
+  return filtered.value.toSorted((a, b) => b.sizeOnDisk - a.sizeOnDisk);
 });
 
 const totalSize = computed(() => filtered.value.reduce((sum, item) => sum + item.sizeOnDisk, 0));
