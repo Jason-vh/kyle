@@ -143,7 +143,7 @@ export interface LibraryStatus extends StateBadge {
   downloading: boolean;
 }
 
-export function downloadStatus(item: LibraryItem): LibraryStatus | undefined {
+function downloadStatus(item: LibraryItem): LibraryStatus | undefined {
   if (item.download?.state === "downloading") {
     const { progress } = item.download;
     const label = progress === undefined ? "" : `${Math.round(progress * 100)}%`;
@@ -154,4 +154,16 @@ export function downloadStatus(item: LibraryItem): LibraryStatus | undefined {
     return { label: "Not downloaded", tone: "red", downloading: false };
   }
   return undefined;
+}
+
+export function libraryStatuses(item: LibraryItem): LibraryStatus[] {
+  const statuses: LibraryStatus[] = [];
+  if (item.availability === "partial" && item.episodes) {
+    const label = `${item.episodes.present}/${item.episodes.total} episodes`;
+    statuses.push({ label, tone: "amber", downloading: false });
+  }
+  const download = downloadStatus(item);
+  if (download) statuses.push(download);
+  if (!item.monitored) statuses.push({ label: "unmonitored", tone: "neutral", downloading: false });
+  return statuses;
 }

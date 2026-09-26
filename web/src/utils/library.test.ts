@@ -3,10 +3,10 @@ import type { LibraryItem } from "#web/api/library";
 import {
   applyLibraryView,
   changedFilters,
-  downloadStatus,
   DEFAULT_LIBRARY_VIEW,
   filterLabel,
   librarySummary,
+  libraryStatuses,
   viewFromQuery,
   viewToQuery,
   watchedLabel,
@@ -158,17 +158,17 @@ describe("watchedLabel", () => {
   });
 });
 
-describe("downloadStatus", () => {
+describe("libraryStatuses", () => {
+  const labels = (shown: LibraryItem) => libraryStatuses(shown).map((status) => status.label);
+
   test("says nothing about a title that is all there", () => {
-    expect(downloadStatus(item({}))).toBeUndefined();
+    expect(libraryStatuses(item({}))).toEqual([]);
   });
 
   test("calls a title with nothing on disk and nothing queued not downloaded", () => {
-    expect(downloadStatus(item({ availability: "missing" }))).toEqual({
-      label: "Not downloaded",
-      tone: "red",
-      downloading: false,
-    });
+    expect(libraryStatuses(item({ availability: "missing" }))).toEqual([
+      { label: "Not downloaded", tone: "red", downloading: false },
+    ]);
   });
 
   test("gives how far along a download is", () => {
@@ -176,19 +176,28 @@ describe("downloadStatus", () => {
       availability: "missing",
       download: { state: "downloading", progress: 0.424 },
     });
-    expect(downloadStatus(downloading)).toEqual({
-      label: "42%",
-      tone: "amber",
-      downloading: true,
-    });
+    expect(libraryStatuses(downloading)).toEqual([
+      { label: "42%", tone: "amber", downloading: true },
+    ]);
   });
 
   test("names a download that needs a hand", () => {
     const stuck = item({ availability: "partial", download: { state: "blocked" } });
-    expect(downloadStatus(stuck)).toEqual({
+    expect(libraryStatuses(stuck)).toContainEqual({
       label: "Can't import",
       tone: "red",
       downloading: false,
     });
+  });
+
+  test("lists episodes, download and monitoring in that order", () => {
+    const series = item({
+      mediaType: "series",
+      availability: "partial",
+      monitored: false,
+      episodes: { present: 34, total: 93 },
+      download: { state: "downloading", progress: 0.5 },
+    });
+    expect(labels(series)).toEqual(["34/93 episodes", "50%", "unmonitored"]);
   });
 });

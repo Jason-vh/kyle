@@ -61,44 +61,44 @@
 
       <div class="stagger flex flex-col gap-2">
         <SwipeActions
-          v-for="{ item, status } in rows"
+          v-for="{ item, statuses } in rows"
           :key="key(item)"
           :open="swiped === key(item)"
           :disabled="!isAdmin"
           @update:open="swiped = $event ? key(item) : ''"
         >
           <AppCard :interactive="!!item.tmdbId" class="group relative">
-            <div class="flex items-center gap-3">
+            <div class="flex items-start gap-3">
               <MediaPoster :src="item.posterUrl" :alt="item.title" />
 
               <div class="min-w-0 flex-1">
-                <div class="flex items-start gap-2">
-                  <MediaTitle
-                    :media-type="item.mediaType"
-                    :tmdb-id="item.tmdbId"
-                    :title="item.title"
-                    :year="item.year"
-                    wrap
-                    class="min-w-0 flex-1"
-                  />
-                  <WatcherAvatars
-                    :watchers="item.requestedBy"
-                    :max="2"
-                    verb="requested this"
-                    class="relative"
-                  />
-                </div>
+                <MediaTitle
+                  :media-type="item.mediaType"
+                  :tmdb-id="item.tmdbId"
+                  :title="item.title"
+                  :year="item.year"
+                  wrap
+                />
                 <p class="mt-0.5 text-xs text-text-muted">
                   {{ librarySummary(item) }}
-                  <template v-if="item.availability === 'partial' && item.episodes">
+                  <template v-if="item.watchedBy.length">
                     ·
-                    <span class="font-semibold text-accent-amber">
-                      {{ item.episodes.present }}/{{ item.episodes.total }} episodes
+                    <span class="whitespace-nowrap">
+                      <IconUserCheck class="inline size-3.5 align-[-2px]" aria-hidden="true" />
+                      <span class="sr-only">{{ watchedLabel(item.watchedBy.length) }}</span>
+                      <span aria-hidden="true">{{ item.watchedBy.length }}</span>
                     </span>
                   </template>
-                  <template v-if="status">
-                    ·
-                    <span class="font-semibold" :class="TONE_TEXT[status.tone]">
+                </p>
+                <p v-if="statuses.length" class="mt-1 text-xs text-text-muted">
+                  <template v-for="(status, index) in statuses" :key="status.label">
+                    <template v-if="index > 0"> · </template>
+                    <span
+                      :class="[
+                        TONE_TEXT[status.tone],
+                        status.tone === 'neutral' ? '' : 'font-semibold',
+                      ]"
+                    >
                       <template v-if="status.downloading">
                         <IconDownload
                           class="mr-0.5 inline size-3.5 align-[-2px]"
@@ -109,15 +109,18 @@
                       {{ status.label }}
                     </span>
                   </template>
-                  <template v-if="!item.monitored"> · unmonitored</template>
-                </p>
-                <p v-if="item.watchedBy.length" class="mt-1 text-xs text-text-muted">
-                  {{ watchedLabel(item.watchedBy.length) }}
                 </p>
                 <p v-if="failures[key(item)]" class="mt-1 text-xs text-accent-red">
                   {{ failures[key(item)] }}
                 </p>
               </div>
+
+              <WatcherAvatars
+                :watchers="item.requestedBy"
+                :max="2"
+                verb="requested this"
+                class="relative shrink-0"
+              />
 
               <div v-if="isAdmin" class="relative hidden pointer-fine:block">
                 <AppButton
@@ -171,9 +174,9 @@ import {
   applyLibraryView,
   changedFilters,
   DEFAULT_LIBRARY_VIEW,
-  downloadStatus,
   filterLabel,
   librarySummary,
+  libraryStatuses,
   type LibraryFilterKey,
   type LibraryView,
   viewFromQuery,
@@ -199,6 +202,7 @@ import { useLibrary, useRemoveLibraryItem } from "#web/queries/media";
 import IconDownload from "~icons/ph/download-simple-bold";
 import IconSliders from "~icons/ph/sliders-horizontal";
 import IconTrash from "~icons/ph/trash";
+import IconUserCheck from "~icons/ph/user-check";
 import IconX from "~icons/ph/x";
 import { useSession } from "#web/queries/session";
 
@@ -245,7 +249,7 @@ const confirmText = computed(() => {
 const key = (item: LibraryItem) => `${item.mediaType}-${item.serviceId}`;
 
 const shown = computed(() => applyLibraryView(items.value, view.value));
-const rows = computed(() => shown.value.map((item) => ({ item, status: downloadStatus(item) })));
+const rows = computed(() => shown.value.map((item) => ({ item, statuses: libraryStatuses(item) })));
 const changed = computed(() => changedFilters(view.value));
 const totalSize = computed(() => shown.value.reduce((sum, item) => sum + item.sizeOnDisk, 0));
 
