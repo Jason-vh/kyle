@@ -10,6 +10,12 @@ import { parseToolPayload } from "#server/agent/tool-result.ts";
 import { extractTable, type ResultTable } from "#server/agent/result-tables.ts";
 import { resolveAppUserId } from "#server/db/users.ts";
 import { getActiveUser } from "#server/auth/account.ts";
+import {
+  linkReply,
+  parseLinkCommand,
+  redeemLinkCode,
+  unlinkedReply,
+} from "#server/auth/link-codes.ts";
 import { tableBlocks } from "./tables.ts";
 import { getSlackClient, setThreadStatus } from "./client.ts";
 import { describeAppContext } from "./context.ts";
@@ -118,9 +124,18 @@ export async function processSlackMessage(
   const remoteImages = toRemoteImages(slackEvent);
   if (!messageText && remoteImages.length === 0) return "";
 
+  const code = parseLinkCommand(messageText);
+  if (code && userId) {
+    const username = (usernameMap ?? (await resolveUsernames([userId]))).get(userId);
+    const text = linkReply(await redeemLinkCode(code, "slack", userId, username), "slack");
+    await saveReply?.(text);
+    await postSlackReply(slackEvent, text);
+    return text;
+  }
+
   const appUserId = userId ? await resolveAppUserId("slack", userId) : null;
   if (!appUserId || !(await getActiveUser(appUserId))) {
-    const text = "Ask an admin to link your Slack account before using Kyle.";
+    const text = unlinkedReply("slack");
     await saveReply?.(text);
     await postSlackReply(slackEvent, text);
     return text;

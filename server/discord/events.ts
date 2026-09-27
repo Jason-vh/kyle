@@ -15,6 +15,12 @@ import { sendDiscordMessage } from "./messages.ts";
 import { resolveAppUserId } from "#server/db/users.ts";
 import { getActiveUser } from "#server/auth/account.ts";
 import { errorFields } from "#server/errors.ts";
+import {
+  linkReply,
+  parseLinkCommand,
+  redeemLinkCode,
+  unlinkedReply,
+} from "#server/auth/link-codes.ts";
 
 const log = createLogger("discord");
 
@@ -75,6 +81,18 @@ export async function handleDiscordMessage(message: Message): Promise<void> {
   const remoteImages = toRemoteImages(message.attachments);
   if (!messageText && remoteImages.length === 0) return;
 
+  const code = parseLinkCommand(messageText);
+  if (code) {
+    const outcome = await redeemLinkCode(
+      code,
+      "discord",
+      message.author.id,
+      resolveDiscordUsername(message),
+    );
+    await message.reply(linkReply(outcome, "discord"));
+    return;
+  }
+
   // Determine thread strategy and externalId
   let externalId: string;
   let replyChannel: SendableChannels;
@@ -96,7 +114,7 @@ export async function handleDiscordMessage(message: Message): Promise<void> {
   const userId = message.author.id;
   const appUserId = await resolveAppUserId("discord", userId);
   if (!appUserId || !(await getActiveUser(appUserId))) {
-    await replyChannel.send("Ask an admin to link your Discord account before using Kyle.");
+    await replyChannel.send(unlinkedReply("discord"));
     return;
   }
 

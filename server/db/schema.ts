@@ -68,6 +68,19 @@ export const authSessions = pgTable(
   (table) => [index("auth_sessions_user_idx").on(table.userId)],
 );
 
+export const linkCodes = pgTable(
+  "link_codes",
+  {
+    code: text("code").primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    platform: text("platform").notNull(),
+    expiresAt: timestamp("expires_at").notNull(),
+  },
+  (table) => [index("link_codes_user_idx").on(table.userId)],
+);
+
 export const platformIdentities = pgTable(
   "platform_identities",
   {

@@ -22,6 +22,13 @@
         </AppButton>
       </section>
 
+      <LinkedAccount
+        v-for="platform in links?.platforms ?? []"
+        :key="platform"
+        :platform="platform"
+        :identity="links?.identities.find((identity) => identity.platform === platform)"
+      />
+
       <section v-if="plexEnabled" class="flex items-center justify-between gap-4 p-4">
         <div>
           <p class="text-sm font-medium text-text-primary">Plex access</p>
@@ -69,12 +76,14 @@ import { logout } from "#web/api/auth";
 import { passkeyRegisterExisting } from "#web/api/passkey";
 import { plexErrorMessage, startPlexLink, unlinkPlex } from "#web/api/plex";
 import IconPlex from "~icons/cib/plex";
+import LinkedAccount from "#web/components/LinkedAccount.vue";
 import AppButton from "#web/components/ui/AppButton.vue";
 import AppCard from "#web/components/ui/AppCard.vue";
 import AppNotice from "#web/components/ui/AppNotice.vue";
 import AppPage from "#web/components/ui/AppPage.vue";
 import PageHeader from "#web/components/ui/PageHeader.vue";
 import { useSession, useSessionRefresh } from "#web/queries/session";
+import { useAccountLinks } from "#web/queries/links";
 
 useTitle("Account — Kyle");
 
@@ -83,6 +92,7 @@ const router = useRouter();
 
 const { user, plexEnabled, isAdmin } = useSession();
 const refreshSession = useSessionRefresh();
+const { data: links } = useAccountLinks();
 const busy = ref(false);
 const message = ref<{ kind: "error" | "success"; text: string } | null>(null);
 

@@ -3,6 +3,7 @@ import { db } from "./index.ts";
 import {
   authSessions,
   conversations,
+  linkCodes,
   mediaEvents,
   mediaRemovals,
   mediaRequests,
@@ -54,6 +55,7 @@ export const USER_REFERENCES = [
     return `${getTableName(table)}.${column.name}`;
   }),
   "auth_sessions.user_id",
+  "link_codes.user_id",
 ];
 
 /** How much of everything each user owns, for the few users a household has. */
@@ -161,6 +163,7 @@ export async function mergeUsers(from: string, into: string, name: string): Prom
 
     await moveEverything(tx, from, into);
     await tx.delete(authSessions).where(eq(authSessions.userId, from));
+    await tx.delete(linkCodes).where(eq(linkCodes.userId, from));
 
     await tx
       .update(users)

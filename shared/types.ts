@@ -82,6 +82,11 @@ export interface LinkedIdentity {
   platformUsername: string | null;
 }
 
+export interface AccountLinks {
+  platforms: string[];
+  identities: LinkedIdentity[];
+}
+
 export interface AdminUser {
   id: string;
   displayName: string;

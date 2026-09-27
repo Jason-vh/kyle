@@ -20,6 +20,11 @@ import {
   handlePlexCallback,
 } from "./routes/api/auth-plex.ts";
 import {
+  handleCreateLinkCode,
+  handleDeleteAccountLink,
+  handleGetAccountLinks,
+} from "./routes/api/account-links.ts";
+import {
   handleGetUsers,
   handleCreateLink,
   handleDeleteLink,
@@ -133,6 +138,13 @@ export function startServer(port: number) {
     "/api/auth/plex/link/start": { POST: withSessionRefresh(handlePlexLinkStart) },
     "/api/auth/plex/link": { DELETE: withSessionRefresh(handlePlexUnlink) },
     "/api/auth/plex/callback": { GET: withAuthenticationLimit(handlePlexCallback) },
+    "/api/account/links": { GET: withSessionRefresh(handleGetAccountLinks) },
+    "/api/account/links/:platform/code": {
+      POST: (req) => withSessionRefresh(handleCreateLinkCode)(req, req.params.platform),
+    },
+    "/api/account/links/:linkId": {
+      DELETE: (req) => withSessionRefresh(handleDeleteAccountLink)(req, req.params.linkId),
+    },
 
     "/api/library": { GET: withSessionRefresh(handleGetLibrary) },
     "/api/media/:mediaType/:tmdbId": {
