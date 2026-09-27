@@ -87,7 +87,9 @@
               >
                 {{ episode.title }}
               </span>
-              <WatcherAvatars :watchers="episode.watchedBy" :max="3" class="shrink-0" />
+              <span v-if="lastWatched(episode)" class="shrink-0 text-xs text-text-muted">
+                {{ lastWatched(episode) }}
+              </span>
 
               <span
                 v-if="episode.hasFile"
@@ -164,8 +166,9 @@ import MediaMenu from "./MediaMenu.vue";
 import AppButton from "./ui/AppButton.vue";
 import AppCard from "./ui/AppCard.vue";
 import ConfirmDialog from "./ui/ConfirmDialog.vue";
-import WatcherAvatars from "./WatcherAvatars.vue";
 import { unaired } from "#web/utils/episodes";
+import { daysAgo } from "#web/utils/library";
+import { lastWatch } from "#web/utils/watch";
 import IconCaret from "~icons/ph/caret-down-bold";
 import IconMore from "~icons/ph/dots-three-bold";
 import IconMonitor from "~icons/ph/eye";
@@ -390,6 +393,13 @@ async function onRelease(): Promise<void> {
 function closeRelease(): void {
   confirming.value = null;
   releaseError.value = "";
+}
+
+function lastWatched(episode: EpisodeSummary): string | undefined {
+  if (!episode.hasFile) return undefined;
+  const latest = lastWatch(episode.watchedBy);
+  if (!latest) return undefined;
+  return `watched ${daysAgo(latest.watchedAt)}`;
 }
 
 function airDate(date?: string): string {

@@ -188,20 +188,28 @@ describe("SeasonList", () => {
     expect(list.text()).toContain("No episodes listed yet");
   });
 
-  test("shows who has watched an episode", async () => {
-    const list = await render([
-      season({ episodes: [episode({ watchedBy: [{ name: "Jason" }, { name: "Kate" }] })] }),
-    ]);
+  test("says when an episode was last watched", async () => {
+    const watchedBy = [
+      { name: "Jason", watchedAt: iso(-10) },
+      { name: "Kate", watchedAt: iso(-3) },
+    ];
+    const list = await render([season({ episodes: [episode({ watchedBy })] })]);
 
-    expect(list.find("[aria-label$='watched this']").attributes("aria-label")).toBe(
-      "Jason and Kate have watched this",
-    );
+    expect(list.text()).toContain("watched 3d ago");
+    expect(list.text()).not.toContain("Kate");
   });
 
   test("shows nothing against an episode nobody has watched", async () => {
     const list = await render([season({ episodes: [episode({ watchedBy: [] })] })]);
 
-    expect(list.find("[aria-label$='watched this']").exists()).toBe(false);
+    expect(list.text()).not.toContain("watched");
+  });
+
+  test("shows nothing against a watched episode no longer on disk", async () => {
+    const watchedBy = [{ name: "Jason", watchedAt: iso(-3) }];
+    const list = await render([season({ episodes: [episode({ hasFile: false, watchedBy })] })]);
+
+    expect(list.text()).not.toContain("watched");
   });
 });
 
