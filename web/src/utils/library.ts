@@ -1,9 +1,8 @@
 import type { LocationQuery } from "vue-router";
 import type { LibraryItem } from "#web/api/library";
-import { formatSize } from "./format";
+import { formatDate, formatSize } from "./format";
 import { REQUEST_STATES, type StateBadge } from "./states";
 import { lastWatch } from "./watch";
-import { relativeOrDate } from "#web/composables/useRelativeTime";
 
 export type LibrarySort = "title" | "size" | "watched";
 export type LibraryType = "all" | LibraryItem["mediaType"];
@@ -194,12 +193,26 @@ export function libraryDetails(item: LibraryItem, sort: LibrarySort = "title"): 
     else details.push(size);
   }
   const latest = lastWatch(item.watchedBy);
-  if (sort === "watched" && latest) details.unshift(relativeOrDate(latest.watchedAt));
+  if (!latest) return details;
+
+  const watched = watchedWhen(latest.watchedAt);
+  if (sort === "watched") details.unshift(watched);
+  else details.push(watched);
   return details;
 }
 
-export function watchedLabel(count: number): string {
-  return `Watched by ${count} ${count === 1 ? "person" : "people"}`;
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+function startOfDay(date: Date): number {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+}
+
+export function watchedWhen(iso: string, now: Date = new Date()): string {
+  const days = Math.round((startOfDay(now) - startOfDay(new Date(iso))) / DAY_MS);
+  if (days <= 0) return "watched today";
+  if (days === 1) return "watched yesterday";
+  if (days < 7) return `watched ${days}d ago`;
+  return `watched ${formatDate(iso, now)}`;
 }
 
 export interface LibraryStatus extends StateBadge {

@@ -10,7 +10,7 @@ import {
   libraryStatuses,
   viewFromQuery,
   viewToQuery,
-  watchedLabel,
+  watchedWhen,
 } from "./library";
 
 const item = (overrides: Partial<LibraryItem>): LibraryItem => ({
@@ -237,7 +237,7 @@ describe("libraryDetails, sorted by last watched", () => {
         { name: "Bob", watchedAt: "2021-05-01T20:00:00Z" },
       ],
     });
-    expect(libraryDetails(watched, "watched")).toEqual(["1 May 2021", "2016", "Movie"]);
+    expect(libraryDetails(watched, "watched")).toEqual(["watched 1 May 2021", "2016", "Movie"]);
   });
 
   test("adds nothing for what nobody has played", () => {
@@ -245,10 +245,36 @@ describe("libraryDetails, sorted by last watched", () => {
   });
 });
 
-describe("watchedLabel", () => {
-  test("counts people rather than naming them", () => {
-    expect(watchedLabel(1)).toBe("Watched by 1 person");
-    expect(watchedLabel(5)).toBe("Watched by 5 people");
+describe("libraryDetails, sorted otherwise", () => {
+  test("ends with when it was last played", () => {
+    const watched = item({
+      year: 2016,
+      watchedBy: [{ name: "Sue", watchedAt: "2021-05-01T20:00:00Z" }],
+    });
+    expect(libraryDetails(watched)).toEqual(["2016", "Movie", "watched 1 May 2021"]);
+  });
+
+  test("says nothing of a play Plex did not date", () => {
+    expect(libraryDetails(item({ year: 2016, watchedBy: [{ name: "Sue" }] }))).toEqual([
+      "2016",
+      "Movie",
+    ]);
+  });
+});
+
+describe("watchedWhen", () => {
+  const now = new Date(2026, 8, 20, 21, 0);
+  const at = (day: number, hour = 12) => new Date(2026, 8, day, hour).toISOString();
+
+  test.each([
+    [at(20, 8), "watched today"],
+    [at(19, 23), "watched yesterday"],
+    [at(17), "watched 3d ago"],
+    [at(14), "watched 6d ago"],
+    [at(13), "watched 13 Sept"],
+    [new Date(2025, 2, 6).toISOString(), "watched 6 Mar 2025"],
+  ])("%s reads as %s", (iso, expected) => {
+    expect(watchedWhen(iso, now)).toBe(expected);
   });
 });
 

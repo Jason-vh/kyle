@@ -12,14 +12,8 @@
         :title="item.title"
         :class="{ 'text-text-secondary!': missing }"
       />
-      <p class="flex min-w-0 items-center gap-1 text-xs whitespace-nowrap text-text-muted">
-        <span class="truncate tabular-nums">{{ details.join(" · ") }}</span>
-        <template v-if="item.watchedBy.length">
-          <span aria-hidden="true">·</span>
-          <IconEye class="size-3.5 shrink-0" aria-hidden="true" />
-          <span class="sr-only">{{ watchedLabel(item.watchedBy.length) }}</span>
-          <span aria-hidden="true">{{ item.watchedBy.length }}</span>
-        </template>
+      <p class="truncate text-xs whitespace-nowrap text-text-muted tabular-nums">
+        {{ details.join(" · ") }}
       </p>
       <div v-if="statuses.length" class="mt-1 flex flex-wrap gap-1">
         <StatusPill v-for="status in statuses" :key="status.label" :tone="status.tone">
@@ -41,18 +35,12 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import type { LibraryItem } from "#web/api/library";
-import {
-  libraryDetails,
-  libraryStatuses,
-  watchedLabel,
-  type LibrarySort,
-} from "#web/utils/library";
+import { libraryDetails, libraryStatuses, type LibrarySort } from "#web/utils/library";
 import LibraryPoster from "./LibraryPoster.vue";
 import MediaTitle from "./MediaTitle.vue";
 import WatcherAvatars from "./WatcherAvatars.vue";
 import StatusPill from "./ui/StatusPill.vue";
 import IconDownload from "~icons/ph/download-simple-bold";
-import IconEye from "~icons/ph/eye-fill";
 
 const props = defineProps<{ item: LibraryItem; sort: LibrarySort }>();
 
