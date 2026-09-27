@@ -12,12 +12,7 @@
         <p class="mt-0.5 truncate text-xs text-text-muted">
           {{ relativeTime(item.at) }}
           <template v-if="item.requestedBy.length">
-            · for
-            {{
-              item.requestedByMe
-                ? "you"
-                : formatNames(item.requestedBy.map((person) => person.name))
-            }}
+            · for {{ namesOf(item.requestedBy) }}
           </template>
         </p>
       </div>
@@ -30,7 +25,7 @@
 <script setup lang="ts">
 import type { ActivityItem } from "#web/api/dashboard";
 import { relativeTime } from "#web/composables/useRelativeTime";
-import { formatNames } from "#web/utils/format";
+import { namesOf } from "#web/utils/people";
 import MediaTitle from "./MediaTitle.vue";
 import AppCard from "./ui/AppCard.vue";
 import MediaPoster from "./ui/MediaPoster.vue";

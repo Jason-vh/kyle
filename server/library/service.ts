@@ -12,6 +12,7 @@ import { annotateRequesters } from "#server/requests/requesters.ts";
 import { queuesByService, serviceKey } from "#server/requests/state.ts";
 import { getWatchers, watchKey } from "#server/plex/history.ts";
 import { getPlexAvatars } from "#server/plex/access.ts";
+import { watchersFor, type Viewer } from "#server/people.ts";
 import { posterOf } from "#server/media-images.ts";
 import { getStorage } from "#server/dashboard/storage.ts";
 import { createLogger } from "#server/logger.ts";
@@ -77,7 +78,7 @@ async function tryStorage(): Promise<StorageStat | undefined> {
  * Everything Radarr and Sonarr hold, annotated with who asked for it.
  * One service being down hides its half rather than the whole library.
  */
-export async function listLibrary(viewerId: string): Promise<LibraryListing> {
+export async function listLibrary(viewer: Viewer): Promise<LibraryListing> {
   const [[movies, moviesDown], [series, seriesDown], storage] = await Promise.all([
     tryList("Radarr", radarr.getMovies),
     tryList("Sonarr", sonarr.getAllSeries),
@@ -96,7 +97,7 @@ export async function listLibrary(viewerId: string): Promise<LibraryListing> {
     getPlexAvatars(),
     queuesByService(),
   ]);
-  annotateRequesters(items, viewerId, requesters, avatars);
+  annotateRequesters(items, viewer.userId, requesters, avatars);
 
   for (const item of items) {
     const queued = queues.get(serviceKey(item.mediaType, item.serviceId));
@@ -104,7 +105,10 @@ export async function listLibrary(viewerId: string): Promise<LibraryListing> {
       item.download = { state: queued.state, progress: queued.progress };
     }
     if (item.tmdbId !== undefined) {
-      item.watchedBy = watchers.get(watchKey(item.mediaType, item.tmdbId)) ?? [];
+      item.watchedBy = watchersFor(
+        watchers.get(watchKey(item.mediaType, item.tmdbId)) ?? [],
+        viewer,
+      );
     }
   }
 
@@ -123,6 +127,11 @@ export async function isRequester(
   return requesters.some((requester) => requester.userId === userId);
 }
 
+export interface Remover {
+  name: string;
+  userId?: string;
+}
+
 /**
  * Remove an item from its service, optionally deleting the files with it. The
  * title is read first and kept, since the service forgets it immediately and a
@@ -132,25 +141,25 @@ export function removeLibraryItem(
   mediaType: "movie",
   serviceId: number,
   deleteFiles: boolean,
-  removedBy?: string,
+  removedBy?: Remover,
 ): Promise<RadarrMovie>;
 export function removeLibraryItem(
   mediaType: "series",
   serviceId: number,
   deleteFiles: boolean,
-  removedBy?: string,
+  removedBy?: Remover,
 ): Promise<SonarrSeries>;
 export function removeLibraryItem(
   mediaType: LibraryMediaType,
   serviceId: number,
   deleteFiles: boolean,
-  removedBy?: string,
+  removedBy?: Remover,
 ): Promise<RadarrMovie | SonarrSeries>;
 export async function removeLibraryItem(
   mediaType: LibraryMediaType,
   serviceId: number,
   deleteFiles: boolean,
-  removedBy?: string,
+  removedBy?: Remover,
 ): Promise<RadarrMovie | SonarrSeries> {
   let removed: RadarrMovie | SonarrSeries;
   if (mediaType === "movie") {
@@ -162,7 +171,8 @@ export async function removeLibraryItem(
         mediaType,
         tmdbId: movie.tmdbId,
         title: movie.title,
-        removedBy,
+        removedBy: removedBy?.name,
+        removedByUserId: removedBy?.userId,
         deletedFiles: deleteFiles,
       });
       return movie;
@@ -177,7 +187,8 @@ export async function removeLibraryItem(
           mediaType,
           tmdbId: series.tmdbId,
           title: series.title,
-          removedBy,
+          removedBy: removedBy?.name,
+          removedByUserId: removedBy?.userId,
           deletedFiles: deleteFiles,
         });
       }
@@ -185,6 +196,11 @@ export async function removeLibraryItem(
     });
   }
 
-  log.info("removed library item", { mediaType, serviceId, deleteFiles, removedBy });
+  log.info("removed library item", {
+    mediaType,
+    serviceId,
+    deleteFiles,
+    removedBy: removedBy?.name,
+  });
   return removed;
 }

@@ -128,7 +128,7 @@ export async function getRequestersForMedia(mediaType: "movie" | "series", tmdbI
 /** Who requested each of these titles, for showing alongside search results. */
 export function requestersQuery(mediaType: "movie" | "series", tmdbIds: number[]) {
   return db
-    .select({ tmdbId: mediaRequests.tmdbId, name: users.displayName })
+    .select({ tmdbId: mediaRequests.tmdbId, userId: mediaRequests.userId, name: users.displayName })
     .from(mediaRequests)
     .innerJoin(users, eq(mediaRequests.userId, users.id))
     .where(and(eq(mediaRequests.mediaType, mediaType), inArray(mediaRequests.tmdbId, tmdbIds)));
@@ -137,14 +137,14 @@ export function requestersQuery(mediaType: "movie" | "series", tmdbIds: number[]
 export async function getRequestersByTmdbId(
   mediaType: "movie" | "series",
   tmdbIds: number[],
-): Promise<Map<number, string[]>> {
+): Promise<Map<number, { userId: string; name: string }[]>> {
   if (tmdbIds.length === 0) return new Map();
 
   const rows = await requestersQuery(mediaType, tmdbIds);
 
-  const byId = new Map<number, string[]>();
+  const byId = new Map<number, { userId: string; name: string }[]>();
   for (const row of rows) {
-    byId.set(row.tmdbId, [...(byId.get(row.tmdbId) ?? []), row.name]);
+    byId.set(row.tmdbId, [...(byId.get(row.tmdbId) ?? []), row]);
   }
   return byId;
 }

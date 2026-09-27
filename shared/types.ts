@@ -50,6 +50,7 @@ export interface LibraryItem extends LibraryState {
 export interface Person {
   name: string;
   thumb?: string;
+  you?: boolean;
 }
 
 export interface Watcher extends Person {
@@ -249,7 +250,7 @@ export interface MediaRequest {
   year: number | null;
   posterPath: string | null;
   /** Only present when looking at everyone's requests. */
-  requestedBy?: string;
+  requestedBy?: Person;
   /** Which season was asked for; null is the series as a whole. */
   seasonNumber: number | null;
   createdAt: string;

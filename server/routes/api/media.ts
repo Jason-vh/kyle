@@ -7,6 +7,7 @@ import type { LibraryMediaType } from "#shared/types.ts";
 import { ApiError } from "#server/http/client.ts";
 import { createLogger } from "#server/logger.ts";
 import { errorMessage, errorResponse } from "#server/errors.ts";
+import { viewerOf } from "#server/people.ts";
 
 const log = createLogger("api-media");
 
@@ -41,7 +42,7 @@ export async function handleGetMediaDetail(
   if ("error" in target) return target.error;
 
   try {
-    const detail = await getMediaDetail(target.mediaType, target.tmdbId, auth.user.id);
+    const detail = await getMediaDetail(target.mediaType, target.tmdbId, await viewerOf(auth.user));
     return Response.json(detail);
   } catch (error) {
     // A title TMDB has never heard of is a wrong link, not a broken service.
@@ -70,7 +71,8 @@ export async function handleGetMediaActivity(
   if ("error" in target) return target.error;
 
   try {
-    return Response.json(await getMediaActivity(target.mediaType, target.tmdbId));
+    const viewer = await viewerOf(auth.user);
+    return Response.json(await getMediaActivity(target.mediaType, target.tmdbId, viewer));
   } catch (error) {
     log.error("could not read the activity", { ...target, error: errorMessage(error) });
     return errorResponse(error, 500, "Could not read this title's activity");

@@ -4,6 +4,8 @@ import { getLibraryIndex, libraryStatusOf, type LibraryStatus } from "./library.
 import { getRequestersByTmdbId } from "#server/db/requests.ts";
 import { yearOf } from "#server/tmdb/utils.ts";
 import type { RequestableMediaType } from "./service.ts";
+import type { Person } from "#shared/types.ts";
+import { marked } from "#server/people.ts";
 
 export interface DiscoverResult {
   tmdbId: number;
@@ -14,8 +16,7 @@ export interface DiscoverResult {
   posterPath: string | null;
   /** Absent when the title is in neither Radarr nor Sonarr. */
   libraryStatus?: LibraryStatus;
-  /** Display names of everyone who has requested it. */
-  requestedBy: string[];
+  requestedBy: Person[];
 }
 
 /** TMDB's multi search also returns people, who cannot be requested. */
@@ -51,7 +52,10 @@ function toResult(item: TMDBMultiResult): DiscoverResult | null {
  * Search TMDB and annotate each hit with what the library already holds and
  * who has asked for it, which is what tells the user whether to request.
  */
-export async function searchRequestableMedia(query: string): Promise<DiscoverResult[]> {
+export async function searchRequestableMedia(
+  query: string,
+  viewerId: string,
+): Promise<DiscoverResult[]> {
   const response = await tmdb.searchMulti(query);
   const results = response.results.map(toResult).filter((r) => r !== null);
 
@@ -73,7 +77,9 @@ export async function searchRequestableMedia(query: string): Promise<DiscoverRes
     if (library.unavailable.includes(result.mediaType)) result.libraryStatus = "unknown";
     else result.libraryStatus = entry && libraryStatusOf(entry);
     const requesters = result.mediaType === "movie" ? movieRequesters : seriesRequesters;
-    result.requestedBy = requesters.get(result.tmdbId) ?? [];
+    result.requestedBy = (requesters.get(result.tmdbId) ?? []).map((requester) =>
+      marked({ name: requester.name }, requester.userId === viewerId),
+    );
   }
 
   return results;

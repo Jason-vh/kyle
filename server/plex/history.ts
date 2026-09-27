@@ -98,14 +98,16 @@ export function resolveHistoryKey(entry: HistoryEntry, index: TitleIndex): strin
   return index.byTitle.get(titleKey(entry.librarySectionID, title));
 }
 
-function toWatcher(person: PlexPerson | undefined, viewedAt: number): Watcher | undefined {
+export type AccountWatcher = Watcher & PlexPerson;
+
+function toWatcher(person: PlexPerson | undefined, viewedAt: number): AccountWatcher | undefined {
   if (!person) return undefined;
   if (viewedAt <= 0) return person;
   return { ...person, watchedAt: new Date(viewedAt * 1000).toISOString() };
 }
 
 /** Most recent first, so the newest play heads the list. */
-function byMostRecent(a: Watcher, b: Watcher): number {
+function byMostRecent(a: AccountWatcher, b: AccountWatcher): number {
   return (b.watchedAt ?? "").localeCompare(a.watchedAt ?? "");
 }
 
@@ -120,7 +122,7 @@ export interface Play {
 
 export interface WatchHistory {
   /** Who has watched each title and each episode, latest play per person. */
-  watchers: Map<string, Watcher[]>;
+  watchers: Map<string, AccountWatcher[]>;
   /** Every dated play of each title, oldest first. */
   plays: Map<string, Play[]>;
 }
@@ -170,7 +172,7 @@ export function indexHistory(
     if (play) plays.set(key, [...(plays.get(key) ?? []), play]);
   }
 
-  const watchers = new Map<string, Watcher[]>();
+  const watchers = new Map<string, AccountWatcher[]>();
   for (const [key, accounts] of accountsByKey) {
     const people = [...accounts]
       .map(([id, viewedAt]) => toWatcher(names.get(id), viewedAt))
@@ -220,7 +222,7 @@ async function getWatchHistory(): Promise<WatchHistory> {
 }
 
 /** Who has watched each title, keyed by media type and TMDB id. */
-export async function getWatchers(): Promise<Map<string, Watcher[]>> {
+export async function getWatchers(): Promise<Map<string, AccountWatcher[]>> {
   return (await getWatchHistory()).watchers;
 }
 

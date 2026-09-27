@@ -20,6 +20,7 @@ interface Member {
 }
 
 export interface PlexPerson {
+  accountId: string;
   name: string;
   thumb?: string;
 }
@@ -63,17 +64,22 @@ async function loadAccess(): Promise<ServerAccess> {
   }
 
   const ownerName = owner.title || owner.username;
+  const ownerAccountId = String(owner.id);
 
   // Everyone who can appear in playback history, including managed users who
   // could never sign in to Kyle themselves.
   const byServerAccountId = new Map<string, PlexPerson>();
   for (const [accountId, member] of members) {
-    byServerAccountId.set(accountId, { name: member.displayName, thumb: member.thumb });
+    byServerAccountId.set(accountId, { accountId, name: member.displayName, thumb: member.thumb });
   }
-  byServerAccountId.set(OWNER_SERVER_ACCOUNT_ID, { name: ownerName, thumb: owner.thumb });
+  byServerAccountId.set(OWNER_SERVER_ACCOUNT_ID, {
+    accountId: ownerAccountId,
+    name: ownerName,
+    thumb: owner.thumb,
+  });
 
   const value: ServerAccess = {
-    ownerAccountId: String(owner.id),
+    ownerAccountId,
     ownerName,
     ownerThumb: owner.thumb,
     members,

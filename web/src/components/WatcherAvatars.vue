@@ -23,10 +23,10 @@
         class="z-30 w-[min(15rem,calc(100vw-2rem))] rounded-card border border-border-primary bg-bg-surface p-2 shadow-raised"
       >
         <ul class="space-y-1.5">
-          <li v-for="watcher in watchers" :key="watcher.name" class="flex items-center gap-2">
+          <li v-for="watcher in ordered" :key="watcher.name" class="flex items-center gap-2">
             <WatcherAvatar :watcher="watcher" />
             <span class="min-w-0 flex-1 truncate text-xs text-text-primary">
-              {{ watcher.name }}
+              {{ capitalized(nameOf(watcher)) }}
             </span>
             <span v-if="watcher.watchedAt" class="shrink-0 text-xs text-text-muted">
               {{ relativeTime(watcher.watchedAt) }}
@@ -42,7 +42,7 @@
 import { computed } from "vue";
 import { HoverCardContent, HoverCardPortal, HoverCardRoot, HoverCardTrigger } from "reka-ui";
 import type { Watcher } from "#shared/types";
-import { formatNames } from "#web/utils/format";
+import { capitalized, nameOf, namesOf, youFirst } from "#web/utils/people";
 import { relativeTime } from "#web/composables/useRelativeTime";
 import WatcherAvatar from "./WatcherAvatar.vue";
 
@@ -51,13 +51,15 @@ const props = withDefaults(defineProps<{ watchers: Watcher[]; max?: number; verb
   verb: "watched this",
 });
 
-const shown = computed(() => props.watchers.slice(0, props.max));
+const ordered = computed(() => youFirst(props.watchers));
+const shown = computed(() => ordered.value.slice(0, props.max));
 const overflow = computed(() => props.watchers.length - shown.value.length);
 
-/** "Bob, Jane and Sue have watched this". */
+/** "You, Bob and Sue have watched this". */
 const summary = computed(() => {
-  const names = props.watchers.map((watcher) => watcher.name);
-  return `${formatNames(names)} ${names.length === 1 ? "has" : "have"} ${props.verb}`;
+  const [only] = props.watchers;
+  const singular = props.watchers.length === 1 && !only?.you;
+  return `${capitalized(namesOf(props.watchers))} ${singular ? "has" : "have"} ${props.verb}`;
 });
 </script>
 

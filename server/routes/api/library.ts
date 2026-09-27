@@ -10,6 +10,7 @@ import {
 } from "#server/requests/service.ts";
 import { createLogger } from "#server/logger.ts";
 import { errorMessage, errorResponse } from "#server/errors.ts";
+import { viewerOf } from "#server/people.ts";
 
 const log = createLogger("api-library");
 
@@ -22,7 +23,7 @@ export async function handleGetLibrary(req: Request): Promise<Response> {
   if ("error" in auth) return auth.error;
 
   try {
-    const listing = await listLibrary(auth.user.id);
+    const listing = await listLibrary(await viewerOf(auth.user));
     return Response.json(listing);
   } catch (error) {
     log.error("could not list the library", { error: errorMessage(error) });
@@ -58,7 +59,10 @@ export async function handleRemoveLibraryItem(
       return Response.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    await removeLibraryItem(mediaType, serviceId, deleteFiles, auth.user.name);
+    await removeLibraryItem(mediaType, serviceId, deleteFiles, {
+      name: auth.user.name,
+      userId: auth.user.id,
+    });
 
     log.info("library item removed", { by: auth.user.id, mediaType, serviceId, deleteFiles });
     return Response.json({ success: true });

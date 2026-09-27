@@ -260,6 +260,7 @@ export const mediaRemovals = pgTable(
     title: text("title").notNull(),
     /** Who did it, named as a person would say it; absent when done outside Kyle. */
     removedBy: text("removed_by"),
+    removedByUserId: uuid("removed_by_user_id"),
     deletedFiles: boolean("deleted_files").notNull().default(true),
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },

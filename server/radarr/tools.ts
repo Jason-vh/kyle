@@ -139,7 +139,7 @@ export const removeMovieTool: Tool<typeof removeMovieParams> = {
   action: true,
   summary: (_args, payload) => `Removed ${movieName(payload)} from Radarr`,
   async execute(_toolCallId, params) {
-    const movie = await removeLibraryItem("movie", params.movieId, true, "Kyle");
+    const movie = await removeLibraryItem("movie", params.movieId, true, { name: "Kyle" });
     return jsonResult({
       success: true,
       message: `Removed ${movie.title} (${movie.year}) from Radarr and deleted files from disk.`,

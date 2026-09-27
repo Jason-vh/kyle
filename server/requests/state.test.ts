@@ -145,17 +145,43 @@ describe("resolveState", () => {
   test("a removal we recorded says who did it and when", () => {
     const at = new Date("2026-09-01T10:00:00Z");
 
-    expect(resolveState({ removal: { removedBy: "Jason", deletedFiles: true, at } })).toEqual({
+    const removal = { removedBy: "Jason", removedByUserId: "u1", deletedFiles: true, at };
+
+    expect(resolveState({ removal })).toEqual({
       state: "removed",
       detail: "Removed by Jason",
       since: at.toISOString(),
     });
   });
 
+  test("a removal by whoever is looking says so", () => {
+    const at = new Date("2026-09-01T10:00:00Z");
+    const removal = { removedBy: "Jason", removedByUserId: "u1", deletedFiles: true, at };
+    const viewer = { userId: "u1", name: "Jason" };
+
+    expect(resolveState({ removal, viewer }).detail).toBe("Removed by you");
+    expect(resolveState({ removal, viewer: { userId: "u2", name: "Jason" } }).detail).toBe(
+      "Removed by Jason",
+    );
+  });
+
+  test("a removal recorded before ids were kept is matched by name", () => {
+    const at = new Date("2026-09-01T10:00:00Z");
+    const removal = { removedBy: "Jason", removedByUserId: null, deletedFiles: true, at };
+
+    expect(resolveState({ removal, viewer: { userId: "u1", name: "Jason" } }).detail).toBe(
+      "Removed by you",
+    );
+  });
+
   test("a removal nobody was named for still says when it happened", () => {
     const at = new Date("2026-09-01T10:00:00Z");
 
-    expect(resolveState({ removal: { removedBy: null, deletedFiles: false, at } })).toEqual({
+    expect(
+      resolveState({
+        removal: { removedBy: null, removedByUserId: null, deletedFiles: false, at },
+      }),
+    ).toEqual({
       state: "removed",
       detail: undefined,
       since: at.toISOString(),

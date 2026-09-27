@@ -202,7 +202,7 @@ describe("withEpisodeWatchers", () => {
     const seasons = build(series([1]), [episode(1, 1), episode(1, 2)]);
     const watchers = new Map([[episodeWatchKey(GIRLS, 1, 2), [jason]]]);
 
-    const [season] = withEpisodeWatchers(seasons, GIRLS, watchers);
+    const [season] = withEpisodeWatchers(seasons, GIRLS, (key) => watchers.get(key) ?? []);
 
     expect(season?.episodes[0]?.watchedBy).toEqual([]);
     expect(season?.episodes[1]?.watchedBy).toEqual([jason]);
@@ -212,7 +212,7 @@ describe("withEpisodeWatchers", () => {
     const seasons = build(series([1]), [episode(1, 1)]);
     const watchers = new Map([[episodeWatchKey(watchKey("series", 75219), 1, 1), [jason]]]);
 
-    const [season] = withEpisodeWatchers(seasons, GIRLS, watchers);
+    const [season] = withEpisodeWatchers(seasons, GIRLS, (key) => watchers.get(key) ?? []);
 
     expect(season?.episodes[0]?.watchedBy).toEqual([]);
   });
@@ -220,7 +220,7 @@ describe("withEpisodeWatchers", () => {
   test("leaves the rest of the season as it was", () => {
     const seasons = build(series([1]), [episode(1, 1)]);
 
-    const [season] = withEpisodeWatchers(seasons, GIRLS, new Map());
+    const [season] = withEpisodeWatchers(seasons, GIRLS, () => []);
 
     expect(season?.episodeCount).toBe(2);
     expect(season?.episodes[0]?.title).toBe("Episode 1");

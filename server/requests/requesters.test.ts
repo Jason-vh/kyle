@@ -47,6 +47,16 @@ describe("annotateRequesters", () => {
     expect(item.requestedByMe).toBe(true);
   });
 
+  test("marks the viewer among the people named", () => {
+    const item = series();
+    annotateRequesters([item], "sue", [request({}), request({ userId: "bob", name: "Bob" })]);
+
+    expect(item.requestedBy).toEqual([
+      { name: "Sue", thumb: undefined, you: true },
+      { name: "Bob", thumb: undefined },
+    ]);
+  });
+
   test("leaves media nobody requested alone", () => {
     const item = { ...series(), tmdbId: 1 };
     annotateRequesters([item], "sue", [request({})]);

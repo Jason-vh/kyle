@@ -1,4 +1,4 @@
-import type { MediaRequest, SeriesRequestOptions } from "#shared/types";
+import type { MediaRequest, Person, SeriesRequestOptions } from "#shared/types";
 import { apiFetch } from "./client";
 
 export type {
@@ -20,7 +20,7 @@ export interface DiscoverResult {
   overview: string;
   posterPath: string | null;
   libraryStatus?: LibraryStatus;
-  requestedBy: string[];
+  requestedBy: Person[];
 }
 
 /** The least a request needs; a search hit and a title's own page both have it. */

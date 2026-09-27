@@ -18,7 +18,7 @@
         </p>
 
         <p v-if="item.requestedBy.length" class="mt-1 truncate text-xs text-text-muted">
-          Requested by {{ formatNames(item.requestedBy) }}
+          Requested by {{ namesOf(item.requestedBy) }}
         </p>
 
         <div class="mt-auto flex items-center gap-2 pt-2">
@@ -45,7 +45,7 @@
 import { computed } from "vue";
 import type { DiscoverResult } from "#web/api/requests";
 import { posterUrl } from "#web/utils/images";
-import { formatNames } from "#web/utils/format";
+import { namesOf } from "#web/utils/people";
 import MediaTitle from "./MediaTitle.vue";
 import RequestAction from "./RequestAction.vue";
 import AppCard from "./ui/AppCard.vue";

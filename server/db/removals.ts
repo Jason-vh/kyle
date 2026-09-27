@@ -13,11 +13,13 @@ export interface NewRemoval {
   title: string;
   /** Absent when something other than Kyle took it out. */
   removedBy?: string;
+  removedByUserId?: string;
   deletedFiles: boolean;
 }
 
 export interface Removal {
   removedBy: string | null;
+  removedByUserId: string | null;
   deletedFiles: boolean;
   at: Date;
 }
@@ -30,12 +32,17 @@ export async function recordRemoval(input: NewRemoval): Promise<void> {
   try {
     await db
       .insert(mediaRemovals)
-      .values({ ...input, removedBy: input.removedBy ?? null })
+      .values({
+        ...input,
+        removedBy: input.removedBy ?? null,
+        removedByUserId: input.removedByUserId ?? null,
+      })
       .onConflictDoUpdate({
         target: [mediaRemovals.mediaType, mediaRemovals.tmdbId],
         set: {
           title: input.title,
           removedBy: input.removedBy ?? null,
+          removedByUserId: input.removedByUserId ?? null,
           deletedFiles: input.deletedFiles,
           createdAt: new Date(),
         },
@@ -56,6 +63,7 @@ export async function getRemovals(): Promise<Map<string, Removal>> {
       mediaType: mediaRemovals.mediaType,
       tmdbId: mediaRemovals.tmdbId,
       removedBy: mediaRemovals.removedBy,
+      removedByUserId: mediaRemovals.removedByUserId,
       deletedFiles: mediaRemovals.deletedFiles,
       createdAt: mediaRemovals.createdAt,
     })
@@ -64,7 +72,12 @@ export async function getRemovals(): Promise<Map<string, Removal>> {
   return new Map(
     rows.map((row) => [
       key(row.mediaType, row.tmdbId),
-      { removedBy: row.removedBy, deletedFiles: row.deletedFiles, at: row.createdAt },
+      {
+        removedBy: row.removedBy,
+        removedByUserId: row.removedByUserId,
+        deletedFiles: row.deletedFiles,
+        at: row.createdAt,
+      },
     ]),
   );
 }
@@ -77,6 +90,7 @@ export async function getRemoval(
   const [row] = await db
     .select({
       removedBy: mediaRemovals.removedBy,
+      removedByUserId: mediaRemovals.removedByUserId,
       deletedFiles: mediaRemovals.deletedFiles,
       at: mediaRemovals.createdAt,
     })

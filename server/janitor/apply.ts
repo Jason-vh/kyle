@@ -29,7 +29,7 @@ export async function applyAction(action: JanitorAction): Promise<void> {
       else await sonarr.removeQueueItem(action.queueId, true);
       return;
     case "remove-media":
-      await removeLibraryItem(action.mediaType, action.serviceId, true, "Kyle");
+      await removeLibraryItem(action.mediaType, action.serviceId, true, { name: "Kyle" });
       return;
     case "flag":
       return;

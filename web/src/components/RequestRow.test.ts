@@ -126,7 +126,11 @@ describe("RequestRow", () => {
   });
 
   test("names the requester only when there is one to name", () => {
-    expect(render({ requestedBy: "Jane" }).text()).toContain("Jane");
+    expect(render({ requestedBy: { name: "Jane" } }).text()).toContain("Jane");
     expect(render().text()).toContain("Movie");
+  });
+
+  test("calls the viewer's own request theirs", () => {
+    expect(render({ requestedBy: { name: "Jane", you: true } }).text()).toContain("· you");
   });
 });

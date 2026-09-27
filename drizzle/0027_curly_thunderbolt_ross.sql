@@ -1,0 +1,1 @@
+ALTER TABLE "media_removals" ADD COLUMN "removed_by_user_id" uuid;

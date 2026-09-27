@@ -27,6 +27,7 @@ import { getRequestersForMedia } from "#server/db/requests.ts";
 import { getRemoval } from "#server/db/removals.ts";
 import { getWatchers, watchKey } from "#server/plex/history.ts";
 import { getPlexPlaces } from "#server/plex/catalog.ts";
+import { watchersFor, type Viewer } from "#server/people.ts";
 import { createLogger } from "#server/logger.ts";
 import { errorMessage } from "#server/errors.ts";
 
@@ -176,12 +177,13 @@ async function statusOf(
   held: Held | undefined | null,
   queue: QueueStatus | undefined,
   plex: PlexPlace,
+  viewer: Viewer,
 ): Promise<TitleStatus | undefined> {
   if (held === null) return { state: "unknown" };
 
   if (!held) {
     const removal = await getRemoval(mediaType, tmdbId);
-    return removal ? resolveState({ removal }) : undefined;
+    return removal ? resolveState({ removal, viewer }) : undefined;
   }
 
   const { state, detail, since, expectedAt, missing } = resolveState({
@@ -200,7 +202,7 @@ async function statusOf(
 export async function getMediaDetail(
   mediaType: LibraryMediaType,
   tmdbId: number,
-  viewerId: string,
+  viewer: Viewer,
 ): Promise<MediaDetail> {
   const [requesters, places] = await Promise.all([
     getRequestersForMedia(mediaType, tmdbId),
@@ -223,8 +225,9 @@ export async function getMediaDetail(
 
   const library = held?.state;
   const download = library ? await queueStatusFor(mediaType, library.serviceId) : undefined;
-  const status = await statusOf(mediaType, tmdbId, held, download, plex);
+  const status = await statusOf(mediaType, tmdbId, held, download, plex, viewer);
   const key = watchKey(mediaType, tmdbId);
+  const watchersOf = (watchKey: string) => watchersFor(watchers.get(watchKey) ?? [], viewer);
 
   return {
     mediaType,
@@ -233,15 +236,15 @@ export async function getMediaDetail(
     status,
     library,
     quality: held?.quality,
-    seasons: held?.seasons && withEpisodeWatchers(held.seasons, key, watchers),
+    seasons: held?.seasons && withEpisodeWatchers(held.seasons, key, watchersOf),
     following: held?.following,
     continuing: held?.continuing,
     progress: download?.progress,
     eta: download?.eta,
     plexUrl: places?.get(key),
     requestedBy: [...new Set(requesters.map((requester) => requester.name))],
-    requestedByMe: requesters.some((requester) => requester.userId === viewerId),
-    watchedBy: watchers.get(key) ?? [],
+    requestedByMe: requesters.some((requester) => requester.userId === viewer.userId),
+    watchedBy: watchersOf(key),
     unavailable: held === null ? [serviceName(mediaType)] : [],
   };
 }

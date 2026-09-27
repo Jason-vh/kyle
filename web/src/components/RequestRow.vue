@@ -17,7 +17,7 @@
 
         <p class="mt-0.5 truncate text-xs text-text-muted">
           {{ scope }}
-          <template v-if="request.requestedBy"> · {{ request.requestedBy }}</template>
+          <template v-if="request.requestedBy"> · {{ nameOf(request.requestedBy) }}</template>
           · {{ relativeTime(request.createdAt) }}
         </p>
 
@@ -45,6 +45,7 @@
 
 <script setup lang="ts">
 import { computed } from "vue";
+import { nameOf } from "#web/utils/people";
 import type { MediaRequest, MissingSeason, RequestState } from "#web/api/requests";
 import { posterUrl } from "#web/utils/images";
 import { formatDate } from "#web/utils/format";

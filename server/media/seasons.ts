@@ -24,14 +24,13 @@ function toEpisode(episode: SonarrEpisode): EpisodeSummary {
 export function withEpisodeWatchers(
   seasons: SeasonSummary[],
   seriesKey: string,
-  watchers: Map<string, Watcher[]>,
+  watchersOf: (key: string) => Watcher[],
 ): SeasonSummary[] {
   return seasons.map((season) => ({
     ...season,
     episodes: season.episodes.map((episode) => ({
       ...episode,
-      watchedBy:
-        watchers.get(episodeWatchKey(seriesKey, season.seasonNumber, episode.episodeNumber)) ?? [],
+      watchedBy: watchersOf(episodeWatchKey(seriesKey, season.seasonNumber, episode.episodeNumber)),
     })),
   }));
 }

@@ -19,7 +19,7 @@
             <div class="min-w-0 flex-1 pt-1">
               <p class="text-sm text-text-primary">
                 <template v-if="event.person">
-                  <span class="font-semibold">{{ event.person.name }}</span>
+                  <span class="font-semibold">{{ capitalized(nameOf(event.person)) }}</span>
                   {{ LOOKS[event.kind].verb }}
                 </template>
                 <template v-else>{{ LOOKS[event.kind].unattributed }}</template>
@@ -52,6 +52,7 @@
 
 <script setup lang="ts">
 import { computed, ref, type Component } from "vue";
+import { capitalized, nameOf } from "#web/utils/people";
 import type { MediaActivity, MediaActivityKind } from "#shared/types";
 import { formatDate } from "#web/utils/format";
 import IconCheck from "~icons/ph/check-bold";

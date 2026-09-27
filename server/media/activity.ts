@@ -14,6 +14,7 @@ import { getLibraryIndex } from "#server/requests/library.ts";
 import { getPlexAvatars } from "#server/plex/access.ts";
 import { getPlays, watchKey } from "#server/plex/history.ts";
 import { serviceName } from "./detail.ts";
+import { marked, plexPersonFor, removedByViewer, type Viewer } from "#server/people.ts";
 import { createLogger } from "#server/logger.ts";
 import { errorMessage } from "#server/errors.ts";
 
@@ -159,6 +160,7 @@ async function serviceOccurrences(
 async function requestActivity(
   mediaType: LibraryMediaType,
   tmdbId: number,
+  viewer: Viewer,
 ): Promise<MediaActivity[]> {
   const [requesters, avatars] = await Promise.all([
     getRequestersForMedia(mediaType, tmdbId),
@@ -172,7 +174,7 @@ async function requestActivity(
       id: `requested|${requester.userId}|${season ?? "series"}`,
       kind: "requested",
       at: requester.createdAt.toISOString(),
-      person: { name: requester.name, thumb },
+      person: marked({ name: requester.name, thumb }, requester.userId === viewer.userId),
       detail: season === null ? undefined : seasonName(season),
     };
   });
@@ -181,6 +183,7 @@ async function requestActivity(
 async function removalActivity(
   mediaType: LibraryMediaType,
   tmdbId: number,
+  viewer: Viewer,
 ): Promise<MediaActivity[]> {
   const removal = await getRemoval(mediaType, tmdbId);
   if (!removal) return [];
@@ -190,7 +193,9 @@ async function removalActivity(
       id: "removed",
       kind: "removed",
       at: removal.at.toISOString(),
-      person: removal.removedBy ? { name: removal.removedBy } : undefined,
+      person: removal.removedBy
+        ? marked({ name: removal.removedBy }, removedByViewer(removal, viewer))
+        : undefined,
     },
   ];
 }
@@ -203,10 +208,11 @@ async function removalActivity(
 export async function getMediaActivity(
   mediaType: LibraryMediaType,
   tmdbId: number,
+  viewer: Viewer,
 ): Promise<MediaActivityResponse> {
   const [requests, removals, service, plays] = await Promise.all([
-    requestActivity(mediaType, tmdbId),
-    removalActivity(mediaType, tmdbId),
+    requestActivity(mediaType, tmdbId, viewer),
+    removalActivity(mediaType, tmdbId, viewer),
     serviceOccurrences(mediaType, tmdbId),
     getPlays(watchKey(mediaType, tmdbId)),
   ]);
@@ -215,7 +221,7 @@ export async function getMediaActivity(
     (play): Occurrence => ({
       kind: "watched",
       at: play.at,
-      person: play.person,
+      person: plexPersonFor(play.person, viewer),
       episode: play.episode,
     }),
   );

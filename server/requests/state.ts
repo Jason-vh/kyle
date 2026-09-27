@@ -1,4 +1,10 @@
-import type { LibraryMediaType, MediaRequest, MissingSeason, RequestState } from "#shared/types.ts";
+import type {
+  LibraryMediaType,
+  MediaRequest,
+  MissingSeason,
+  Person,
+  RequestState,
+} from "#shared/types.ts";
 import * as radarr from "#server/radarr/api.ts";
 import * as sonarr from "#server/sonarr/api.ts";
 import { getLibraryIndex, type LibraryEntry } from "./library.ts";
@@ -8,6 +14,7 @@ import { watchKey } from "#server/plex/keys.ts";
 import { summarise, type QueueRecord, type QueueStatus } from "./queue.ts";
 import { createLogger } from "#server/logger.ts";
 import { errorMessage } from "#server/errors.ts";
+import { removedByViewer, type Viewer } from "#server/people.ts";
 
 const log = createLogger("request-state");
 
@@ -19,7 +26,7 @@ export interface StatelessRequest {
   title: string;
   year: number | null;
   posterPath: string | null;
-  requestedBy?: string;
+  requestedBy?: Person;
   /** Which season was asked for; null is the series as a whole. */
   seasonNumber?: number | null;
   createdAt: Date | string;
@@ -50,6 +57,7 @@ export interface StateInputs {
   queue?: QueueStatus;
   removal?: Removal;
   plex?: PlexPlace;
+  viewer?: Viewer;
   now?: Date;
 }
 
@@ -131,14 +139,19 @@ export function placeOf(
  * Absence alone cannot say whether a title was taken out on purpose, so what
  * we recorded when it left is the answer, and silence is its own answer.
  */
-function removedState(removal: Removal | undefined): RequestStatus {
+function removedState(removal: Removal | undefined, viewer: Viewer | undefined): RequestStatus {
   if (!removal) return { state: "removed" };
 
   return {
     state: "removed",
-    detail: removal.removedBy ? `Removed by ${removal.removedBy}` : undefined,
+    detail: removal.removedBy ? `Removed by ${removerName(removal, viewer)}` : undefined,
     since: removal.at.toISOString(),
   };
+}
+
+function removerName(removal: Removal, viewer: Viewer | undefined): string | null {
+  if (viewer && removedByViewer(removal, viewer)) return "you";
+  return removal.removedBy;
 }
 
 function collect<K>(records: Map<K, QueueRecord[]>, at: K, record: QueueRecord): void {
@@ -215,10 +228,11 @@ export function resolveState({
   queue,
   removal,
   plex,
+  viewer,
   now = new Date(),
 }: StateInputs): RequestStatus {
   if (!libraryAvailable) return { state: "unknown", detail: "Library service is unavailable" };
-  if (!entry) return removedState(removal);
+  if (!entry) return removedState(removal, viewer);
   if (queue && !entry.complete) return { ...queue, missing: entry.missing };
   if (entry.hasFiles) return onDiskState(entry, plex, now);
   if (!entry.monitored) return { state: "paused" };
@@ -252,7 +266,10 @@ function justImported(filesAddedAt: string | undefined, now: Date): boolean {
  * and what their queues are doing, so it can never go stale — the cost is
  * that a title removed from the library reads as `removed`, whoever removed it.
  */
-export async function withState(requests: StatelessRequest[]): Promise<MediaRequest[]> {
+export async function withState(
+  requests: StatelessRequest[],
+  viewer?: Viewer,
+): Promise<MediaRequest[]> {
   if (requests.length === 0) return [];
 
   const [library, queues, removals, places] = await Promise.all([
@@ -280,6 +297,7 @@ export async function withState(requests: StatelessRequest[]): Promise<MediaRequ
         queue,
         removal,
         plex: placeOf(places, request),
+        viewer,
       }),
     };
   });

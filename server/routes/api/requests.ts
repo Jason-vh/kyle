@@ -19,6 +19,7 @@ import { withState } from "#server/requests/state.ts";
 import { isLibraryMediaType } from "#shared/types.ts";
 import { createLogger } from "#server/logger.ts";
 import { errorMessage, errorResponse } from "#server/errors.ts";
+import { marked, viewerOf } from "#server/people.ts";
 
 const log = createLogger("api-requests");
 
@@ -35,7 +36,7 @@ export async function handleDiscoverSearch(req: Request): Promise<Response> {
   if (query.length > 200) return Response.json({ error: "Search is too long" }, { status: 400 });
 
   try {
-    return Response.json({ results: await searchRequestableMedia(query) });
+    return Response.json({ results: await searchRequestableMedia(query, auth.user.id) });
   } catch (error) {
     log.error("discover search failed", { query, error: errorMessage(error) });
     return errorResponse(error, 502, "Search failed");
@@ -240,9 +241,15 @@ export async function handleGetRequests(req: Request): Promise<Response> {
   if ("error" in auth) return auth.error;
 
   const all = new URL(req.url).searchParams.get("all") === "true" && auth.user.admin;
-  const rows = all ? await getAllMediaRequests() : await getMediaRequestsForUser(auth.user.id);
+  const viewer = await viewerOf(auth.user);
+  const rows = all
+    ? (await getAllMediaRequests()).map((row) => ({
+        ...row,
+        requestedBy: marked({ name: row.requestedBy }, row.userId === viewer.userId),
+      }))
+    : await getMediaRequestsForUser(auth.user.id);
 
-  return Response.json({ requests: await withState(rows) });
+  return Response.json({ requests: await withState(rows, viewer) });
 }
 
 // ---------------------------------------------------------------------------

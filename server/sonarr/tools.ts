@@ -238,7 +238,7 @@ export const removeSeriesTool: Tool<typeof removeSeriesParams> = {
   action: true,
   summary: (_args, payload) => `Removed ${seriesName(payload)} from Sonarr`,
   async execute(_toolCallId, params) {
-    const series = await removeLibraryItem("series", params.seriesId, true, "Kyle");
+    const series = await removeLibraryItem("series", params.seriesId, true, { name: "Kyle" });
     return jsonResult({
       success: true,
       message: `Removed ${series.title} (${series.year}) from Sonarr and deleted files from disk.`,

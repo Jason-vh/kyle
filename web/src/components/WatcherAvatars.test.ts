@@ -53,6 +53,20 @@ describe("WatcherAvatars", () => {
     );
   });
 
+  test("calls the viewer you, first", () => {
+    const avatars = render([{ name: "Sue" }, { name: "Jason", you: true }]);
+
+    expect(avatars.find("[aria-label]").attributes("aria-label")).toBe(
+      "You and Sue have watched this",
+    );
+  });
+
+  test("says 'have' when only the viewer watched", () => {
+    const avatars = render([{ name: "Jason", you: true }]);
+
+    expect(avatars.find("[aria-label]").attributes("aria-label")).toBe("You have watched this");
+  });
+
   test("says 'has' for a single watcher", () => {
     const avatars = render([{ name: "Jason" }]);
 

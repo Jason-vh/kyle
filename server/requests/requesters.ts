@@ -1,4 +1,5 @@
 import type { LibraryMediaType, Person } from "#shared/types.ts";
+import { marked } from "#server/people.ts";
 
 /** A request, as the database reports it for annotating a list of media. */
 export interface Requester {
@@ -42,7 +43,10 @@ export function annotateRequesters<T extends Attributable>(
     const people = byKey.get(key(request.mediaType, request.tmdbId)) ?? new Map<string, Person>();
     if (!people.has(request.userId)) {
       const thumb = request.plexAccountId ? avatars.get(request.plexAccountId) : undefined;
-      people.set(request.userId, { name: request.name, thumb });
+      people.set(
+        request.userId,
+        marked({ name: request.name, thumb }, request.userId === viewerId),
+      );
     }
     byKey.set(key(request.mediaType, request.tmdbId), people);
   }

@@ -161,8 +161,8 @@ describe("episodeWatchKey", () => {
 
 describe("indexHistory", () => {
   const names = new Map([
-    ["1", { name: "Alice" }],
-    ["2", { name: "Bob", thumb: "https://plex.tv/bob.png" }],
+    ["1", { accountId: "101", name: "Alice" }],
+    ["2", { accountId: "2", name: "Bob", thumb: "https://plex.tv/bob.png" }],
   ]);
   const MARCH_1 = Date.parse("2026-03-01T20:00:00Z") / 1000;
 
@@ -194,12 +194,12 @@ describe("indexHistory", () => {
 
     expect(plays.get(watchKey("series", 75219))).toEqual([
       {
-        person: { name: "Alice" },
+        person: { accountId: "101", name: "Alice" },
         at: "2026-03-01T20:00:00.000Z",
         episode: { seasonNumber: 1, episodeNumber: 1, title: "Good News" },
       },
       {
-        person: { name: "Alice" },
+        person: { accountId: "101", name: "Alice" },
         at: "2026-03-01T21:00:00.000Z",
         episode: { seasonNumber: 1, episodeNumber: 2, title: "Half Loop" },
       },
@@ -210,7 +210,10 @@ describe("indexHistory", () => {
     const { plays } = indexHistory(history, index, names);
 
     expect(plays.get(watchKey("movie", 9880))).toEqual([
-      { person: { name: "Bob", thumb: "https://plex.tv/bob.png" }, at: "2026-03-01T20:00:00.000Z" },
+      {
+        person: { accountId: "2", name: "Bob", thumb: "https://plex.tv/bob.png" },
+        at: "2026-03-01T20:00:00.000Z",
+      },
     ]);
   });
 
@@ -218,7 +221,7 @@ describe("indexHistory", () => {
     const { watchers } = indexHistory(history, index, names);
 
     expect(watchers.get(watchKey("series", 75219))).toEqual([
-      { name: "Alice", watchedAt: "2026-03-01T21:00:00.000Z" },
+      { accountId: "101", name: "Alice", watchedAt: "2026-03-01T21:00:00.000Z" },
     ]);
   });
 
