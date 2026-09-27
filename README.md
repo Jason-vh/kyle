@@ -511,7 +511,7 @@ one account says nothing about everything the other user holds, so that is a mer
 Admins manage accounts at `/people`: rename, unlink, delete a user with no history, and merge
 one user into another. A merge moves every row that points at a user (a test fails if a new
 table is missed), keeps one of anything both held, carries over admin rights, and refuses to
-join two Plex accounts. The admin picks which user survives and which name it keeps.
+join two Plex accounts. The admin picks which user survives, and it keeps its own name.
 
 ## Slack app configuration
 
@@ -609,7 +609,7 @@ rather than passed to the agent as an opaque ID.
 | `DELETE /api/account/links/:linkId`         | JWT                   | Unlink one of your own chat accounts                           |
 | `GET /api/users`                            | Admin                 | List users, their identities and what they own                 |
 | `PATCH /api/users/:id`                      | Admin                 | Rename `{ displayName }`                                       |
-| `POST /api/users/:id/merge`                 | Admin                 | Merge another user in `{ from, displayName }`                  |
+| `POST /api/users/:id/merge`                 | Admin                 | Merge another user in `{ from }`                               |
 | `DELETE /api/users/:id`                     | Admin                 | Delete a user with no history                                  |
 | `POST /api/users/:id/links`                 | Admin                 | Link a platform identity                                       |
 | `DELETE /api/users/:id/links/:linkId`       | Admin                 | Unlink a platform identity                                     |

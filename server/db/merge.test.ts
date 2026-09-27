@@ -111,18 +111,18 @@ describe("mergeUsers", () => {
     for (const { reference } of rows) expect(USER_REFERENCES).toContain(reference);
   });
 
-  test("moves everything to the kept user and deletes the other", async () => {
+  test("moves everything to the kept user, who keeps their name, and deletes the other", async () => {
     const gone = await user("Gone");
     const kept = await user("Kept");
     await populate(gone);
     const before = await footprintOf(gone);
 
-    await mergeUsers(gone, kept, "Jordan");
+    await mergeUsers(gone, kept);
 
     expect(await footprintOf(kept)).toEqual(before);
     expect(await db.select().from(users).where(eq(users.id, gone))).toEqual([]);
     const [survivor] = await db.select().from(users).where(eq(users.id, kept));
-    expect(survivor?.displayName).toBe("Jordan");
+    expect(survivor?.displayName).toContain("Kept");
   });
 
   test("keeps one of anything both users had, with the earlier request date", async () => {
@@ -138,7 +138,7 @@ describe("mergeUsers", () => {
       { userId: kept, radarrId: 7, active: false },
     ]);
 
-    await mergeUsers(gone, kept, "Kept");
+    await mergeUsers(gone, kept);
 
     const requests = await db.select().from(mediaRequests).where(eq(mediaRequests.userId, kept));
     expect(requests).toHaveLength(1);
@@ -155,7 +155,7 @@ describe("mergeUsers", () => {
     const kept = await user();
     await db.update(users).set({ isAdmin: true }).where(eq(users.id, gone));
 
-    await mergeUsers(gone, kept, "Kept");
+    await mergeUsers(gone, kept);
 
     const [survivor] = await db.select().from(users).where(eq(users.id, kept));
     expect(survivor?.isAdmin).toBe(true);
@@ -169,13 +169,13 @@ describe("mergeUsers", () => {
       { userId: kept, platform: "plex", platformUserId: crypto.randomUUID() },
     ]);
 
-    await expect(mergeUsers(gone, kept, "Kept")).rejects.toThrow(MergeRefusedError);
+    await expect(mergeUsers(gone, kept)).rejects.toThrow(MergeRefusedError);
     await db.delete(platformIdentities).where(inArray(platformIdentities.userId, [gone, kept]));
   });
 
   test("refuses to merge a user into themselves", async () => {
     const id = await user();
-    await expect(mergeUsers(id, id, "Same")).rejects.toThrow(MergeRefusedError);
+    await expect(mergeUsers(id, id)).rejects.toThrow(MergeRefusedError);
   });
 });
 

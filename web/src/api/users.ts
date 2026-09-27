@@ -15,14 +15,10 @@ export async function renameUser(input: { id: string; displayName: string }): Pr
   });
 }
 
-export async function mergeUsers(input: {
-  from: string;
-  into: string;
-  displayName: string;
-}): Promise<void> {
+export async function mergeUsers(input: { from: string; into: string }): Promise<void> {
   await apiFetch(`/api/users/${input.into}/merge`, {
     method: "POST",
-    body: JSON.stringify({ from: input.from, displayName: input.displayName }),
+    body: JSON.stringify({ from: input.from }),
   });
 }
 

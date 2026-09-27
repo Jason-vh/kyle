@@ -81,7 +81,7 @@ export async function handleMergeUsers(req: Request, intoId: string): Promise<Re
   const authResult = await requireAdmin(req);
   if ("error" in authResult) return authResult.error;
 
-  let body: { from?: unknown; displayName?: unknown };
+  let body: { from?: unknown };
   try {
     body = await readJsonObject(req);
   } catch {
@@ -90,12 +90,8 @@ export async function handleMergeUsers(req: Request, intoId: string): Promise<Re
   if (!isUuid(intoId) || !isUuid(body.from)) {
     return Response.json({ error: "Invalid user id" }, { status: 400 });
   }
-  if (!isText(body.displayName, 100)) {
-    return Response.json({ error: "A name is required" }, { status: 400 });
-  }
-
   try {
-    await mergeUsers(body.from, intoId, body.displayName.trim());
+    await mergeUsers(body.from, intoId);
   } catch (error) {
     if (error instanceof MergeRefusedError) {
       return Response.json({ error: error.message }, { status: 409 });

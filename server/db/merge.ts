@@ -143,11 +143,11 @@ async function plexIdentityOf(tx: Transaction, userId: string) {
 }
 
 /**
- * Fold one user into another: everything the first owns moves, the first is
- * deleted, and the kept user takes the chosen name. Two Plex accounts cannot
- * become one person, since each signs in on its own.
+ * Fold one user into another: everything the first owns moves and the first
+ * is deleted. Two Plex accounts cannot become one person, since each signs in
+ * on its own.
  */
-export async function mergeUsers(from: string, into: string, name: string): Promise<void> {
+export async function mergeUsers(from: string, into: string): Promise<void> {
   if (from === into) throw new MergeRefusedError("Cannot merge a user into themselves");
 
   await db.transaction(async (tx) => {
@@ -167,17 +167,13 @@ export async function mergeUsers(from: string, into: string, name: string): Prom
 
     await tx
       .update(users)
-      .set({
-        displayName: name,
-        isAdmin: kept.isAdmin || gone.isAdmin,
-        updatedAt: new Date(),
-      })
+      .set({ isAdmin: kept.isAdmin || gone.isAdmin, updatedAt: new Date() })
       .where(eq(users.id, into));
 
     await tx.delete(users).where(eq(users.id, from));
   });
 
-  log.info("users merged", { from, into, name });
+  log.info("users merged", { from, into });
 }
 
 async function moveEverything(tx: Transaction, from: string, into: string): Promise<void> {

@@ -41,10 +41,7 @@ function request(path: string, method: string, cookie: string, body?: unknown): 
 describe("people administration", () => {
   test("is for admins only", async () => {
     expect((await handleGetUsers(request("/api/users", "GET", asMember))).status).toBe(403);
-    const merge = request(`/api/users/${adminId}/merge`, "POST", asMember, {
-      from: memberId,
-      displayName: "x",
-    });
+    const merge = request(`/api/users/${adminId}/merge`, "POST", asMember, { from: memberId });
     expect((await handleMergeUsers(merge, adminId)).status).toBe(403);
   });
 
@@ -71,22 +68,16 @@ describe("people administration", () => {
     expect(member?.displayName).toBe("Jordan");
   });
 
-  test("merges one person into another under the chosen name", async () => {
+  test("merges one person into another", async () => {
     const duplicate = await createTestUser("Duplicate");
-    const merge = request(`/api/users/${memberId}/merge`, "POST", asAdmin, {
-      from: duplicate,
-      displayName: "Jordan",
-    });
+    const merge = request(`/api/users/${memberId}/merge`, "POST", asAdmin, { from: duplicate });
 
     expect((await handleMergeUsers(merge, memberId)).status).toBe(200);
     expect(await db.select().from(users).where(eq(users.id, duplicate))).toEqual([]);
   });
 
   test("says why a merge was refused", async () => {
-    const merge = request(`/api/users/${memberId}/merge`, "POST", asAdmin, {
-      from: memberId,
-      displayName: "Jordan",
-    });
+    const merge = request(`/api/users/${memberId}/merge`, "POST", asAdmin, { from: memberId });
     const response = await handleMergeUsers(merge, memberId);
 
     expect(response.status).toBe(409);

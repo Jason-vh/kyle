@@ -84,47 +84,27 @@
           <p class="mb-2 text-sm text-text-muted">
             Their accounts and history move to {{ selected.displayName }}, and they are removed.
           </p>
-          <ul class="flex flex-col gap-1.5">
-            <li v-for="other in others" :key="other.id">
-              <button
-                type="button"
-                class="w-full rounded-control border px-3 py-2 text-left transition-colors"
-                :class="
-                  mergeFrom?.id === other.id
-                    ? 'border-accent-purple bg-accent-purple/5'
-                    : 'border-border-primary hover:bg-bg-elevated'
-                "
-                :aria-pressed="mergeFrom?.id === other.id"
-                @click="pickMerge(other)"
-              >
-                <span class="block text-sm font-medium text-text-primary">
+          <ul class="divide-y divide-border-primary">
+            <li v-for="other in others" :key="other.id" class="flex items-center gap-3 py-2">
+              <div class="min-w-0 flex-1">
+                <p class="truncate text-sm font-medium text-text-primary">
                   {{ other.displayName }}
-                </span>
-                <span class="block truncate text-xs text-text-muted">
+                </p>
+                <p class="truncate text-xs text-text-muted">
                   {{ signInSummary(other) }} · {{ historySummary(other.footprint) }}
-                </span>
-              </button>
+                </p>
+              </div>
+              <AppButton
+                variant="ghost"
+                size="icon"
+                :aria-label="`Merge ${other.displayName} into ${selected.displayName}`"
+                :title="`Merge ${other.displayName} into ${selected.displayName}`"
+                @click="mergeFrom = other"
+              >
+                <IconUnite class="size-5" aria-hidden="true" />
+              </AppButton>
             </li>
           </ul>
-
-          <div v-if="mergeFrom" class="mt-3">
-            <p class="mb-1.5 text-sm text-text-secondary">Keep the name</p>
-            <div class="flex gap-2">
-              <AppButton
-                v-for="candidate in nameCandidates"
-                :key="candidate"
-                size="sm"
-                :variant="mergeName === candidate ? 'primary' : 'secondary'"
-                :aria-pressed="mergeName === candidate"
-                @click="mergeName = candidate"
-              >
-                {{ candidate }}
-              </AppButton>
-            </div>
-            <AppButton variant="primary" block class="mt-3" @click="confirming = 'merge'">
-              Merge {{ mergeFrom.displayName }} into {{ selected.displayName }}
-            </AppButton>
-          </div>
         </section>
 
         <section v-if="deletable" class="mt-6">
@@ -132,7 +112,7 @@
           <p class="mb-2 text-sm text-text-muted">
             {{ selected.displayName }} has no history, so nothing is lost.
           </p>
-          <AppButton variant="danger" block @click="confirming = 'delete'">
+          <AppButton variant="danger" block @click="confirmingDelete = true">
             Delete {{ selected.displayName }}
           </AppButton>
         </section>
@@ -140,14 +120,25 @@
     </BottomSheet>
 
     <ConfirmDialog
-      :open="confirming !== null"
-      :title="confirmTitle"
-      :description="confirmDescription"
-      :confirm-label="confirming === 'merge' ? 'Merge' : 'Delete'"
-      :busy-label="confirming === 'merge' ? 'Merging…' : 'Deleting…'"
-      :busy="merging || deleting"
-      @update:open="confirming = null"
-      @confirm="onConfirm"
+      :open="mergeFrom !== null"
+      :title="`Merge ${mergeFrom?.displayName} into ${selected?.displayName}?`"
+      :description="mergeDescription"
+      confirm-label="Merge"
+      busy-label="Merging…"
+      :busy="merging"
+      @update:open="mergeFrom = null"
+      @confirm="onMerge"
+    />
+
+    <ConfirmDialog
+      :open="confirmingDelete"
+      :title="`Delete ${selected?.displayName}?`"
+      description="Their account is removed. This cannot be undone."
+      confirm-label="Delete"
+      busy-label="Deleting…"
+      :busy="deleting"
+      @update:open="confirmingDelete = false"
+      @confirm="onDelete"
     />
   </AppPage>
 </template>
@@ -177,6 +168,7 @@ import {
 } from "#web/queries/users";
 import { useSession } from "#web/queries/session";
 import { hasHistory, historySummary, platformName, signInSummary } from "#web/utils/users";
+import IconUnite from "~icons/ph/unite";
 
 useTitle("People — Kyle");
 
@@ -197,9 +189,8 @@ const others = computed(() => people.value.filter((person) => person.id !== sele
 
 const name = ref("");
 const mergeFrom = ref<AdminUser | null>(null);
-const mergeName = ref("");
 const unlinking = ref<string | null>(null);
-const confirming = ref<"merge" | "delete" | null>(null);
+const confirmingDelete = ref(false);
 const message = ref<{ kind: "error" | "success"; text: string } | null>(null);
 
 const renamable = computed(() => {
@@ -212,21 +203,10 @@ const deletable = computed(() => {
   return !hasHistory(selected.value.footprint);
 });
 
-const nameCandidates = computed(() => {
-  const names = [selected.value?.displayName, mergeFrom.value?.displayName];
-  return [...new Set(names.filter((candidate) => candidate !== undefined))];
-});
-
-const confirmTitle = computed(() => {
-  if (confirming.value === "delete") return `Delete ${selected.value?.displayName}?`;
-  return `Merge ${mergeFrom.value?.displayName} into ${selected.value?.displayName}?`;
-});
-
-const confirmDescription = computed(() => {
-  if (confirming.value === "delete") return "Their account is removed. This cannot be undone.";
+const mergeDescription = computed(() => {
   const from = mergeFrom.value;
   if (!from) return "";
-  return `${historySummary(from.footprint)} and every linked account move over, the result is called ${mergeName.value}, and ${from.displayName}'s account is removed. This cannot be undone.`;
+  return `${historySummary(from.footprint)} and every linked account move to ${selected.value?.displayName}, and ${from.displayName}'s account is removed. This cannot be undone.`;
 });
 
 function open(person: AdminUser) {
@@ -239,11 +219,6 @@ function open(person: AdminUser) {
 function close() {
   selectedId.value = null;
   mergeFrom.value = null;
-}
-
-function pickMerge(person: AdminUser) {
-  mergeFrom.value = person;
-  mergeName.value = selected.value?.displayName ?? person.displayName;
 }
 
 async function attempt(action: () => Promise<void>, success: string): Promise<boolean> {
@@ -273,22 +248,22 @@ async function onUnlink(linkId: string) {
   unlinking.value = null;
 }
 
-async function onConfirm() {
+async function onMerge() {
+  const person = selected.value;
+  const from = mergeFrom.value;
+  if (!person || !from) return;
+  await attempt(
+    () => merge({ from: from.id, into: person.id }),
+    `Merged ${from.displayName} into ${person.displayName}.`,
+  );
+  mergeFrom.value = null;
+}
+
+async function onDelete() {
   const person = selected.value;
   if (!person) return;
-
-  let done = false;
-  if (confirming.value === "delete") {
-    done = await attempt(() => remove(person.id), `Deleted ${person.displayName}.`);
-  } else if (mergeFrom.value) {
-    const from = mergeFrom.value;
-    const displayName = mergeName.value;
-    done = await attempt(
-      () => merge({ from: from.id, into: person.id, displayName }),
-      `Merged ${from.displayName} into ${displayName}.`,
-    );
-  }
-  confirming.value = null;
+  const done = await attempt(() => remove(person.id), `Deleted ${person.displayName}.`);
+  confirmingDelete.value = false;
   if (done) close();
 }
 </script>
