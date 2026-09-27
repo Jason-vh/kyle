@@ -96,6 +96,25 @@
         <div class="mt-5 flex flex-col gap-7">
           <MediaStatus v-if="showsStatus" :media="media" @refresh="refetch()" />
 
+          <section v-if="media.overview">
+            <SectionHeading title="About" />
+            <p
+              ref="overviewText"
+              class="text-sm leading-relaxed text-text-secondary"
+              :class="overviewOpen ? '' : 'line-clamp-2'"
+            >
+              {{ media.overview }}
+            </p>
+            <button
+              v-if="!overviewOpen && overviewClamped"
+              type="button"
+              class="mt-1 text-sm font-semibold text-text-primary"
+              @click="overviewOpen = true"
+            >
+              More
+            </button>
+          </section>
+
           <section v-if="media.seasons?.length">
             <SectionHeading title="Seasons">
               <template v-if="followable" #aside>
@@ -116,24 +135,6 @@
               :service-id="media.library?.serviceId"
               :can-manage="canManage"
             />
-          </section>
-
-          <section v-if="media.overview">
-            <SectionHeading title="About" />
-            <p
-              class="text-sm leading-relaxed text-text-secondary"
-              :class="overviewOpen ? '' : 'line-clamp-3'"
-            >
-              {{ media.overview }}
-            </p>
-            <button
-              v-if="!overviewOpen && media.overview.length > OVERVIEW_PREVIEW"
-              type="button"
-              class="mt-1 text-sm font-semibold text-text-primary"
-              @click="overviewOpen = true"
-            >
-              More
-            </button>
           </section>
 
           <section v-if="activity?.events.length">
@@ -162,9 +163,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from "vue";
+import { computed, nextTick, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { useTitle } from "@vueuse/core";
+import { useResizeObserver, useTitle } from "@vueuse/core";
 import type { LibraryMediaType, RequestState } from "#shared/types";
 import { backdropUrl, posterUrl } from "#web/utils/images";
 import { formatDuration, formatSize } from "#web/utils/format";
@@ -199,9 +200,6 @@ import type { MenuAction } from "#web/components/menu";
 const GLASS =
   "flex size-10 items-center justify-center rounded-full border border-white/10 bg-bg-base/60 text-text-primary backdrop-blur-md transition-colors hover:bg-bg-base/80";
 
-/** Roughly three lines on a phone; anything shorter has nothing more to show. */
-const OVERVIEW_PREVIEW = 160;
-
 const route = useRoute();
 const router = useRouter();
 
@@ -231,6 +229,19 @@ const facts = computed(() => {
 });
 
 const overviewOpen = ref(false);
+const overviewText = ref<HTMLElement | null>(null);
+const overviewClamped = ref(false);
+
+function measureOverview() {
+  const element = overviewText.value;
+  overviewClamped.value = !!element && element.scrollHeight > element.clientHeight + 1;
+}
+
+useResizeObserver(overviewText, measureOverview);
+watch(
+  () => media.value?.overview,
+  () => nextTick(measureOverview),
+);
 
 const menuOpen = ref(false);
 
