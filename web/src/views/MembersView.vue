@@ -15,9 +15,7 @@
       </AppButton>
     </form>
 
-    <AppNotice v-if="message" :tone="message.kind === 'error' ? 'red' : 'green'" class="mb-3">
-      {{ message.text }}
-    </AppNotice>
+    <p v-if="inviteError" role="alert" class="mb-3 text-sm text-accent-red">{{ inviteError }}</p>
 
     <QueryState :loading="isPending" :error="error" :empty="members.length === 0">
       <template #loading>
@@ -53,9 +51,9 @@
       :title="confirmTitle"
       :description="confirmDescription"
       confirm-label="Remove"
-      busy-label="Removing…"
       :busy="removing"
-      @update:open="pendingRemoval = null"
+      :error="removeError"
+      @update:open="closeRemoval"
       @confirm="onRemove"
     />
   </AppPage>
@@ -69,7 +67,6 @@ import MemberRow from "#web/components/MemberRow.vue";
 import AppButton from "#web/components/ui/AppButton.vue";
 import AppCard from "#web/components/ui/AppCard.vue";
 import AppInput from "#web/components/ui/AppInput.vue";
-import AppNotice from "#web/components/ui/AppNotice.vue";
 import AppPage from "#web/components/ui/AppPage.vue";
 import ConfirmDialog from "#web/components/ui/ConfirmDialog.vue";
 import PageHeader from "#web/components/ui/PageHeader.vue";
@@ -93,7 +90,8 @@ const { mutateAsync: sendRemoval, isLoading: removing } = useRemoveMember();
 const members = computed(() => data.value ?? []);
 
 const email = ref("");
-const message = ref<{ kind: "error" | "success"; text: string } | null>(null);
+const inviteError = ref("");
+const removeError = ref("");
 const pendingRemoval = ref<PlexMember | null>(null);
 
 const isPendingInvite = computed(() => pendingRemoval.value?.status === "pending");
@@ -112,13 +110,12 @@ async function onInvite() {
   const address = email.value.trim();
   if (!address) return;
 
-  message.value = null;
+  inviteError.value = "";
   try {
     await sendInvite(address);
     email.value = "";
-    message.value = { kind: "success", text: `Invited ${address}. Plex has emailed them.` };
   } catch (failure) {
-    message.value = { kind: "error", text: (failure as Error).message };
+    inviteError.value = (failure as Error).message;
   }
 }
 
@@ -126,13 +123,17 @@ async function onRemove() {
   const member = pendingRemoval.value;
   if (!member) return;
 
-  message.value = null;
+  removeError.value = "";
   try {
     await sendRemoval(member.id);
-  } catch (failure) {
-    message.value = { kind: "error", text: (failure as Error).message };
-  } finally {
     pendingRemoval.value = null;
+  } catch (failure) {
+    removeError.value = (failure as Error).message;
   }
+}
+
+function closeRemoval() {
+  pendingRemoval.value = null;
+  removeError.value = "";
 }
 </script>

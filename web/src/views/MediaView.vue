@@ -94,10 +94,7 @@
         </header>
 
         <div class="mt-5 flex flex-col gap-7">
-          <div v-if="showsStatus || actionError">
-            <MediaStatus v-if="showsStatus" :media="media" @refresh="refetch()" />
-            <p v-if="actionError" class="mt-2 text-sm text-accent-red">{{ actionError }}</p>
-          </div>
+          <MediaStatus v-if="showsStatus" :media="media" @refresh="refetch()" />
 
           <section v-if="media.seasons?.length">
             <SectionHeading title="Seasons">
@@ -155,8 +152,8 @@
           title="Remove from the library?"
           :description="confirmText"
           confirm-label="Remove"
-          busy-label="Removing…"
           :busy="removing"
+          :error="removeError"
           @confirm="onRemove"
         />
       </article>
@@ -165,7 +162,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useTitle } from "@vueuse/core";
 import type { LibraryMediaType, RequestState } from "#shared/types";
@@ -284,7 +281,11 @@ const confirmText = computed(() => {
 
 const removing = ref(false);
 const confirming = ref(false);
-const actionError = ref("");
+const removeError = ref("");
+
+watch(confirming, (open) => {
+  if (open) removeError.value = "";
+});
 
 // Removing changes the library, so the mutation refreshes this page with it.
 const remove = useRemoveLibraryItem();
@@ -293,13 +294,13 @@ async function onRemove() {
   const library = media.value?.library;
   if (!library) return;
 
-  actionError.value = "";
-  confirming.value = false;
+  removeError.value = "";
   removing.value = true;
   try {
     await remove.mutateAsync({ mediaType: mediaType.value, serviceId: library.serviceId });
+    confirming.value = false;
   } catch (e) {
-    actionError.value = e instanceof Error ? e.message : "Could not remove this";
+    removeError.value = e instanceof Error ? e.message : "Could not remove this";
   } finally {
     removing.value = false;
   }

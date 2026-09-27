@@ -6,16 +6,15 @@
       description="Rename, unlink, merge or delete this person"
       @update:open="emit('update:open', $event)"
     >
-      <AppNotice v-if="message" :tone="message.kind === 'error' ? 'red' : 'green'" class="mb-4">
-        {{ message.text }}
-      </AppNotice>
-
       <section>
         <SectionHeading title="Name" />
         <form class="flex gap-2" @submit.prevent="onRename">
           <AppInput v-model="name" type="text" label="Name" class="flex-1" />
           <AppButton type="submit" :loading="renaming" :disabled="!renamable">Save</AppButton>
         </form>
+        <p v-if="renameError" role="alert" class="mt-2 text-sm text-accent-red">
+          {{ renameError }}
+        </p>
       </section>
 
       <section class="mt-6">
@@ -90,6 +89,10 @@
             </ul>
           </div>
         </template>
+
+        <p v-if="accountError" role="alert" class="mt-2 text-sm text-accent-red">
+          {{ accountError }}
+        </p>
       </section>
 
       <section class="mt-6">
@@ -136,9 +139,9 @@
       :title="`Merge ${mergeFrom?.displayName} into ${person.displayName}?`"
       :description="mergeDescription"
       confirm-label="Merge"
-      busy-label="Merging…"
       :busy="merging"
-      @update:open="mergeFrom = null"
+      :error="dialogError"
+      @update:open="closeDialogs"
       @confirm="onMerge"
     />
 
@@ -147,22 +150,21 @@
       :title="`Delete ${person.displayName}?`"
       description="Their account is removed. This cannot be undone."
       confirm-label="Delete"
-      busy-label="Deleting…"
       :busy="deleting"
-      @update:open="confirmingDelete = false"
+      :error="dialogError"
+      @update:open="closeDialogs"
       @confirm="onDelete"
     />
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from "vue";
+import { computed, ref, watch, type Ref } from "vue";
 import type { AdminUser, LinkablePlexAccount } from "#web/api/users";
 import UserAvatar from "./UserAvatar.vue";
 import IconPlex from "~icons/cib/plex";
 import AppButton from "./ui/AppButton.vue";
 import AppInput from "./ui/AppInput.vue";
-import AppNotice from "./ui/AppNotice.vue";
 import BottomSheet from "./ui/BottomSheet.vue";
 import ConfirmDialog from "./ui/ConfirmDialog.vue";
 import SectionHeading from "./ui/SectionHeading.vue";
@@ -208,14 +210,17 @@ const {
   error: plexAccountsError,
 } = usePlexAccounts(() => props.open && choosingPlex.value && !hasPlex.value);
 const candidates = computed(() => plexAccounts.value ?? []);
-const message = ref<{ kind: "error" | "success"; text: string } | null>(null);
+const renameError = ref("");
+const accountError = ref("");
+const dialogError = ref("");
 
 watch(
   () => props.open,
   (open) => {
     if (!open) return;
     name.value = props.person.displayName;
-    message.value = null;
+    renameError.value = "";
+    accountError.value = "";
     choosingPlex.value = false;
   },
 );
@@ -236,14 +241,13 @@ const mergeDescription = computed(() => {
   return `${historySummary(from.footprint)} and every linked account move to ${props.person.displayName}, and ${from.displayName}'s account is removed. This cannot be undone.`;
 });
 
-async function attempt(action: () => Promise<void>, success: string): Promise<boolean> {
-  message.value = null;
+async function attempt(action: () => Promise<void>, error: Ref<string>): Promise<boolean> {
+  error.value = "";
   try {
     await action();
-    message.value = { kind: "success", text: success };
     return true;
   } catch (failure) {
-    message.value = { kind: "error", text: (failure as Error).message };
+    error.value = (failure as Error).message;
     return false;
   }
 }
@@ -251,21 +255,18 @@ async function attempt(action: () => Promise<void>, success: string): Promise<bo
 async function onRename() {
   if (!renamable.value) return;
   const displayName = name.value.trim();
-  await attempt(() => rename({ id: props.person.id, displayName }), `Renamed to ${displayName}.`);
+  await attempt(() => rename({ id: props.person.id, displayName }), renameError);
 }
 
 async function onUnlink(linkId: string) {
   unlinking.value = linkId;
-  await attempt(() => unlink({ userId: props.person.id, linkId }), "Account unlinked.");
+  await attempt(() => unlink({ userId: props.person.id, linkId }), accountError);
   unlinking.value = null;
 }
 
 async function onLinkPlex(account: LinkablePlexAccount) {
   linkingPlex.value = account.accountId;
-  const done = await attempt(
-    () => linkPlex({ userId: props.person.id, account }),
-    `Linked ${account.username} to ${props.person.displayName}.`,
-  );
+  const done = await attempt(() => linkPlex({ userId: props.person.id, account }), accountError);
   linkingPlex.value = null;
   if (done) choosingPlex.value = false;
 }
@@ -273,16 +274,18 @@ async function onLinkPlex(account: LinkablePlexAccount) {
 async function onMerge() {
   const from = mergeFrom.value;
   if (!from) return;
-  await attempt(
-    () => merge({ from: from.id, into: props.person.id }),
-    `Merged ${from.displayName} into ${props.person.displayName}.`,
-  );
-  mergeFrom.value = null;
+  if (await attempt(() => merge({ from: from.id, into: props.person.id }), dialogError)) {
+    mergeFrom.value = null;
+  }
 }
 
 async function onDelete() {
-  const done = await attempt(() => remove(props.person.id), `Deleted ${props.person.displayName}.`);
+  if (await attempt(() => remove(props.person.id), dialogError)) emit("deleted");
+}
+
+function closeDialogs() {
+  mergeFrom.value = null;
   confirmingDelete.value = false;
-  if (done) emit("deleted");
+  dialogError.value = "";
 }
 </script>

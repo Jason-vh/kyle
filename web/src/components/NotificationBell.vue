@@ -23,7 +23,13 @@
           class="flex items-center justify-between gap-3 border-b border-border-primary px-3.5 py-2.5"
         >
           <h2 class="text-sm font-semibold text-text-primary">Notifications</h2>
-          <AppButton v-if="unread > 0" variant="ghost" size="sm" @click="markRead.mutate()">
+          <AppButton
+            v-if="unread > 0"
+            variant="ghost"
+            size="sm"
+            :loading="markRead.isLoading.value"
+            @click="markRead.mutate()"
+          >
             Mark all read
           </AppButton>
         </div>

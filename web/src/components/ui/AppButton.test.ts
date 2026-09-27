@@ -26,6 +26,13 @@ describe("AppButton", () => {
     expect(button.attributes("disabled")).toBeDefined();
   });
 
+  test("loading shows a spinner in place of the label, keeping its width", () => {
+    const button = mount(AppButton, { props: { loading: true }, slots: { default: "Save" } });
+    expect(button.find(".animate-spin").exists()).toBe(true);
+    expect(button.find(".invisible").text()).toBe("Save");
+    expect(button.classes()).not.toContain("disabled:opacity-50");
+  });
+
   test("is a plain button by default, so it cannot submit a form by accident", () => {
     expect(mount(AppButton).attributes("type")).toBe("button");
   });

@@ -129,9 +129,9 @@
       title="Delete this season?"
       :description="releaseText"
       confirm-label="Delete"
-      busy-label="Deleting…"
       :busy="releasing !== null"
-      @update:open="confirming = null"
+      :error="releaseError"
+      @update:open="closeRelease"
       @confirm="onRelease"
     />
   </AccordionRoot>
@@ -204,6 +204,7 @@ const errors = ref(new Map<number, string>());
 const menuFor = ref<SeasonSummary | null>(null);
 const confirming = ref<SeasonSummary | null>(null);
 const releasing = ref<number | null>(null);
+const releaseError = ref("");
 
 /** Which button is working, since every season has its own. */
 function scope(seasonNumber: number, episodeNumber?: number): string {
@@ -372,19 +373,24 @@ async function onRelease(): Promise<void> {
   const season = confirming.value;
   if (!season || props.serviceId === undefined) return;
 
-  errors.value.delete(season.seasonNumber);
-  confirming.value = null;
+  releaseError.value = "";
   releasing.value = season.seasonNumber;
   try {
     await release.mutateAsync({
       serviceId: props.serviceId,
       seasonNumber: season.seasonNumber,
     });
+    confirming.value = null;
   } catch (error) {
-    fail(season.seasonNumber, error, "Could not delete this season");
+    releaseError.value = error instanceof Error ? error.message : "Could not delete this season";
   } finally {
     releasing.value = null;
   }
+}
+
+function closeRelease(): void {
+  confirming.value = null;
+  releaseError.value = "";
 }
 
 function airDate(date?: string): string {

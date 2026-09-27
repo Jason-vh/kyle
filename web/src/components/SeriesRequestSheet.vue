@@ -3,7 +3,7 @@
     :open="open"
     :title="title"
     description="Choose which seasons to download, and whether to follow the series."
-    @update:open="emit('update:open', $event)"
+    @update:open="!busy && emit('update:open', $event)"
   >
     <QueryState :loading="isPending" :error="error">
       <template #loading>
@@ -50,7 +50,9 @@
     </QueryState>
 
     <template #footer>
-      <AppButton variant="ghost" @click="emit('update:open', false)">Cancel</AppButton>
+      <AppButton variant="ghost" :disabled="busy" @click="emit('update:open', false)">
+        Cancel
+      </AppButton>
       <AppButton
         variant="primary"
         block
@@ -59,7 +61,7 @@
         :loading="busy"
         @click="emit('confirm', { seasons: [...seasons].sort(bySeason), follow })"
       >
-        {{ busy ? "Requesting…" : choiceLabel(seasons, follow) }}
+        {{ choiceLabel(seasons, follow) }}
       </AppButton>
     </template>
   </BottomSheet>

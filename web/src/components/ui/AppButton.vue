@@ -5,16 +5,28 @@
     :type="as === 'button' && !asChild ? type : undefined"
     :disabled="disabled || loading || undefined"
     :aria-busy="loading || undefined"
-    class="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-control font-semibold no-underline transition-colors disabled:cursor-not-allowed disabled:opacity-50"
-    :class="[VARIANTS[variant], SIZES[size], block ? 'w-full' : '']"
+    class="relative inline-flex shrink-0 items-center justify-center gap-1.5 rounded-control font-semibold no-underline transition-colors"
+    :class="[
+      VARIANTS[variant],
+      SIZES[size],
+      block ? 'w-full' : '',
+      loading ? 'cursor-progress' : 'disabled:cursor-not-allowed disabled:opacity-50',
+    ]"
   >
-    <slot />
+    <slot v-if="asChild" />
+    <template v-else>
+      <span class="inline-flex items-center justify-center gap-1.5" :class="{ invisible: loading }">
+        <slot />
+      </span>
+      <IconSpinner v-if="loading" class="absolute size-4 animate-spin" aria-hidden="true" />
+    </template>
   </Primitive>
 </template>
 
 <script setup lang="ts">
 import type { Component } from "vue";
 import { Primitive } from "reka-ui";
+import IconSpinner from "~icons/ph/spinner-gap-bold";
 
 type Variant = "primary" | "secondary" | "ghost" | "danger";
 type Size = "sm" | "md" | "icon";

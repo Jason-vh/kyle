@@ -1,5 +1,5 @@
 <template>
-  <AlertDialogRoot :open="open" @update:open="emit('update:open', $event)">
+  <AlertDialogRoot :open="open" @update:open="onOpenChange">
     <AlertDialogPortal>
       <AlertDialogOverlay class="fixed inset-0 z-20 bg-bg-overlay" />
       <AlertDialogContent
@@ -12,6 +12,8 @@
           {{ description }}
         </AlertDialogDescription>
 
+        <p v-if="error" role="alert" class="mt-3 text-sm text-accent-red">{{ error }}</p>
+
         <!-- Cancel first on a phone: it is the one a thumb reaches by accident. -->
         <div class="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
           <AlertDialogCancel as-child>
@@ -20,7 +22,7 @@
           <!-- Deliberately not AlertDialogAction, which closes on click: the
                caller decides when it is over, so `busy` means something. -->
           <AppButton variant="primary" :loading="busy" @click="emit('confirm')">
-            {{ busy ? busyLabel : confirmLabel }}
+            {{ confirmLabel }}
           </AppButton>
         </div>
       </AlertDialogContent>
@@ -42,17 +44,22 @@ import AppButton from "./AppButton.vue";
 
 /** Focus is trapped and Escape cancels, which `window.confirm` also did — the
  *  difference is that this one can say what is about to happen. */
-withDefaults(
+const props = withDefaults(
   defineProps<{
     open: boolean;
     title: string;
     description: string;
     confirmLabel?: string;
-    busyLabel?: string;
     busy?: boolean;
+    error?: string;
   }>(),
-  { confirmLabel: "Confirm", busyLabel: "Working…" },
+  { confirmLabel: "Confirm" },
 );
 
 const emit = defineEmits<{ "update:open": [boolean]; confirm: [] }>();
+
+function onOpenChange(open: boolean) {
+  if (!open && props.busy) return;
+  emit("update:open", open);
+}
 </script>

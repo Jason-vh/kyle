@@ -60,10 +60,22 @@ describe("ConfirmDialog", () => {
     expect(confirm.emitted("update:open")).toBeUndefined();
   });
 
-  test("both buttons are disabled while the work is running", async () => {
-    await render({ busy: true, busyLabel: "Removing…" });
+  test("both buttons are disabled while the work is running, and the label stays put", async () => {
+    await render({ busy: true });
     const buttons = [...document.body.querySelectorAll("button")];
     expect(buttons.every((b) => b.disabled)).toBe(true);
-    expect(dialog()?.textContent).toContain("Removing…");
+    expect(dialog()?.textContent).toContain("Remove");
+  });
+
+  test("cannot be dismissed while the work is running", async () => {
+    const confirm = await render({ busy: true });
+    document.body.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    await confirm.vm.$nextTick();
+    expect(confirm.emitted("update:open")).toBeUndefined();
+  });
+
+  test("says why the last attempt failed, inside the dialog", async () => {
+    await render({ error: "Radarr is down" });
+    expect(dialog()?.textContent).toContain("Radarr is down");
   });
 });

@@ -65,10 +65,7 @@ const request = useRequestMedia();
 /** A whole series is asked for season by season, so it asks which first. */
 const choosesSeasons = computed(() => props.item.mediaType === "series");
 
-const label = computed(() => {
-  if (busy.value) return "Requesting…";
-  return props.held ? "Request anyway" : "Request";
-});
+const label = computed(() => (props.held ? "Request anyway" : "Request"));
 
 async function submit(input: RequestInput): Promise<boolean> {
   error.value = "";

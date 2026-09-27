@@ -286,6 +286,50 @@ describe("deleting a season", () => {
     });
   });
 
+  test("the dialog stays, busy, until the season is gone, then closes", async () => {
+    stubApi(true);
+    const answer = Promise.withResolvers<Response>();
+    const signedIn = globalThis.fetch;
+    globalThis.fetch = vi.fn((url: string, init?: RequestInit) =>
+      init?.method === "DELETE" ? answer.promise : signedIn(url, init),
+    ) as unknown as typeof fetch;
+
+    await render([season({ sizeOnDisk: 5e9 })], 9);
+    await openMenu();
+    await clickMenuItem("Delete season");
+    await clickText("Delete", '[role="alertdialog"]');
+
+    const dialog = () => document.querySelector('[role="alertdialog"]');
+    expect(dialog()).not.toBeNull();
+    expect(dialog()?.querySelector('[aria-busy="true"]')).not.toBeNull();
+
+    answer.resolve(new Response(JSON.stringify({ success: true })));
+    await flush();
+    await flush();
+
+    expect(dialog()).toBeNull();
+  });
+
+  test("a failed deletion is explained in the dialog, which stays open", async () => {
+    stubApi(true);
+    const signedIn = globalThis.fetch;
+    globalThis.fetch = vi.fn((url: string, init?: RequestInit) =>
+      init?.method === "DELETE"
+        ? Promise.resolve(
+            new Response(JSON.stringify({ error: "Sonarr is down" }), { status: 502 }),
+          )
+        : signedIn(url, init),
+    ) as unknown as typeof fetch;
+
+    await render([season({ sizeOnDisk: 5e9 })], 9);
+    await openMenu();
+    await clickMenuItem("Delete season");
+    await clickText("Delete", '[role="alertdialog"]');
+    await flush();
+
+    expect(document.querySelector('[role="alertdialog"]')?.textContent).toContain("Sonarr is down");
+  });
+
   test("anyone else has no menu to do it from", async () => {
     stubApi(false);
 

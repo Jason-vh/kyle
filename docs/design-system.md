@@ -127,6 +127,22 @@ shape for the four views that list media:
 `isPending` is first-load only. A background refresh deliberately shows nothing: it
 happens on every revisit, and a bar flickering each time is worse than silence.
 
+### Acting
+
+Every action follows [calm UI](https://maxschmitt.me/posts/calm):
+
+- **One loading state, on the button that was pressed.** `AppButton`'s `loading` puts a
+  spinner where the label was, keeping its width. A dialog or sheet stays open, busy,
+  until the work is done **and** what it changed has been refetched — every mutation
+  returns its `invalidateQueries` from `onSettled`, which Pinia Colada awaits — and only
+  then closes. Nothing closes first and leaves the page to catch up.
+- **No success messages.** The change itself is the confirmation: the row appears, the
+  name changes, the title is gone. A message is only for what has no visible effect.
+- **Errors beside the button.** `ConfirmDialog` takes an `error` and stays open with it;
+  forms and rows show theirs directly under themselves, never at the top of the page.
+- **No walking away mid-action.** A busy dialog or sheet ignores Escape, the overlay and
+  swipes.
+
 ### Stagger
 
 Put `stagger` on a container and its direct children arrive one after another, top to

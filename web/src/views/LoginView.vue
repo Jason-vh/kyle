@@ -17,13 +17,15 @@
         >
           {{ error }}
         </div>
-        <button
-          :disabled="loading"
-          class="w-full rounded-lg bg-accent-purple px-4 py-2.5 text-sm font-semibold text-text-inverse transition-colors hover:bg-accent-purple/90 disabled:opacity-50"
+        <AppButton
+          variant="primary"
+          block
+          :loading="loading === 'passkey'"
+          :disabled="loading !== null"
           @click="onPasskeyLogin"
         >
-          {{ loading ? "Authenticating\u2026" : "Sign in with passkey" }}
-        </button>
+          Sign in with passkey
+        </AppButton>
 
         <template v-if="plexEnabled">
           <div class="my-4 flex items-center gap-3">
@@ -31,14 +33,15 @@
             <span class="text-xs text-text-muted">or</span>
             <span class="h-px flex-1 bg-border-primary" />
           </div>
-          <button
-            :disabled="loading"
-            class="flex w-full items-center justify-center gap-2 rounded-lg border border-border-primary px-4 py-2.5 text-sm font-semibold text-text-primary transition-colors hover:bg-bg-input disabled:opacity-50"
+          <AppButton
+            block
+            :loading="loading === 'plex'"
+            :disabled="loading !== null"
             @click="onPlexLogin"
           >
             <IconPlex class="size-4 shrink-0 text-[#e5a00d]" aria-hidden="true" />
             Sign in with Plex
-          </button>
+          </AppButton>
         </template>
       </div>
     </div>
@@ -53,6 +56,7 @@ import { useRoute, useRouter } from "vue-router";
 import { passkeyLogin } from "#web/api/passkey";
 import { plexErrorMessage, startPlexLogin } from "#web/api/plex";
 import IconPlex from "~icons/cib/plex";
+import AppButton from "#web/components/ui/AppButton.vue";
 import { useSession, useSessionRefresh } from "#web/queries/session";
 
 useTitle("Sign in — Kyle");
@@ -60,35 +64,34 @@ useTitle("Sign in — Kyle");
 const route = useRoute();
 const router = useRouter();
 const error = ref(plexErrorMessage(route.query.error));
-const loading = ref(false);
+const loading = ref<"passkey" | "plex" | null>(null);
 
 const { plexEnabled } = useSession();
 const refreshSession = useSessionRefresh();
 
 async function onPlexLogin() {
   error.value = "";
-  loading.value = true;
+  loading.value = "plex";
   try {
     await startPlexLogin();
   } catch (e) {
     error.value = e instanceof Error ? e.message : "Could not start Plex sign-in";
-    loading.value = false;
+    loading.value = null;
   }
 }
 
 async function onPasskeyLogin() {
   error.value = "";
-  loading.value = true;
+  loading.value = "passkey";
   try {
     await passkeyLogin();
     await refreshSession();
     await router.push("/home");
   } catch (e) {
-    // User cancelled the passkey popup — just reset, don't show an error
     if (e instanceof DOMException && e.name === "NotAllowedError") return;
     error.value = e instanceof Error ? e.message : "Login failed";
   } finally {
-    loading.value = false;
+    loading.value = null;
   }
 }
 </script>

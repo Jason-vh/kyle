@@ -37,7 +37,14 @@ function useUsersMutation<T>(mutation: (input: T) => Promise<void>) {
 
 export const useRenameUser = () => useUsersMutation(renameUser);
 export const useMergeUsers = () => useUsersMutation(mergeUsers);
-export const useDeleteUser = () => useUsersMutation(deleteUser);
+export function useDeleteUser() {
+  const cache = useQueryCache();
+  return useMutation({
+    mutation: deleteUser,
+    onSettled: (_data, _error, id) =>
+      cache.invalidateQueries({ key: usersQuery.key, predicate: (entry) => entry.key[1] !== id }),
+  });
+}
 export const useUnlinkIdentity = () => useUsersMutation(unlinkIdentity);
 export const useLinkPlexAccount = () => useUsersMutation(linkPlexAccount);
 
