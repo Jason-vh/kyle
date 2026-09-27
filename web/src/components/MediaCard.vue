@@ -4,16 +4,13 @@
       <MediaPoster :path="item.posterPath" :alt="item.title" size="lg" />
 
       <div class="flex min-w-0 flex-1 flex-col">
-        <div class="flex items-baseline gap-2">
-          <MediaTitle
-            :media-type="item.mediaType"
-            :tmdb-id="item.tmdbId"
-            :title="item.title"
-            :year="item.year"
-            :poster-path="item.posterPath"
-          />
-          <span v-if="item.year" class="shrink-0 text-xs text-text-muted">{{ item.year }}</span>
-        </div>
+        <MediaTitle
+          :media-type="item.mediaType"
+          :tmdb-id="item.tmdbId"
+          :title="item.title"
+          :year="item.year"
+          :poster-path="item.posterPath"
+        />
 
         <p class="mt-0.5 text-xs text-text-muted">
           {{ item.mediaType === "movie" ? "Movie" : "Series" }}

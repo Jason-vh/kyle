@@ -1,8 +1,5 @@
 <template>
-  <h3
-    class="text-sm font-semibold text-text-primary"
-    :class="wrap ? 'line-clamp-2 leading-snug' : 'truncate'"
-  >
+  <h3 class="flex min-w-0 items-baseline gap-1.5 text-sm font-semibold text-text-primary">
     <!-- Media added before Kyle, or by hand, has no TMDB id and so no page. -->
     <!--
       The link covers its whole card through `after`, so the card is clickable
@@ -14,22 +11,25 @@
       :to="{
         name: 'media',
         params: { mediaType, tmdbId },
-        state: { preview: { mediaType, tmdbId, title, year, posterPath } },
+        state: { preview: { mediaType, tmdbId, ...shown, posterPath } },
       }"
-      class="text-inherit no-underline after:absolute after:inset-0 hover:underline"
+      class="truncate text-inherit no-underline after:absolute after:inset-0 hover:underline"
       @pointerenter="prefetch(tmdbId)"
       @focus="prefetch(tmdbId)"
       @touchstart.passive="prefetch(tmdbId)"
     >
-      {{ title }}
+      {{ shown.title }}
     </RouterLink>
-    <template v-else>{{ title }}</template>
+    <span v-else class="truncate">{{ shown.title }}</span>
+    <span v-if="shown.year" class="shrink-0 font-normal text-text-muted">({{ shown.year }})</span>
   </h3>
 </template>
 
 <script setup lang="ts">
+import { computed } from "vue";
 import type { LibraryMediaType } from "#shared/types";
 import { prefetchMediaDetail } from "#web/queries/media";
+import { titleAndYear } from "#web/utils/media-title";
 
 const props = defineProps<{
   mediaType: LibraryMediaType;
@@ -37,8 +37,9 @@ const props = defineProps<{
   title: string;
   year?: number;
   posterPath?: string | null;
-  wrap?: boolean;
 }>();
+
+const shown = computed(() => titleAndYear(props.title, props.year));
 
 function prefetch(tmdbId: number) {
   prefetchMediaDetail(props.mediaType, tmdbId);

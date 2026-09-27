@@ -4,18 +4,13 @@
       <MediaPoster :path="request.posterPath" :alt="request.title" />
 
       <div class="min-w-0 flex-1">
-        <div class="flex items-baseline gap-2">
-          <MediaTitle
-            :media-type="request.mediaType"
-            :tmdb-id="request.tmdbId"
-            :title="request.title"
-            :year="request.year ?? undefined"
-            :poster-path="request.posterPath"
-          />
-          <span v-if="request.year" class="shrink-0 text-xs text-text-muted">
-            {{ request.year }}
-          </span>
-        </div>
+        <MediaTitle
+          :media-type="request.mediaType"
+          :tmdb-id="request.tmdbId"
+          :title="request.title"
+          :year="request.year ?? undefined"
+          :poster-path="request.posterPath"
+        />
 
         <p class="mt-0.5 truncate text-xs text-text-muted">
           {{ scope }}

@@ -190,9 +190,7 @@ export function changedFilters(view: LibraryView): LibraryFilterKey[] {
 
 /** What a row says about an item, leading with whatever it is sorted by. */
 export function libraryDetails(item: LibraryItem, sort: LibrarySort = "title"): string[] {
-  const details: string[] = [];
-  if (item.year) details.push(String(item.year));
-  details.push(item.mediaType === "movie" ? "Movie" : "Series");
+  const details = [item.mediaType === "movie" ? "Movie" : "Series"];
   if (sort === "size" && item.sizeOnDisk > 0) details.unshift(formatSize(item.sizeOnDisk));
   const latest = lastWatch(item.watchedBy);
   if (sort === "watched" && latest) details.unshift(`watched ${daysAgo(latest.watchedAt)}`);

@@ -206,8 +206,8 @@ describe("groupByLetter", () => {
 describe("libraryDetails", () => {
   const GB = 1000 ** 3;
 
-  test("gives the year and type, and leaves out the size", () => {
-    expect(libraryDetails(item({ year: 2016, sizeOnDisk: 19 * GB }))).toEqual(["2016", "Movie"]);
+  test("gives the type, leaving the year to the title and the size to its sort", () => {
+    expect(libraryDetails(item({ year: 2016, sizeOnDisk: 19 * GB }))).toEqual(["Movie"]);
   });
 
   test("leaves the episode count to the statuses", () => {
@@ -222,7 +222,6 @@ describe("libraryDetails", () => {
   test("leads with the size when asked", () => {
     expect(libraryDetails(item({ year: 2016, sizeOnDisk: 19 * GB }), "size")).toEqual([
       "19 GB",
-      "2016",
       "Movie",
     ]);
   });
@@ -237,11 +236,11 @@ describe("libraryDetails, sorted by last watched", () => {
         { name: "Bob", watchedAt: "2021-05-01T20:00:00Z" },
       ],
     });
-    expect(libraryDetails(watched, "watched")).toEqual(["watched 1 May 2021", "2016", "Movie"]);
+    expect(libraryDetails(watched, "watched")).toEqual(["watched 1 May 2021", "Movie"]);
   });
 
   test("adds nothing for what nobody has played", () => {
-    expect(libraryDetails(item({ year: 2016 }), "watched")).toEqual(["2016", "Movie"]);
+    expect(libraryDetails(item({ year: 2016 }), "watched")).toEqual(["Movie"]);
   });
 });
 
@@ -251,19 +250,18 @@ describe("libraryDetails, sorted otherwise", () => {
       year: 2016,
       watchedBy: [{ name: "Sue", watchedAt: "2021-05-01T20:00:00Z" }],
     });
-    expect(libraryDetails(watched)).toEqual(["2016", "Movie"]);
+    expect(libraryDetails(watched)).toEqual(["Movie"]);
   });
 });
 
 describe("libraryDetails, sorted by date added", () => {
   test("leads with when it was added", () => {
     const added = item({ year: 2016, addedAt: "2021-05-01T20:00:00Z" });
-    expect(libraryDetails(added, "added")).toEqual(["added 1 May 2021", "2016", "Movie"]);
+    expect(libraryDetails(added, "added")).toEqual(["added 1 May 2021", "Movie"]);
   });
 
   test("leaves it out otherwise", () => {
     expect(libraryDetails(item({ year: 2016, addedAt: "2021-05-01T20:00:00Z" }))).toEqual([
-      "2016",
       "Movie",
     ]);
   });
