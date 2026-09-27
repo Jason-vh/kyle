@@ -32,6 +32,7 @@ import {
   handleMergeUsers,
   handleDeleteUser,
   handleGetUserProfile,
+  handleGetPlexAccounts,
 } from "./routes/api/users.ts";
 import {
   handleCreatePlexInvite,
@@ -199,6 +200,7 @@ export function startServer(port: number) {
     "/api/plex/invites": { POST: withSessionRefresh(handleCreatePlexInvite) },
 
     "/api/users": { GET: withSessionRefresh(handleGetUsers) },
+    "/api/users/plex-accounts": { GET: withSessionRefresh(handleGetPlexAccounts) },
     "/api/users/:userId": {
       GET: (req) => withSessionRefresh(handleGetUserProfile)(req, req.params.userId),
       PATCH: (req) => withSessionRefresh(handleRenameUser)(req, req.params.userId),

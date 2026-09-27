@@ -1,7 +1,28 @@
-import type { AdminUser, UserProfile } from "#shared/types";
+import type { AdminUser, LinkablePlexAccount, UserProfile } from "#shared/types";
 import { apiFetch } from "./client";
 
-export type { AdminUser, UserProfile } from "#shared/types";
+export type { AdminUser, LinkablePlexAccount, UserProfile } from "#shared/types";
+
+export async function getPlexAccounts(): Promise<LinkablePlexAccount[]> {
+  const { accounts } = await apiFetch<{ accounts: LinkablePlexAccount[] }>(
+    "/api/users/plex-accounts",
+  );
+  return accounts;
+}
+
+export async function linkPlexAccount(input: {
+  userId: string;
+  account: LinkablePlexAccount;
+}): Promise<void> {
+  await apiFetch(`/api/users/${input.userId}/links`, {
+    method: "POST",
+    body: JSON.stringify({
+      platform: "plex",
+      platformUserId: input.account.accountId,
+      platformUsername: input.account.username,
+    }),
+  });
+}
 
 export function getUserProfile(id: string): Promise<UserProfile> {
   return apiFetch<UserProfile>(`/api/users/${id}`);

@@ -3,8 +3,10 @@ import { toValue, type MaybeRefOrGetter } from "vue";
 import { useAccountQuery } from "./account";
 import {
   deleteUser,
+  getPlexAccounts,
   getUserProfile,
   getUsers,
+  linkPlexAccount,
   mergeUsers,
   renameUser,
   unlinkIdentity,
@@ -37,3 +39,13 @@ export const useRenameUser = () => useUsersMutation(renameUser);
 export const useMergeUsers = () => useUsersMutation(mergeUsers);
 export const useDeleteUser = () => useUsersMutation(deleteUser);
 export const useUnlinkIdentity = () => useUsersMutation(unlinkIdentity);
+export const useLinkPlexAccount = () => useUsersMutation(linkPlexAccount);
+
+export const plexAccountsQuery = defineQueryOptions({
+  key: ["users", "plex-accounts"],
+  query: getPlexAccounts,
+});
+
+export function usePlexAccounts(enabled: () => boolean) {
+  return useAccountQuery(() => ({ ...plexAccountsQuery, enabled: enabled() }));
+}

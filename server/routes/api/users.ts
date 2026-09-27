@@ -1,11 +1,22 @@
 import { requireAdmin } from "#server/auth/middleware.ts";
 import { isText, isUuid, readJsonObject } from "#server/http/input.ts";
-import { createPlatformLink, deletePlatformLink, renameUser } from "#server/db/users.ts";
+import {
+  createPlatformLink,
+  deletePlatformLink,
+  getPlatformIdentity,
+  renameUser,
+} from "#server/db/users.ts";
+import { withDatabaseLock } from "#server/db/lock.ts";
+import { PLEX_PLATFORM } from "#server/auth/plex.ts";
+import { checkPlexAccess, listPlexAccounts } from "#server/plex/access.ts";
+import { isPlexServerConfigured } from "#server/plex/server.ts";
+import type { LinkablePlexAccount } from "#shared/types.ts";
 import { deleteEmptyUser, MergeRefusedError, mergeUsers } from "#server/db/merge.ts";
 import { listAdminUsers } from "#server/users/directory.ts";
 import { getUserProfile } from "#server/users/profile.ts";
 import { viewerOf } from "#server/people.ts";
 import { createLogger } from "#server/logger.ts";
+import { errorMessage, errorResponse } from "#server/errors.ts";
 
 const log = createLogger("api-users");
 
@@ -20,6 +31,41 @@ export async function handleGetUsers(req: Request): Promise<Response> {
   const people = await listAdminUsers();
 
   return Response.json({ users: people });
+}
+
+// ---------------------------------------------------------------------------
+// GET /api/users/plex-accounts — Plex accounts nobody has been linked to (admin only)
+// ---------------------------------------------------------------------------
+
+export async function handleGetPlexAccounts(req: Request): Promise<Response> {
+  const authResult = await requireAdmin(req);
+  if ("error" in authResult) return authResult.error;
+
+  if (!isPlexServerConfigured()) {
+    return Response.json({ error: "Kyle is not connected to a Plex server" }, { status: 404 });
+  }
+
+  let accounts: LinkablePlexAccount[];
+  try {
+    accounts = await listPlexAccounts();
+  } catch (error) {
+    log.error("could not list plex accounts", { error: errorMessage(error) });
+    return errorResponse(error, 502, "Could not reach Plex");
+  }
+
+  const people = await listAdminUsers();
+  const linked = new Set(
+    people.flatMap((person) =>
+      person.identities
+        .filter((identity) => identity.platform === PLEX_PLATFORM)
+        .map((identity) => identity.platformUserId),
+    ),
+  );
+
+  const unlinked: LinkablePlexAccount[] = accounts.filter(
+    (account) => !linked.has(account.accountId),
+  );
+  return Response.json({ accounts: unlinked });
 }
 
 // ---------------------------------------------------------------------------
@@ -143,24 +189,55 @@ export async function handleCreateLink(req: Request, userId: string): Promise<Re
     return Response.json({ error: "platform and platformUserId are required" }, { status: 400 });
   }
 
-  if (!["slack", "discord"].includes(body.platform)) {
-    return Response.json({ error: "platform must be 'slack' or 'discord'" }, { status: 400 });
+  if (!LINKABLE_BY_ADMIN.includes(body.platform)) {
+    return Response.json(
+      { error: "platform must be 'slack', 'discord' or 'plex'" },
+      { status: 400 },
+    );
   }
 
+  const { platform, platformUserId, platformUsername } = body;
+  if (platform === PLEX_PLATFORM) {
+    return withDatabaseLock(`plex-account:${platformUserId}`, () =>
+      withDatabaseLock(`plex-user:${userId}`, async () => {
+        const refusal = await plexLinkRefusal(userId, platformUserId);
+        if (refusal) return Response.json({ error: refusal }, { status: 409 });
+        return linkAccount(userId, platform, platformUserId, platformUsername);
+      }),
+    );
+  }
+
+  return linkAccount(userId, platform, platformUserId, platformUsername);
+}
+
+const LINKABLE_BY_ADMIN = ["slack", "discord", PLEX_PLATFORM];
+
+/** Why this Plex account cannot become this person's, if it cannot. */
+async function plexLinkRefusal(userId: string, accountId: string): Promise<string | undefined> {
+  if (await getPlatformIdentity(userId, PLEX_PLATFORM)) {
+    return "This person already has a Plex account";
+  }
+  if (!(await checkPlexAccess(accountId)).allowed) {
+    return "That Plex account has no access to the server";
+  }
+  return undefined;
+}
+
+async function linkAccount(
+  userId: string,
+  platform: string,
+  platformUserId: string,
+  platformUsername?: string,
+): Promise<Response> {
   try {
     const { link, counts } = await createPlatformLink(
       userId,
-      body.platform,
-      body.platformUserId,
-      body.platformUsername,
+      platform,
+      platformUserId,
+      platformUsername,
     );
 
-    log.info("platform link created", {
-      userId,
-      platform: body.platform,
-      platformUserId: body.platformUserId,
-      backfill: counts,
-    });
+    log.info("platform link created", { userId, platform, platformUserId, backfill: counts });
 
     return Response.json({
       id: link.id,

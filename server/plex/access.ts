@@ -14,6 +14,7 @@ const CACHE_TTL_MS = 5 * 60 * 1000;
 
 interface Member {
   displayName: string;
+  username: string;
   thumb: string;
   /** Managed Home users have no Plex account of their own to sign in with. */
   canSignIn: boolean;
@@ -28,6 +29,7 @@ export interface PlexPerson {
 interface ServerAccess {
   ownerAccountId: string;
   ownerName: string;
+  ownerUsername: string;
   ownerThumb: string;
   members: Map<string, Member>;
   /**
@@ -58,6 +60,7 @@ async function loadAccess(): Promise<ServerAccess> {
     if (!share || share.pending) continue;
     members.set(user.accountId, {
       displayName: user.title || user.username,
+      username: user.username,
       thumb: user.thumb,
       canSignIn: user.username !== "",
     });
@@ -81,6 +84,7 @@ async function loadAccess(): Promise<ServerAccess> {
   const value: ServerAccess = {
     ownerAccountId,
     ownerName,
+    ownerUsername: owner.username,
     ownerThumb: owner.thumb,
     members,
     byServerAccountId,
@@ -161,6 +165,38 @@ export async function getPlexAvatars(): Promise<Map<string, string>> {
     log.error("could not read plex avatars", { error: errorMessage(error) });
     return new Map();
   }
+}
+
+export interface PlexAccountOption {
+  accountId: string;
+  name: string;
+  username: string;
+  thumb?: string;
+}
+
+/** Everyone who could sign in with Plex: the owner and every member with an account. */
+export async function listPlexAccounts(): Promise<PlexAccountOption[]> {
+  if (!isPlexServerConfigured()) return [];
+
+  const access = await loadAccess();
+  const members = [...access.members]
+    .filter(([, member]) => member.canSignIn)
+    .map(([accountId, member]) => ({
+      accountId,
+      name: member.displayName,
+      username: member.username,
+      thumb: member.thumb || undefined,
+    }));
+
+  return [
+    {
+      accountId: access.ownerAccountId,
+      name: access.ownerName,
+      username: access.ownerUsername,
+      thumb: access.ownerThumb || undefined,
+    },
+    ...members,
+  ];
 }
 
 /** Names for the account ids a Plex server reports against playback. */

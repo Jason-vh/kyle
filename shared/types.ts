@@ -82,6 +82,13 @@ export interface LinkedIdentity {
   platformUsername: string | null;
 }
 
+export interface LinkablePlexAccount {
+  accountId: string;
+  name: string;
+  username: string;
+  thumb?: string;
+}
+
 export interface AccountLinks {
   platforms: string[];
   identities: LinkedIdentity[];

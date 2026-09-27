@@ -45,6 +45,51 @@
             </AppButton>
           </li>
         </ul>
+
+        <template v-if="!hasPlex">
+          <AppButton v-if="!choosingPlex" size="sm" class="mt-2" @click="choosingPlex = true">
+            <IconPlex class="size-3.5 text-[#e5a00d]" aria-hidden="true" />
+            Link Plex account
+          </AppButton>
+
+          <div v-else class="mt-3">
+            <p class="mb-2 text-sm text-text-muted">
+              Everyone the Plex server is shared with who is not linked to anyone yet.
+            </p>
+            <p v-if="loadingPlexAccounts" class="text-sm text-text-muted">Loading…</p>
+            <p v-else-if="plexAccountsError" class="text-sm text-accent-red">
+              {{ plexAccountsError.message }}
+            </p>
+            <p v-else-if="candidates.length === 0" class="text-sm text-text-muted">
+              Every Plex account is already linked to someone.
+            </p>
+            <ul class="divide-y divide-border-primary">
+              <li
+                v-for="account in candidates"
+                :key="account.accountId"
+                class="flex items-center gap-3 py-2"
+              >
+                <UserAvatar :name="account.name" :src="account.thumb" />
+                <div class="min-w-0 flex-1">
+                  <p class="truncate text-sm font-medium text-text-primary">{{ account.name }}</p>
+                  <p
+                    v-if="account.username !== account.name"
+                    class="truncate text-xs text-text-muted"
+                  >
+                    {{ account.username }}
+                  </p>
+                </div>
+                <AppButton
+                  size="sm"
+                  :loading="linkingPlex === account.accountId"
+                  @click="onLinkPlex(account)"
+                >
+                  Link
+                </AppButton>
+              </li>
+            </ul>
+          </div>
+        </template>
       </section>
 
       <section class="mt-6">
@@ -112,14 +157,23 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
-import type { AdminUser } from "#web/api/users";
+import type { AdminUser, LinkablePlexAccount } from "#web/api/users";
+import UserAvatar from "./UserAvatar.vue";
+import IconPlex from "~icons/cib/plex";
 import AppButton from "./ui/AppButton.vue";
 import AppInput from "./ui/AppInput.vue";
 import AppNotice from "./ui/AppNotice.vue";
 import BottomSheet from "./ui/BottomSheet.vue";
 import ConfirmDialog from "./ui/ConfirmDialog.vue";
 import SectionHeading from "./ui/SectionHeading.vue";
-import { useDeleteUser, useMergeUsers, useRenameUser, useUnlinkIdentity } from "#web/queries/users";
+import {
+  useDeleteUser,
+  useLinkPlexAccount,
+  useMergeUsers,
+  usePlexAccounts,
+  useRenameUser,
+  useUnlinkIdentity,
+} from "#web/queries/users";
 import { useSession } from "#web/queries/session";
 import { hasHistory, historySummary, platformName, signInSummary } from "#web/utils/users";
 import IconUnite from "~icons/ph/unite";
@@ -133,6 +187,7 @@ const { mutateAsync: rename, isLoading: renaming } = useRenameUser();
 const { mutateAsync: merge, isLoading: merging } = useMergeUsers();
 const { mutateAsync: remove, isLoading: deleting } = useDeleteUser();
 const { mutateAsync: unlink } = useUnlinkIdentity();
+const { mutateAsync: linkPlex } = useLinkPlexAccount();
 
 const others = computed(() => props.people.filter((other) => other.id !== props.person.id));
 
@@ -140,6 +195,19 @@ const name = ref(props.person.displayName);
 const mergeFrom = ref<AdminUser | null>(null);
 const unlinking = ref<string | null>(null);
 const confirmingDelete = ref(false);
+const choosingPlex = ref(false);
+const linkingPlex = ref<string | null>(null);
+
+const hasPlex = computed(() =>
+  props.person.identities.some((identity) => identity.platform === "plex"),
+);
+
+const {
+  data: plexAccounts,
+  isPending: loadingPlexAccounts,
+  error: plexAccountsError,
+} = usePlexAccounts(() => props.open && choosingPlex.value && !hasPlex.value);
+const candidates = computed(() => plexAccounts.value ?? []);
 const message = ref<{ kind: "error" | "success"; text: string } | null>(null);
 
 watch(
@@ -148,6 +216,7 @@ watch(
     if (!open) return;
     name.value = props.person.displayName;
     message.value = null;
+    choosingPlex.value = false;
   },
 );
 
@@ -189,6 +258,16 @@ async function onUnlink(linkId: string) {
   unlinking.value = linkId;
   await attempt(() => unlink({ userId: props.person.id, linkId }), "Account unlinked.");
   unlinking.value = null;
+}
+
+async function onLinkPlex(account: LinkablePlexAccount) {
+  linkingPlex.value = account.accountId;
+  const done = await attempt(
+    () => linkPlex({ userId: props.person.id, account }),
+    `Linked ${account.username} to ${props.person.displayName}.`,
+  );
+  linkingPlex.value = null;
+  if (done) choosingPlex.value = false;
 }
 
 async function onMerge() {

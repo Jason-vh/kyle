@@ -511,7 +511,8 @@ one account says nothing about everything the other user holds, so that is a mer
 Admins see everyone at `/people`, and each person at `/people/:id`: their requests and how
 many were watched, the disk space those take, what they watched on Plex, their conversations,
 invitations and removals. A source that cannot be reached costs only its own part. The same
-page manages the account: rename, unlink, delete a user with no history, and merge
+page manages the account: rename, link a Plex account the server is shared with, unlink,
+delete a user with no history, and merge
 one user into another. A merge moves every row that points at a user (a test fails if a new
 table is missed), keeps one of anything both held, carries over admin rights, and refuses to
 join two Plex accounts. The admin picks which user survives, and it keeps its own name.
@@ -615,7 +616,8 @@ rather than passed to the agent as an opaque ID.
 | `PATCH /api/users/:id`                      | Admin                 | Rename `{ displayName }`                                       |
 | `POST /api/users/:id/merge`                 | Admin                 | Merge another user in `{ from }`                               |
 | `DELETE /api/users/:id`                     | Admin                 | Delete a user with no history                                  |
-| `POST /api/users/:id/links`                 | Admin                 | Link a platform identity                                       |
+| `GET /api/users/plex-accounts`              | Admin                 | Plex accounts on the server not yet linked to anyone           |
+| `POST /api/users/:id/links`                 | Admin                 | Link a Slack, Discord or Plex account                          |
 | `DELETE /api/users/:id/links/:linkId`       | Admin                 | Unlink a platform identity                                     |
 
 Requests larger than 1 MB are rejected with a `413` by `Bun.serve`'s `maxRequestBodySize`.
