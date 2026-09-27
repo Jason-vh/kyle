@@ -1,5 +1,6 @@
 import { createApiClient } from "#server/http/client.ts";
 import { requireEnv } from "#server/config.ts";
+import { cached } from "#server/cache.ts";
 
 export interface UltraStats {
   free_storage_bytes: number;
@@ -36,16 +37,15 @@ const request = createApiClient({
  */
 const CACHE_TTL_MS = 10 * 60 * 1000;
 
-let cached: { value: UltraStats; expires: number } | null = null;
-
-export async function getStats(): Promise<UltraStats> {
-  if (cached && cached.expires > Date.now()) return cached.value;
-
+const stats = cached(CACHE_TTL_MS, async () => {
   const data = await request<UltraStatsResponse>("/total-stats");
-  cached = { value: data.service_stats_info, expires: Date.now() + CACHE_TTL_MS };
-  return cached.value;
+  return data.service_stats_info;
+});
+
+export function getStats(): Promise<UltraStats> {
+  return stats.get();
 }
 
 export function invalidateStats(): void {
-  cached = null;
+  stats.invalidate();
 }

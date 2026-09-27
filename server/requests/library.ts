@@ -6,6 +6,7 @@ import type { SonarrSeason, SonarrSeries } from "#server/sonarr/types.ts";
 import type { RequestableMediaType } from "./service.ts";
 import { createLogger } from "#server/logger.ts";
 import { errorMessage } from "#server/errors.ts";
+import { cached } from "#server/cache.ts";
 
 const log = createLogger("requests-library");
 
@@ -172,8 +173,6 @@ export function libraryStatusOf(entry: LibraryEntry): LibraryStatus {
   return entry.hasFiles ? "available" : "pending";
 }
 
-let cached: { value: LibraryIndex; expires: number } | null = null;
-
 async function build(): Promise<LibraryIndex> {
   const [movies, series] = await Promise.allSettled([radarr.getMovies(), sonarr.getAllSeries()]);
   const index: LibraryIndex = { movie: new Map(), series: new Map(), unavailable: [] };
@@ -194,22 +193,20 @@ async function build(): Promise<LibraryIndex> {
     log.error("Sonarr unavailable", { error: errorMessage(series.reason) });
   }
 
+  log.info("library index built", {
+    movies: index.movie.size,
+    series: index.series.size,
+    unavailable: index.unavailable,
+  });
   return index;
 }
 
-export async function getLibraryIndex(): Promise<LibraryIndex> {
-  if (cached && cached.expires > Date.now()) return cached.value;
+const libraryIndex = cached(CACHE_TTL_MS, build);
 
-  const value = await build();
-  cached = { value, expires: Date.now() + CACHE_TTL_MS };
-  log.info("library index built", {
-    movies: value.movie.size,
-    series: value.series.size,
-    unavailable: value.unavailable,
-  });
-  return value;
+export function getLibraryIndex(): Promise<LibraryIndex> {
+  return libraryIndex.get();
 }
 
 export function invalidateLibraryIndex(): void {
-  cached = null;
+  libraryIndex.invalidate();
 }

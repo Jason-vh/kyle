@@ -2,6 +2,7 @@ import { getMachineIdentifier, isPlexServerConfigured, pmsRequest } from "./serv
 import { watchKey } from "./keys.ts";
 import { createLogger } from "#server/logger.ts";
 import { errorMessage } from "#server/errors.ts";
+import { cached } from "#server/cache.ts";
 
 const log = createLogger("plex-catalog");
 
@@ -85,8 +86,6 @@ export function plexWebUrl(machineIdentifier: string, ratingKey: string): string
  */
 export type PlexPlaces = Map<string, string>;
 
-let cached: { value: PlexPlaces; expires: number } | null = null;
-
 async function build(): Promise<PlexPlaces> {
   const [titles, machineIdentifier] = await Promise.all([listPlexTitles(), getMachineIdentifier()]);
 
@@ -103,18 +102,16 @@ async function build(): Promise<PlexPlaces> {
   return places;
 }
 
+const plexPlaces = cached(CACHE_TTL_MS, build);
+
 /**
  * Cached, and `undefined` when Plex cannot be asked at all — which callers
  * must read as "unknown" rather than as an empty library.
  */
 export async function getPlexPlaces(): Promise<PlexPlaces | undefined> {
   if (!isPlexServerConfigured()) return undefined;
-  if (cached && cached.expires > Date.now()) return cached.value;
-
   try {
-    const value = await build();
-    cached = { value, expires: Date.now() + CACHE_TTL_MS };
-    return value;
+    return await plexPlaces.get();
   } catch (error) {
     log.error("could not read the plex catalog", { error: errorMessage(error) });
     return undefined;

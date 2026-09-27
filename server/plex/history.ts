@@ -6,6 +6,7 @@ import { episodeWatchKey, titleKey, watchKey } from "./keys.ts";
 import { pmsRequest } from "./server.ts";
 import { createLogger } from "#server/logger.ts";
 import { errorMessage } from "#server/errors.ts";
+import { cached } from "#server/cache.ts";
 
 const log = createLogger("plex-history");
 
@@ -211,16 +212,12 @@ async function buildWatchHistory(): Promise<WatchHistory> {
   return value;
 }
 
-let cached: { value: WatchHistory; expires: number } | null = null;
+const watchHistory = cached(CACHE_TTL_MS, buildWatchHistory);
 
 /** An unreachable server yields no history, which simply shows nobody watching. */
 async function getWatchHistory(): Promise<WatchHistory> {
-  if (cached && cached.expires > Date.now()) return cached.value;
-
   try {
-    const value = await buildWatchHistory();
-    cached = { value, expires: Date.now() + CACHE_TTL_MS };
-    return value;
+    return await watchHistory.get();
   } catch (error) {
     log.error("could not read plex watch history", { error: errorMessage(error) });
     return { watchers: new Map(), plays: new Map(), titles: new Map() };
@@ -259,5 +256,5 @@ export async function getPlaysBy(accountIds: string[]): Promise<TitlePlay[]> {
 }
 
 export function invalidateWatchers(): void {
-  cached = null;
+  watchHistory.invalidate();
 }

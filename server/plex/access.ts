@@ -7,6 +7,7 @@ import {
 import { shareOn } from "./users-xml.ts";
 import { createLogger } from "#server/logger.ts";
 import { errorMessage } from "#server/errors.ts";
+import { cached } from "#server/cache.ts";
 
 const log = createLogger("plex-access");
 
@@ -42,12 +43,8 @@ interface ServerAccess {
 /** A Plex Media Server always refers to its owner by this local account id. */
 const OWNER_SERVER_ACCOUNT_ID = "1";
 
-let cached: { value: ServerAccess; expires: number } | null = null;
-
 /** Who the Plex server belongs to and who it is shared with, refreshed periodically. */
-async function loadAccess(): Promise<ServerAccess> {
-  if (cached && cached.expires > Date.now()) return cached.value;
-
+async function buildAccess(): Promise<ServerAccess> {
   const [owner, machineIdentifier, shareList] = await Promise.all([
     getOwnerAccount(),
     getMachineIdentifier(),
@@ -90,13 +87,14 @@ async function loadAccess(): Promise<ServerAccess> {
     byServerAccountId,
   };
 
-  cached = { value, expires: Date.now() + CACHE_TTL_MS };
   log.info("loaded plex server access", { machineIdentifier, members: members.size });
   return value;
 }
 
+const serverAccess = cached(CACHE_TTL_MS, buildAccess);
+
 export function invalidatePlexAccessCache(): void {
-  cached = null;
+  serverAccess.invalidate();
 }
 
 export interface PlexAccess {
@@ -117,7 +115,7 @@ export async function checkPlexAccess(accountId: string): Promise<PlexAccess> {
 
   let access: ServerAccess;
   try {
-    access = await loadAccess();
+    access = await serverAccess.get();
   } catch (error) {
     log.error("could not read plex server access", { error: errorMessage(error) });
     return DENIED;
@@ -141,7 +139,7 @@ export async function getPlexAvatar(accountId: string): Promise<string | undefin
   if (!isPlexServerConfigured()) return undefined;
 
   try {
-    const access = await loadAccess();
+    const access = await serverAccess.get();
     if (accountId === access.ownerAccountId) return access.ownerThumb || undefined;
     return access.members.get(accountId)?.thumb || undefined;
   } catch (error) {
@@ -154,7 +152,7 @@ export async function getPlexAvatars(): Promise<Map<string, string>> {
   if (!isPlexServerConfigured()) return new Map();
 
   try {
-    const access = await loadAccess();
+    const access = await serverAccess.get();
     const avatars = new Map<string, string>();
     if (access.ownerThumb) avatars.set(access.ownerAccountId, access.ownerThumb);
     for (const [accountId, member] of access.members) {
@@ -178,7 +176,7 @@ export interface PlexAccountOption {
 export async function listPlexAccounts(): Promise<PlexAccountOption[]> {
   if (!isPlexServerConfigured()) return [];
 
-  const access = await loadAccess();
+  const access = await serverAccess.get();
   const members = [...access.members]
     .filter(([, member]) => member.canSignIn)
     .map(([accountId, member]) => ({
@@ -204,7 +202,7 @@ export async function getServerAccountNames(): Promise<Map<string, PlexPerson>> 
   if (!isPlexServerConfigured()) return new Map();
 
   try {
-    return (await loadAccess()).byServerAccountId;
+    return (await serverAccess.get()).byServerAccountId;
   } catch (error) {
     log.error("could not read plex account names", { error: errorMessage(error) });
     return new Map();
