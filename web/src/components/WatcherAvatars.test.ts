@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, test } from "vitest";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { mount, type VueWrapper } from "@vue/test-utils";
 import type { Watcher } from "#shared/types";
 import WatcherAvatars from "./WatcherAvatars.vue";
@@ -8,9 +8,24 @@ const ago = (days: number) => new Date(Date.now() - days * DAY).toISOString();
 
 let mounted: VueWrapper | undefined;
 
+function pointer({ canHover }: { canHover: boolean }) {
+  vi.spyOn(window, "matchMedia").mockImplementation(
+    (query) =>
+      ({
+        matches: canHover && query === "(hover: hover)",
+        media: query,
+        addEventListener: () => {},
+        removeEventListener: () => {},
+      }) as unknown as MediaQueryList,
+  );
+}
+
+beforeEach(() => pointer({ canHover: true }));
+
 // The card renders through a portal into the body, which would otherwise
 // carry one test's names into the next.
 afterEach(() => {
+  vi.restoreAllMocks();
   mounted?.unmount();
   mounted = undefined;
   document.body.innerHTML = "";
@@ -89,6 +104,17 @@ describe("WatcherAvatars", () => {
 
     expect(text).toContain("h ago");
     expect(text).toMatch(/[A-Z][a-z]{2} \d+/);
+  });
+
+  test("is only the faces where nothing can hover, such as a phone", async () => {
+    pointer({ canHover: false });
+    await hover([{ name: "Jason" }, { name: "Kate" }, { name: "Sam" }], 2);
+
+    expect(card()).toBe("");
+    expect(mounted!.find("[tabindex]").exists()).toBe(false);
+    expect(mounted!.find("[aria-label]").attributes("aria-label")).toBe(
+      "Jason, Kate and Sam have watched this",
+    );
   });
 
   test("leaves the time out for a watcher Plex gave no date for", async () => {

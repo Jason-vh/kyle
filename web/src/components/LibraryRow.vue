@@ -1,6 +1,6 @@
 <template>
   <li
-    class="group relative flex min-h-21 items-center gap-3 px-3 py-2.5 transition-colors not-first:before:absolute not-first:before:top-0 not-first:before:right-0 not-first:before:left-17 not-first:before:border-t not-first:before:border-border-primary first:rounded-t-card last:rounded-b-card"
+    class="group relative flex min-h-21 [content-visibility:auto] [contain-intrinsic-size:auto_5.25rem] items-center gap-3 px-3 py-2.5 transition-colors not-first:before:absolute not-first:before:top-0 not-first:before:right-0 not-first:before:left-17 not-first:before:border-t not-first:before:border-border-primary first:rounded-t-card last:rounded-b-card"
     :class="{ 'hover:bg-bg-elevated': item.tmdbId }"
   >
     <LibraryPoster :path="item.posterPath" :dimmed="missing" />
