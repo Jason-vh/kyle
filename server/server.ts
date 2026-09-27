@@ -1,6 +1,7 @@
 import { createLogger } from "./logger.ts";
 import { withSessionRefresh } from "./auth/middleware.ts";
 import { withAuthenticationLimit } from "./http/rate-limit.ts";
+import { compress } from "./http/compression.ts";
 import { handleHealth } from "./routes/health.ts";
 import { handleChat } from "./routes/chat.ts";
 import { handleSlackEvents } from "./routes/slack-events.ts";
@@ -114,10 +115,37 @@ function defineRoutes<const R extends string>(routes: Bun.Serve.Routes<undefined
   return routes;
 }
 
+type RouteHandler = (req: Request, server: Bun.Server<undefined>) => Promise<Response> | Response;
+
+function timedAndCompressed(route: string, method: string, handler: RouteHandler): RouteHandler {
+  return async (req, server) => {
+    const started = performance.now();
+    let status = 500;
+    try {
+      const response = await handler(req, server);
+      status = response.status;
+      return await compress(req, response);
+    } finally {
+      log.info("request", { method, route, status, ms: Math.round(performance.now() - started) });
+    }
+  };
+}
+
+function withEveryHandler<T extends object>(routes: T): T {
+  const wrapped = Object.entries(routes).map(([route, methods]) => [
+    route,
+    Object.fromEntries(
+      Object.entries(methods as Record<string, RouteHandler>).map(([method, handler]) => [
+        method,
+        timedAndCompressed(route, method, handler),
+      ]),
+    ),
+  ]);
+  return Object.fromEntries(wrapped) as T;
+}
+
 export function startServer(port: number) {
   const routes = defineRoutes({
-    "/health": { GET: handleHealth },
-
     // --- API routes ---
     "/api/threads": { GET: withSessionRefresh(handleApiThreadList) },
     "/api/threads/:id": {
@@ -224,12 +252,13 @@ export function startServer(port: number) {
     "/webhooks/radarr": { POST: handleRadarrWebhook },
   });
 
-  const isServerOwned = serverOwnedPaths(routes);
+  const served = { "/health": { GET: handleHealth }, ...withEveryHandler(routes) };
+  const isServerOwned = serverOwnedPaths(served);
 
   const server = Bun.serve({
     port,
     maxRequestBodySize: MAX_BODY_SIZE,
-    routes,
+    routes: served,
 
     // Anything unrouted is either a built web asset, the app itself, or a miss.
     async fetch(req) {
@@ -237,11 +266,11 @@ export function startServer(port: number) {
 
       if (req.method === "GET" || req.method === "HEAD") {
         const asset = await serveAsset(url.pathname);
-        if (asset) return asset;
+        if (asset) return compress(req, asset);
 
         if (!isServerOwned(url.pathname) && isNavigation(req)) {
           const app = await serveApp();
-          if (app) return app;
+          if (app) return compress(req, app);
         }
       }
 

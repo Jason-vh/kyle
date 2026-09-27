@@ -28,6 +28,12 @@ test.each(["/api/nope", "/api/threads/nope/nope", "/health/nope", "/webhooks/son
   },
 );
 
+test("routed responses go through compression", async () => {
+  const response = await get("/api/auth/status", "application/json");
+  expect(response.status).toBe(200);
+  expect(response.headers.get("vary")).toBe("Accept-Encoding");
+});
+
 test("a missing asset is a miss rather than the app", async () => {
   const response = await get("/assets/gone-a1b2c3.js", "*/*");
   expect(response.status).toBe(404);
