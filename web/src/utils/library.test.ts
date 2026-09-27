@@ -10,7 +10,7 @@ import {
   libraryStatuses,
   viewFromQuery,
   viewToQuery,
-  watchedWhen,
+  daysAgo,
 } from "./library";
 
 const item = (overrides: Partial<LibraryItem>): LibraryItem => ({
@@ -83,6 +83,19 @@ describe("applyLibraryView", () => {
         watched("Dune", "2023-01-01T00:00:00Z", "2025-01-01T00:00:00Z"),
       ],
       { ...DEFAULT_LIBRARY_VIEW, sort: "watched" },
+    );
+    expect(titles(shown)).toEqual(["Dune", "Heat", "Alien", "Zodiac"]);
+  });
+
+  test("sorts by date added, newest first, then by title", () => {
+    const shown = applyLibraryView(
+      [
+        item({ title: "Zodiac" }),
+        item({ title: "Heat", addedAt: "2024-01-01T00:00:00Z" }),
+        item({ title: "Alien" }),
+        item({ title: "Dune", addedAt: "2025-01-01T00:00:00Z" }),
+      ],
+      { ...DEFAULT_LIBRARY_VIEW, sort: "added" },
     );
     expect(titles(shown)).toEqual(["Dune", "Heat", "Alien", "Zodiac"]);
   });
@@ -255,19 +268,33 @@ describe("libraryDetails, sorted otherwise", () => {
   });
 });
 
-describe("watchedWhen", () => {
+describe("libraryDetails, sorted by date added", () => {
+  test("leads with when it was added", () => {
+    const added = item({ year: 2016, addedAt: "2021-05-01T20:00:00Z" });
+    expect(libraryDetails(added, "added")).toEqual(["added 1 May 2021", "2016", "Movie"]);
+  });
+
+  test("leaves it out otherwise", () => {
+    expect(libraryDetails(item({ year: 2016, addedAt: "2021-05-01T20:00:00Z" }))).toEqual([
+      "2016",
+      "Movie",
+    ]);
+  });
+});
+
+describe("daysAgo", () => {
   const now = new Date(2026, 8, 20, 21, 0);
   const at = (day: number, hour = 12) => new Date(2026, 8, day, hour).toISOString();
 
   test.each([
-    [at(20, 8), "watched today"],
-    [at(19, 23), "watched yesterday"],
-    [at(17), "watched 3d ago"],
-    [at(14), "watched 6d ago"],
-    [at(13), "watched 13 Sept"],
-    [new Date(2025, 2, 6).toISOString(), "watched 6 Mar 2025"],
+    [at(20, 8), "today"],
+    [at(19, 23), "yesterday"],
+    [at(17), "3d ago"],
+    [at(14), "6d ago"],
+    [at(13), "13 Sept"],
+    [new Date(2025, 2, 6).toISOString(), "6 Mar 2025"],
   ])("%s reads as %s", (iso, expected) => {
-    expect(watchedWhen(iso, now)).toBe(expected);
+    expect(daysAgo(iso, now)).toBe(expected);
   });
 });
 

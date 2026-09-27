@@ -4,7 +4,7 @@ import { formatDate, formatSize } from "./format";
 import { REQUEST_STATES, type StateBadge } from "./states";
 import { lastWatch } from "./watch";
 
-export type LibrarySort = "title" | "size" | "watched";
+export type LibrarySort = "title" | "size" | "watched" | "added";
 export type LibraryType = "all" | LibraryItem["mediaType"];
 export type LibraryAvailabilityFilter = "all" | LibraryItem["availability"];
 
@@ -32,6 +32,7 @@ export const SORT_OPTIONS: { value: LibrarySort; label: string }[] = [
   { value: "title", label: "Title" },
   { value: "size", label: "Size" },
   { value: "watched", label: "Last watched" },
+  { value: "added", label: "Date added" },
 ];
 
 export const TYPE_OPTIONS: { value: LibraryType; label: string }[] = [
@@ -51,6 +52,7 @@ const SORT_LABELS: Record<LibrarySort, string> = {
   title: "A–Z",
   size: "Largest first",
   watched: "Recently watched",
+  added: "Recently added",
 };
 
 const labelOf = <T extends string>(options: { value: T; label: string }[], value: T) =>
@@ -128,11 +130,16 @@ function byLastWatched(a: LibraryItem, b: LibraryItem): number {
   return latestB.localeCompare(latestA) || byTitle(a, b);
 }
 
+function byAdded(a: LibraryItem, b: LibraryItem): number {
+  return (b.addedAt ?? "").localeCompare(a.addedAt ?? "") || byTitle(a, b);
+}
+
 export function applyLibraryView(items: LibraryItem[], view: LibraryView): LibraryItem[] {
   const term = searchKey(view.search);
   const shown = items.filter((item) => matches(item, view, term));
   if (view.sort === "size") return shown.toSorted((a, b) => b.sizeOnDisk - a.sizeOnDisk);
   if (view.sort === "watched") return shown.toSorted(byLastWatched);
+  if (view.sort === "added") return shown.toSorted(byAdded);
   return shown.toSorted(byTitle);
 }
 
@@ -193,7 +200,8 @@ export function libraryDetails(item: LibraryItem, sort: LibrarySort = "title"): 
     else details.push(size);
   }
   const latest = lastWatch(item.watchedBy);
-  if (sort === "watched" && latest) details.unshift(watchedWhen(latest.watchedAt));
+  if (sort === "watched" && latest) details.unshift(`watched ${daysAgo(latest.watchedAt)}`);
+  if (sort === "added" && item.addedAt) details.unshift(`added ${daysAgo(item.addedAt)}`);
   return details;
 }
 
@@ -203,12 +211,12 @@ function startOfDay(date: Date): number {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
 }
 
-export function watchedWhen(iso: string, now: Date = new Date()): string {
+export function daysAgo(iso: string, now: Date = new Date()): string {
   const days = Math.round((startOfDay(now) - startOfDay(new Date(iso))) / DAY_MS);
-  if (days <= 0) return "watched today";
-  if (days === 1) return "watched yesterday";
-  if (days < 7) return `watched ${days}d ago`;
-  return `watched ${formatDate(iso, now)}`;
+  if (days <= 0) return "today";
+  if (days === 1) return "yesterday";
+  if (days < 7) return `${days}d ago`;
+  return formatDate(iso, now);
 }
 
 export interface LibraryStatus extends StateBadge {

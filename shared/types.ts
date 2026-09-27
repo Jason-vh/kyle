@@ -30,6 +30,7 @@ export interface LibraryState {
   /** Episode progress for a series, e.g. "12/90 episodes". */
   detail?: string;
   episodes?: { present: number; total: number };
+  addedAt?: string;
 }
 
 export interface LibraryItem extends LibraryState {

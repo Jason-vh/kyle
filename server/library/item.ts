@@ -14,6 +14,7 @@ export function movieState(movie: RadarrMovie): LibraryState {
     monitored: movie.monitored,
     sizeOnDisk: movie.sizeOnDisk ?? 0,
     availability: movie.hasFile ? "available" : "missing",
+    addedAt: movie.added,
   };
 }
 
@@ -28,5 +29,6 @@ export function seriesState(series: SonarrSeries): LibraryState {
     availability: seriesAvailability(present, total),
     detail: total > 0 ? `${present}/${total} episodes` : undefined,
     episodes: total > 0 ? { present, total } : undefined,
+    addedAt: series.added,
   };
 }
