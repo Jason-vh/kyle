@@ -1,7 +1,11 @@
-import type { AdminUser } from "#shared/types";
+import type { AdminUser, UserProfile } from "#shared/types";
 import { apiFetch } from "./client";
 
-export type { AdminUser } from "#shared/types";
+export type { AdminUser, UserProfile } from "#shared/types";
+
+export function getUserProfile(id: string): Promise<UserProfile> {
+  return apiFetch<UserProfile>(`/api/users/${id}`);
+}
 
 export async function getUsers(): Promise<AdminUser[]> {
   const { users } = await apiFetch<{ users: AdminUser[] }>("/api/users");

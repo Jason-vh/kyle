@@ -1,11 +1,17 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
-import { handleDeleteUser, handleGetUsers, handleMergeUsers, handleRenameUser } from "./users.ts";
+import {
+  handleDeleteUser,
+  handleGetUserProfile,
+  handleGetUsers,
+  handleMergeUsers,
+  handleRenameUser,
+} from "./users.ts";
 import { buildJwtCookie, signJwt } from "#server/auth/jwt.ts";
 import { createTestUser, deleteTestUser } from "#server/db/testing.ts";
 import { db } from "#server/db/index.ts";
-import { mediaRequests, users } from "#server/db/schema.ts";
-import type { AdminUser } from "#shared/types.ts";
+import { mediaRemovals, mediaRequests, plexInvites, users } from "#server/db/schema.ts";
+import type { AdminUser, UserProfile } from "#shared/types.ts";
 
 process.env.JWT_SECRET = "test-secret-that-is-long-enough-for-hs256";
 
@@ -95,5 +101,50 @@ describe("people administration", () => {
 
     const busy = request(`/api/users/${memberId}`, "DELETE", asAdmin);
     expect((await handleDeleteUser(busy, memberId)).status).toBe(409);
+  });
+
+  test("shows one person in full, naming whatever could not be reached", async () => {
+    await db.insert(plexInvites).values({
+      invitedByUserId: memberId,
+      email: `${crypto.randomUUID()}@example.com`,
+    });
+    await db.insert(mediaRemovals).values({
+      mediaType: "movie",
+      tmdbId: 4242,
+      title: "Heat",
+      removedBy: "Jordan",
+      removedByUserId: memberId,
+    });
+
+    const realFetch = globalThis.fetch;
+    globalThis.fetch = (async () =>
+      new Response("down", { status: 503 })) as unknown as typeof fetch;
+    const response = await handleGetUserProfile(
+      request(`/api/users/${memberId}`, "GET", asAdmin),
+      memberId,
+    ).finally(() => {
+      globalThis.fetch = realFetch;
+    });
+    const profile = (await response.json()) as UserProfile;
+
+    expect(profile.user.id).toBe(memberId);
+    expect(profile.requests.map((row) => row.title)).toContain("Star Wars");
+    expect(profile.requestsWatched).toEqual({ watched: 0, total: 1 });
+    expect(profile.invites).toHaveLength(1);
+    expect(profile.removals.map((removal) => removal.title)).toEqual(["Heat"]);
+    expect(profile.watching).toBeUndefined();
+    expect(profile.unavailable).toEqual(["Radarr", "Sonarr"]);
+
+    await db.delete(plexInvites).where(eq(plexInvites.invitedByUserId, memberId));
+    await db.delete(mediaRemovals).where(eq(mediaRemovals.removedByUserId, memberId));
+  });
+
+  test("has no page for someone who does not exist", async () => {
+    const missing = crypto.randomUUID();
+    const response = await handleGetUserProfile(
+      request(`/api/users/${missing}`, "GET", asAdmin),
+      missing,
+    );
+    expect(response.status).toBe(404);
   });
 });

@@ -1,20 +1,10 @@
 import { requireAdmin } from "#server/auth/middleware.ts";
 import { isText, isUuid, readJsonObject } from "#server/http/input.ts";
-import {
-  getAllUsersWithIdentities,
-  createPlatformLink,
-  deletePlatformLink,
-  renameUser,
-} from "#server/db/users.ts";
-import {
-  deleteEmptyUser,
-  emptyFootprint,
-  footprints,
-  MergeRefusedError,
-  mergeUsers,
-} from "#server/db/merge.ts";
-import type { AdminUser } from "#shared/types.ts";
-import { getPlexAvatars } from "#server/plex/access.ts";
+import { createPlatformLink, deletePlatformLink, renameUser } from "#server/db/users.ts";
+import { deleteEmptyUser, MergeRefusedError, mergeUsers } from "#server/db/merge.ts";
+import { listAdminUsers } from "#server/users/directory.ts";
+import { getUserProfile } from "#server/users/profile.ts";
+import { viewerOf } from "#server/people.ts";
 import { createLogger } from "#server/logger.ts";
 
 const log = createLogger("api-users");
@@ -27,38 +17,23 @@ export async function handleGetUsers(req: Request): Promise<Response> {
   const authResult = await requireAdmin(req);
   if ("error" in authResult) return authResult.error;
 
-  const [usersWithLinks, owned, avatars] = await Promise.all([
-    getAllUsersWithIdentities(),
-    footprints(),
-    getPlexAvatars(),
-  ]);
-
-  const people = usersWithLinks.map(
-    (u): AdminUser => ({
-      id: u.id,
-      displayName: u.displayName,
-      avatarUrl: avatarOf(u.platformIdentities, avatars),
-      isAdmin: u.isAdmin,
-      createdAt: u.createdAt.toISOString(),
-      identities: u.platformIdentities.map((pi) => ({
-        id: pi.id,
-        platform: pi.platform,
-        platformUserId: pi.platformUserId,
-        platformUsername: pi.platformUsername,
-      })),
-      footprint: owned.get(u.id) ?? emptyFootprint(),
-    }),
-  );
+  const people = await listAdminUsers();
 
   return Response.json({ users: people });
 }
 
-function avatarOf(
-  identities: { platform: string; platformUserId: string }[],
-  avatars: Map<string, string>,
-): string | undefined {
-  const plex = identities.find((identity) => identity.platform === "plex");
-  return plex ? avatars.get(plex.platformUserId) : undefined;
+// ---------------------------------------------------------------------------
+// GET /api/users/:id — everything about one person (admin only)
+// ---------------------------------------------------------------------------
+
+export async function handleGetUserProfile(req: Request, userId: string): Promise<Response> {
+  const authResult = await requireAdmin(req);
+  if ("error" in authResult) return authResult.error;
+  if (!isUuid(userId)) return Response.json({ error: "Invalid user id" }, { status: 400 });
+
+  const profile = await getUserProfile(userId, await viewerOf(authResult.user));
+  if (!profile) return Response.json({ error: "No such user" }, { status: 404 });
+  return Response.json(profile);
 }
 
 // ---------------------------------------------------------------------------

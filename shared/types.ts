@@ -97,6 +97,54 @@ export interface AdminUser {
   footprint: UserFootprint;
 }
 
+export interface WatchedTitle {
+  mediaType: LibraryMediaType;
+  tmdbId?: number;
+  title: string;
+  year?: number;
+  posterUrl?: string;
+  at: string;
+  detail?: string;
+}
+
+export interface UserStorage {
+  requestedBytes: number;
+  libraryBytes: number;
+}
+
+export interface UserWatching {
+  titles: number;
+  plays: number;
+  recent: WatchedTitle[];
+}
+
+export interface UserInvite {
+  email: string;
+  at: string;
+}
+
+export interface UserRemoval {
+  mediaType: LibraryMediaType;
+  tmdbId: number;
+  title: string;
+  at: string;
+  deletedFiles: boolean;
+}
+
+export interface UserProfile {
+  user: AdminUser;
+  lastActiveAt?: string;
+  requests: MediaRequest[];
+  requestsWatched?: { watched: number; total: number };
+  storage?: UserStorage;
+  /** Absent for someone with no Plex account to have watched anything with. */
+  watching?: UserWatching;
+  conversations: ThreadListItem[];
+  invites: UserInvite[];
+  removals: UserRemoval[];
+  unavailable: string[];
+}
+
 // Media detail
 
 /** One title in full: what TMDB says about it, and what we have of it. */

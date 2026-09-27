@@ -1,5 +1,4 @@
 import { createLogger } from "#server/logger.ts";
-import { safeJsonParse } from "#server/json.ts";
 import { mediaHref } from "#server/media-links.ts";
 import { requireAdmin } from "#server/auth/middleware.ts";
 import {
@@ -10,6 +9,7 @@ import {
 import { getWebhookNotifications } from "#server/db/webhook-notifications.ts";
 import { getMediaEventsForConversation } from "#server/db/media-events.ts";
 import { createUsernameResolver } from "#server/threads/usernames.ts";
+import { toThreadListItem } from "#server/threads/summaries.ts";
 import {
   buildThreadItems,
   extractTextContent,
@@ -32,21 +32,7 @@ export async function handleApiThreadList(req: Request): Promise<Response> {
 
   const rows = await listThreadSummaries();
 
-  const items: ThreadListItem[] = rows.map((row) => {
-    const mediaRefs = row.mediaRefsJson
-      ? safeJsonParse<{ action: string; title: string }[]>(row.mediaRefsJson)
-      : [];
-    if (!mediaRefs) log.warn("unparseable media refs", { conversationId: row.id });
-
-    return {
-      id: row.id,
-      interfaceType: row.interfaceType,
-      preview: stripMentions(row.preview || "") || "Untitled conversation",
-      messageCount: row.messageCount ?? 0,
-      createdAt: row.createdAt.toISOString(),
-      mediaRefs: mediaRefs ?? [],
-    };
-  });
+  const items: ThreadListItem[] = rows.map(toThreadListItem);
 
   log.info("api thread list", { count: items.length });
   return Response.json(items);

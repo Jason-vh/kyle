@@ -14,7 +14,9 @@
       <div class="mt-0.5 flex items-center gap-2 text-xs text-text-muted">
         <time :datetime="thread.createdAt">{{ formattedDate }}</time>
         <span>&middot;</span>
-        <span>{{ thread.messageCount }} messages</span>
+        <span
+          >{{ thread.messageCount }} {{ thread.messageCount === 1 ? "message" : "messages" }}</span
+        >
       </div>
       <!-- Media ref pills -->
       <div v-if="thread.mediaRefs.length > 0" class="mt-1.5 hidden flex-wrap gap-1 md:flex">

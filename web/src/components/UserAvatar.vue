@@ -4,11 +4,13 @@
     :src="src"
     :alt="name"
     loading="lazy"
-    class="size-8 shrink-0 rounded-full object-cover"
+    class="shrink-0 rounded-full object-cover"
+    :class="SIZES[size]"
   />
   <div
     v-else
-    class="flex size-8 shrink-0 items-center justify-center rounded-full text-sm font-semibold text-text-inverse"
+    class="flex shrink-0 items-center justify-center rounded-full font-semibold text-text-inverse"
+    :class="[SIZES[size], LETTER_SIZES[size]]"
     :style="{ background: avatarColor }"
   >
     {{ letter }}
@@ -18,7 +20,13 @@
 <script setup lang="ts">
 import { computed } from "vue";
 
-const props = defineProps<{ name: string; src?: string | null }>();
+const props = withDefaults(
+  defineProps<{ name: string; src?: string | null; size?: "md" | "lg" }>(),
+  { size: "md" },
+);
+
+const SIZES = { md: "size-8", lg: "size-16" };
+const LETTER_SIZES = { md: "text-sm", lg: "text-2xl" };
 
 const AVATAR_COLORS = [
   "#2563EB",

@@ -508,7 +508,10 @@ one account says nothing about everything the other user holds, so that is a mer
 
 ### People
 
-Admins manage accounts at `/people`: rename, unlink, delete a user with no history, and merge
+Admins see everyone at `/people`, and each person at `/people/:id`: their requests and how
+many were watched, the disk space those take, what they watched on Plex, their conversations,
+invitations and removals. A source that cannot be reached costs only its own part. The same
+page manages the account: rename, unlink, delete a user with no history, and merge
 one user into another. A merge moves every row that points at a user (a test fails if a new
 table is missed), keeps one of anything both held, carries over admin rights, and refuses to
 join two Plex accounts. The admin picks which user survives, and it keeps its own name.
@@ -608,6 +611,7 @@ rather than passed to the agent as an opaque ID.
 | `POST /api/account/links/:platform/code`    | JWT                   | A one-time code to send Kyle from that account                 |
 | `DELETE /api/account/links/:linkId`         | JWT                   | Unlink one of your own chat accounts                           |
 | `GET /api/users`                            | Admin                 | List users, their identities and what they own                 |
+| `GET /api/users/:id`                        | Admin                 | One person's requests, space, plays, chats and activity        |
 | `PATCH /api/users/:id`                      | Admin                 | Rename `{ displayName }`                                       |
 | `POST /api/users/:id/merge`                 | Admin                 | Merge another user in `{ from }`                               |
 | `DELETE /api/users/:id`                     | Admin                 | Delete a user with no history                                  |

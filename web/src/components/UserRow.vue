@@ -4,13 +4,12 @@
       <UserAvatar :name="user.displayName" :src="user.avatarUrl" />
 
       <div class="min-w-0 flex-1">
-        <button
-          type="button"
-          class="block truncate text-left text-sm font-medium text-text-primary after:absolute after:inset-0 focus:outline-none"
-          @click="emit('open')"
+        <router-link
+          :to="`/people/${user.id}`"
+          class="block truncate text-sm font-medium text-text-primary no-underline after:absolute after:inset-0 focus:outline-none"
         >
           {{ user.displayName }}
-        </button>
+        </router-link>
         <p class="mt-0.5 truncate text-xs text-text-muted">{{ historySummary(user.footprint) }}</p>
       </div>
 
@@ -42,8 +41,6 @@ import AppCard from "./ui/AppCard.vue";
 import StatusPill from "./ui/StatusPill.vue";
 
 const props = defineProps<{ user: AdminUser }>();
-
-const emit = defineEmits<{ open: [] }>();
 
 interface Account {
   key: string;

@@ -1,4 +1,4 @@
-import { asc, count, desc, eq, inArray, ne, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, inArray, ne, sql } from "drizzle-orm";
 import { db } from "./index.ts";
 import { conversations, messages } from "./schema.ts";
 
@@ -20,7 +20,9 @@ export interface ThreadSummaryRow {
 }
 
 /** Newest conversations first, each with the counts and preview the list needs. */
-export async function listThreadSummaries(): Promise<ThreadSummaryRow[]> {
+export async function listThreadSummaries(
+  options: { userId?: string; limit?: number } = {},
+): Promise<ThreadSummaryRow[]> {
   const messageCounts = db
     .select({
       conversationId: messages.conversationId,
@@ -68,9 +70,14 @@ export async function listThreadSummaries(): Promise<ThreadSummaryRow[]> {
     })
     .from(conversations)
     .leftJoin(messageCounts, sql`${conversations.id} = ${messageCounts.conversationId}`)
-    .where(inArray(conversations.interfaceType, VISIBLE_INTERFACES))
+    .where(
+      and(
+        inArray(conversations.interfaceType, VISIBLE_INTERFACES),
+        options.userId ? eq(conversations.userId, options.userId) : undefined,
+      ),
+    )
     .orderBy(desc(conversations.createdAt))
-    .limit(MAX_THREADS);
+    .limit(options.limit ?? MAX_THREADS);
 }
 
 export async function findConversation(id: string) {

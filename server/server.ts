@@ -31,6 +31,7 @@ import {
   handleRenameUser,
   handleMergeUsers,
   handleDeleteUser,
+  handleGetUserProfile,
 } from "./routes/api/users.ts";
 import {
   handleCreatePlexInvite,
@@ -199,6 +200,7 @@ export function startServer(port: number) {
 
     "/api/users": { GET: withSessionRefresh(handleGetUsers) },
     "/api/users/:userId": {
+      GET: (req) => withSessionRefresh(handleGetUserProfile)(req, req.params.userId),
       PATCH: (req) => withSessionRefresh(handleRenameUser)(req, req.params.userId),
       DELETE: (req) => withSessionRefresh(handleDeleteUser)(req, req.params.userId),
     },

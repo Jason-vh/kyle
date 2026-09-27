@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { mount } from "@vue/test-utils";
+import { mount, RouterLinkStub } from "@vue/test-utils";
 import type { AdminUser, UserFootprint } from "#shared/types";
 import UserRow from "./UserRow.vue";
 
@@ -31,14 +31,25 @@ const jordan: AdminUser = {
   footprint,
 };
 
+function render() {
+  return mount(UserRow, {
+    props: { user: jordan },
+    global: { stubs: { RouterLink: RouterLinkStub } },
+  });
+}
+
 describe("UserRow", () => {
+  test("opens their page", () => {
+    expect(render().findComponent(RouterLinkStub).props("to")).toBe("/people/u1");
+  });
+
   test("shows their Plex avatar", () => {
-    const row = mount(UserRow, { props: { user: jordan } });
+    const row = render();
     expect(row.find("img").attributes("src")).toBe("https://plex.tv/jordan.png");
   });
 
   test("marks each linked account and their passkeys", () => {
-    const row = mount(UserRow, { props: { user: jordan } });
+    const row = render();
     const labels = row.findAll('[role="img"]').map((icon) => icon.attributes("aria-label"));
     expect(labels).toEqual(["Slack: jordan", "Discord: D1", "2 passkeys"]);
   });

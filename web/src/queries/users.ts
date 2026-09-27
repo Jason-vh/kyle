@@ -1,11 +1,28 @@
 import { defineQueryOptions, useMutation, useQueryCache } from "@pinia/colada";
+import { toValue, type MaybeRefOrGetter } from "vue";
 import { useAccountQuery } from "./account";
-import { deleteUser, getUsers, mergeUsers, renameUser, unlinkIdentity } from "#web/api/users";
+import {
+  deleteUser,
+  getUserProfile,
+  getUsers,
+  mergeUsers,
+  renameUser,
+  unlinkIdentity,
+} from "#web/api/users";
 
 export const usersQuery = defineQueryOptions({ key: ["users"], query: getUsers });
 
 export function useUsers() {
   return useAccountQuery(usersQuery);
+}
+
+export const userProfileQuery = defineQueryOptions((id: string) => ({
+  key: ["users", id],
+  query: () => getUserProfile(id),
+}));
+
+export function useUserProfile(id: MaybeRefOrGetter<string>) {
+  return useAccountQuery(() => userProfileQuery(toValue(id)));
 }
 
 function useUsersMutation<T>(mutation: (input: T) => Promise<void>) {

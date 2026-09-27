@@ -125,6 +125,8 @@ export interface WatchHistory {
   watchers: Map<string, AccountWatcher[]>;
   /** Every dated play of each title, oldest first. */
   plays: Map<string, Play[]>;
+  /** What Plex called each title, which outlives the title leaving the library. */
+  titles: Map<string, string>;
 }
 
 function playOf(entry: HistoryEntry, person: PlexPerson): Play | undefined {
@@ -149,6 +151,7 @@ export function indexHistory(
   // watching a whole series counts once rather than once per episode.
   const accountsByKey = new Map<string, Map<string, number>>();
   const plays = new Map<string, Play[]>();
+  const titles = new Map<string, string>();
 
   const record = (key: string, entry: HistoryEntry): void => {
     const accounts = accountsByKey.get(key) ?? new Map<string, number>();
@@ -163,6 +166,9 @@ export function indexHistory(
     if (!key) continue;
 
     record(key, entry);
+
+    const title = entry.type === "episode" ? entry.grandparentTitle : entry.title;
+    if (title && !titles.has(key)) titles.set(key, title);
 
     const episode = resolveEpisodeKey(entry, key);
     if (episode) record(episode, entry);
@@ -183,7 +189,7 @@ export function indexHistory(
 
   for (const titlePlays of plays.values()) titlePlays.sort((a, b) => a.at.localeCompare(b.at));
 
-  return { watchers, plays };
+  return { watchers, plays, titles };
 }
 
 async function buildWatchHistory(): Promise<WatchHistory> {
@@ -217,7 +223,7 @@ async function getWatchHistory(): Promise<WatchHistory> {
     return value;
   } catch (error) {
     log.error("could not read plex watch history", { error: errorMessage(error) });
-    return { watchers: new Map(), plays: new Map() };
+    return { watchers: new Map(), plays: new Map(), titles: new Map() };
   }
 }
 
@@ -229,6 +235,27 @@ export async function getWatchers(): Promise<Map<string, AccountWatcher[]>> {
 /** Every dated play of one title, oldest first. */
 export async function getPlays(key: string): Promise<Play[]> {
   return (await getWatchHistory()).plays.get(key) ?? [];
+}
+
+export interface TitlePlay extends Play {
+  key: string;
+  title?: string;
+}
+
+/** Everything these Plex accounts played, newest first. */
+export async function getPlaysBy(accountIds: string[]): Promise<TitlePlay[]> {
+  const accounts = new Set(accountIds);
+  if (accounts.size === 0) return [];
+
+  const { plays, titles } = await getWatchHistory();
+  const theirs: TitlePlay[] = [];
+  for (const [key, titlePlays] of plays) {
+    for (const play of titlePlays) {
+      if (accounts.has(play.person.accountId))
+        theirs.push({ ...play, key, title: titles.get(key) });
+    }
+  }
+  return theirs.sort((a, b) => b.at.localeCompare(a.at));
 }
 
 export function invalidateWatchers(): void {
