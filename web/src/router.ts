@@ -2,6 +2,18 @@ import { createRouter, createWebHistory } from "vue-router";
 import { useQueryCache } from "@pinia/colada";
 import { pinia } from "./pinia";
 import { sessionQuery } from "./queries/session";
+import AccountView from "./views/AccountView.vue";
+import DashboardView from "./views/DashboardView.vue";
+import DiscoverView from "./views/DiscoverView.vue";
+import LibraryView from "./views/LibraryView.vue";
+import LoginView from "./views/LoginView.vue";
+import MediaView from "./views/MediaView.vue";
+import MembersView from "./views/MembersView.vue";
+import PeopleView from "./views/PeopleView.vue";
+import PersonView from "./views/PersonView.vue";
+import RequestsView from "./views/RequestsView.vue";
+import ThreadDetailView from "./views/ThreadDetailView.vue";
+import ThreadListView from "./views/ThreadListView.vue";
 
 export const router = createRouter({
   history: createWebHistory(),
@@ -15,7 +27,7 @@ export const router = createRouter({
     {
       path: "/login",
       name: "login",
-      component: () => import("./views/LoginView.vue"),
+      component: LoginView,
     },
     {
       path: "/",
@@ -24,67 +36,67 @@ export const router = createRouter({
     {
       path: "/home",
       name: "home",
-      component: () => import("./views/DashboardView.vue"),
+      component: DashboardView,
       meta: { requiresAuth: true },
     },
     {
       path: "/discover",
       name: "discover",
-      component: () => import("./views/DiscoverView.vue"),
+      component: DiscoverView,
       meta: { requiresAuth: true },
     },
     {
       path: "/library",
       name: "library",
-      component: () => import("./views/LibraryView.vue"),
+      component: LibraryView,
       meta: { requiresAuth: true },
     },
     {
       path: "/media/:mediaType(movie|series)/:tmdbId(\\d+)",
       name: "media",
-      component: () => import("./views/MediaView.vue"),
+      component: MediaView,
       meta: { requiresAuth: true },
     },
     {
       path: "/requests",
       name: "requests",
-      component: () => import("./views/RequestsView.vue"),
+      component: RequestsView,
       meta: { requiresAuth: true },
     },
     {
       path: "/account",
       name: "account",
-      component: () => import("./views/AccountView.vue"),
+      component: AccountView,
       meta: { requiresAuth: true },
     },
     {
       path: "/members",
       name: "members",
-      component: () => import("./views/MembersView.vue"),
+      component: MembersView,
       meta: { requiresAuth: true },
     },
     {
       path: "/people",
       name: "people",
-      component: () => import("./views/PeopleView.vue"),
+      component: PeopleView,
       meta: { requiresAuth: true, requiresAdmin: true },
     },
     {
       path: "/people/:id",
       name: "person",
-      component: () => import("./views/PersonView.vue"),
+      component: PersonView,
       meta: { requiresAuth: true, requiresAdmin: true },
     },
     {
       path: "/threads",
       name: "threads",
-      component: () => import("./views/ThreadListView.vue"),
+      component: ThreadListView,
       meta: { requiresAuth: true, requiresAdmin: true },
     },
     {
       path: "/threads/:id",
       name: "thread",
-      component: () => import("./views/ThreadDetailView.vue"),
+      component: ThreadDetailView,
       meta: { requiresAuth: true, requiresAdmin: true },
     },
   ],
