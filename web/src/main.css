@@ -141,20 +141,11 @@ button:not(:disabled),
   cursor: pointer;
 }
 
-/*
- * Things arrive from slightly below and slightly out of focus. The blur is
- * what makes it read as settling rather than sliding.
- */
+/* Things arrive from slightly below. */
 @keyframes rise-in {
   from {
     opacity: 0;
-    filter: blur(6px);
     transform: translateY(8px);
-  }
-  to {
-    opacity: 1;
-    filter: blur(0);
-    transform: none;
   }
 }
 
@@ -164,7 +155,7 @@ button:not(:disabled),
  * library would animate rows nobody has scrolled to yet.
  */
 .stagger > * {
-  animation: rise-in 0.45s cubic-bezier(0.2, 0, 0, 1) both;
+  animation: rise-in 0.45s cubic-bezier(0.2, 0, 0, 1) backwards;
 }
 
 .stagger > *:nth-child(1) {
