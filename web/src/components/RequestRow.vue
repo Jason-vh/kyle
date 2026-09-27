@@ -9,6 +9,8 @@
             :media-type="request.mediaType"
             :tmdb-id="request.tmdbId"
             :title="request.title"
+            :year="request.year ?? undefined"
+            :poster-path="request.posterPath"
           />
           <span v-if="request.year" class="shrink-0 text-xs text-text-muted">
             {{ request.year }}

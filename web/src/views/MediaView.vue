@@ -1,35 +1,74 @@
 <template>
   <AppPage>
+    <div v-if="heading || isPending" class="stagger">
+      <div :class="backdrop || isPending ? 'relative -mx-4 -mt-4 sm:mx-0 sm:mt-0' : 'mb-4'">
+        <div
+          v-if="backdrop || isPending"
+          class="relative h-56 overflow-hidden sm:h-72 sm:rounded-card"
+        >
+          <img v-if="backdrop" :src="backdrop" alt="" class="size-full object-cover" />
+          <Skeleton v-else class="size-full rounded-none" />
+          <!-- The title sits on the artwork, so the artwork fades into a floor for it. -->
+          <div
+            class="absolute inset-0 bg-gradient-to-b from-bg-base/40 via-transparent to-bg-base"
+          />
+        </div>
+
+        <div
+          class="flex items-center justify-between"
+          :class="backdrop || isPending ? 'absolute inset-x-0 top-0 p-3' : ''"
+        >
+          <button type="button" :class="GLASS" aria-label="Back" @click="goBack">
+            <IconBack class="size-5" aria-hidden="true" />
+          </button>
+          <button
+            v-if="hasMenu"
+            type="button"
+            :class="GLASS"
+            aria-label="More actions"
+            @click="menuOpen = true"
+          >
+            <IconMore class="size-5" aria-hidden="true" />
+          </button>
+        </div>
+      </div>
+
+      <header class="relative flex items-end gap-4" :class="backdrop || isPending ? '-mt-20' : ''">
+        <MediaPoster
+          v-if="heading"
+          :path="heading.posterPath"
+          :alt="heading.title"
+          size="xl"
+          class="shadow-raised"
+        />
+        <!-- Its own edge and shadow, so it reads as sitting on the artwork rather than part of it. -->
+        <div
+          v-else
+          class="aspect-[2/3] w-22 shrink-0 overflow-hidden rounded-lg border border-border-primary bg-bg-surface shadow-raised"
+        >
+          <Skeleton class="size-full rounded-none" />
+        </div>
+
+        <div class="min-w-0 flex-1 pb-0.5">
+          <h1
+            v-if="heading"
+            class="text-xl leading-tight font-semibold text-text-primary sm:text-2xl"
+          >
+            {{ heading.title }}
+            <span v-if="heading.year" class="font-normal text-text-secondary">
+              {{ heading.year }}
+            </span>
+          </h1>
+          <Skeleton v-else class="h-6 w-3/5" />
+          <p v-if="media" class="mt-1 text-sm text-text-secondary">{{ facts.join(" · ") }}</p>
+          <Skeleton v-else class="mt-2.5 h-3.5 w-2/5" />
+        </div>
+      </header>
+    </div>
+
     <QueryState :loading="isPending" :error="error">
       <template #loading>
         <div class="stagger">
-          <div class="relative -mx-4 -mt-4 sm:mx-0 sm:mt-0">
-            <div class="relative h-56 overflow-hidden sm:h-72 sm:rounded-card">
-              <Skeleton class="size-full rounded-none" />
-              <div
-                class="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-bg-base"
-              />
-            </div>
-            <div class="absolute inset-x-0 top-0 p-3">
-              <button type="button" :class="GLASS" aria-label="Back" @click="goBack">
-                <IconBack class="size-5" aria-hidden="true" />
-              </button>
-            </div>
-          </div>
-
-          <div class="relative z-10 -mt-20 flex items-end gap-4">
-            <!-- Its own edge and shadow, so it reads as sitting on the artwork rather than part of it. -->
-            <div
-              class="aspect-[2/3] w-22 shrink-0 overflow-hidden rounded-lg border border-border-primary bg-bg-surface shadow-raised"
-            >
-              <Skeleton class="size-full rounded-none" />
-            </div>
-            <div class="min-w-0 flex-1 space-y-2.5 pb-1.5">
-              <Skeleton class="h-6 w-3/5" />
-              <Skeleton class="h-3.5 w-2/5" />
-            </div>
-          </div>
-
           <AppCard :padded="false" class="mt-5 p-4">
             <div class="flex items-center gap-2.5">
               <Skeleton class="size-2 rounded-full" />
@@ -51,53 +90,6 @@
       </template>
 
       <article v-if="media" class="stagger">
-        <div :class="backdrop ? 'relative -mx-4 -mt-4 sm:mx-0 sm:mt-0' : 'mb-4'">
-          <div v-if="backdrop" class="relative h-56 overflow-hidden sm:h-72 sm:rounded-card">
-            <img :src="backdrop" alt="" class="size-full object-cover" />
-            <!-- The title sits on the artwork, so the artwork fades into a floor for it. -->
-            <div
-              class="absolute inset-0 bg-gradient-to-b from-bg-base/40 via-transparent to-bg-base"
-            />
-          </div>
-
-          <div
-            class="flex items-center justify-between"
-            :class="backdrop ? 'absolute inset-x-0 top-0 p-3' : ''"
-          >
-            <button type="button" :class="GLASS" aria-label="Back" @click="goBack">
-              <IconBack class="size-5" aria-hidden="true" />
-            </button>
-            <button
-              v-if="hasMenu"
-              type="button"
-              :class="GLASS"
-              aria-label="More actions"
-              @click="menuOpen = true"
-            >
-              <IconMore class="size-5" aria-hidden="true" />
-            </button>
-          </div>
-        </div>
-
-        <header class="relative flex items-end gap-4" :class="backdrop ? '-mt-20' : ''">
-          <MediaPoster
-            :path="media.posterPath"
-            :alt="media.title"
-            size="xl"
-            class="shadow-raised"
-          />
-
-          <div class="min-w-0 flex-1 pb-0.5">
-            <h1 class="text-xl leading-tight font-semibold text-text-primary sm:text-2xl">
-              {{ media.title }}
-              <span v-if="media.year" class="font-normal text-text-secondary">
-                {{ media.year }}
-              </span>
-            </h1>
-            <p class="mt-1 text-sm text-text-secondary">{{ facts.join(" · ") }}</p>
-          </div>
-        </header>
-
         <div class="mt-5 flex flex-col gap-7">
           <MediaStatus v-if="showsStatus" :media="media" @refresh="refetch()" />
 
@@ -173,6 +165,7 @@ import { useRoute, useRouter } from "vue-router";
 import { useResizeObserver, useTitle } from "@vueuse/core";
 import type { LibraryMediaType, RequestState } from "#shared/types";
 import { backdropUrl } from "#web/utils/images";
+import { readPreview } from "#web/utils/title-preview";
 import { formatDuration, formatSize } from "#web/utils/format";
 import MediaActivityLog from "#web/components/MediaActivityLog.vue";
 import MediaMenu from "#web/components/MediaMenu.vue";
@@ -215,7 +208,10 @@ const { data: media, error, isPending, refetch } = useMediaDetail(mediaType, tmd
 const { data: activity } = useMediaActivity(mediaType, tmdbId);
 const { isAdmin } = useSession();
 
-useTitle(() => (media.value ? `${media.value.title} — Kyle` : "Kyle"));
+const preview = computed(() => readPreview(window.history.state, mediaType.value, tmdbId.value));
+const heading = computed(() => media.value ?? preview.value);
+
+useTitle(() => (heading.value ? `${heading.value.title} — Kyle` : "Kyle"));
 
 const backdrop = computed(() => backdropUrl(media.value?.backdropPath ?? null));
 

@@ -10,6 +10,8 @@
         :media-type="item.mediaType"
         :tmdb-id="item.tmdbId"
         :title="item.title"
+        :year="item.year"
+        :poster-path="item.posterPath"
         :class="{ 'text-text-secondary!': missing }"
       />
       <p class="truncate text-xs whitespace-nowrap text-text-muted tabular-nums">

@@ -1,5 +1,8 @@
 import { defineQueryOptions, useMutation, useQueryCache } from "@pinia/colada";
-import { useAccountQuery } from "./account";
+import { forAccount, useAccountQuery } from "./account";
+import { sessionQuery } from "./session";
+import { pinia } from "#web/pinia";
+import type { AuthStatus } from "#web/api/auth";
 import type { MaybeRefOrGetter } from "vue";
 import { toValue } from "vue";
 import type { LibraryMediaType } from "#shared/types";
@@ -115,6 +118,15 @@ export function useMediaDetail(
   return useAccountQuery(() =>
     mediaDetailQuery({ mediaType: toValue(mediaType), tmdbId: toValue(tmdbId) }),
   );
+}
+
+export function prefetchMediaDetail(mediaType: LibraryMediaType, tmdbId: number): void {
+  const cache = useQueryCache(pinia);
+  const user = cache.getQueryData<AuthStatus>(sessionQuery.key)?.user ?? null;
+  if (!user) return;
+
+  const entry = cache.ensure(forAccount(mediaDetailQuery({ mediaType, tmdbId }), user));
+  cache.refresh(entry).catch(() => undefined);
 }
 
 export function useMediaActivity(

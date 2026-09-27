@@ -10,12 +10,30 @@ const render = (tmdbId?: number) =>
   });
 
 describe("MediaTitle", () => {
-  test("links to the title's own page", () => {
-    const link = render(95396).findComponent(RouterLinkStub);
+  test("links to the title's own page, carrying what the page can show before it loads", () => {
+    const link = mount(MediaTitle, {
+      props: {
+        mediaType: "series" as const,
+        tmdbId: 95396,
+        title: "Severance",
+        year: 2022,
+        posterPath: "/severance.jpg",
+      },
+      global: { stubs: { RouterLink: RouterLinkStub } },
+    }).findComponent(RouterLinkStub);
 
     expect(link.props("to")).toEqual({
       name: "media",
       params: { mediaType: "series", tmdbId: 95396 },
+      state: {
+        preview: {
+          mediaType: "series",
+          tmdbId: 95396,
+          title: "Severance",
+          year: 2022,
+          posterPath: "/severance.jpg",
+        },
+      },
     });
   });
 

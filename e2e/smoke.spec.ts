@@ -114,3 +114,26 @@ test("a series asks which seasons to download before it is requested", async ({
   await page.goto("/requests");
   await expect(page.getByText(/Season 2/)).toBeVisible();
 });
+
+test("a title opened from a list shows its name before its page has loaded", async ({
+  page,
+  context,
+}) => {
+  await signIn(context, "requester");
+  await page.goto("/discover");
+  await page.getByPlaceholder("Search for a movie or series…").fill("Arrival");
+
+  let release = () => {};
+  const held = new Promise<void>((resolve) => (release = resolve));
+  await page.route("**/api/media/movie/329865", async (route) => {
+    await held;
+    await route.continue();
+  });
+  await page.getByRole("link", { name: "Arrival", exact: true }).click();
+
+  await expect(page.getByRole("heading", { name: /^Arrival/, level: 1 })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "About", level: 2 })).toHaveCount(0);
+
+  release();
+  await expect(page.getByRole("heading", { name: "About", level: 2 })).toBeVisible();
+});

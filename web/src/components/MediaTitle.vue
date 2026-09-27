@@ -11,24 +11,36 @@
     -->
     <RouterLink
       v-if="tmdbId"
-      :to="{ name: 'media', params: { mediaType, tmdbId } }"
+      :to="{
+        name: 'media',
+        params: { mediaType, tmdbId },
+        state: { preview: { mediaType, tmdbId, title, year, posterPath } },
+      }"
       class="text-inherit no-underline after:absolute after:inset-0 hover:underline"
+      @pointerenter="prefetch(tmdbId)"
+      @focus="prefetch(tmdbId)"
+      @touchstart.passive="prefetch(tmdbId)"
     >
       {{ title }}
     </RouterLink>
     <template v-else>{{ title }}</template>
-    <span v-if="year" class="font-normal text-text-muted"> ({{ year }})</span>
   </h3>
 </template>
 
 <script setup lang="ts">
 import type { LibraryMediaType } from "#shared/types";
+import { prefetchMediaDetail } from "#web/queries/media";
 
-defineProps<{
+const props = defineProps<{
   mediaType: LibraryMediaType;
   tmdbId?: number;
   title: string;
   year?: number;
+  posterPath?: string | null;
   wrap?: boolean;
 }>();
+
+function prefetch(tmdbId: number) {
+  prefetchMediaDetail(props.mediaType, tmdbId);
+}
 </script>

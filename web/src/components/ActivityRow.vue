@@ -5,7 +5,13 @@
 
       <div class="min-w-0 flex-1">
         <div class="flex items-baseline gap-2">
-          <MediaTitle :media-type="item.mediaType" :tmdb-id="item.tmdbId" :title="item.title" />
+          <MediaTitle
+            :media-type="item.mediaType"
+            :tmdb-id="item.tmdbId"
+            :title="item.title"
+            :year="item.year"
+            :poster-path="item.posterPath"
+          />
           <span v-if="item.year" class="shrink-0 text-xs text-text-muted">{{ item.year }}</span>
         </div>
         <p v-if="item.detail" class="truncate text-xs text-text-muted">{{ item.detail }}</p>
