@@ -18,16 +18,11 @@
         class="notifications fixed inset-0 z-30 overflow-y-auto bg-bg-base focus:outline-none"
       >
         <div
-          class="pointer-events-none absolute inset-x-0 top-0 h-64 overflow-hidden"
+          v-if="hero"
+          class="wash pointer-events-none absolute inset-x-0 top-0 h-72 overflow-hidden"
           aria-hidden="true"
         >
-          <img
-            v-if="hero"
-            :src="hero"
-            alt=""
-            class="size-full scale-125 object-cover opacity-40 blur-2xl"
-          />
-          <div class="absolute inset-0 bg-gradient-to-b from-transparent to-bg-base" />
+          <img :src="hero" alt="" class="size-full scale-125 object-cover opacity-40 blur-2xl" />
         </div>
 
         <header
@@ -71,7 +66,7 @@
                 <component
                   :is="item.tmdbId ? RouterLink : 'div'"
                   v-bind="item.tmdbId ? { to: `/media/${item.mediaType}/${item.tmdbId}` } : {}"
-                  class="flex items-center gap-3 rounded-card border border-border-primary bg-bg-surface p-3 no-underline transition-colors"
+                  class="flex items-start gap-3 rounded-card border border-border-primary bg-bg-surface p-3 no-underline transition-colors"
                   :class="item.tmdbId ? 'hover:bg-bg-elevated' : ''"
                   @click="item.tmdbId && (open = false)"
                 >
@@ -80,7 +75,7 @@
                     <p class="truncate text-sm font-semibold text-text-primary">
                       {{ item.title }}
                     </p>
-                    <p class="text-sm text-text-secondary">{{ item.body }}</p>
+                    <p class="line-clamp-3 text-sm text-text-secondary">{{ item.body }}</p>
                     <p class="mt-0.5 text-xs text-text-muted">
                       {{
                         day.label === "Today"
@@ -91,7 +86,7 @@
                   </div>
                   <span
                     v-if="!item.read"
-                    class="size-2 shrink-0 rounded-full bg-accent-purple"
+                    class="mt-1.5 size-2 shrink-0 rounded-full bg-accent-purple"
                     role="img"
                     aria-label="Unread"
                   />
@@ -137,6 +132,10 @@ const hero = computed(() => items.value.find((item) => item.posterUrl)?.posterUr
 </script>
 
 <style scoped>
+.wash {
+  mask-image: linear-gradient(to bottom, transparent, black 35%, black 55%, transparent);
+}
+
 .notifications[data-state="open"] {
   animation: rise-in 0.35s cubic-bezier(0.2, 0, 0, 1) both;
 }
