@@ -59,6 +59,7 @@ export async function listNotifications(userId: string): Promise<AppNotification
   return rows.map((row) => ({
     id: row.id,
     mediaType: row.mediaType,
+    tmdbId: row.tmdbId ?? undefined,
     title: row.title,
     body: row.body,
     read: row.readAt !== null,

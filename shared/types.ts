@@ -372,6 +372,8 @@ export interface MediaRequest {
 export interface AppNotification {
   id: string;
   mediaType: LibraryMediaType;
+  tmdbId?: number;
+  posterUrl?: string;
   /** "Severance (2022)" */
   title: string;
   body: string;

@@ -52,9 +52,9 @@
 
     <nav
       v-if="user"
-      class="fixed inset-x-0 bottom-0 z-10 border-t border-border-primary bg-bg-surface/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-sm sm:hidden"
+      class="fixed inset-x-3 bottom-[calc(0.75rem+env(safe-area-inset-bottom))] z-10 rounded-card border border-border-primary bg-bg-surface/80 shadow-raised backdrop-blur-md sm:hidden"
     >
-      <div class="flex">
+      <div class="flex px-1">
         <router-link
           v-for="link in NAV_LINKS"
           :key="link.to"

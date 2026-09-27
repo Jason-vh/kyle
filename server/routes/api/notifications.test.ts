@@ -5,14 +5,37 @@ import { buildJwtCookie, signJwt } from "#server/auth/jwt.ts";
 import { db } from "#server/db/index.ts";
 import { notifications } from "#server/db/schema.ts";
 import { createTestUser, deleteTestUser } from "#server/db/testing.ts";
+import { invalidatePosters } from "#server/library/posters.ts";
+import type { NotificationsResponse } from "#shared/types.ts";
 
 process.env.JWT_SECRET = "test-secret-that-is-long-enough-for-hs256";
+
+const realFetch = globalThis.fetch;
+const previousHosts = { radarr: process.env.RADARR_HOST, sonarr: process.env.SONARR_HOST };
 
 let userId = "";
 let otherId = "";
 let asUser = "";
 
 beforeAll(async () => {
+  process.env.RADARR_HOST = "http://radarr.test";
+  process.env.RADARR_API_KEY ??= "k";
+  process.env.SONARR_HOST = "http://sonarr.test";
+  process.env.SONARR_API_KEY ??= "k";
+  globalThis.fetch = (async (url: string) => {
+    if (url.includes("radarr.test")) {
+      return Response.json([
+        {
+          id: 1,
+          tmdbId: 27205,
+          title: "Inception",
+          images: [{ coverType: "poster", remoteUrl: "https://image.test/inception.jpg" }],
+        },
+      ]);
+    }
+    return Response.json([]);
+  }) as unknown as typeof fetch;
+  invalidatePosters();
   userId = await createTestUser("Notifications");
   otherId = await createTestUser("Someone Else");
   asUser = buildJwtCookie(await signJwt({ id: userId, name: "Jane", admin: false }), true).split(
@@ -26,6 +49,15 @@ afterEach(async () => {
 });
 
 afterAll(async () => {
+  globalThis.fetch = realFetch;
+  invalidatePosters();
+  for (const [name, value] of [
+    ["RADARR_HOST", previousHosts.radarr],
+    ["SONARR_HOST", previousHosts.sonarr],
+  ] as const) {
+    if (value === undefined) delete process.env[name];
+    else process.env[name] = value;
+  }
   await deleteTestUser(userId);
   await deleteTestUser(otherId);
 });
@@ -52,6 +84,28 @@ const read = (cookie?: string, body?: string) =>
   handleMarkNotificationsRead(request("/api/notifications/read", "POST", cookie, body));
 
 describe("GET /api/notifications", () => {
+  test("carries the title's poster when the library has it", async () => {
+    await db.insert(notifications).values([
+      {
+        userId,
+        mediaType: "movie",
+        tmdbId: 27205,
+        title: "Inception (2010)",
+        body: "It is ready to watch.",
+      },
+      { userId, mediaType: "movie", tmdbId: 1, title: "Gone (2012)", body: "It is gone." },
+    ]);
+
+    const response = (await (await listed(asUser)).json()) as NotificationsResponse;
+
+    const byTitle = new Map(response.notifications.map((item) => [item.title, item]));
+    expect(byTitle.get("Inception (2010)")).toMatchObject({
+      tmdbId: 27205,
+      posterUrl: "https://image.test/inception.jpg",
+    });
+    expect(byTitle.get("Gone (2012)")?.posterUrl).toBeUndefined();
+  });
+
   test("a signed-out visitor is refused", async () => {
     expect((await listed()).status).toBe(401);
   });
