@@ -176,6 +176,29 @@ describe("seasonEntry", () => {
     expect(seasonEntry(show, show.seasons[0]!).monitored).toBe(false);
   });
 
+  // 1883: aired years ago, every episode since switched off. Sonarr counts
+  // none, which once read as "not aired yet".
+  test("a season aired long ago with every episode unmonitored is not looked for", () => {
+    const show = series({ firstAired: "2021-12-19", seasons: [season(1, 0, 0)] });
+    show.seasons[0]!.statistics!.totalEpisodeCount = 10;
+
+    expect(seasonEntry(show, show.seasons[0]!)).toMatchObject({
+      monitored: false,
+      awaiting: undefined,
+    });
+  });
+
+  test("a season whose monitored episodes are all still to come is unreleased", () => {
+    const show = series({ seasons: [season(2, 0, 0)] });
+    show.seasons[0]!.statistics!.totalEpisodeCount = 8;
+    show.seasons[0]!.statistics!.nextAiring = "2027-03-01";
+
+    expect(seasonEntry(show, show.seasons[0]!).awaiting).toEqual({
+      reason: "unreleased",
+      expectedAt: "2027-03-01",
+    });
+  });
+
   test("a season with nothing aired yet is unreleased, dated by the next airing", () => {
     const show = series({ nextAiring: "2027-01-14", seasons: [season(5, 0, 0)] });
 
@@ -241,6 +264,18 @@ describe("seriesEntry", () => {
     );
 
     expect(entry.awaiting).toEqual({ reason: "unreleased", expectedAt: "2026-01-08T01:00:00Z" });
+  });
+
+  test("an ended series with every episode unmonitored is not looked for, not unaired", () => {
+    const entry = seriesEntry(
+      series({
+        firstAired: "2021-12-19",
+        statistics: { ...statistics(0, 0), totalEpisodeCount: 11 },
+        seasons: [season(1, 0, 0)],
+      }),
+    );
+
+    expect(entry).toMatchObject({ monitored: false, awaiting: undefined });
   });
 
   test("a series the service reports nothing about is treated as unaired", () => {

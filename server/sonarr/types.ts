@@ -37,6 +37,9 @@ export interface SonarrSeason {
     totalEpisodeCount: number;
     sizeOnDisk: number;
     percentOfEpisodes: number;
+    /** Of the monitored episodes only, like the counts. */
+    nextAiring?: string;
+    previousAiring?: string;
   };
 }
 

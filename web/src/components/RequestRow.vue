@@ -92,7 +92,7 @@ function explain(request: MediaRequest): string | undefined {
   if (state === "stalled") return detail ?? "No seeders — it will be retried";
   if (state === "blocked") return detail ?? "Downloaded, but it could not be imported";
   if (state === "importing") return "Downloaded — adding it to Plex";
-  if (state === "paused") return "Nobody is looking for this";
+  if (state === "paused") return "Nothing downloads until it is requested again";
   if (state === "removed") return detail ?? "No longer in the library";
 
   return undefined;

@@ -173,6 +173,20 @@ describe("season state", () => {
     expect(season?.eta).toBe("00:10:00");
   });
 
+  // 1883: aired years ago, files gone, every episode switched off while the
+  // season's own flag stayed on. Nothing is coming, and nothing is late.
+  test("a season aired long ago with every episode off is not monitored, nor unreleased", () => {
+    const show = counted(0, 0);
+    show.seasons[0]!.statistics!.totalEpisodeCount = 2;
+    const off = (episodeNumber: number) =>
+      episode(1, episodeNumber, { hasFile: false, monitored: false, airDate: iso(-1500) });
+
+    const [season] = build(show, [off(1), off(2)]);
+
+    expect(season?.monitored).toBe(false);
+    expect(season?.state).toBe("unrequested");
+  });
+
   test("a season Sonarr counts no episodes in has nothing to show yet", () => {
     const [season] = build(counted(0, 0, false), []);
 

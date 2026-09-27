@@ -23,6 +23,7 @@ export interface Awaiting {
 
 export interface LibraryEntry {
   serviceId: number;
+  /** Something is still being looked for, which a monitored flag alone does not say. */
   monitored: boolean;
   hasFiles: boolean;
   /** Everything the service counts is on disk, so nothing is left to fetch. */
@@ -101,42 +102,64 @@ function shortfallOf(seasons: SonarrSeason[] = []): MissingSeason[] {
   return missing;
 }
 
+/** What Sonarr counts of a series or a season: only the monitored episodes, aired or on disk. */
+interface Counts {
+  episodeCount?: number;
+  episodeFileCount?: number;
+  totalEpisodeCount?: number;
+}
+
+/**
+ * Whether anything is still being looked for. Sonarr counts only monitored
+ * episodes, so a count of nought cannot tell "nothing has aired" from "nothing
+ * is monitored": only an episode still to come, or none listed at all, means
+ * something is on its way.
+ */
+function lookingFor(monitored: boolean, counts: Counts = {}, nextAiring?: string): boolean {
+  if (!monitored) return false;
+  const wanted = counts.episodeCount ?? 0;
+  const present = counts.episodeFileCount ?? 0;
+  return wanted > present || nextAiring !== undefined || (counts.totalEpisodeCount ?? 0) === 0;
+}
+
 /**
  * One season asked what the series is asked, so a request for a season can be
  * answered by the same state model as a request for all of it.
  */
 export function seasonEntry(series: SonarrSeries, season: SonarrSeason): LibraryEntry {
   const present = season.statistics?.episodeFileCount ?? 0;
-  const aired = season.statistics?.episodeCount ?? 0;
-  const gap = aired - present;
+  const wanted = season.statistics?.episodeCount ?? 0;
+  const gap = wanted - present;
+  const next = season.statistics?.nextAiring;
+  const looking = lookingFor(season.monitored, season.statistics, next);
 
   return {
     serviceId: series.id,
-    monitored: season.monitored,
+    monitored: looking,
     hasFiles: present > 0,
-    complete: aired > 0 && gap === 0,
+    complete: wanted > 0 && gap === 0,
     missing: gap > 0 ? [{ season: season.seasonNumber, episodes: gap }] : undefined,
     awaiting:
-      aired === 0
-        ? { reason: "unreleased", expectedAt: series.nextAiring ?? series.firstAired }
+      looking && wanted === 0
+        ? { reason: "unreleased", expectedAt: next ?? series.nextAiring }
         : undefined,
   };
 }
 
-/** Sonarr counts only episodes that have aired, so none means none yet. */
 export function seriesEntry(series: SonarrSeries): LibraryEntry {
   const present = series.statistics?.episodeFileCount ?? 0;
-  const aired = series.statistics?.episodeCount ?? 0;
+  const wanted = series.statistics?.episodeCount ?? 0;
   const missing = shortfallOf(series.seasons);
+  const looking = lookingFor(series.monitored, series.statistics, series.nextAiring);
 
   return {
     serviceId: series.id,
-    monitored: series.monitored,
+    monitored: looking,
     hasFiles: present > 0,
-    complete: aired > 0 && missing.length === 0,
+    complete: wanted > 0 && missing.length === 0,
     missing: missing.length > 0 ? missing : undefined,
     awaiting:
-      aired === 0
+      looking && wanted === 0
         ? { reason: "unreleased", expectedAt: series.nextAiring ?? series.firstAired }
         : undefined,
     seasons: new Map(

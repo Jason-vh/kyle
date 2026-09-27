@@ -78,6 +78,17 @@ function statusOf(
   return { state, detail, since, expectedAt, progress, eta, plexUrl };
 }
 
+/**
+ * Sonarr keeps a season's flag and its episodes' flags apart, and searches by
+ * the episodes: a season flagged but with every episode switched off is not
+ * monitored in any sense that matters. One with no episodes listed yet has
+ * only its flag to go on.
+ */
+function isMonitored(season: SonarrSeason, episodes: EpisodeSummary[]): boolean {
+  if (!season.monitored) return false;
+  return episodes.length === 0 || episodes.some((episode) => episode.monitored);
+}
+
 function byNumber(a: { seasonNumber: number }, b: { seasonNumber: number }): number {
   if (a.seasonNumber === SPECIALS) return 1;
   if (b.seasonNumber === SPECIALS) return -1;
@@ -120,7 +131,7 @@ export function buildSeasons(
 
       return {
         seasonNumber: season.seasonNumber,
-        monitored: season.monitored,
+        monitored: isMonitored(season, seasonEpisodes),
         episodeCount: season.statistics?.episodeCount ?? 0,
         episodeFileCount: season.statistics?.episodeFileCount ?? 0,
         sizeOnDisk: season.statistics?.sizeOnDisk ?? 0,

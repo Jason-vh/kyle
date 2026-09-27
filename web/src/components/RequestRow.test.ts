@@ -38,7 +38,7 @@ describe("RequestRow", () => {
     blocked: "Can't import",
     importing: "Almost there",
     ready: "Ready",
-    paused: "Paused",
+    paused: "Not looking",
     removed: "Gone",
   };
 
@@ -82,7 +82,7 @@ describe("RequestRow", () => {
 
   test("explains a state the service says nothing about", () => {
     expect(render({ state: "stalled" }).text()).toContain("No seeders");
-    expect(render({ state: "paused" }).text()).toContain("Nobody is looking for this");
+    expect(render({ state: "paused" }).text()).toContain("Nothing downloads until it is requested");
   });
 
   test("says how long it has been that way", () => {

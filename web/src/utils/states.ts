@@ -18,7 +18,7 @@ export const REQUEST_STATES: Record<RequestState, StateBadge> = {
   blocked: { label: "Can't import", tone: "red" },
   importing: { label: "Almost there", tone: "amber" },
   ready: { label: "Ready", tone: "green" },
-  paused: { label: "Paused", tone: "neutral" },
+  paused: { label: "Not looking", tone: "neutral" },
   removed: { label: "Gone", tone: "neutral" },
 };
 
