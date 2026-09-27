@@ -13,7 +13,7 @@ import { queuesByService, serviceKey } from "#server/requests/state.ts";
 import { getWatchers, watchKey } from "#server/plex/history.ts";
 import { getPlexAvatars } from "#server/plex/access.ts";
 import { watchersFor, type Viewer } from "#server/people.ts";
-import { posterOf } from "#server/media-images.ts";
+import { attachPosters } from "#server/tmdb/artwork.ts";
 import { getStorage } from "#server/dashboard/storage.ts";
 import { createLogger } from "#server/logger.ts";
 import { errorMessage } from "#server/errors.ts";
@@ -26,7 +26,6 @@ export function toMovie(movie: RadarrMovie): LibraryItem {
     tmdbId: movie.tmdbId,
     title: movie.title,
     year: movie.year || undefined,
-    posterUrl: posterOf(movie),
     requestedBy: [],
     requestedByMe: false,
     watchedBy: [],
@@ -40,7 +39,6 @@ export function toSeries(series: SonarrSeries): LibraryItem {
     tmdbId: series.tmdbId,
     title: series.title,
     year: series.year || undefined,
-    posterUrl: posterOf(series),
     requestedBy: [],
     requestedByMe: false,
     watchedBy: [],
@@ -96,6 +94,7 @@ export async function listLibrary(viewer: Viewer): Promise<LibraryListing> {
     getWatchers(),
     getPlexAvatars(),
     queuesByService(),
+    attachPosters(items),
   ]);
   annotateRequesters(items, viewer.userId, requesters, avatars);
 

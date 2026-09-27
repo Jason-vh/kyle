@@ -60,6 +60,15 @@ export async function searchMulti(
   return request<TMDBSearchResponse<TMDBMultiResult>>(`/search/multi?${queryString}`);
 }
 
+export interface TMDBArtwork {
+  poster_path: string | null;
+  backdrop_path: string | null;
+}
+
+export async function getArtwork(kind: "movie" | "tv", id: number): Promise<TMDBArtwork> {
+  return request<TMDBArtwork>(`/${kind}/${id}`);
+}
+
 export async function getMovie(movieId: number): Promise<TMDBMovieDetails> {
   return request<TMDBMovieDetails>(`/movie/${movieId}?append_to_response=release_dates`);
 }

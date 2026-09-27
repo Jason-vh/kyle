@@ -1,8 +1,8 @@
 import { requireAuth } from "#server/auth/middleware.ts";
 import { isUuid, readJsonObject } from "#server/http/input.ts";
 import { countUnread, listNotifications, markRead } from "#server/db/notifications.ts";
-import { getPosters } from "#server/library/posters.ts";
-import { watchKey } from "#server/plex/keys.ts";
+import { attachPosters } from "#server/tmdb/artwork.ts";
+import { fillSeriesIds } from "#server/notifications/series-ids.ts";
 import { createLogger } from "#server/logger.ts";
 import { errorMessage, errorResponse } from "#server/errors.ts";
 
@@ -17,15 +17,12 @@ export async function handleGetNotifications(req: Request): Promise<Response> {
   if ("error" in auth) return auth.error;
 
   try {
-    const [listed, unread, posters] = await Promise.all([
+    await fillSeriesIds(auth.user.id);
+    const [listed, unread] = await Promise.all([
       listNotifications(auth.user.id),
       countUnread(auth.user.id),
-      getPosters(),
     ]);
-    const notifications = listed.map((item) => {
-      const posterUrl = item.tmdbId && posters.get(watchKey(item.mediaType, item.tmdbId));
-      return posterUrl ? { ...item, posterUrl } : item;
-    });
+    const notifications = await attachPosters(listed);
     return Response.json({ notifications, unread });
   } catch (error) {
     log.error("could not list notifications", { error: errorMessage(error) });

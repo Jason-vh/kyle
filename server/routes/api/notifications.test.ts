@@ -3,39 +3,44 @@ import { eq } from "drizzle-orm";
 import { handleGetNotifications, handleMarkNotificationsRead } from "./notifications.ts";
 import { buildJwtCookie, signJwt } from "#server/auth/jwt.ts";
 import { db } from "#server/db/index.ts";
-import { notifications } from "#server/db/schema.ts";
+import { notifications, tmdbArtwork } from "#server/db/schema.ts";
 import { createTestUser, deleteTestUser } from "#server/db/testing.ts";
-import { invalidatePosters } from "#server/library/posters.ts";
 import type { NotificationsResponse } from "#shared/types.ts";
+import { invalidateLibraryIndex } from "#server/requests/library.ts";
 
 process.env.JWT_SECRET = "test-secret-that-is-long-enough-for-hs256";
 
 const realFetch = globalThis.fetch;
-const previousHosts = { radarr: process.env.RADARR_HOST, sonarr: process.env.SONARR_HOST };
+const SERVICES = {
+  TMDB_API_TOKEN: "test-only",
+  RADARR_HOST: "http://radarr.test",
+  RADARR_API_KEY: "k",
+  SONARR_HOST: "http://sonarr.test",
+  SONARR_API_KEY: "k",
+};
+const previous = Object.fromEntries(Object.keys(SERVICES).map((name) => [name, process.env[name]]));
 
 let userId = "";
 let otherId = "";
 let asUser = "";
 
 beforeAll(async () => {
-  process.env.RADARR_HOST = "http://radarr.test";
-  process.env.RADARR_API_KEY ??= "k";
-  process.env.SONARR_HOST = "http://sonarr.test";
-  process.env.SONARR_API_KEY ??= "k";
+  for (const [name, value] of Object.entries(SERVICES)) process.env[name] = value;
   globalThis.fetch = (async (url: string) => {
-    if (url.includes("radarr.test")) {
-      return Response.json([
-        {
-          id: 1,
-          tmdbId: 27205,
-          title: "Inception",
-          images: [{ coverType: "poster", remoteUrl: "https://image.test/inception.jpg" }],
-        },
-      ]);
+    if (url.endsWith("/movie/27205")) {
+      return Response.json({ poster_path: "/inception.jpg", backdrop_path: null });
     }
-    return Response.json([]);
+    if (url.endsWith("/tv/95396")) {
+      return Response.json({ poster_path: "/severance.jpg", backdrop_path: null });
+    }
+    if (url.includes("sonarr.test") && url.includes("/series")) {
+      return Response.json([{ id: 9, tmdbId: 95396, title: "Severance", seasons: [] }]);
+    }
+    if (url.includes("radarr.test") || url.includes("sonarr.test")) return Response.json([]);
+    return Response.json({ status_message: "not found" }, { status: 404 });
   }) as unknown as typeof fetch;
-  invalidatePosters();
+  invalidateLibraryIndex();
+  await db.delete(tmdbArtwork);
   userId = await createTestUser("Notifications");
   otherId = await createTestUser("Someone Else");
   asUser = buildJwtCookie(await signJwt({ id: userId, name: "Jane", admin: false }), true).split(
@@ -50,14 +55,12 @@ afterEach(async () => {
 
 afterAll(async () => {
   globalThis.fetch = realFetch;
-  invalidatePosters();
-  for (const [name, value] of [
-    ["RADARR_HOST", previousHosts.radarr],
-    ["SONARR_HOST", previousHosts.sonarr],
-  ] as const) {
+  for (const [name, value] of Object.entries(previous)) {
     if (value === undefined) delete process.env[name];
     else process.env[name] = value;
   }
+  invalidateLibraryIndex();
+  await db.delete(tmdbArtwork);
   await deleteTestUser(userId);
   await deleteTestUser(otherId);
 });
@@ -101,9 +104,26 @@ describe("GET /api/notifications", () => {
     const byTitle = new Map(response.notifications.map((item) => [item.title, item]));
     expect(byTitle.get("Inception (2010)")).toMatchObject({
       tmdbId: 27205,
-      posterUrl: "https://image.test/inception.jpg",
+      posterUrl: "https://image.tmdb.org/t/p/w342/inception.jpg",
     });
     expect(byTitle.get("Gone (2012)")?.posterUrl).toBeUndefined();
+  });
+
+  test("finds the TMDB id of a series notification Sonarr only gave its own id for", async () => {
+    await db.insert(notifications).values({
+      userId,
+      mediaType: "series",
+      serviceId: 9,
+      title: "Severance (2022)",
+      body: "S02E01 is ready to watch.",
+    });
+
+    const response = (await (await listed(asUser)).json()) as NotificationsResponse;
+
+    expect(response.notifications[0]).toMatchObject({
+      tmdbId: 95396,
+      posterUrl: "https://image.tmdb.org/t/p/w342/severance.jpg",
+    });
   });
 
   test("a signed-out visitor is refused", async () => {

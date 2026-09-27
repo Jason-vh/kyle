@@ -256,6 +256,10 @@ web/                         → Vue 3 + Vite + Tailwind CSS 4 SPA
   a Slack message that may never have gone out, or lose one that did when the container
   stops in between. Send, then write — a failed write costs a duplicate alert, and the
   alternative costs a silent one.
+- **All artwork comes from TMDB** — `server/tmdb/artwork.ts` keeps each title's poster in
+  `tmdb_artwork`, looked up once and again after a month, so a page asks TMDB only about
+  titles it has never seen and art outlives a title leaving the library. A daily job keeps
+  the whole library looked up. Radarr and Sonarr are never asked for images.
 - **The janitor deletes only what it can prove** — the daily sweep (`server/janitor/`)
   resolves every torrent through Radarr/Sonarr history to the files it imported, and asks
   each service whether it still holds them. A file that 404s was upgraded or removed, and

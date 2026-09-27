@@ -10,6 +10,7 @@ import {
   bigint,
   uniqueIndex,
   customType,
+  primaryKey,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import type { MediaNotificationInfo, MediaRequester } from "#server/webhooks/types.ts";
@@ -65,6 +66,18 @@ export const authSessions = pgTable(
     expiresAt: timestamp("expires_at").notNull(),
   },
   (table) => [index("auth_sessions_user_idx").on(table.userId)],
+);
+
+export const tmdbArtwork = pgTable(
+  "tmdb_artwork",
+  {
+    mediaType: text("media_type").$type<"movie" | "series">().notNull(),
+    tmdbId: integer("tmdb_id").notNull(),
+    posterPath: text("poster_path"),
+    backdropPath: text("backdrop_path"),
+    fetchedAt: timestamp("fetched_at").notNull().defaultNow(),
+  },
+  (table) => [primaryKey({ columns: [table.mediaType, table.tmdbId] })],
 );
 
 export const linkCodes = pgTable(

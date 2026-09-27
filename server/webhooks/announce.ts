@@ -2,6 +2,7 @@ import { createLogger } from "#server/logger.ts";
 import { errorMessage } from "#server/errors.ts";
 import { quotedEpisodeList, titleWithYear } from "#shared/media.ts";
 import { saveNotifications, type NewNotification } from "#server/db/notifications.ts";
+import * as sonarr from "#server/sonarr/api.ts";
 import { describeMedia, notifyRequesters } from "./notify.ts";
 import { findMediaRequesters, findSubscribedUserIds } from "./requester.ts";
 import type { MediaNotificationInfo } from "./types.ts";
@@ -29,6 +30,20 @@ export function notificationFor(
   };
 }
 
+async function withTmdbId<T extends { sonarr?: number; tmdb?: number }>(
+  ids: T,
+  media: MediaNotificationInfo,
+): Promise<T> {
+  if (ids.tmdb || media.mediaType !== "series" || !ids.sonarr) return ids;
+  try {
+    const series = await sonarr.getSeries(ids.sonarr);
+    return series.tmdbId ? { ...ids, tmdb: series.tmdbId } : ids;
+  } catch (error) {
+    log.warn("could not find the series' tmdb id", { error: errorMessage(error) });
+    return ids;
+  }
+}
+
 export interface Announcement {
   /** People told in the app. */
   notified: number;
@@ -53,7 +68,11 @@ export async function announce(
     findMediaRequesters(media.mediaType, ids, media.episodes),
   ]);
 
-  const notified = await saveNotifications(userIds, notificationFor(media, ids), jobId);
+  const notified = await saveNotifications(
+    userIds,
+    notificationFor(media, await withTmdbId(ids, media)),
+    jobId,
+  );
 
   // A failed chat reply must not lose the in-app notification already recorded.
   try {

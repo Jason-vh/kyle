@@ -128,7 +128,7 @@ const markRead = useMarkNotificationsRead();
 const items = computed(() => data.value?.notifications ?? []);
 const unread = computed(() => data.value?.unread ?? 0);
 const days = computed(() => groupByDay(items.value));
-const hero = computed(() => items.value.find((item) => item.posterUrl)?.posterUrl);
+const hero = computed(() => items.value[0]?.posterUrl);
 </script>
 
 <style scoped>

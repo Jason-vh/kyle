@@ -5,7 +5,7 @@ import * as sonarr from "#server/sonarr/api.ts";
 import { getAllRequesters } from "#server/db/requests.ts";
 import { annotateRequesters } from "#server/requests/requesters.ts";
 import { getPlexAvatars } from "#server/plex/access.ts";
-import { posterOf } from "#server/media-images.ts";
+import { attachPosters } from "#server/tmdb/artwork.ts";
 import { episodesLabel } from "#shared/media.ts";
 import { createLogger } from "#server/logger.ts";
 import { errorMessage } from "#server/errors.ts";
@@ -65,7 +65,6 @@ export async function getActivity(viewerId: string, since: Date): Promise<Activi
       mediaType: "movie",
       title: record.movie.title,
       year: record.movie.year || undefined,
-      posterUrl: posterOf(record.movie),
       at: record.date,
       requestedBy: [],
       requestedByMe: false,
@@ -94,7 +93,6 @@ export async function getActivity(viewerId: string, since: Date): Promise<Activi
       title: newest.series.title,
       year: newest.series.year || undefined,
       detail: episodesLabel([...episodes.values()]),
-      posterUrl: posterOf(newest.series),
       at: newest.date,
       requestedBy: [],
       requestedByMe: false,
@@ -103,6 +101,7 @@ export async function getActivity(viewerId: string, since: Date): Promise<Activi
   }
 
   annotateRequesters(items, viewerId, requesters, avatars);
+  await attachPosters(items);
 
   const recent = items.sort((a, b) => b.at.localeCompare(a.at));
 

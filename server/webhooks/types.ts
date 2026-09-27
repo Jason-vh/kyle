@@ -19,6 +19,7 @@ export interface SonarrWebhookPayload {
     id: number;
     title: string;
     tvdbId: number;
+    tmdbId?: number;
     year: number;
   };
   episodes: Array<{

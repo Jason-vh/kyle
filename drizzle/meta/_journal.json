@@ -211,6 +211,13 @@
       "when": 1790511705383,
       "tag": "0029_plex_link_in_identities",
       "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1790518796244,
+      "tag": "0030_tmdb_artwork",
+      "breakpoints": true
     }
   ]
 }

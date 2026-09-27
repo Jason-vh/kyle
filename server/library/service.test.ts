@@ -32,10 +32,6 @@ function series(overrides: Record<string, unknown> = {}) {
 }
 
 describe("toMovie", () => {
-  test("takes the poster from the images array", () => {
-    expect(toMovie(movie).posterUrl).toBe("https://img/poster.jpg");
-  });
-
   test("a movie with its file is available", () => {
     expect(toMovie(movie).availability).toBe("available");
   });

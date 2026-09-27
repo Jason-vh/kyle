@@ -95,8 +95,9 @@ export async function handleSonarrWebhook(req: Request): Promise<Response> {
     episodeCount: payload.episodes?.length,
   });
 
+  const tmdb = payload.series.tmdbId;
   await enqueueWebhook(
-    { sonarr: payload.series.id },
+    { sonarr: payload.series.id, tmdb: isInteger(tmdb, 1) ? tmdb : undefined },
     {
       mediaType: "series",
       title: payload.series.title,

@@ -34,14 +34,14 @@ describe("watchedTitles", () => {
   });
 
   test("names a title as the library does, falling back to Plex", () => {
-    const item = { title: "Severance", year: 2022, posterUrl: "/p.jpg" } as LibraryItem;
+    const item = { title: "Severance", year: 2022 } as LibraryItem;
     const [held] = watchedTitles(
       [play("series:95396", "2026-03-03T00:00:00Z", [1, 1])],
       new Map([["series:95396", item]]),
     );
     const [gone] = watchedTitles([play("movie:1", "2026-03-03T00:00:00Z")], new Map());
 
-    expect(held).toMatchObject({ title: "Severance", year: 2022, posterUrl: "/p.jpg" });
+    expect(held).toMatchObject({ title: "Severance", year: 2022 });
     expect(gone?.title).toBe("From Plex");
   });
 });

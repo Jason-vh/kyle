@@ -18,6 +18,7 @@ import { getPlatformIdentity, getPlexAccountIds } from "#server/db/users.ts";
 import { listThreadSummaries } from "#server/db/threads.ts";
 import { toThreadListItem } from "#server/threads/summaries.ts";
 import { toMovie, toSeries } from "#server/library/service.ts";
+import { attachPosters } from "#server/tmdb/artwork.ts";
 import { withState } from "#server/requests/state.ts";
 import { getPlaysBy, getWatchers, watchKey, type TitlePlay } from "#server/plex/history.ts";
 import type { Viewer } from "#server/people.ts";
@@ -107,7 +108,6 @@ export function watchedTitles(plays: TitlePlay[], items: Map<string, LibraryItem
       tmdbId: Number(id) || undefined,
       title: item?.title ?? latest.title ?? "Unknown title",
       year: item?.year,
-      posterUrl: item?.posterUrl,
       at: latest.at,
       detail: watchedDetail(titlePlays),
     });
@@ -200,7 +200,7 @@ export async function getUserProfile(
         ? {
             titles: new Set(plays.map((play) => play.key)).size,
             plays: plays.length,
-            recent: watchedTitles(plays, lib.items),
+            recent: await attachPosters(watchedTitles(plays, lib.items)),
           }
         : undefined,
     conversations,
