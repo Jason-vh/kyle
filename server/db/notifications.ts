@@ -7,7 +7,6 @@ import { errorMessage } from "#server/errors.ts";
 
 const log = createLogger("notifications");
 
-/** Enough to scroll in a popover; older ones stop being news. */
 const PAGE_SIZE = 30;
 
 export interface NewNotification {
