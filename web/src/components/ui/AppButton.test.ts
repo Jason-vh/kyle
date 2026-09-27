@@ -1,6 +1,7 @@
 import { describe, expect, test } from "vitest";
 import { mount } from "@vue/test-utils";
 import AppButton from "./AppButton.vue";
+import KLoader from "./KLoader.vue";
 
 describe("AppButton", () => {
   test("is secondary unless told otherwise", () => {
@@ -26,9 +27,9 @@ describe("AppButton", () => {
     expect(button.attributes("disabled")).toBeDefined();
   });
 
-  test("loading shows a spinner in place of the label, keeping its width", () => {
+  test("loading shows the K loader in place of the label, keeping its width", () => {
     const button = mount(AppButton, { props: { loading: true }, slots: { default: "Save" } });
-    expect(button.find(".animate-spin").exists()).toBe(true);
+    expect(button.findComponent(KLoader).exists()).toBe(true);
     expect(button.find(".invisible").text()).toBe("Save");
     expect(button.classes()).not.toContain("disabled:opacity-50");
   });

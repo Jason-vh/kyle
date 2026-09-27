@@ -18,10 +18,9 @@
           ]"
           @click="run(action)"
         >
-          <IconSpinner
+          <KLoader
             v-if="busy === action.label"
-            class="size-5 shrink-0 animate-spin text-text-secondary"
-            aria-hidden="true"
+            class="size-5 shrink-0 place-content-center text-[4px] text-text-secondary"
           />
           <component
             :is="action.icon"
@@ -45,7 +44,7 @@
 import { ref, watch } from "vue";
 import type { MenuAction } from "./menu";
 import BottomSheet from "./ui/BottomSheet.vue";
-import IconSpinner from "~icons/ph/spinner-gap-bold";
+import KLoader from "./ui/KLoader.vue";
 
 const props = defineProps<{ open: boolean; title: string; actions: MenuAction[] }>();
 

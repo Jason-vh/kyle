@@ -53,6 +53,23 @@
   --container-page: 46rem;
 
   --spacing-header: 3.25rem;
+
+  --animate-k-trace: k-trace 1.1s infinite;
+
+  @keyframes k-trace {
+    from {
+      opacity: 0.22;
+      animation-timing-function: ease-out;
+    }
+    8% {
+      opacity: 1;
+      animation-timing-function: ease-in;
+    }
+    34%,
+    to {
+      opacity: 0.22;
+    }
+  }
 }
 
 /*

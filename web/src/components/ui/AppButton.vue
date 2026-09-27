@@ -18,7 +18,7 @@
       <span class="inline-flex items-center justify-center gap-1.5" :class="{ invisible: loading }">
         <slot />
       </span>
-      <IconSpinner v-if="loading" class="absolute size-4 animate-spin" aria-hidden="true" />
+      <KLoader v-if="loading" class="absolute text-[4px]" />
     </template>
   </Primitive>
 </template>
@@ -26,7 +26,7 @@
 <script setup lang="ts">
 import type { Component } from "vue";
 import { Primitive } from "reka-ui";
-import IconSpinner from "~icons/ph/spinner-gap-bold";
+import KLoader from "./KLoader.vue";
 
 type Variant = "primary" | "secondary" | "ghost" | "danger";
 type Size = "sm" | "md" | "icon";
