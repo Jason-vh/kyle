@@ -64,6 +64,12 @@ export const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
+      path: "/people",
+      name: "people",
+      component: () => import("./views/PeopleView.vue"),
+      meta: { requiresAuth: true, requiresAdmin: true },
+    },
+    {
       path: "/threads",
       name: "threads",
       component: () => import("./views/ThreadListView.vue"),

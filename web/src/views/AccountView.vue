@@ -32,6 +32,16 @@
         </AppButton>
       </section>
 
+      <section v-if="isAdmin" class="flex items-center justify-between gap-4 p-4">
+        <div>
+          <p class="text-sm font-medium text-text-primary">People</p>
+          <p class="text-sm text-text-muted">Rename, merge and tidy up accounts</p>
+        </div>
+        <AppButton as-child>
+          <router-link to="/people">Manage</router-link>
+        </AppButton>
+      </section>
+
       <section class="flex items-center justify-between gap-4 p-4">
         <div>
           <p class="text-sm font-medium text-text-primary">Passkey</p>
@@ -71,7 +81,7 @@ useTitle("Account — Kyle");
 const route = useRoute();
 const router = useRouter();
 
-const { user, plexEnabled } = useSession();
+const { user, plexEnabled, isAdmin } = useSession();
 const refreshSession = useSessionRefresh();
 const busy = ref(false);
 const message = ref<{ kind: "error" | "success"; text: string } | null>(null);
