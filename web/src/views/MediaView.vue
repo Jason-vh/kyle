@@ -1,10 +1,10 @@
 <template>
   <AppPage>
     <div v-if="heading || isPending" class="stagger">
-      <div :class="backdrop || isPending ? 'relative -mx-4 -mt-4 sm:mx-0 sm:mt-0' : 'mb-4'">
+      <div :class="backdrop || isPending ? 'relative' : 'mb-4'">
         <div
           v-if="backdrop || isPending"
-          class="relative h-56 overflow-hidden sm:h-72 sm:rounded-card"
+          class="relative h-56 overflow-hidden rounded-card sm:h-72"
         >
           <img v-if="backdrop" :src="backdrop" alt="" class="size-full object-cover" />
           <Skeleton v-else class="size-full rounded-none" />
