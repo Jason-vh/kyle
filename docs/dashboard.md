@@ -6,7 +6,9 @@ allowed to fail on its own: a page missing one figure beats a page that will not
 `unavailable`, which the view shows as a banner.
 
 The window is **seven days**, defined once in `service.ts` so every figure on the page
-agrees with the others.
+agrees with the others. Its start moves in five-minute steps, and the two Plex figures,
+Watched and Arrived, are kept until it moves. They are the slowest part of the page, and
+a week's total barely changes in five minutes. A failed read is not kept.
 
 ## Watched — `server/plex/watch-time.ts`
 
