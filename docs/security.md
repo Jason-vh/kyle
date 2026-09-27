@@ -41,8 +41,9 @@ administrator access. Missing `CHAT_API_KEY` or `WEBHOOK_AUTH` disables that end
 - Public sign-in endpoints share 20 requests per client address per minute, with a
   process-wide ceiling of 100. Exceeded limits return 429 and `Retry-After`.
 - Limits are process-local and reset on restart. Multiple replicas need a shared limiter.
-- `TRUST_PROXY=true` accepts `X-Real-IP` from Caddy, which overwrites that header. Enable
-  it only behind the trusted proxy; keep the app port inaccessible to untrusted clients.
+- `TRUST_PROXY=true` takes the last `X-Forwarded-For` entry, the one the exe.dev edge
+  appends; earlier entries and `X-Real-IP` pass through from the client unchanged. Enable
+  it only behind that edge; keep the app port inaccessible to untrusted clients.
 - Each upstream API client allows four active requests and 32 queued requests. The
   request deadline includes queueing, and caller cancellation is preserved.
 - Images allow ten attachments per message, five MiB of actual bytes per image, and a

@@ -11,7 +11,7 @@ concurrency:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-  DEPLOY_DIR: /home/exedev/apps/kyle
+  DEPLOY_DIR: /home/exedev/kyle
 
 jobs:
   # The pre-commit hook runs the same checks but can be skipped, and runs the
@@ -74,6 +74,7 @@ jobs:
           TRUST_PROXY=true
           WEBAUTHN_ORIGIN=https://kyle.vhtm.eu
           WEBAUTHN_RP_ID=kyle.vhtm.eu
+          KYLE_DB_PASSWORD=${{ secrets.KYLE_DB_PASSWORD }}
           DATABASE_URL=postgresql://kyle:${{ secrets.KYLE_DB_PASSWORD }}@postgres:5432/kyle
           JWT_SECRET=${{ secrets.JWT_SECRET }}
           CHAT_API_KEY=${{ secrets.CHAT_API_KEY }}
@@ -132,8 +133,3 @@ jobs:
           fi
           docker compose --env-file .env.production exec -T -e EXPECTED_DEPLOY_ID="$EXPECTED_DEPLOY_ID" app bun run server/healthcheck.ts
           docker compose --env-file .env.production ps
-
-      - name: Reload Caddy (picks up deploy/caddy.snippet)
-        run: |
-          sudo /usr/bin/caddy validate --config /etc/caddy/Caddyfile
-          sudo /usr/bin/systemctl reload caddy

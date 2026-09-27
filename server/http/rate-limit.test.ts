@@ -31,12 +31,14 @@ test("bounds memory without evicting limits attackers could then bypass", () => 
 });
 
 test("only trusts proxy client addresses when explicitly configured", () => {
-  const req = new Request("http://localhost", { headers: { "x-real-ip": "198.51.100.1" } });
+  const req = new Request("http://localhost", {
+    headers: { "x-forwarded-for": "203.0.113.9, 198.51.100.1", "x-real-ip": "203.0.113.8" },
+  });
   delete process.env.TRUST_PROXY;
   expect(clientAddress(req, "127.0.0.1")).toBe("127.0.0.1");
   process.env.TRUST_PROXY = "true";
   expect(clientAddress(req, "127.0.0.1")).toBe("198.51.100.1");
-  req.headers.set("x-real-ip", "arbitrary-key");
+  req.headers.set("x-forwarded-for", "198.51.100.1, arbitrary-key");
   expect(clientAddress(req, "127.0.0.1")).toBe("127.0.0.1");
 });
 
@@ -50,7 +52,7 @@ test("blocks authentication floods before creating new flows, even with forged h
   const server = { requestIP: () => ({ address: "198.51.100.50" }) };
   for (let i = 0; i < 20; i++) {
     const req = new Request("http://localhost/api/auth/passkey/login/options", {
-      headers: { "x-real-ip": `198.51.100.${i}` },
+      headers: { "x-forwarded-for": `198.51.100.${i}` },
     });
     expect((await handler(req, server)).status).toBe(200);
   }

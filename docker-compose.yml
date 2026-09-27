@@ -8,10 +8,25 @@ services:
       HOST: 0.0.0.0
       PORT: 3000
     ports:
-      - "127.0.0.1:${KYLE_APP_HOST_PORT:-3003}:3000"
-    networks:
-      - apps-net
+      - "${KYLE_APP_HOST_PORT:-3003}:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
 
-networks:
-  apps-net:
-    external: true
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: kyle
+      POSTGRES_PASSWORD: ${KYLE_DB_PASSWORD:?}
+      POSTGRES_DB: kyle
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kyle -d kyle"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  pgdata:

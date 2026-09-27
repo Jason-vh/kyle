@@ -53,7 +53,7 @@ export function userRateLimit(req: Request, userId: string): Response | undefine
 
 export function clientAddress(req: Request, peerAddress: string): string {
   if (process.env.TRUST_PROXY === "true") {
-    const forwarded = req.headers.get("x-real-ip");
+    const forwarded = req.headers.get("x-forwarded-for")?.split(",").at(-1)?.trim();
     if (forwarded && isIP(forwarded)) return forwarded;
   }
   return peerAddress;

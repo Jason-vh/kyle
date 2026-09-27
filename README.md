@@ -58,10 +58,10 @@ scripts/plex-token.ts        → CLI: obtain a Plex owner token by claiming a PI
 scripts/test-slack.ts        → Send test messages to /slack/events (sync response by default)
 tsconfig.server.json         → Server TypeScript config (server/ + shared/)
 Dockerfile                   → Multi-stage build: web SPA + Bun runtime
-docker-compose.yml           → Single app service, joins shared apps-net
+docker-compose.yml           → App + its Postgres, on the kyle-fra VM
 docker-compose.dev.yml       → Local Postgres only
 .github/workflows/deploy.yml → Self-hosted runner deploy
-deploy/                      → Caddy snippet + production env shape
+deploy/                      → Production env shape
 
 shared/
   types.ts                   → API response types shared between server + web
@@ -647,32 +647,42 @@ timestamps. Reading them is an admin's to do: they are everyone's words, not eve
 
 ## Deployment
 
-Production is live at <https://kyle.vhtm.eu>, hosted on the shared `vhtm-eu` exe.dev VM.
-VM-wide architecture and conventions live at <https://github.com/Jason-vh/vhtm.eu>.
+Production is live at <https://kyle.vhtm.eu>, alone on the `kyle-fra` exe.dev VM in
+Frankfurt.
 
 ```text
 client / Slack / Discord / Sonarr / Radarr webhooks
   → https://kyle.vhtm.eu
   → exe.dev edge (TLS termination)
-  → vhtm-eu VM :8080
-  → Caddy (host-matched via deploy/caddy.snippet)
-  → 127.0.0.1:3003
+  → kyle-fra VM :3003
   → kyle Bun process (HTTP server + Discord bot)
-  → shared Postgres on the apps-net Docker network (DB: kyle)
+  → postgres service in the same compose project (DB: kyle, volume kyle_pgdata)
 ```
 
+It used to share the `vhtm-eu` VM, which is in Los Angeles. The seedbox and nearly every
+user are in Europe, so each seedbox call cost ~630ms there against ~65ms here, and every
+browser request crossed the Atlantic as well.
+
 The Vue SPA is built into `web/dist/` and served as static files by the same Bun process.
-`deploy/caddy.snippet` routes `kyle.vhtm.eu → 127.0.0.1:3003`; `deploy/env.production.example`
-shows the shape of `.env.production` (written by CI from secrets, never committed).
+`deploy/env.production.example` shows the shape of `.env.production` (written by CI from
+secrets, never committed).
+
+**The app port must not bind loopback.** The exe.dev proxy reaches the VM over `eth0`, so
+`127.0.0.1:3003` would answer nothing.
 
 ### One-time setup
 
 ```bash
-# Register the hostname with the exe.dev edge
-ssh exe.dev domain add vhtm-eu kyle.vhtm.eu
+ssh exe.dev new --name=kyle-fra          # account region fra
+ssh exe.dev share port kyle-fra 3003
+ssh exe.dev share set-public kyle-fra
 
-# DNS at Porkbun: kyle.vhtm.eu  CNAME  vhtm-eu.exe.xyz
+# DNS at Porkbun: kyle.vhtm.eu  CNAME  kyle-fra.exe.xyz, then once it resolves:
+ssh exe.dev domain add kyle-fra kyle.vhtm.eu
 ```
+
+Then install a self-hosted runner for this repo on the VM, labeled `kyle-prod`, as
+`gh-actions-runner-kyle.service`.
 
 ### Deploy flow
 
@@ -680,14 +690,13 @@ Every push to `main`:
 
 1. Runs on the self-hosted runner labeled `kyle-prod` (`gh-actions-runner-kyle.service`).
 2. Writes `.env.production` from GitHub Actions secrets.
-3. Copies the checkout into `/home/exedev/apps/kyle`.
+3. Copies the checkout into `/home/exedev/kyle`.
 4. `docker compose build` — multi-stage image (web SPA + server).
 5. **Migrations**: `docker compose run --rm app bun run server/db/migrate.ts` in a one-shot
    container. On failure the previous deploy keeps serving.
 6. `docker compose up -d --remove-orphans --wait --wait-timeout 240` — waits for a healthy
    app, then verifies that `/health` reports the expected commit. Failures stop deployment
    and print app logs; there is no automatic rollback.
-7. `caddy validate` + `systemctl reload caddy` so changes to `deploy/caddy.snippet` apply.
 
 `WEBAUTHN_ORIGIN` / `WEBAUTHN_RP_ID` matter for passkeys — passkeys are origin-bound, so
 production sign-in must happen on `https://kyle.vhtm.eu`.
@@ -695,19 +704,21 @@ production sign-in must happen on `https://kyle.vhtm.eu`.
 ### Operations
 
 ```bash
-ssh vhtm-eu.exe.xyz
-cd /home/exedev/apps/kyle
+ssh kyle-fra.exe.xyz
+cd /home/exedev/kyle
 
-docker compose ps                                              # container status
-docker compose logs -f app                                     # app logs (server + Discord bot)
-docker compose restart app                                     # restart
-docker compose run --rm app bun run server/db/migrate.ts       # run migrations manually
+alias dc='docker compose --env-file .env.production'
+
+dc ps                                              # container status
+dc logs -f app                                     # app logs (server + Discord bot)
+dc restart app                                     # restart
+dc run --rm app bun run server/db/migrate.ts       # run migrations manually
 ```
 
 Open a DB shell as the `kyle` role:
 
 ```bash
-docker compose -f /home/exedev/infra/postgres/docker-compose.yml exec postgres psql -U kyle -d kyle
+dc exec postgres psql -U kyle -d kyle
 ```
 
 ### Health check
