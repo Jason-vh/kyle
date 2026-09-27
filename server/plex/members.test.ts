@@ -125,6 +125,7 @@ describe("listPlexMembers", () => {
     expect(await listPlexMembers()).toEqual([
       {
         handle: "owner",
+        accountId: "32278767",
         name: "Jason",
         email: "jason@vanhattum.test",
         thumb: "https://plex.test/jason",
@@ -132,6 +133,7 @@ describe("listPlexMembers", () => {
       },
       {
         handle: "share:501",
+        accountId: "211227001",
         name: "Colin",
         email: "colin@plex.test",
         thumb: "https://plex.test/colin",
@@ -146,6 +148,7 @@ describe("listPlexMembers", () => {
       },
       {
         handle: "share:502",
+        accountId: "999",
         name: "Pending Pete",
         email: "pete@plex.test",
         thumb: "",

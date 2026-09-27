@@ -3,6 +3,7 @@ import { readJsonObject } from "#server/http/input.ts";
 import { requireAuth, type AuthResult } from "#server/auth/middleware.ts";
 import { getPlexInviters, recordPlexInvite, type PlexInviter } from "#server/db/plex-invites.ts";
 import { withDatabaseLock } from "#server/db/lock.ts";
+import { getNamesByPlexAccount } from "#server/db/users.ts";
 import {
   invitePlexMember,
   listPlexMembers,
@@ -66,18 +67,28 @@ function memberView(
   member: PlexMember,
   viewer: JwtUser,
   inviters: Map<string, PlexInviter>,
+  names: Map<string, string>,
 ): MemberView {
   const inviter = inviterOf(member, inviters);
 
   return {
     id: member.handle,
-    name: member.name,
+    name: (member.accountId && names.get(member.accountId)) || member.name,
     thumb: member.thumb,
     status: member.status,
     email: member.email,
     invitedBy: inviter?.name,
-    canRemove: member.status !== "owner" && (viewer.admin || inviter?.userId === viewer.id),
+    canRemove: canRemove(member, viewer, inviters),
   };
+}
+
+function canRemove(
+  member: PlexMember,
+  viewer: JwtUser,
+  inviters: Map<string, PlexInviter>,
+): boolean {
+  if (member.status === "owner") return false;
+  return viewer.admin || inviterOf(member, inviters)?.userId === viewer.id;
 }
 
 function plexUnavailable(): Response {
@@ -98,10 +109,14 @@ export async function handleGetPlexMembers(req: Request): Promise<Response> {
   if ("error" in auth) return auth.error;
 
   try {
-    const [members, inviters] = await Promise.all([listPlexMembers(), getPlexInviters()]);
+    const [members, inviters, names] = await Promise.all([
+      listPlexMembers(),
+      getPlexInviters(),
+      getNamesByPlexAccount(),
+    ]);
     const visible = members.filter(visibleTo(auth.user, inviters));
     return Response.json({
-      members: visible.map((member) => memberView(member, auth.user, inviters)),
+      members: visible.map((member) => memberView(member, auth.user, inviters, names)),
     });
   } catch (error) {
     log.error("could not list plex members", { error: errorMessage(error) });
@@ -173,7 +188,7 @@ export async function handleRemovePlexMember(req: Request, handle: string): Prom
       .find((candidate) => candidate.handle === handle);
     if (!member) return Response.json({ error: "Not found" }, { status: 404 });
 
-    if (!memberView(member, auth.user, inviters).canRemove) {
+    if (!canRemove(member, auth.user, inviters)) {
       return Response.json({ error: "Forbidden" }, { status: 403 });
     }
 

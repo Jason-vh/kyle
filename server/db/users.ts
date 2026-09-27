@@ -32,6 +32,14 @@ export async function getPlexAccountIds(userId: string): Promise<string[]> {
   return rows.map((row) => row.plexAccountId);
 }
 
+export async function getNamesByPlexAccount(): Promise<Map<string, string>> {
+  const rows = await db
+    .select({ plexAccountId: plexAccountOwners.plexAccountId, name: users.displayName })
+    .from(plexAccountOwners)
+    .innerJoin(users, eq(plexAccountOwners.userId, users.id));
+  return new Map(rows.map((row) => [row.plexAccountId, row.name]));
+}
+
 export async function getPreviousPlexUser(plexAccountId: string) {
   const owner = await db.query.plexAccountOwners.findFirst({
     where: eq(plexAccountOwners.plexAccountId, plexAccountId),

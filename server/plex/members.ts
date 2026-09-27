@@ -20,6 +20,7 @@ export type PlexMemberStatus = "owner" | "member" | "pending";
 export interface PlexMember {
   /** Addresses what the member stands on: a share, or an invitation. */
   handle: string;
+  accountId?: string;
   name: string;
   email: string;
   thumb: string;
@@ -72,6 +73,7 @@ export async function listPlexMembers(): Promise<PlexMember[]> {
   const members: PlexMember[] = [
     {
       handle: OWNER_HANDLE,
+      accountId: String(owner.id),
       name: owner.title || owner.username,
       email: owner.email,
       thumb: owner.thumb,
@@ -84,6 +86,7 @@ export async function listPlexMembers(): Promise<PlexMember[]> {
     if (!share) continue;
     members.push({
       handle: `share:${share.id}`,
+      accountId: user.accountId,
       name: user.title || user.username || user.email,
       email: user.email,
       thumb: user.thumb,

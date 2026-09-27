@@ -231,7 +231,7 @@ function downloadStatus(item: LibraryItem): LibraryStatus | undefined {
   }
   if (item.download) return { ...REQUEST_STATES[item.download.state], downloading: false };
   if (item.availability === "missing") {
-    return { label: "Not on disk", tone: "neutral", downloading: false };
+    return { label: "Not downloaded", tone: "neutral", downloading: false };
   }
   return undefined;
 }

@@ -26,11 +26,11 @@
       </section>
 
       <section>
-        <SectionHeading title="On disk" />
+        <SectionHeading title="Downloaded" />
         <FilterChips
           :model-value="view.availability"
           :options="AVAILABILITY_OPTIONS"
-          label="On disk"
+          label="Downloaded"
           @update:model-value="set('availability', $event)"
         />
       </section>
@@ -45,7 +45,7 @@
         <AppSwitch
           :model-value="view.unwatched"
           label="Nobody has watched"
-          description="On disk, but never played on Plex."
+          description="Downloaded, but never played on Plex."
           @update:model-value="set('unwatched', $event)"
         />
       </section>

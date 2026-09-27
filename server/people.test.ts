@@ -23,6 +23,23 @@ describe("watchersFor", () => {
   });
 });
 
+describe("Kyle names over Plex names", () => {
+  const named: Viewer = { ...viewer, plexNames: new Map([["2", "Jordan"]]) };
+
+  test("calls a watcher by the name of the Kyle user their Plex account belongs to", () => {
+    const watchers = [{ accountId: "2", name: "daubinet", thumb: "https://plex.tv/d.png" }];
+    expect(watchersFor(watchers, named)).toEqual([
+      { name: "Jordan", thumb: "https://plex.tv/d.png" },
+    ]);
+  });
+
+  test("keeps the Plex name for anyone Kyle does not know", () => {
+    expect(plexPersonFor({ accountId: "9", name: "stranger" }, named)).toEqual({
+      name: "stranger",
+    });
+  });
+});
+
 describe("plexPersonFor", () => {
   test("marks a play by the viewer", () => {
     expect(plexPersonFor({ accountId: "101", name: "Jason" }, viewer)).toEqual({

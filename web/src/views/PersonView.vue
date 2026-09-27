@@ -246,7 +246,7 @@ const spaceFraction = computed(() => {
 const spaceHint = computed(() => {
   const storage = profile.value?.storage;
   if (!storage) return "Library unavailable";
-  if (storage.requestedBytes === 0) return "Nothing of theirs on disk";
+  if (storage.requestedBytes === 0) return "Nothing of theirs downloaded";
   const share = Math.round((spaceFraction.value ?? 0) * 100);
   return `${share < 1 ? "<1" : share}% of the library`;
 });

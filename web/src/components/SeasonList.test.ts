@@ -148,6 +148,11 @@ describe("SeasonList", () => {
 
   // The distinction the page exists to make: nothing is wrong with an episode
   // that has not aired, and everything is wrong with one that has.
+  test("an episode on disk says it is downloaded", async () => {
+    const list = await render([season({ episodes: [episode({ hasFile: true })] })]);
+    expect(list.text()).toContain("Downloaded");
+  });
+
   test("an episode still to air says when, not that it is missing", async () => {
     const list = await render([
       season({ episodes: [episode({ hasFile: false, airDate: iso(30) })] }),

@@ -2,7 +2,7 @@
   <div
     class="flex h-1.5 gap-0.5"
     role="img"
-    :aria-label="`${season.episodeFileCount} of ${season.episodeCount} episodes on disk`"
+    :aria-label="`${season.episodeFileCount} of ${season.episodeCount} episodes downloaded`"
   >
     <template v-if="segmented">
       <span

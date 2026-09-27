@@ -89,12 +89,7 @@
               </span>
               <WatcherAvatars :watchers="episode.watchedBy" :max="3" class="shrink-0" />
 
-              <IconCheck
-                v-if="episode.hasFile"
-                class="size-4 shrink-0 text-text-muted"
-                role="img"
-                aria-label="On disk"
-              />
+              <StatusPill v-if="episode.hasFile">Downloaded</StatusPill>
               <span v-else-if="unaired(episode)" class="shrink-0 text-xs text-text-muted">
                 {{ airDate(episode.airDate) }}
               </span>
@@ -162,12 +157,12 @@ import EpisodeBar from "./EpisodeBar.vue";
 import type { MenuAction } from "./menu";
 import MediaMenu from "./MediaMenu.vue";
 import AppButton from "./ui/AppButton.vue";
+import StatusPill from "./ui/StatusPill.vue";
 import AppCard from "./ui/AppCard.vue";
 import ConfirmDialog from "./ui/ConfirmDialog.vue";
 import WatcherAvatars from "./WatcherAvatars.vue";
 import { unaired } from "#web/utils/episodes";
 import IconCaret from "~icons/ph/caret-down-bold";
-import IconCheck from "~icons/ph/check-bold";
 import IconMore from "~icons/ph/dots-three-bold";
 import IconMonitor from "~icons/ph/eye";
 import IconUnmonitor from "~icons/ph/eye-slash";
@@ -274,7 +269,7 @@ function monitoringAction(season: SeasonSummary): MenuAction | undefined {
   if (season.monitored) {
     return {
       label: "Stop monitoring",
-      hint: "Keeps what is on disk",
+      hint: "Keeps what is downloaded",
       icon: IconUnmonitor,
       run: change(false),
     };

@@ -7,7 +7,7 @@ import {
 } from "./plex-members.ts";
 import { buildJwtCookie, signJwt } from "#server/auth/jwt.ts";
 import { db } from "#server/db/index.ts";
-import { plexInvites } from "#server/db/schema.ts";
+import { plexAccountOwners, plexInvites } from "#server/db/schema.ts";
 import { createTestUser, deleteTestUser } from "#server/db/testing.ts";
 import { invalidatePlexAccessCache } from "#server/plex/access.ts";
 
@@ -189,6 +189,18 @@ describe("GET /api/plex/members", () => {
       { id: "share:501", name: "Colin", status: "member", canRemove: true },
       { id: "share:502", name: "Pete", status: "pending", canRemove: true },
     ]);
+  });
+
+  test("names someone as Kyle knows them, once their Plex account is linked", async () => {
+    stubPlex();
+    const colin = await createTestUser("Colin Kyle");
+    await db.insert(plexAccountOwners).values({ plexAccountId: "211227001", userId: colin });
+
+    const named = (await members(asAdmin)).find((m) => m.id === "share:501");
+
+    await db.delete(plexAccountOwners).where(eq(plexAccountOwners.userId, colin));
+    await deleteTestUser(colin);
+    expect(named?.name).toStartWith("Colin Kyle");
   });
 
   test("anyone else sees only the people they invited", async () => {

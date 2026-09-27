@@ -305,9 +305,9 @@ describe("libraryStatuses", () => {
     expect(libraryStatuses(item({}))).toEqual([]);
   });
 
-  test("says a title with nothing on disk and nothing queued is not on disk", () => {
+  test("says a title with nothing on disk and nothing queued is not downloaded", () => {
     expect(libraryStatuses(item({ availability: "missing" }))).toEqual([
-      { label: "Not on disk", tone: "neutral", downloading: false },
+      { label: "Not downloaded", tone: "neutral", downloading: false },
     ]);
   });
 
