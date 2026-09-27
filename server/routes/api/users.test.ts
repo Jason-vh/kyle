@@ -36,6 +36,11 @@ afterAll(async () => {
   await deleteTestUser(adminId);
 });
 
+function restore(name: string, value: string | undefined): void {
+  if (value === undefined) delete process.env[name];
+  else process.env[name] = value;
+}
+
 function request(path: string, method: string, cookie: string, body?: unknown): Request {
   return new Request(`http://localhost${path}`, {
     method,
@@ -59,11 +64,31 @@ describe("people administration", () => {
       title: "Star Wars",
     });
 
-    const response = await handleGetUsers(request("/api/users", "GET", asAdmin));
+    const realFetch = globalThis.fetch;
+    const previous = { radarr: process.env.RADARR_HOST, sonarr: process.env.SONARR_HOST };
+    process.env.RADARR_HOST = "http://radarr.test";
+    process.env.RADARR_API_KEY ??= "k";
+    process.env.SONARR_HOST = "http://sonarr.test";
+    process.env.SONARR_API_KEY ??= "k";
+    globalThis.fetch = (async (url: string) => {
+      if (url.includes("radarr.test")) {
+        return Response.json([{ id: 1, tmdbId: 11, title: "Star Wars", sizeOnDisk: 5e9 }]);
+      }
+      return Response.json([]);
+    }) as unknown as typeof fetch;
+
+    const response = await handleGetUsers(request("/api/users", "GET", asAdmin)).finally(() => {
+      globalThis.fetch = realFetch;
+      restore("RADARR_HOST", previous.radarr);
+      restore("SONARR_HOST", previous.sonarr);
+    });
     const { users: people } = (await response.json()) as { users: AdminUser[] };
     const member = people.find((person) => person.id === memberId);
+    const admin = people.find((person) => person.id === adminId);
 
     expect(member?.footprint.requests).toBe(1);
+    expect(member?.requestedBytes).toBe(5e9);
+    expect(admin?.requestedBytes).toBe(0);
   });
 
   test("renames someone", async () => {

@@ -10,7 +10,9 @@
         >
           {{ user.displayName }}
         </router-link>
-        <p class="mt-0.5 truncate text-xs text-text-muted">{{ historySummary(user.footprint) }}</p>
+        <p v-if="user.requestedBytes" class="mt-0.5 truncate text-xs text-text-muted">
+          {{ formatSize(user.requestedBytes) }} requested
+        </p>
       </div>
 
       <ul class="flex shrink-0 items-center gap-1.5 text-text-secondary">
@@ -25,6 +27,7 @@
         </li>
       </ul>
 
+      <StatusPill v-if="isYou" tone="blue">You</StatusPill>
       <StatusPill v-if="user.isAdmin" tone="purple">Admin</StatusPill>
     </div>
   </AppCard>
@@ -33,7 +36,9 @@
 <script setup lang="ts">
 import { computed, type Component } from "vue";
 import type { AdminUser } from "#web/api/users";
-import { historySummary, platformName } from "#web/utils/users";
+import { platformName } from "#web/utils/users";
+import { formatSize } from "#web/utils/format";
+import { useSession } from "#web/queries/session";
 import IconFingerprint from "~icons/ph/fingerprint";
 import { PLATFORM_ICONS } from "./platform-icons";
 import UserAvatar from "./UserAvatar.vue";
@@ -41,6 +46,10 @@ import AppCard from "./ui/AppCard.vue";
 import StatusPill from "./ui/StatusPill.vue";
 
 const props = defineProps<{ user: AdminUser }>();
+
+const { user: me } = useSession();
+
+const isYou = computed(() => props.user.id === me.value?.id);
 
 interface Account {
   key: string;

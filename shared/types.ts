@@ -102,6 +102,7 @@ export interface AdminUser {
   createdAt: string;
   identities: LinkedIdentity[];
   footprint: UserFootprint;
+  requestedBytes?: number;
 }
 
 export interface WatchedTitle {

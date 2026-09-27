@@ -1,5 +1,7 @@
-import { describe, expect, test } from "vitest";
-import { mount, RouterLinkStub } from "@vue/test-utils";
+import { afterEach, describe, expect, test, vi } from "vitest";
+import { flushPromises, mount, RouterLinkStub } from "@vue/test-utils";
+import { createPinia } from "pinia";
+import { PiniaColada } from "@pinia/colada";
 import type { AdminUser, UserFootprint } from "#shared/types";
 import UserRow from "./UserRow.vue";
 
@@ -29,12 +31,25 @@ const jordan: AdminUser = {
     { id: "i2", platform: "discord", platformUserId: "D1", platformUsername: null },
   ],
   footprint,
+  requestedBytes: 18_400_000_000,
 };
 
-function render() {
+const realFetch = globalThis.fetch;
+
+afterEach(() => {
+  globalThis.fetch = realFetch;
+});
+
+function render(user: AdminUser = jordan, signedInAs = "someone-else") {
+  globalThis.fetch = vi.fn(() =>
+    Promise.resolve(Response.json({ authenticated: true, user: { id: signedInAs, admin: true } })),
+  ) as unknown as typeof fetch;
   return mount(UserRow, {
-    props: { user: jordan },
-    global: { stubs: { RouterLink: RouterLinkStub } },
+    props: { user },
+    global: {
+      plugins: [createPinia(), [PiniaColada, {}]],
+      stubs: { RouterLink: RouterLinkStub },
+    },
   });
 }
 
@@ -52,5 +67,20 @@ describe("UserRow", () => {
     const row = render();
     const labels = row.findAll('[role="img"]').map((icon) => icon.attributes("aria-label"));
     expect(labels).toEqual(["Slack: jordan", "Discord: D1", "2 passkeys"]);
+  });
+
+  test("says how much their requests take up", () => {
+    expect(render().text()).toContain("18 GB requested");
+    expect(render({ ...jordan, requestedBytes: 0 }).text()).not.toContain("requested");
+  });
+
+  test("marks the person looking at the list", async () => {
+    const mine = render(jordan, "u1");
+    await flushPromises();
+    expect(mine.text()).toContain("You");
+
+    const theirs = render(jordan, "someone-else");
+    await flushPromises();
+    expect(theirs.text()).not.toContain("You");
   });
 });

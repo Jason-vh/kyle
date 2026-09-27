@@ -28,7 +28,7 @@ export async function handleGetUsers(req: Request): Promise<Response> {
   const authResult = await requireAdmin(req);
   if ("error" in authResult) return authResult.error;
 
-  const people = await listAdminUsers();
+  const people = await listAdminUsers({ withRequestedSizes: true });
 
   return Response.json({ users: people });
 }

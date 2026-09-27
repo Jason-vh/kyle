@@ -27,23 +27,43 @@ export async function getStorage(): Promise<StorageStat> {
   };
 }
 
+function titleKey(mediaType: string, tmdbId: number | undefined): string {
+  return `${mediaType}:${tmdbId}`;
+}
+
+async function sizesByTitle(): Promise<Map<string, number>> {
+  const [movies, series] = await Promise.all([radarr.getMovies(), sonarr.getAllSeries()]);
+  return new Map([
+    ...movies.map((movie) => [titleKey("movie", movie.tmdbId), movie.sizeOnDisk ?? 0] as const),
+    ...series.map(
+      (show) => [titleKey("series", show.tmdbId), show.statistics?.sizeOnDisk ?? 0] as const,
+    ),
+  ]);
+}
+
+function totalOf(keys: Set<string>, sizes: Map<string, number>): number {
+  let total = 0;
+  for (const key of keys) total += sizes.get(key) ?? 0;
+  return total;
+}
+
 /** What the titles someone asked for take up, across both services. */
 export async function getRequestedBytes(): Promise<number> {
-  const [requests, movies, series] = await Promise.all([
-    getAllRequesters(),
-    radarr.getMovies(),
-    sonarr.getAllSeries(),
-  ]);
+  const [requests, sizes] = await Promise.all([getAllRequesters(), sizesByTitle()]);
+  const requested = new Set(requests.map((request) => titleKey(request.mediaType, request.tmdbId)));
+  return totalOf(requested, sizes);
+}
 
-  const requested = new Set(requests.map((request) => `${request.mediaType}:${request.tmdbId}`));
+/** The same, for each person: a title two people asked for counts for both. */
+export async function getRequestedBytesByUser(): Promise<Map<string, number>> {
+  const [requests, sizes] = await Promise.all([getAllRequesters(), sizesByTitle()]);
 
-  const movieBytes = movies
-    .filter((movie) => requested.has(`movie:${movie.tmdbId}`))
-    .reduce((total, movie) => total + (movie.sizeOnDisk ?? 0), 0);
+  const byUser = new Map<string, Set<string>>();
+  for (const request of requests) {
+    const keys = byUser.get(request.userId) ?? new Set<string>();
+    keys.add(titleKey(request.mediaType, request.tmdbId));
+    byUser.set(request.userId, keys);
+  }
 
-  const seriesBytes = series
-    .filter((show) => requested.has(`series:${show.tmdbId}`))
-    .reduce((total, show) => total + (show.statistics?.sizeOnDisk ?? 0), 0);
-
-  return movieBytes + seriesBytes;
+  return new Map([...byUser].map(([userId, keys]) => [userId, totalOf(keys, sizes)]));
 }
