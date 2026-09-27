@@ -50,33 +50,27 @@
       <RouterView />
     </main>
 
-    <div
-      class="pointer-events-none fixed inset-x-3 bottom-[calc(0.75rem+env(safe-area-inset-bottom))] z-10 mx-auto flex max-w-page flex-col gap-2 *:pointer-events-auto"
+    <nav
+      v-if="user"
+      class="fixed inset-x-3 bottom-[calc(0.75rem+env(safe-area-inset-bottom))] z-10 rounded-card border border-border-primary bg-bg-surface/80 shadow-raised backdrop-blur-md sm:hidden"
     >
-      <div id="dock" class="contents" />
-
-      <nav
-        v-if="user"
-        class="rounded-card border border-border-primary bg-bg-surface/80 shadow-raised backdrop-blur-md sm:hidden"
-      >
-        <div class="flex px-1">
-          <router-link
-            v-for="link in NAV_LINKS"
-            :key="link.to"
-            :to="link.to"
-            class="flex flex-1 flex-col items-center gap-0.5 py-2 text-[11px] font-medium no-underline transition-colors"
-            :class="isActive(link.to) ? 'text-accent-purple' : 'text-text-muted'"
-          >
-            <component
-              :is="isActive(link.to) ? link.activeIcon : link.icon"
-              class="size-6"
-              aria-hidden="true"
-            />
-            {{ link.label }}
-          </router-link>
-        </div>
-      </nav>
-    </div>
+      <div class="flex px-1">
+        <router-link
+          v-for="link in NAV_LINKS"
+          :key="link.to"
+          :to="link.to"
+          class="flex flex-1 flex-col items-center gap-0.5 py-2 text-[11px] font-medium no-underline transition-colors"
+          :class="isActive(link.to) ? 'text-accent-purple' : 'text-text-muted'"
+        >
+          <component
+            :is="isActive(link.to) ? link.activeIcon : link.icon"
+            class="size-6"
+            aria-hidden="true"
+          />
+          {{ link.label }}
+        </router-link>
+      </div>
+    </nav>
   </div>
 </template>
 
