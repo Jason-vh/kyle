@@ -137,14 +137,13 @@ One action per state, in `RequestActions.vue`:
 | ----------- | ------------- | ----------------------------------------------------- |
 | `searching` | Search again  | `POST /api/requests/:type/:id/retry`                  |
 | `stalled`   | Try another   | the same, after dropping and blocklisting the release |
-| `blocked`   | Tell an admin | `POST /api/requests/:type/:id/report`                 |
 | `removed`   | Request again | the ordinary request path                             |
 
 A stalled release is blocklisted before the search (`server/requests/retry.ts`), so the
 search that follows cannot hand back the release that stuck. A blocked import is left
-alone: it has the file already and needs a person, not another release — hence the report,
-which reads the state on the server and notifies every admin with whatever the service
-said. Every other state is waiting on a date or on a download, and offers nothing to press.
+alone: it has the file already and needs a person, not another release; the janitor drops
+the hopeless ones. Every other state is waiting on a date or on a download. Neither offers
+anything to press.
 
 ## Adding a figure
 

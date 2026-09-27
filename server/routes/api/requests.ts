@@ -14,7 +14,6 @@ import {
 import { getAllMediaRequests, getMediaRequestsForUser } from "#server/db/requests.ts";
 import { getLibraryIndex } from "#server/requests/library.ts";
 import { getSeriesRequestOptions } from "#server/requests/series-options.ts";
-import { reportProblem } from "#server/requests/report.ts";
 import { retryRequest } from "#server/requests/retry.ts";
 import { withState } from "#server/requests/state.ts";
 import { isLibraryMediaType } from "#shared/types.ts";
@@ -296,54 +295,5 @@ export async function handleRetryRequest(
   } catch (error) {
     log.error("retry failed", { mediaType, tmdbId, error: errorMessage(error) });
     return errorResponse(error, 502, "Could not search again");
-  }
-}
-
-// ---------------------------------------------------------------------------
-// POST /api/requests/:mediaType/:tmdbId/report — hand it to an admin
-// ---------------------------------------------------------------------------
-
-export async function handleReportRequest(
-  req: Request,
-  mediaType: string,
-  rawTmdbId: string,
-): Promise<Response> {
-  const auth = await requireAuth(req);
-  if ("error" in auth) return auth.error;
-
-  if (!isLibraryMediaType(mediaType)) {
-    return Response.json({ error: "Unknown media type" }, { status: 404 });
-  }
-
-  const tmdbId = Number(rawTmdbId);
-  if (!isInteger(tmdbId, 1)) {
-    return Response.json({ error: "Invalid id" }, { status: 400 });
-  }
-
-  const seasonNumber = seasonParam(req);
-  if (seasonNumber instanceof Response) return seasonNumber;
-  const requests = await getMediaRequestsForUser(auth.user.id);
-  const request = requests.find(
-    (row) =>
-      row.mediaType === mediaType &&
-      row.tmdbId === tmdbId &&
-      row.seasonNumber === (seasonNumber ?? null),
-  );
-  if (!request) {
-    return Response.json({ error: "You have not requested this" }, { status: 404 });
-  }
-
-  try {
-    const outcome = await reportProblem({
-      mediaType,
-      tmdbId,
-      title: request.title,
-      reportedBy: auth.user.name,
-      seasonNumber,
-    });
-    return Response.json(outcome);
-  } catch (error) {
-    log.error("report failed", { mediaType, tmdbId, error: errorMessage(error) });
-    return errorResponse(error, 502, "Could not pass this on");
   }
 }

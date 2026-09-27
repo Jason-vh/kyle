@@ -37,7 +37,6 @@ describe("RequestActions", () => {
   const OFFERED: Partial<Record<RequestState, string>> = {
     searching: "Search again",
     stalled: "Try another",
-    blocked: "Tell an admin",
     removed: "Request again",
   };
 
@@ -45,16 +44,22 @@ describe("RequestActions", () => {
     expect(render(state as RequestState).text()).toContain(label);
   });
 
-  test.each(["ready", "downloading", "importing", "unreleased", "waiting", "paused", "found"])(
-    "a %s request offers nothing to press",
-    (state) => {
-      expect(
-        render(state as RequestState)
-          .find("button")
-          .exists(),
-      ).toBe(false);
-    },
-  );
+  test.each([
+    "ready",
+    "downloading",
+    "importing",
+    "unreleased",
+    "waiting",
+    "paused",
+    "found",
+    "blocked",
+  ])("a %s request offers nothing to press", (state) => {
+    expect(
+      render(state as RequestState)
+        .find("button")
+        .exists(),
+    ).toBe(false);
+  });
 
   test("a stalled request asks the server for another release", async () => {
     const fetched = vi.fn((_url: string, _init?: RequestInit) =>
@@ -69,17 +74,6 @@ describe("RequestActions", () => {
     expect(fetched.mock.calls[0]?.[0]).toContain("/api/requests/movie/27205/retry");
     expect(fetched.mock.calls[0]?.[1]?.method).toBe("POST");
     expect(actions.text()).toContain("Looking…");
-  });
-
-  test("a blocked request goes to an admin, and says so", async () => {
-    globalThis.fetch = (() =>
-      Promise.resolve(Response.json({ notified: 2 }))) as unknown as typeof fetch;
-
-    const actions = render("blocked");
-    await actions.find("button").trigger("click");
-    await new Promise((resolve) => setTimeout(resolve, 0));
-
-    expect(actions.text()).toContain("Reported");
   });
 
   test("a failure is said out loud rather than swallowed", async () => {

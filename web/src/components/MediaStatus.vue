@@ -51,8 +51,7 @@ import type { MediaDetail, MovieReleases, RequestState } from "#shared/types";
 import { REQUEST_STATES } from "#web/utils/states";
 import { formatDate, formatEta, formatSize } from "#web/utils/format";
 import { relativeOrDate } from "#web/composables/useRelativeTime";
-import { useReportRequest, useRetryRequest } from "#web/queries/media";
-import { useSession } from "#web/queries/session";
+import { useRetryRequest } from "#web/queries/media";
 import ReleaseTimeline from "./ReleaseTimeline.vue";
 import RequestAction from "./RequestAction.vue";
 import AppButton from "./ui/AppButton.vue";
@@ -61,8 +60,6 @@ import AppCard from "./ui/AppCard.vue";
 const props = defineProps<{ media: MediaDetail }>();
 
 const emit = defineEmits<{ refresh: [] }>();
-
-const { isAdmin } = useSession();
 
 /** Never held, which no request state covers. */
 type CardState = RequestState | "absent";
@@ -165,7 +162,6 @@ interface Action {
 }
 
 const retry = useRetryRequest();
-const report = useReportRequest();
 
 const target = computed(() => ({ mediaType: props.media.mediaType, tmdbId: props.media.tmdbId }));
 
@@ -185,14 +181,6 @@ const action = computed<Action | undefined>(() => {
         done: "Searching…",
         variant: "primary",
         run: () => retry.mutateAsync(target.value),
-      };
-    case "blocked":
-      if (isAdmin.value) return undefined;
-      return {
-        label: "Tell an admin",
-        done: "Reported",
-        variant: "primary",
-        run: () => report.mutateAsync(target.value),
       };
     case "ready":
       if (missingEpisodes.value === 0) return undefined;

@@ -30,7 +30,6 @@ import {
   handleCreateRequest,
   handleGetRequests,
   handleGetSeriesRequestOptions,
-  handleReportRequest,
   handleRetryRequest,
 } from "./routes/api/requests.ts";
 import {
@@ -171,10 +170,6 @@ export function startServer(port: number) {
     "/api/requests/:mediaType/:tmdbId/retry": {
       POST: (req) =>
         withSessionRefresh(handleRetryRequest)(req, req.params.mediaType, req.params.tmdbId),
-    },
-    "/api/requests/:mediaType/:tmdbId/report": {
-      POST: (req) =>
-        withSessionRefresh(handleReportRequest)(req, req.params.mediaType, req.params.tmdbId),
     },
 
     "/api/plex/members": { GET: withSessionRefresh(handleGetPlexMembers) },

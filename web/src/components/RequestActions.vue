@@ -10,7 +10,7 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
 import type { MediaRequest, RequestState } from "#web/api/requests";
-import { useReportRequest, useRequestMedia, useRetryRequest } from "#web/queries/media";
+import { useRequestMedia, useRetryRequest } from "#web/queries/media";
 import AppButton from "./ui/AppButton.vue";
 
 interface Action {
@@ -27,14 +27,12 @@ const done = ref(false);
 const error = ref("");
 
 const retry = useRetryRequest();
-const report = useReportRequest();
 const request = useRequestMedia();
 
 /** The one thing worth doing about each state; the rest wait on time. */
 const ACTIONS: Partial<Record<RequestState, Omit<Action, "run"> & { kind: string }>> = {
   searching: { kind: "retry", label: "Search again", done: "Looking…" },
   stalled: { kind: "retry", label: "Try another", done: "Looking…" },
-  blocked: { kind: "report", label: "Tell an admin", done: "Reported" },
   removed: { kind: "request", label: "Request again", done: "Requested" },
 };
 
@@ -47,7 +45,6 @@ const action = computed<Action | undefined>(() => {
   const scoped = { mediaType, tmdbId, seasonNumber };
   const runners: Record<string, () => Promise<unknown>> = {
     retry: () => retry.mutateAsync(scoped),
-    report: () => report.mutateAsync(scoped),
     request: () =>
       request.mutateAsync({
         mediaType,

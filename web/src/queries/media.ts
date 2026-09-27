@@ -20,7 +20,6 @@ import {
   discover,
   getRequests,
   getSeriesRequestOptions,
-  reportRequest,
   requestMedia,
   retryRequest,
   type RequestInput,
@@ -155,10 +154,6 @@ export function useRetryRequest() {
     mutation: (item: RetryInput) => retryRequest(item),
     onSettled: invalidate,
   });
-}
-
-export function useReportRequest() {
-  return useMutation({ mutation: (item: RetryInput) => reportRequest(item) });
 }
 
 export function useRemoveLibraryItem() {
