@@ -1,19 +1,17 @@
 import { computed } from "vue";
 import { defineQueryOptions, useQuery, useQueryCache } from "@pinia/colada";
-import { fetchAuthStatus, type AuthStatus } from "#web/api/auth";
+import { fetchAuthStatus } from "#web/api/auth";
+import { isScopedTo } from "./account-scope";
 
 export const sessionQuery = defineQueryOptions({
   key: ["session"],
   query: async () => {
     const cache = useQueryCache();
-    const previous = cache.getQueryData<AuthStatus>(["session"]);
     const next = await fetchAuthStatus();
-    if (previous?.user?.id !== next.user?.id || previous?.user?.admin !== next.user?.admin) {
-      for (const entry of cache.getEntries()) {
-        if (entry.key[0] === "session") continue;
-        cache.cancel(entry);
-        cache.remove(entry);
-      }
+    for (const entry of cache.getEntries()) {
+      if (entry.key[0] === "session" || isScopedTo(entry.key, next.user)) continue;
+      cache.cancel(entry);
+      cache.remove(entry);
     }
     return next;
   },

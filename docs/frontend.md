@@ -68,6 +68,16 @@ Why it earns its place:
   reply for an earlier term is a different cache entry rather than something to guard
   against.
 
+**The lists people open Kyle for survive a reload.** Dashboard, library, requests and
+notifications spread `KEPT_BETWEEN_VISITS` (`queries/kept.ts`), which the cache persister in
+`main.ts` saves to localStorage. Reopening shows what they last said while they ask again.
+The session is never saved: it is what decides whose data may be shown, and the session
+query drops any entry scoped to another account.
+
+**A title page opens with what the list knew.** `MediaTitle` puts the title, year and
+poster in the navigation's `state`, and `MediaView` shows them until the detail arrives.
+Hovering or touching the link fetches the detail ahead of the click.
+
 Pinia is only there because Colada needs it. **There are no stores** — if you find
 yourself writing one, check the state is not really server state with a query missing.
 

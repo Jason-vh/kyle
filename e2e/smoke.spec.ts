@@ -137,3 +137,17 @@ test("a title opened from a list shows its name before its page has loaded", asy
   release();
   await expect(page.getByRole("heading", { name: "About", level: 2 })).toBeVisible();
 });
+
+test("a list shows what it last knew while it asks again", async ({ page, context }) => {
+  await signIn(context, "requester");
+  await page.goto("/requests");
+  await expect(page.getByRole("link", { name: "Arrival", exact: true })).toBeVisible();
+  await expect
+    .poll(() => page.evaluate(() => localStorage.getItem("kyle-query-cache") ?? ""))
+    .toContain("Arrival");
+
+  await page.route("**/api/requests**", () => {});
+  await page.reload();
+
+  await expect(page.getByRole("link", { name: "Arrival", exact: true })).toBeVisible();
+});

@@ -8,6 +8,7 @@
         "@fontsource-variable/inter": "^5.3.0",
         "@fontsource-variable/jetbrains-mono": "^5.3.0",
         "@pinia/colada": "^1.4.4",
+        "@pinia/colada-plugin-cache-persister": "^1.1.2",
         "@simplewebauthn/browser": "^13.2.2",
         "@vueuse/core": "^14.2.1",
         "pinia": "^4.0.3",
@@ -131,6 +132,8 @@
     "@one-ini/wasm": ["@one-ini/wasm@0.2.1", "", {}, "sha512-TUqERXGNTifZ9y2g3wPxQrw3HpHv/02DsW3D90T9x0hhonrL1ZqpSmNrU2XkoIq0fP1N6gZfVQzy2Fw1ZvGBNg=="],
 
     "@pinia/colada": ["@pinia/colada@1.4.4", "", { "dependencies": { "nostics": "^1.2.0" }, "peerDependencies": { "pinia": "^2.2.6 || ^3.0.0 || ^4.0.2", "vue": "^3.5.41" } }, "sha512-yKQR16q5ACQSYJjgeLFnDnBEd11f4tXSW6BuLXgh+5VH94Q4KgH8UXGro+Gp23IqSbJgHx+lgvZBah+wgWD/lA=="],
+
+    "@pinia/colada-plugin-cache-persister": ["@pinia/colada-plugin-cache-persister@1.1.2", "", { "dependencies": { "nostics": "^1.2.0" }, "peerDependencies": { "@pinia/colada": ">=1.4.5" } }, "sha512-Ce7Om4B0fsGKzRV3ws3zAJ+9IlGnpdZNRFvh5KIG8Alw/9p4LLvvdIdhrdaYUvbrdHelpKgJmKtJco8rcQqaYw=="],
 
     "@rolldown/pluginutils": ["@rolldown/pluginutils@1.0.1", "", {}, "sha512-2j9bGt5Jh8hj+vPtgzPtl72j0yRxHAyumoo6TNfAjsLB04UtpSvPbPcDcBMxz7n+9CYB0c1GxQFxYRg2jimqGw=="],
 

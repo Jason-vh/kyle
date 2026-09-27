@@ -1,5 +1,6 @@
 import { defineQueryOptions, useMutation, useQueryCache } from "@pinia/colada";
 import { forAccount, useAccountQuery } from "./account";
+import { KEPT_BETWEEN_VISITS } from "./kept";
 import { sessionQuery } from "./session";
 import { pinia } from "#web/pinia";
 import type { AuthStatus } from "#web/api/auth";
@@ -41,11 +42,13 @@ export const dashboardQuery = defineQueryOptions({
   key: ["dashboard"],
   query: getDashboard,
   staleTime: 30_000,
+  ...KEPT_BETWEEN_VISITS,
 });
 
 export const libraryQuery = defineQueryOptions({
   key: ["library"],
   query: getLibrary,
+  ...KEPT_BETWEEN_VISITS,
   // The listing is a multi-service call; a minute of staleness makes going
   // back to it instant, which is most of how the app feels on a phone.
   staleTime: 60_000,
@@ -55,6 +58,7 @@ export const requestsQuery = defineQueryOptions((all: boolean) => ({
   key: ["requests", all ? "all" : "mine"],
   query: () => getRequests(all),
   staleTime: 30_000,
+  ...KEPT_BETWEEN_VISITS,
 }));
 
 /**

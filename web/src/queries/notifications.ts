@@ -1,10 +1,12 @@
 import { defineQueryOptions, useMutation, useQueryCache } from "@pinia/colada";
 import { useAccountQuery } from "./account";
+import { KEPT_BETWEEN_VISITS } from "./kept";
 import { getNotifications, markNotificationsRead } from "#web/api/notifications";
 
 export const notificationsQuery = defineQueryOptions({
   key: ["notifications"],
   query: getNotifications,
+  ...KEPT_BETWEEN_VISITS,
   // Short, because this is the one thing on the page that is meant to arrive.
   staleTime: 30_000,
 });

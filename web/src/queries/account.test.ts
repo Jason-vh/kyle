@@ -2,7 +2,7 @@ import { afterEach, expect, test, vi } from "vitest";
 import { defineComponent, h } from "vue";
 import { flushPromises, mount, type VueWrapper } from "@vue/test-utils";
 import { createPinia } from "pinia";
-import { PiniaColada, useQueryCache } from "@pinia/colada";
+import { PiniaColada, useQueryCache, type EntryKey, type PiniaColadaPlugin } from "@pinia/colada";
 import type { AuthStatus } from "#web/api/auth";
 import { useAccountQuery } from "./account";
 import { sessionQuery } from "./session";
@@ -19,9 +19,12 @@ afterEach(() => {
   load.mockReset();
 });
 
-async function render() {
+async function render(restored: [key: EntryKey, data: string][] = []) {
   globalThis.fetch = vi.fn(async () => Response.json(session)) as unknown as typeof fetch;
   const pinia = createPinia();
+  const restore: PiniaColadaPlugin = ({ queryCache }) => {
+    for (const [key, data] of restored) queryCache.setQueryData(key, data);
+  };
   const reader = mount(
     defineComponent({
       setup() {
@@ -29,7 +32,7 @@ async function render() {
         return () => h("div", data.value ?? "empty");
       },
     }),
-    { global: { plugins: [pinia, [PiniaColada, {}]] } },
+    { global: { plugins: [pinia, [PiniaColada, { plugins: [restore] }]] } },
   );
   wrappers.push(reader);
   await flushPromises();
@@ -116,4 +119,23 @@ test("refreshing an unchanged session preserves its cache", async () => {
   await flushPromises();
   expect(reader.text()).toBe("Alice's data");
   expect(load).toHaveBeenCalledTimes(1);
+});
+
+test("data kept from an earlier visit survives the first session check", async () => {
+  signIn("alice");
+  load.mockResolvedValue("Alice's fresh data");
+  const { reader, cache } = await render([[["private", "alice", false], "Alice's kept data"]]);
+
+  expect(reader.text()).toBe("Alice's kept data");
+  expect(load).not.toHaveBeenCalled();
+  expect(cache.getQueryData(["private", "alice", false])).toBe("Alice's kept data");
+});
+
+test("data kept for another account is dropped once the session is known", async () => {
+  signIn("bob");
+  load.mockResolvedValue("Bob's data");
+  const { reader, cache } = await render([[["private", "alice", false], "Alice's kept data"]]);
+
+  expect(reader.text()).toBe("Bob's data");
+  expect(cache.getQueryData(["private", "alice", false])).toBeUndefined();
 });
