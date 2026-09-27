@@ -15,7 +15,7 @@
     />
 
     <div
-      class="sticky top-header z-5 -mx-4 flex gap-2 bg-bg-base/85 px-4 py-2 backdrop-blur-md sm:-mx-6 sm:px-6"
+      class="sticky top-0 z-5 -mx-4 flex gap-2 bg-bg-base/85 px-4 py-2 backdrop-blur-md sm:-mx-6 sm:px-6"
     >
       <AppInput
         :model-value="view.search"

@@ -1,9 +1,9 @@
 <template>
   <div class="flex min-h-screen flex-col">
-    <header
-      class="sticky top-0 z-10 border-b border-border-primary bg-bg-surface/90 backdrop-blur-sm"
-    >
-      <div class="mx-auto flex h-header max-w-page items-center gap-3 px-4 sm:px-6">
+    <header class="px-3 pt-3 sm:pt-4">
+      <div
+        class="mx-auto flex h-header max-w-page items-center gap-3 rounded-card border border-border-primary bg-bg-surface px-4 shadow-raised"
+      >
         <router-link to="/" class="flex items-center gap-2.5 no-underline">
           <div
             class="flex size-8 items-center justify-center rounded-control bg-accent-purple text-sm font-bold text-text-inverse"
