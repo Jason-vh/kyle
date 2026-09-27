@@ -206,28 +206,15 @@ describe("groupByLetter", () => {
 describe("libraryDetails", () => {
   const GB = 1000 ** 3;
 
-  test("gives the year, type and size on disk", () => {
-    expect(libraryDetails(item({ year: 2016, sizeOnDisk: 19 * GB }))).toEqual([
-      "2016",
-      "Movie",
-      "19 GB",
-    ]);
+  test("gives the year and type, and leaves out the size", () => {
+    expect(libraryDetails(item({ year: 2016, sizeOnDisk: 19 * GB }))).toEqual(["2016", "Movie"]);
   });
 
-  test("counts the episodes of a complete series", () => {
+  test("leaves the episode count to the statuses", () => {
     const series = item({
       mediaType: "series",
       sizeOnDisk: 321 * GB,
       episodes: { present: 103, total: 103 },
-    });
-    expect(libraryDetails(series)).toEqual(["Series", "103 ep", "321 GB"]);
-  });
-
-  test("leaves the count of an incomplete series to its status", () => {
-    const series = item({
-      mediaType: "series",
-      availability: "partial",
-      episodes: { present: 34, total: 93 },
     });
     expect(libraryDetails(series)).toEqual(["Series"]);
   });
@@ -328,6 +315,22 @@ describe("libraryStatuses", () => {
       tone: "red",
       downloading: false,
     });
+  });
+
+  test("counts the episodes of a complete series", () => {
+    const series = item({ mediaType: "series", episodes: { present: 103, total: 103 } });
+    expect(libraryStatuses(series)).toEqual([
+      { label: "103 episodes", tone: "neutral", downloading: false },
+    ]);
+  });
+
+  test("leaves out the episode count when there is something else to say", () => {
+    const series = item({
+      mediaType: "series",
+      episodes: { present: 103, total: 103 },
+      download: { state: "downloading", progress: 0.5 },
+    });
+    expect(labels(series)).toEqual(["50%"]);
   });
 
   test("lists episodes before the download, and says nothing of monitoring", () => {

@@ -193,12 +193,7 @@ export function libraryDetails(item: LibraryItem, sort: LibrarySort = "title"): 
   const details: string[] = [];
   if (item.year) details.push(String(item.year));
   details.push(item.mediaType === "movie" ? "Movie" : "Series");
-  if (item.availability === "available" && item.episodes) details.push(`${item.episodes.total} ep`);
-  if (item.sizeOnDisk > 0) {
-    const size = formatSize(item.sizeOnDisk);
-    if (sort === "size") details.unshift(size);
-    else details.push(size);
-  }
+  if (sort === "size" && item.sizeOnDisk > 0) details.unshift(formatSize(item.sizeOnDisk));
   const latest = lastWatch(item.watchedBy);
   if (sort === "watched" && latest) details.unshift(`watched ${daysAgo(latest.watchedAt)}`);
   if (sort === "added" && item.addedAt) details.unshift(`added ${daysAgo(item.addedAt)}`);
@@ -244,5 +239,10 @@ export function libraryStatuses(item: LibraryItem): LibraryStatus[] {
   }
   const download = downloadStatus(item);
   if (download) statuses.push(download);
+  if (statuses.length === 0 && item.availability === "available" && item.episodes) {
+    const { total } = item.episodes;
+    const label = total === 1 ? "1 episode" : `${total} episodes`;
+    statuses.push({ label, tone: "neutral", downloading: false });
+  }
   return statuses;
 }
