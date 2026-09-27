@@ -58,7 +58,7 @@ Two things to keep in mind when adding a token:
 | `AppNotice`      | an inline message block, by `tone`                                        |
 | `QueryState`     | the loading / failed / empty triple every list needs                      |
 | `Skeleton`       | a pulsing block standing in for content that has not arrived              |
-| `MediaPoster`    | poster art at `sm`, `md`, `lg` or `xl`, with a fallback                   |
+| `MediaPoster`    | poster art at `sm`, `md`, `lg` or `xl` from a TMDB path, with a fallback  |
 | `StatCard`       | a labelled figure, optionally with a proportion bar                       |
 | `NavIcon`        | the tab bar glyphs                                                        |
 

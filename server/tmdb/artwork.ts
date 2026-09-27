@@ -10,7 +10,6 @@ import { getArtwork } from "./api.ts";
 
 const log = createLogger("tmdb-artwork");
 
-const IMAGE_BASE = "https://image.tmdb.org/t/p";
 const STALE_MS = 30 * 24 * 60 * 60 * 1000;
 const BATCH = 4;
 const WAITED_FOR = 40;
@@ -24,10 +23,6 @@ type Row = typeof tmdbArtwork.$inferSelect;
 
 export function artworkKey(mediaType: string, tmdbId: number): string {
   return `${mediaType}:${tmdbId}`;
-}
-
-export function posterUrl(posterPath: string): string {
-  return `${IMAGE_BASE}/w342${posterPath}`;
 }
 
 const inFlight = new Map<string, Promise<void>>();
@@ -107,13 +102,13 @@ export async function getPosters(refs: TitleRef[]): Promise<Map<string, string>>
   const posters = new Map<string, string>();
   for (const ref of wanted) {
     const path = rows.get(artworkKey(ref.mediaType, ref.tmdbId))?.posterPath;
-    if (path) posters.set(artworkKey(ref.mediaType, ref.tmdbId), posterUrl(path));
+    if (path) posters.set(artworkKey(ref.mediaType, ref.tmdbId), path);
   }
   return posters;
 }
 
 export async function attachPosters<
-  T extends { mediaType: LibraryMediaType; tmdbId?: number; posterUrl?: string },
+  T extends { mediaType: LibraryMediaType; tmdbId?: number; posterPath?: string },
 >(items: T[]): Promise<T[]> {
   const refs = items.flatMap((item) =>
     item.tmdbId ? [{ mediaType: item.mediaType, tmdbId: item.tmdbId }] : [],
@@ -131,7 +126,7 @@ export async function attachPosters<
   for (const item of items) {
     if (!item.tmdbId) continue;
     const poster = posters.get(artworkKey(item.mediaType, item.tmdbId));
-    if (poster) item.posterUrl = poster;
+    if (poster) item.posterPath = poster;
   }
   return items;
 }

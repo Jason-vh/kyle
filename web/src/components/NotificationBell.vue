@@ -70,7 +70,7 @@
                   :class="item.tmdbId ? 'hover:bg-bg-elevated' : ''"
                   @click="item.tmdbId && (open = false)"
                 >
-                  <MediaPoster :src="item.posterUrl" :alt="item.title" size="md" />
+                  <MediaPoster :path="item.posterPath" :alt="item.title" size="md" />
                   <div class="min-w-0 flex-1">
                     <p class="truncate text-sm font-semibold text-text-primary">
                       {{ item.title }}
@@ -115,6 +115,7 @@ import {
 import { relativeTime } from "#web/composables/useRelativeTime";
 import { useMarkNotificationsRead, useNotifications } from "#web/queries/notifications";
 import { groupByDay, timeOfDay } from "#web/utils/notifications";
+import { posterUrl } from "#web/utils/images";
 import AppButton from "#web/components/ui/AppButton.vue";
 import MediaPoster from "#web/components/ui/MediaPoster.vue";
 import IconBell from "~icons/ph/bell";
@@ -128,7 +129,10 @@ const markRead = useMarkNotificationsRead();
 const items = computed(() => data.value?.notifications ?? []);
 const unread = computed(() => data.value?.unread ?? 0);
 const days = computed(() => groupByDay(items.value));
-const hero = computed(() => items.value[0]?.posterUrl);
+const hero = computed(() => {
+  const path = items.value[0]?.posterPath;
+  return path ? posterUrl(path, 92) : undefined;
+});
 </script>
 
 <style scoped>

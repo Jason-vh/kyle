@@ -38,7 +38,7 @@ export interface LibraryItem extends LibraryState {
   tmdbId?: number;
   title: string;
   year?: number;
-  posterUrl?: string;
+  posterPath?: string;
   /** Anyone who requested it through Kyle; empty for older media. */
   requestedBy: Person[];
   requestedByMe: boolean;
@@ -110,7 +110,7 @@ export interface WatchedTitle {
   tmdbId?: number;
   title: string;
   year?: number;
-  posterUrl?: string;
+  posterPath?: string;
   at: string;
   detail?: string;
 }
@@ -373,7 +373,7 @@ export interface AppNotification {
   id: string;
   mediaType: LibraryMediaType;
   tmdbId?: number;
-  posterUrl?: string;
+  posterPath?: string;
   /** "Severance (2022)" */
   title: string;
   body: string;
@@ -414,7 +414,7 @@ export interface ActivityItem {
   year?: number;
   /** "S01E04 Good News" for one episode, "Season 1 · 10 episodes" for several. */
   detail?: string;
-  posterUrl?: string;
+  posterPath?: string;
   at: string;
   requestedBy: Person[];
   requestedByMe: boolean;

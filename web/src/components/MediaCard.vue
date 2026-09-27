@@ -1,7 +1,7 @@
 <template>
   <AppCard interactive class="relative">
     <div class="flex gap-3">
-      <MediaPoster :src="poster" :alt="item.title" size="lg" />
+      <MediaPoster :path="item.posterPath" :alt="item.title" size="lg" />
 
       <div class="flex min-w-0 flex-1 flex-col">
         <div class="flex items-baseline gap-2">
@@ -42,9 +42,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from "vue";
 import type { DiscoverResult } from "#web/api/requests";
-import { posterUrl } from "#web/utils/images";
 import { namesOf } from "#web/utils/people";
 import MediaTitle from "./MediaTitle.vue";
 import RequestAction from "./RequestAction.vue";
@@ -52,7 +50,5 @@ import AppCard from "./ui/AppCard.vue";
 import MediaPoster from "./ui/MediaPoster.vue";
 import StatusPill from "./ui/StatusPill.vue";
 
-const props = defineProps<{ item: DiscoverResult }>();
-
-const poster = computed(() => posterUrl(props.item.posterPath));
+defineProps<{ item: DiscoverResult }>();
 </script>

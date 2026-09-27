@@ -80,7 +80,12 @@
         </div>
 
         <header class="relative flex items-end gap-4" :class="backdrop ? '-mt-20' : ''">
-          <MediaPoster :src="poster" :alt="media.title" size="xl" class="shadow-raised" />
+          <MediaPoster
+            :path="media.posterPath"
+            :alt="media.title"
+            size="xl"
+            class="shadow-raised"
+          />
 
           <div class="min-w-0 flex-1 pb-0.5">
             <h1 class="text-xl leading-tight font-semibold text-text-primary sm:text-2xl">
@@ -167,7 +172,7 @@ import { computed, nextTick, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useResizeObserver, useTitle } from "@vueuse/core";
 import type { LibraryMediaType, RequestState } from "#shared/types";
-import { backdropUrl, posterUrl } from "#web/utils/images";
+import { backdropUrl } from "#web/utils/images";
 import { formatDuration, formatSize } from "#web/utils/format";
 import MediaActivityLog from "#web/components/MediaActivityLog.vue";
 import MediaMenu from "#web/components/MediaMenu.vue";
@@ -212,7 +217,6 @@ const { isAdmin } = useSession();
 
 useTitle(() => (media.value ? `${media.value.title} — Kyle` : "Kyle"));
 
-const poster = computed(() => posterUrl(media.value?.posterPath ?? null));
 const backdrop = computed(() => backdropUrl(media.value?.backdropPath ?? null));
 
 /** The one-line summary under the title, skipping whatever TMDB does not know. */

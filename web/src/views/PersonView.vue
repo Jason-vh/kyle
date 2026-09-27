@@ -278,7 +278,7 @@ const watched = computed<ActivityItem[]>(() =>
     title: title.title,
     year: title.year,
     detail: title.detail,
-    posterUrl: title.posterUrl,
+    posterPath: title.posterPath,
     at: title.at,
     requestedBy: [],
     requestedByMe: false,

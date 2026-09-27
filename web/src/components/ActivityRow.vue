@@ -1,7 +1,7 @@
 <template>
   <AppCard :interactive="!!item.tmdbId" class="relative">
     <div class="flex items-center gap-3">
-      <MediaPoster :src="item.posterUrl" :alt="item.title" size="sm" />
+      <MediaPoster :path="item.posterPath" :alt="item.title" size="sm" />
 
       <div class="min-w-0 flex-1">
         <div class="flex items-baseline gap-2">

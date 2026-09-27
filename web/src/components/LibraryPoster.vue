@@ -4,15 +4,17 @@
     :class="{ 'opacity-45 grayscale': dimmed }"
     aria-hidden="true"
   >
-    <template v-if="src && !broken">
+    <template v-if="path && !broken">
       <img
-        :src="src"
+        :src="posterUrl(path, 92)"
         alt=""
         loading="lazy"
         class="absolute inset-0 size-full translate-y-1.5 scale-90 rounded-lg object-cover opacity-55 blur-md saturate-180"
       />
       <img
-        :src="src"
+        :src="posterUrl(path)"
+        :srcset="posterSrcset(path)"
+        sizes="44px"
         alt=""
         loading="lazy"
         class="relative size-full rounded-md object-cover ring-1 ring-text-primary/6"
@@ -25,8 +27,9 @@
 
 <script setup lang="ts">
 import { ref } from "vue";
+import { posterSrcset, posterUrl } from "#web/utils/images";
 
-defineProps<{ src?: string | null; dimmed?: boolean }>();
+defineProps<{ path?: string | null; dimmed?: boolean }>();
 
 const broken = ref(false);
 </script>

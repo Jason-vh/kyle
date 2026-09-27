@@ -1,7 +1,7 @@
 <template>
   <AppCard interactive class="relative">
     <div class="flex items-center gap-3">
-      <MediaPoster :src="posterUrl(request.posterPath)" :alt="request.title" />
+      <MediaPoster :path="request.posterPath" :alt="request.title" />
 
       <div class="min-w-0 flex-1">
         <div class="flex items-baseline gap-2">
@@ -47,7 +47,6 @@
 import { computed } from "vue";
 import { nameOf } from "#web/utils/people";
 import type { MediaRequest, MissingSeason, RequestState } from "#web/api/requests";
-import { posterUrl } from "#web/utils/images";
 import { formatDate } from "#web/utils/format";
 import { seasonName } from "#shared/media";
 import { REQUEST_STATES } from "#web/utils/states";

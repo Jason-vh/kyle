@@ -43,8 +43,8 @@ describe("getPosters", () => {
     const first = await getPosters(refs);
     const second = await getPosters(refs);
 
-    expect(first.get("movie:27205")).toBe("https://image.tmdb.org/t/p/w342/inception.jpg");
-    expect(first.get("series:95396")).toBe("https://image.tmdb.org/t/p/w342/severance.jpg");
+    expect(first.get("movie:27205")).toBe("/inception.jpg");
+    expect(first.get("series:95396")).toBe("/severance.jpg");
     expect(second).toEqual(first);
     expect(calls).toHaveLength(2);
   });
@@ -69,7 +69,7 @@ describe("getPosters", () => {
     });
 
     const posters = await getPosters([{ mediaType: "movie", tmdbId: 27205 }]);
-    expect(posters.get("movie:27205")).toBe("https://image.tmdb.org/t/p/w342/old.jpg");
+    expect(posters.get("movie:27205")).toBe("/old.jpg");
 
     await new Promise((resolve) => setTimeout(resolve, 20));
     const [row] = await db.select().from(tmdbArtwork).where(eq(tmdbArtwork.tmdbId, 27205));
@@ -81,15 +81,12 @@ describe("attachPosters", () => {
   test("gives each item its poster, leaving items without a TMDB id alone", async () => {
     stubTmdb({ "/movie/27205": "/inception.jpg" });
     const items = [
-      { mediaType: "movie" as const, tmdbId: 27205, posterUrl: undefined as string | undefined },
-      { mediaType: "series" as const, posterUrl: undefined as string | undefined },
+      { mediaType: "movie" as const, tmdbId: 27205, posterPath: undefined as string | undefined },
+      { mediaType: "series" as const, posterPath: undefined as string | undefined },
     ];
 
     await attachPosters(items);
 
-    expect(items.map((item) => item.posterUrl)).toEqual([
-      "https://image.tmdb.org/t/p/w342/inception.jpg",
-      undefined,
-    ]);
+    expect(items.map((item) => item.posterPath)).toEqual(["/inception.jpg", undefined]);
   });
 });

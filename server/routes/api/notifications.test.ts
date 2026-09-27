@@ -104,9 +104,9 @@ describe("GET /api/notifications", () => {
     const byTitle = new Map(response.notifications.map((item) => [item.title, item]));
     expect(byTitle.get("Inception (2010)")).toMatchObject({
       tmdbId: 27205,
-      posterUrl: "https://image.tmdb.org/t/p/w342/inception.jpg",
+      posterPath: "/inception.jpg",
     });
-    expect(byTitle.get("Gone (2012)")?.posterUrl).toBeUndefined();
+    expect(byTitle.get("Gone (2012)")?.posterPath).toBeUndefined();
   });
 
   test("finds the TMDB id of a series notification Sonarr only gave its own id for", async () => {
@@ -122,7 +122,7 @@ describe("GET /api/notifications", () => {
 
     expect(response.notifications[0]).toMatchObject({
       tmdbId: 95396,
-      posterUrl: "https://image.tmdb.org/t/p/w342/severance.jpg",
+      posterPath: "/severance.jpg",
     });
   });
 
