@@ -150,7 +150,7 @@ describe("SeasonList", () => {
   // that has not aired, and everything is wrong with one that has.
   test("an episode on disk says it is downloaded", async () => {
     const list = await render([season({ episodes: [episode({ hasFile: true })] })]);
-    expect(list.text()).toContain("Downloaded");
+    expect(list.find('[aria-label="Downloaded"]').exists()).toBe(true);
   });
 
   test("an episode still to air says when, not that it is missing", async () => {

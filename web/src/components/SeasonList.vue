@@ -89,7 +89,12 @@
               </span>
               <WatcherAvatars :watchers="episode.watchedBy" :max="3" class="shrink-0" />
 
-              <StatusPill v-if="episode.hasFile">Downloaded</StatusPill>
+              <span
+                v-if="episode.hasFile"
+                role="img"
+                aria-label="Downloaded"
+                class="size-1.5 shrink-0 rounded-full bg-accent-green"
+              />
               <span v-else-if="unaired(episode)" class="shrink-0 text-xs text-text-muted">
                 {{ airDate(episode.airDate) }}
               </span>
@@ -157,7 +162,6 @@ import EpisodeBar from "./EpisodeBar.vue";
 import type { MenuAction } from "./menu";
 import MediaMenu from "./MediaMenu.vue";
 import AppButton from "./ui/AppButton.vue";
-import StatusPill from "./ui/StatusPill.vue";
 import AppCard from "./ui/AppCard.vue";
 import ConfirmDialog from "./ui/ConfirmDialog.vue";
 import WatcherAvatars from "./WatcherAvatars.vue";
