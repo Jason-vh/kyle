@@ -90,6 +90,7 @@ export interface AccountLinks {
 export interface AdminUser {
   id: string;
   displayName: string;
+  avatarUrl?: string;
   isAdmin: boolean;
   createdAt: string;
   identities: LinkedIdentity[];

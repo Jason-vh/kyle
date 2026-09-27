@@ -3,7 +3,7 @@
     <div class="flex items-center justify-between gap-4">
       <div class="flex items-center gap-3">
         <component
-          :is="ICONS[platform]"
+          :is="PLATFORM_ICONS[platform]"
           class="size-4 shrink-0 text-text-secondary"
           aria-hidden="true"
         />
@@ -33,18 +33,15 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch, type Component } from "vue";
+import { computed, ref, watch } from "vue";
 import { useIntervalFn } from "@vueuse/core";
 import { useQueryCache } from "@pinia/colada";
 import type { LinkedIdentity } from "#shared/types";
 import type { LinkCode } from "#web/api/links";
 import { linksQuery, useCreateLinkCode, useUnlinkAccount } from "#web/queries/links";
 import { platformName } from "#web/utils/users";
-import IconDiscord from "~icons/cib/discord";
-import IconSlack from "~icons/cib/slack";
+import { PLATFORM_ICONS } from "./platform-icons";
 import AppButton from "./ui/AppButton.vue";
-
-const ICONS: Record<string, Component> = { slack: IconSlack, discord: IconDiscord };
 
 const POLL_MS = 3000;
 

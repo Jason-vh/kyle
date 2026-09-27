@@ -14,6 +14,7 @@ import {
   mergeUsers,
 } from "#server/db/merge.ts";
 import type { AdminUser } from "#shared/types.ts";
+import { getPlexAvatars } from "#server/plex/access.ts";
 import { createLogger } from "#server/logger.ts";
 
 const log = createLogger("api-users");
@@ -26,12 +27,17 @@ export async function handleGetUsers(req: Request): Promise<Response> {
   const authResult = await requireAdmin(req);
   if ("error" in authResult) return authResult.error;
 
-  const [usersWithLinks, owned] = await Promise.all([getAllUsersWithIdentities(), footprints()]);
+  const [usersWithLinks, owned, avatars] = await Promise.all([
+    getAllUsersWithIdentities(),
+    footprints(),
+    getPlexAvatars(),
+  ]);
 
   const people = usersWithLinks.map(
     (u): AdminUser => ({
       id: u.id,
       displayName: u.displayName,
+      avatarUrl: avatarOf(u.platformIdentities, avatars),
       isAdmin: u.isAdmin,
       createdAt: u.createdAt.toISOString(),
       identities: u.platformIdentities.map((pi) => ({
@@ -45,6 +51,14 @@ export async function handleGetUsers(req: Request): Promise<Response> {
   );
 
   return Response.json({ users: people });
+}
+
+function avatarOf(
+  identities: { platform: string; platformUserId: string }[],
+  avatars: Map<string, string>,
+): string | undefined {
+  const plex = identities.find((identity) => identity.platform === "plex");
+  return plex ? avatars.get(plex.platformUserId) : undefined;
 }
 
 // ---------------------------------------------------------------------------
