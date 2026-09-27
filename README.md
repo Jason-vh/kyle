@@ -260,6 +260,9 @@ web/                         → Vue 3 + Vite + Tailwind CSS 4 SPA
   `tmdb_artwork`, looked up once and again after a month, so a page asks TMDB only about
   titles it has never seen and art outlives a title leaving the library. A daily job keeps
   the whole library looked up. Radarr and Sonarr are never asked for images.
+- **Title descriptions are kept too** — `server/media/description.ts` stores what a title
+  page shows from TMDB in `tmdb_descriptions` for a month. A movie not yet out at home is
+  rechecked daily, since its release dates decide where it stands.
 - **The janitor deletes only what it can prove** — the daily sweep (`server/janitor/`)
   resolves every torrent through Radarr/Sonarr history to the files it imported, and asks
   each service whether it still holds them. A file that 404s was upgraded or removed, and

@@ -7,6 +7,7 @@ import type {
 } from "#shared/types.ts";
 import * as radarr from "#server/radarr/api.ts";
 import * as sonarr from "#server/sonarr/api.ts";
+import type { SonarrQueueItem } from "#server/sonarr/types.ts";
 import { getLibraryIndex, type LibraryEntry } from "./library.ts";
 import { getRemovals, type Removal } from "#server/db/removals.ts";
 import { getPlexPlaces, type PlexPlaces } from "#server/plex/catalog.ts";
@@ -68,52 +69,41 @@ export interface StateInputs {
  */
 const SCAN_GRACE_MS = 6 * 60 * 60 * 1000;
 
-/** What one title's downloads amount to, or nothing if it has none. */
-export async function queueStatusFor(
-  mediaType: LibraryMediaType,
-  serviceId: number,
-): Promise<QueueStatus | undefined> {
-  try {
-    const queue =
-      mediaType === "movie"
-        ? await radarr.getQueue({ movieIds: [serviceId] })
-        : await sonarr.getQueue({ seriesIds: [serviceId] });
-    return summarise(queue.records);
-  } catch (error) {
-    log.warn("queue unavailable", { mediaType, serviceId, error: errorMessage(error) });
-    return undefined;
-  }
+export interface TitleQueue {
+  title?: QueueStatus;
+  seasons: Map<number, QueueStatus>;
 }
 
-/**
- * What each season of one series has in its queue, so a season row says what
- * is happening to that season rather than to the series around it.
- */
-export async function queueStatusBySeason(seriesId: number): Promise<Map<number, QueueStatus>> {
-  const records = new Map<number, QueueRecord[]>();
-
-  try {
-    const queue = await sonarr.getQueue({ seriesIds: [seriesId] });
-    for (const item of queue.records) {
-      const seasonNumber = item.seasonNumber ?? item.episode?.seasonNumber;
-      if (seasonNumber === undefined) continue;
-      collect(records, seasonNumber, item);
-    }
-  } catch (error) {
-    log.warn("queue unavailable", {
-      mediaType: "series",
-      serviceId: seriesId,
-      error: errorMessage(error),
-    });
-    return new Map();
+function seasonQueues(queued: SonarrQueueItem[]): Map<number, QueueStatus> {
+  const bySeason = new Map<number, QueueRecord[]>();
+  for (const item of queued) {
+    const seasonNumber = item.seasonNumber ?? item.episode?.seasonNumber;
+    if (seasonNumber !== undefined) collect(bySeason, seasonNumber, item);
   }
 
-  const statuses = new Map<number, QueueStatus>();
-  for (const [seasonNumber, items] of records) {
+  const seasons = new Map<number, QueueStatus>();
+  for (const [seasonNumber, items] of bySeason) {
     const status = summarise(items);
-    if (status) statuses.set(seasonNumber, status);
+    if (status) seasons.set(seasonNumber, status);
   }
-  return statuses;
+  return seasons;
+}
+
+export async function titleQueue(
+  mediaType: LibraryMediaType,
+  serviceId: number,
+): Promise<TitleQueue> {
+  try {
+    if (mediaType === "movie") {
+      const queue = await radarr.getQueue({ movieIds: [serviceId] });
+      return { title: summarise(queue.records), seasons: new Map() };
+    }
+    const queue = await sonarr.getQueue({ seriesIds: [serviceId] });
+    return { title: summarise(queue.records), seasons: seasonQueues(queue.records) };
+  } catch (error) {
+    log.warn("queue unavailable", { mediaType, serviceId, error: errorMessage(error) });
+    return { seasons: new Map() };
+  }
 }
 
 /** A season has a queue of its own, and rolls up into the series' own key. */

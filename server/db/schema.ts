@@ -15,6 +15,7 @@ import {
 import { sql } from "drizzle-orm";
 import type { MediaNotificationInfo, MediaRequester } from "#server/webhooks/types.ts";
 import type { SlackEvent } from "#server/slack/events.ts";
+import type { TmdbDescription } from "#server/media/description.ts";
 
 // Custom type for bytea columns
 const bytea = customType<{ data: Uint8Array; driverData: Buffer }>({
@@ -461,4 +462,15 @@ export const messages = pgTable(
     ),
     index("messages_platform_user_id_idx").on(table.platformUserId),
   ],
+);
+
+export const tmdbDescriptions = pgTable(
+  "tmdb_descriptions",
+  {
+    mediaType: text("media_type").$type<"movie" | "series">().notNull(),
+    tmdbId: integer("tmdb_id").notNull(),
+    description: jsonb("description").$type<TmdbDescription>().notNull(),
+    fetchedAt: timestamp("fetched_at").notNull().defaultNow(),
+  },
+  (table) => [primaryKey({ columns: [table.mediaType, table.tmdbId] })],
 );

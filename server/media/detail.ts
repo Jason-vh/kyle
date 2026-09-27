@@ -2,29 +2,28 @@ import type {
   LibraryMediaType,
   LibraryState,
   MediaDetail,
-  MovieReleases,
   SeasonSummary,
   TitleStatus,
 } from "#shared/types.ts";
 import * as radarr from "#server/radarr/api.ts";
 import * as sonarr from "#server/sonarr/api.ts";
 import { isContinuing, isFollowing } from "#server/sonarr/utils.ts";
-import * as tmdb from "#server/tmdb/api.ts";
-import { earliestReleases, yearOf } from "#server/tmdb/utils.ts";
+import { describe } from "./description.ts";
 import type { RadarrMovie } from "#server/radarr/types.ts";
+import type { SonarrEpisode, SonarrSeries } from "#server/sonarr/types.ts";
 import { movieState, seriesState } from "#server/library/item.ts";
 import { movieEntry, seriesEntry, type LibraryEntry } from "#server/requests/library.ts";
 import { buildSeasons, withEpisodeWatchers, type SeasonContext } from "./seasons.ts";
 import {
   placeOf,
-  queueStatusBySeason,
-  queueStatusFor,
   resolveState,
+  titleQueue,
   type PlexPlace,
+  type TitleQueue,
 } from "#server/requests/state.ts";
 import type { QueueStatus } from "#server/requests/queue.ts";
 import { getRequestersForMedia } from "#server/db/requests.ts";
-import { getRemoval } from "#server/db/removals.ts";
+import { getRemoval, type Removal } from "#server/db/removals.ts";
 import { getWatchers, watchKey } from "#server/plex/history.ts";
 import { getPlexPlaces } from "#server/plex/catalog.ts";
 import { watchersFor, type Viewer } from "#server/people.ts";
@@ -32,61 +31,6 @@ import { createLogger } from "#server/logger.ts";
 import { errorMessage } from "#server/errors.ts";
 
 const log = createLogger("media-detail");
-
-/** Everything TMDB knows, which is what the page is mostly made of. */
-type Description = Pick<
-  MediaDetail,
-  | "title"
-  | "year"
-  | "tagline"
-  | "overview"
-  | "posterPath"
-  | "backdropPath"
-  | "runtime"
-  | "genres"
-  | "rating"
-  | "releases"
->;
-
-async function describe(mediaType: LibraryMediaType, tmdbId: number): Promise<Description> {
-  if (mediaType === "movie") {
-    const movie = await tmdb.getMovie(tmdbId);
-    return {
-      title: movie.title,
-      year: yearOf(movie.release_date),
-      tagline: movie.tagline || undefined,
-      overview: movie.overview || undefined,
-      posterPath: movie.poster_path,
-      backdropPath: movie.backdrop_path,
-      runtime: movie.runtime || undefined,
-      genres: movie.genres.map((genre) => genre.name),
-      // An unrated title averages 0, which would read as the worst film ever made.
-      rating: movie.vote_count > 0 ? movie.vote_average : undefined,
-      releases: releasesOf(earliestReleases(movie)),
-    };
-  }
-
-  const show = await tmdb.getTVShow(tmdbId);
-  return {
-    title: show.name,
-    year: yearOf(show.first_air_date),
-    tagline: show.tagline || undefined,
-    overview: show.overview || undefined,
-    posterPath: show.poster_path,
-    backdropPath: show.backdrop_path,
-    runtime: show.episode_run_time?.[0] || undefined,
-    genres: show.genres.map((genre) => genre.name),
-    rating: show.vote_count > 0 ? show.vote_average : undefined,
-  };
-}
-
-function releasesOf(releases: ReturnType<typeof earliestReleases>): MovieReleases {
-  return {
-    cinema: releases.cinema ?? undefined,
-    digital: releases.digital ?? undefined,
-    physical: releases.physical ?? undefined,
-  };
-}
 
 /** "4K" rather than "2160p", since that is what a television box says. */
 export function resolutionLabel(resolution: number | undefined): string | undefined {
@@ -127,32 +71,41 @@ function bySeason(
   return grouped;
 }
 
+type Stored =
+  | { mediaType: "movie"; movie: RadarrMovie; queue: TitleQueue }
+  | { mediaType: "series"; series: SonarrSeries; episodes: SonarrEpisode[]; queue: TitleQueue };
+
 /**
  * What the service holds of this title, or nothing when it holds none. Asked of
  * the service directly rather than the cached index, so a service being down
  * can be said out loud instead of reading as "not in the library".
  */
-async function heldState(
+async function fetchStored(
   mediaType: LibraryMediaType,
   tmdbId: number,
-  seasonRequesters: Map<number, string[]>,
-  plex: PlexPlace,
-): Promise<Held | undefined> {
+): Promise<Stored | undefined> {
   if (mediaType === "movie") {
     const movie = await radarr.getLibraryMovieByTmdbId(tmdbId);
-    return movie ? heldMovie(movie) : undefined;
+    if (!movie) return undefined;
+    return { mediaType, movie, queue: await titleQueue(mediaType, movie.id) };
   }
 
   // Sonarr cannot look a series up by TMDB id, so its own listing is the index.
   const series = (await sonarr.getAllSeries()).find((show) => show.tmdbId === tmdbId);
   if (!series) return undefined;
 
-  const [episodes, queues] = await Promise.all([
+  const [episodes, queue] = await Promise.all([
     sonarr.getEpisodes(series.id),
-    queueStatusBySeason(series.id),
+    titleQueue(mediaType, series.id),
   ]);
-  const context: SeasonContext = { requestedBy: seasonRequesters, queues, plex };
+  return { mediaType, series, episodes, queue };
+}
 
+function heldFrom(stored: Stored, seasonRequesters: Map<number, string[]>, plex: PlexPlace): Held {
+  if (stored.mediaType === "movie") return heldMovie(stored.movie);
+
+  const { series, episodes, queue } = stored;
+  const context: SeasonContext = { requestedBy: seasonRequesters, queues: queue.seasons, plex };
   return {
     state: seriesState(series),
     entry: seriesEntry(series),
@@ -171,20 +124,16 @@ export function serviceName(mediaType: LibraryMediaType): string {
  * is not the same as not holding it; a title not held is either one somebody
  * removed, or one nobody has asked for.
  */
-async function statusOf(
-  mediaType: LibraryMediaType,
-  tmdbId: number,
+function statusOf(
   held: Held | undefined | null,
   queue: QueueStatus | undefined,
+  removal: Removal | undefined,
   plex: PlexPlace,
   viewer: Viewer,
-): Promise<TitleStatus | undefined> {
+): TitleStatus | undefined {
   if (held === null) return { state: "unknown" };
 
-  if (!held) {
-    const removal = await getRemoval(mediaType, tmdbId);
-    return removal ? resolveState({ removal, viewer }) : undefined;
-  }
+  if (!held) return removal ? resolveState({ removal, viewer }) : undefined;
 
   const { state, detail, since, expectedAt, missing } = resolveState({
     entry: held.entry,
@@ -204,15 +153,9 @@ export async function getMediaDetail(
   tmdbId: number,
   viewer: Viewer,
 ): Promise<MediaDetail> {
-  const [requesters, places] = await Promise.all([
-    getRequestersForMedia(mediaType, tmdbId),
-    getPlexPlaces(),
-  ]);
-  const plex = placeOf(places, { mediaType, tmdbId });
-
-  const [description, held, watchers] = await Promise.all([
+  const [description, stored, requesters, places, watchers, removal] = await Promise.all([
     describe(mediaType, tmdbId),
-    heldState(mediaType, tmdbId, bySeason(requesters), plex).catch((error) => {
+    fetchStored(mediaType, tmdbId).catch((error) => {
       log.warn("library state unavailable", {
         source: serviceName(mediaType),
         tmdbId,
@@ -220,12 +163,16 @@ export async function getMediaDetail(
       });
       return null;
     }),
+    getRequestersForMedia(mediaType, tmdbId),
+    getPlexPlaces(),
     getWatchers(),
+    getRemoval(mediaType, tmdbId),
   ]);
 
-  const library = held?.state;
-  const download = library ? await queueStatusFor(mediaType, library.serviceId) : undefined;
-  const status = await statusOf(mediaType, tmdbId, held, download, plex, viewer);
+  const plex = placeOf(places, { mediaType, tmdbId });
+  const held = stored && heldFrom(stored, bySeason(requesters), plex);
+  const download = stored?.queue.title;
+  const status = statusOf(held, download, removal, plex, viewer);
   const key = watchKey(mediaType, tmdbId);
   const watchersOf = (watchKey: string) => watchersFor(watchers.get(watchKey) ?? [], viewer);
 
@@ -234,7 +181,7 @@ export async function getMediaDetail(
     tmdbId,
     ...description,
     status,
-    library,
+    library: held?.state,
     quality: held?.quality,
     seasons: held?.seasons && withEpisodeWatchers(held.seasons, key, watchersOf),
     following: held?.following,

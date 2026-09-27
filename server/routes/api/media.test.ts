@@ -3,7 +3,7 @@ import { handleGetMediaDetail } from "./media.ts";
 import { buildJwtCookie, signJwt } from "#server/auth/jwt.ts";
 import { createTestUser, deleteTestUser } from "#server/db/testing.ts";
 import { db } from "#server/db/index.ts";
-import { mediaRequests } from "#server/db/schema.ts";
+import { mediaRequests, tmdbDescriptions } from "#server/db/schema.ts";
 import { clearRemoval, recordRemoval } from "#server/db/removals.ts";
 import type { MediaDetail } from "#shared/types.ts";
 
@@ -114,8 +114,9 @@ beforeAll(async () => {
   )[0]!;
 });
 
-afterEach(() => {
+afterEach(async () => {
   globalThis.fetch = realFetch;
+  await db.delete(tmdbDescriptions);
 });
 
 afterAll(async () => {
@@ -166,6 +167,17 @@ describe("GET /api/media/:mediaType/:tmdbId", () => {
       availability: "available",
     });
     expect(body.unavailable).toEqual([]);
+  });
+
+  test("a second visit takes the description from the database rather than TMDB", async () => {
+    const urls = stubServices(HELD_SERIES);
+    expect((await get("series", "95396")).status).toBe(200);
+
+    urls.length = 0;
+    const body = (await (await get("series", "95396")).json()) as MediaDetail;
+
+    expect(body.title).toBe("Severance");
+    expect(urls.some((url) => url.includes("/tv/95396"))).toBe(false);
   });
 
   // Sonarr cannot look a series up by TMDB id, so the listing is searched.
