@@ -14,31 +14,33 @@
       class="-mt-2 mb-3"
     />
 
-    <div
-      class="sticky top-0 z-5 -mx-4 flex gap-2 bg-bg-base/85 px-4 py-2 backdrop-blur-md sm:-mx-6 sm:px-6"
-    >
-      <AppInput
-        :model-value="view.search"
-        @update:model-value="view = { ...view, search: $event }"
-        placeholder="Search library"
-        class="flex-1"
-      />
-      <AppButton
-        size="icon"
-        class="relative"
-        :aria-label="filterButtonLabel"
-        @click="sheetOpen = true"
+    <Teleport to="#dock" defer>
+      <div
+        class="flex gap-2 rounded-card border border-border-primary bg-bg-surface/80 p-2 shadow-raised backdrop-blur-md"
       >
-        <IconSliders class="size-6" aria-hidden="true" />
-        <span
-          v-if="changed.length"
-          class="absolute -top-1.5 -right-1.5 flex size-5 items-center justify-center rounded-full bg-accent-purple text-[10px] font-bold text-text-inverse"
-          aria-hidden="true"
+        <AppInput
+          :model-value="view.search"
+          @update:model-value="view = { ...view, search: $event }"
+          placeholder="Search library"
+          class="flex-1"
+        />
+        <AppButton
+          size="icon"
+          class="relative"
+          :aria-label="filterButtonLabel"
+          @click="sheetOpen = true"
         >
-          {{ changed.length }}
-        </span>
-      </AppButton>
-    </div>
+          <IconSliders class="size-6" aria-hidden="true" />
+          <span
+            v-if="changed.length"
+            class="absolute -top-1.5 -right-1.5 flex size-5 items-center justify-center rounded-full bg-accent-purple text-[10px] font-bold text-text-inverse"
+            aria-hidden="true"
+          >
+            {{ changed.length }}
+          </span>
+        </AppButton>
+      </div>
+    </Teleport>
 
     <div v-if="changed.length" class="mt-1 mb-2 flex flex-wrap items-center gap-1.5">
       <button
@@ -67,7 +69,7 @@
     >
       <template #loading><MediaRowSkeleton :count="6" /></template>
 
-      <div class="stagger flex flex-col pt-2" @touchstart.passive="enablePressFeedback">
+      <div class="stagger flex flex-col pt-2 pb-18" @touchstart.passive="enablePressFeedback">
         <section v-for="group in groups" :key="group.letter">
           <h2 v-if="group.letter" class="px-1 pt-3 pb-1.5 text-xs font-bold text-text-muted">
             {{ group.letter }}
