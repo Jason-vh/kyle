@@ -246,19 +246,12 @@ describe("libraryDetails, sorted by last watched", () => {
 });
 
 describe("libraryDetails, sorted otherwise", () => {
-  test("ends with when it was last played", () => {
+  test("leaves out when it was last played", () => {
     const watched = item({
       year: 2016,
       watchedBy: [{ name: "Sue", watchedAt: "2021-05-01T20:00:00Z" }],
     });
-    expect(libraryDetails(watched)).toEqual(["2016", "Movie", "watched 1 May 2021"]);
-  });
-
-  test("says nothing of a play Plex did not date", () => {
-    expect(libraryDetails(item({ year: 2016, watchedBy: [{ name: "Sue" }] }))).toEqual([
-      "2016",
-      "Movie",
-    ]);
+    expect(libraryDetails(watched)).toEqual(["2016", "Movie"]);
   });
 });
 

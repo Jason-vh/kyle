@@ -193,11 +193,7 @@ export function libraryDetails(item: LibraryItem, sort: LibrarySort = "title"): 
     else details.push(size);
   }
   const latest = lastWatch(item.watchedBy);
-  if (!latest) return details;
-
-  const watched = watchedWhen(latest.watchedAt);
-  if (sort === "watched") details.unshift(watched);
-  else details.push(watched);
+  if (sort === "watched" && latest) details.unshift(watchedWhen(latest.watchedAt));
   return details;
 }
 
