@@ -122,8 +122,9 @@ body {
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  /* Phones: keep content clear of the home indicator and the bottom nav. */
-  padding-bottom: env(safe-area-inset-bottom);
+  /* Phones: keep content clear of the notch, the status bar and the home indicator. */
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom)
+    env(safe-area-inset-left);
 }
 
 ::selection {

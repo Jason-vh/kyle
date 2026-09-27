@@ -15,7 +15,7 @@
 
     <DialogPortal>
       <DialogContent
-        class="notifications fixed inset-0 z-30 overflow-y-auto bg-bg-base focus:outline-none"
+        class="notifications fixed inset-0 z-30 overflow-y-auto bg-bg-base pt-[env(safe-area-inset-top)] pr-[env(safe-area-inset-right)] pl-[env(safe-area-inset-left)] focus:outline-none"
       >
         <div
           v-if="hero"
