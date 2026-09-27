@@ -19,7 +19,14 @@ import {
   handlePlexUnlink,
   handlePlexCallback,
 } from "./routes/api/auth-plex.ts";
-import { handleGetUsers, handleCreateLink, handleDeleteLink } from "./routes/api/users.ts";
+import {
+  handleGetUsers,
+  handleCreateLink,
+  handleDeleteLink,
+  handleRenameUser,
+  handleMergeUsers,
+  handleDeleteUser,
+} from "./routes/api/users.ts";
 import {
   handleCreatePlexInvite,
   handleGetPlexMembers,
@@ -179,6 +186,13 @@ export function startServer(port: number) {
     "/api/plex/invites": { POST: withSessionRefresh(handleCreatePlexInvite) },
 
     "/api/users": { GET: withSessionRefresh(handleGetUsers) },
+    "/api/users/:userId": {
+      PATCH: (req) => withSessionRefresh(handleRenameUser)(req, req.params.userId),
+      DELETE: (req) => withSessionRefresh(handleDeleteUser)(req, req.params.userId),
+    },
+    "/api/users/:userId/merge": {
+      POST: (req) => withSessionRefresh(handleMergeUsers)(req, req.params.userId),
+    },
     "/api/users/:userId/links": {
       POST: (req) => withSessionRefresh(handleCreateLink)(req, req.params.userId),
     },

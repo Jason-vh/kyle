@@ -58,6 +58,39 @@ export interface Watcher extends Person {
   watchedAt?: string;
 }
 
+// People
+
+export interface UserFootprint {
+  identities: number;
+  passkeys: number;
+  requests: number;
+  conversations: number;
+  messages: number;
+  mediaEvents: number;
+  movieSubscriptions: number;
+  seriesSubscriptions: number;
+  notifications: number;
+  plexInvites: number;
+  removals: number;
+  plexAccounts: number;
+}
+
+export interface LinkedIdentity {
+  id: string;
+  platform: string;
+  platformUserId: string;
+  platformUsername: string | null;
+}
+
+export interface AdminUser {
+  id: string;
+  displayName: string;
+  isAdmin: boolean;
+  createdAt: string;
+  identities: LinkedIdentity[];
+  footprint: UserFootprint;
+}
+
 // Media detail
 
 /** One title in full: what TMDB says about it, and what we have of it. */

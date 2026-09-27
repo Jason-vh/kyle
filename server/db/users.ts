@@ -135,6 +135,15 @@ export async function getPlatformIdentity(userId: string, platform: string) {
   });
 }
 
+export async function renameUser(userId: string, displayName: string): Promise<boolean> {
+  const renamed = await db
+    .update(users)
+    .set({ displayName, updatedAt: new Date() })
+    .where(eq(users.id, userId))
+    .returning({ id: users.id });
+  return renamed.length > 0;
+}
+
 export async function getAdminUserIds(): Promise<string[]> {
   const rows = await db.select({ id: users.id }).from(users).where(eq(users.isAdmin, true));
   return rows.map((row) => row.id);
