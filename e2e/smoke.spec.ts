@@ -88,7 +88,7 @@ test("members can request media, and only whoever asked can remove it", async ({
     .getByRole("button", { name: /^Remove/ })
     .click();
   await page.getByRole("alertdialog").getByRole("button", { name: "Remove", exact: true }).click();
-  await expect(page.getByText("Removed by requester", { exact: true })).toBeVisible();
+  await expect(page.getByText("Removed by you", { exact: true })).toBeVisible();
 });
 
 test("a series asks which seasons to download before it is requested", async ({
