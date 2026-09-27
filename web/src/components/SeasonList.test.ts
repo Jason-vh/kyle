@@ -385,3 +385,48 @@ describe("holding a season down", () => {
     expect(menuText()).toBe("");
   });
 });
+
+describe("a season in the queue", () => {
+  test("a downloading season says how far along it is and how long is left", async () => {
+    const list = await render([season({ state: "downloading", progress: 0.42, eta: "00:12:31" })]);
+
+    expect(list.text()).toContain("Downloading · 42% · 12 min left");
+  });
+
+  test("a stalled season says why, and offers another copy", async () => {
+    const posted = stubApi();
+
+    const list = await render([
+      season({
+        state: "stalled",
+        detail: "The download is stalled with no connections",
+        progress: 0.1,
+        eta: "00:12:31",
+        episodeFileCount: 0,
+      }),
+    ]);
+    expect(list.text()).toContain("10%");
+    expect(list.text()).not.toContain("left");
+    expect(list.text()).toContain("The download is stalled with no connections");
+
+    await openMenu();
+    await clickMenuItem("Try another copy");
+
+    expect(posted[0]).toMatchObject({
+      url: "/api/requests/series/95396/retry?season=1",
+      method: "POST",
+    });
+  });
+
+  test("a blocked season says why", async () => {
+    const list = await render([season({ state: "blocked", detail: "Sample rejected" })]);
+
+    expect(list.text()).toContain("Sample rejected");
+  });
+
+  test("a season merely searching says nothing more", async () => {
+    const list = await render([season({ state: "searching", detail: "irrelevant" })]);
+
+    expect(list.text()).not.toContain("irrelevant");
+  });
+});

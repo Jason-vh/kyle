@@ -94,8 +94,8 @@
         </header>
 
         <div class="mt-5 flex flex-col gap-7">
-          <div>
-            <MediaStatus :media="media" @refresh="refetch()" />
+          <div v-if="showsStatus || actionError">
+            <MediaStatus v-if="showsStatus" :media="media" @refresh="refetch()" />
             <p v-if="actionError" class="mt-2 text-sm text-accent-red">{{ actionError }}</p>
           </div>
 
@@ -168,7 +168,7 @@
 import { computed, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useTitle } from "@vueuse/core";
-import type { LibraryMediaType } from "#shared/types";
+import type { LibraryMediaType, RequestState } from "#shared/types";
 import { backdropUrl, posterUrl } from "#web/utils/images";
 import { formatDuration, formatSize } from "#web/utils/format";
 import MediaActivityLog from "#web/components/MediaActivityLog.vue";
@@ -304,6 +304,14 @@ async function onRemove() {
     removing.value = false;
   }
 }
+
+const SERIES_CARD_STATES = new Set<RequestState>(["removed", "unknown"]);
+
+const showsStatus = computed(() => {
+  const item = media.value;
+  if (!item?.status || item.mediaType === "movie") return true;
+  return SERIES_CARD_STATES.has(item.status.state);
+});
 
 /** Worth offering while something new is coming, and while it is on, so it can be turned off. */
 const followable = computed(() => {

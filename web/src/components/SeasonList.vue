@@ -63,6 +63,10 @@
           <EpisodeBar v-if="showsBar(season)" :season="season" class="mt-2.5" />
         </AccordionHeader>
 
+        <p v-if="reason(season)" class="px-3.5 pb-3 text-xs text-text-secondary">
+          {{ reason(season) }}
+        </p>
+
         <p v-if="failed(season.seasonNumber)" class="px-3.5 pb-3 text-xs text-accent-red">
           {{ failed(season.seasonNumber) }}
         </p>
@@ -144,7 +148,7 @@ import {
 } from "reka-ui";
 import type { EpisodeSummary, SeasonState, SeasonSummary } from "#shared/types";
 import { seasonName } from "#shared/media";
-import { formatDate, formatSize } from "#web/utils/format";
+import { formatDate, formatEta, formatSize } from "#web/utils/format";
 import { SEASON_STATES } from "#web/utils/states";
 import {
   useMonitorSeason,
@@ -219,7 +223,24 @@ function summary(season: SeasonSummary): string {
     parts.push(`next ${airDate(season.expectedAt)}`);
   }
   if (!QUIET.has(season.state)) parts.push(SEASON_STATES[season.state].label);
+  parts.push(...downloadFacts(season));
   return parts.join(" · ");
+}
+
+function downloadFacts(season: SeasonSummary): string[] {
+  if (season.state !== "downloading" && season.state !== "stalled") return [];
+
+  const facts: string[] = [];
+  if (season.progress !== undefined) facts.push(`${Math.round(season.progress * 100)}%`);
+
+  const left = formatEta(season.eta ?? "");
+  if (left && season.state === "downloading") facts.push(`${left} left`);
+  return facts;
+}
+
+function reason(season: SeasonSummary): string | undefined {
+  if (!ATTENTION[season.state]) return undefined;
+  return season.detail;
 }
 
 function showsBar(season: SeasonSummary): boolean {
@@ -265,7 +286,7 @@ function actionsFor(season: SeasonSummary): MenuAction[] {
   const actions: MenuAction[] = [];
   if (searchable(season)) {
     actions.push({
-      label: "Search again",
+      label: season.state === "stalled" ? "Try another copy" : "Search again",
       icon: IconSearch,
       run: () =>
         retry.mutateAsync({
