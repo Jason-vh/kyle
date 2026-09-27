@@ -2,7 +2,9 @@ import { expect, test } from "bun:test";
 import {
   DEFAULT_LIMITS,
   planSweep,
+  type HeldMedia,
   type QueueEntry,
+  type SweepLimits,
   type SweepState,
   type TorrentOrigin,
 } from "./plan.ts";
@@ -11,6 +13,7 @@ const NOW = Date.UTC(2026, 8, 20, 4, 0, 0);
 const SETTLED = (NOW - 72 * 60 * 60 * 1000) / 1000;
 const FRESH = (NOW - 60 * 60 * 1000) / 1000;
 const HOURS_AGO = (hours: number) => new Date(NOW - hours * 60 * 60 * 1000).toISOString();
+const DAYS_AGO = (days: number) => HOURS_AGO(days * 24);
 
 function torrent(overrides: Partial<TorrentOrigin> = {}): TorrentOrigin {
   return {
@@ -36,8 +39,21 @@ function entry(overrides: Partial<QueueEntry> = {}): QueueEntry {
   };
 }
 
-function decide(state: SweepState) {
-  return planSweep(state, DEFAULT_LIMITS, NOW);
+function media(overrides: Partial<HeldMedia> = {}): HeldMedia {
+  return {
+    mediaType: "movie",
+    serviceId: 11,
+    title: "A Film",
+    wanted: false,
+    hasFiles: false,
+    added: DAYS_AGO(15),
+    queued: false,
+    ...overrides,
+  };
+}
+
+function decide(state: Partial<SweepState>, limits: SweepLimits = DEFAULT_LIMITS) {
+  return planSweep({ torrents: [], queue: [], media: [], ...state }, limits, NOW);
 }
 
 test("a quiet library produces nothing", () => {
@@ -180,7 +196,7 @@ test("a blocked import inside its grace period is left alone", () => {
 
 test("a sweep that wants more deletions than it may do deletes nothing", () => {
   const torrents = [1, 2, 3].map((n) => torrent({ hash: `H${n}`, name: `Film ${n}`, imports: [] }));
-  const [action] = planSweep({ torrents, queue: [] }, { ...DEFAULT_LIMITS, maxDeletes: 2 }, NOW);
+  const [action] = decide({ torrents }, { ...DEFAULT_LIMITS, maxDeletes: 2 });
 
   expect(action?.kind).toBe("flag");
   if (action?.kind === "flag") expect(action.reason).toContain("held back");
@@ -188,7 +204,40 @@ test("a sweep that wants more deletions than it may do deletes nothing", () => {
 
 test("a sweep that wants more bytes than it may free deletes nothing", () => {
   const torrents = [torrent({ imports: [] }), torrent({ hash: "H2", name: "Film 2", imports: [] })];
-  const decided = planSweep({ torrents, queue: [] }, { ...DEFAULT_LIMITS, maxBytes: 1024 }, NOW);
+  const decided = decide({ torrents }, { ...DEFAULT_LIMITS, maxBytes: 1024 });
 
   expect(decided.every((action) => action.kind === "flag")).toBe(true);
+});
+
+test.each(["movie", "series"] as const)(
+  "a %s nobody wants with nothing on disk is removed",
+  (mediaType) => {
+    expect(decide({ media: [media({ mediaType })] })).toEqual([
+      {
+        kind: "remove-media",
+        mediaType,
+        serviceId: 11,
+        subject: "A Film",
+        reason: "nothing on disk, and nothing monitored",
+      },
+    ]);
+  },
+);
+
+test.each([
+  ["still wanted", { wanted: true }],
+  ["holding files", { hasFiles: true }],
+  ["in a queue", { queued: true }],
+  ["added recently", { added: DAYS_AGO(13) }],
+  ["of unknown age", { added: "" }],
+])("a title %s is kept", (_, overrides) => {
+  expect(decide({ media: [media(overrides)] })).toEqual([]);
+});
+
+test("a sweep that wants more removals than it may do removes nothing", () => {
+  const titles = [1, 2, 3].map((n) => media({ serviceId: n, title: `Film ${n}` }));
+  const decided = decide({ media: titles }, { ...DEFAULT_LIMITS, maxRemovals: 2 });
+
+  expect(decided.every((action) => action.kind === "flag")).toBe(true);
+  expect(decided[0]?.reason).toContain("held back");
 });

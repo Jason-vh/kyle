@@ -25,9 +25,20 @@ export interface QueueEntry {
   status: QueueStatus;
 }
 
+export interface HeldMedia {
+  mediaType: LibraryMediaType;
+  serviceId: number;
+  title: string;
+  wanted: boolean;
+  hasFiles: boolean;
+  added: string;
+  queued: boolean;
+}
+
 export interface SweepState {
   torrents: TorrentOrigin[];
   queue: QueueEntry[];
+  media: HeldMedia[];
 }
 
 export type JanitorAction =
@@ -47,6 +58,13 @@ export type JanitorAction =
       subject: string;
       reason: string;
     }
+  | {
+      kind: "remove-media";
+      mediaType: LibraryMediaType;
+      serviceId: number;
+      subject: string;
+      reason: string;
+    }
   | { kind: "flag"; subject: string; bytes: number; reason: string };
 
 export interface SweepLimits {
@@ -54,15 +72,19 @@ export interface SweepLimits {
   graceMs: number;
   /** How long a download may sit stalled before it is given up on. */
   stalledAfterMs: number;
+  abandonedAfterMs: number;
   maxDeletes: number;
   maxBytes: number;
+  maxRemovals: number;
 }
 
 export const DEFAULT_LIMITS: SweepLimits = {
   graceMs: 48 * 60 * 60 * 1000,
   stalledAfterMs: 12 * 60 * 60 * 1000,
+  abandonedAfterMs: 14 * 24 * 60 * 60 * 1000,
   maxDeletes: 40,
   maxBytes: 2 * 1024 ** 4,
+  maxRemovals: 20,
 };
 
 /**
@@ -170,10 +192,33 @@ function queueAction(
   };
 }
 
+function mediaAction(
+  media: HeldMedia,
+  limits: SweepLimits,
+  now: number,
+): JanitorAction | undefined {
+  if (media.wanted || media.hasFiles || media.queued) return undefined;
+  if (ageMs(media.added, now) < limits.abandonedAfterMs) return undefined;
+
+  return {
+    kind: "remove-media",
+    mediaType: media.mediaType,
+    serviceId: media.serviceId,
+    subject: media.title,
+    reason: "nothing on disk, and nothing monitored",
+  };
+}
+
 function isDeletion(
   action: JanitorAction,
 ): action is Extract<JanitorAction, { kind: "delete-torrent" }> {
   return action.kind === "delete-torrent";
+}
+
+function isRemoval(
+  action: JanitorAction,
+): action is Extract<JanitorAction, { kind: "remove-media" }> {
+  return action.kind === "remove-media";
 }
 
 /**
@@ -182,7 +227,7 @@ function isDeletion(
  * migrated — so it deletes nothing and says what it wanted to do. A night of
  * no cleanup is cheap; a night of wrong cleanup is not.
  */
-function withinLimits(actions: JanitorAction[], limits: SweepLimits): JanitorAction[] {
+function holdBackDeletions(actions: JanitorAction[], limits: SweepLimits): JanitorAction[] {
   const deletions = actions.filter(isDeletion);
   const bytes = deletions.reduce((total, action) => total + action.bytes, 0);
 
@@ -196,6 +241,19 @@ function withinLimits(actions: JanitorAction[], limits: SweepLimits): JanitorAct
   });
 }
 
+function holdBackRemovals(actions: JanitorAction[], limits: SweepLimits): JanitorAction[] {
+  const removals = actions.filter(isRemoval);
+
+  if (removals.length <= limits.maxRemovals) return actions;
+
+  const reason = `held back: this sweep wanted to remove ${removals.length} titles, past what one run may do`;
+
+  return actions.map((action) => {
+    if (!isRemoval(action)) return action;
+    return { kind: "flag", subject: action.subject, bytes: 0, reason };
+  });
+}
+
 /** Everything the sweep would do, decided from state alone. */
 export function planSweep(
   state: SweepState,
@@ -205,7 +263,8 @@ export function planSweep(
   const actions = [
     ...state.torrents.map((torrent) => torrentAction(torrent, limits, now)),
     ...state.queue.map((entry) => queueAction(entry, limits, now)),
+    ...state.media.map((media) => mediaAction(media, limits, now)),
   ].filter((action) => action !== undefined);
 
-  return withinLimits(actions, limits);
+  return holdBackRemovals(holdBackDeletions(actions, limits), limits);
 }

@@ -1,5 +1,6 @@
 import type { QBittorrentTorrent } from "#server/qbittorrent/api.ts";
-import type { QueueEntry, SweepState, TorrentOrigin } from "./plan.ts";
+import type { SonarrSeries } from "#server/sonarr/types.ts";
+import type { HeldMedia, QueueEntry, SweepState, TorrentOrigin } from "./plan.ts";
 import * as qbittorrent from "#server/qbittorrent/api.ts";
 import * as radarr from "#server/radarr/api.ts";
 import * as sonarr from "#server/sonarr/api.ts";
@@ -92,6 +93,40 @@ async function queueEntries(): Promise<{ entries: QueueEntry[]; downloadIds: Set
   return { entries, downloadIds: new Set(downloadIds) };
 }
 
+function seriesWanted(series: SonarrSeries): boolean {
+  if (!series.monitored) return false;
+  if (series.monitorNewItems !== "none") return true;
+  return series.seasons.some((season) => season.monitored);
+}
+
+async function heldMedia(queue: QueueEntry[]): Promise<HeldMedia[]> {
+  const [movies, series] = await Promise.all([radarr.getMovies(), sonarr.getAllSeries()]);
+
+  const queued = new Set(queue.map((entry) => `${entry.mediaType}:${entry.serviceId}`));
+
+  const heldMovies = movies.map((movie) => ({
+    mediaType: "movie" as const,
+    serviceId: movie.id,
+    title: movie.title,
+    wanted: movie.monitored,
+    hasFiles: movie.hasFile,
+    added: movie.added,
+    queued: queued.has(`movie:${movie.id}`),
+  }));
+
+  const heldSeries = series.map((show) => ({
+    mediaType: "series" as const,
+    serviceId: show.id,
+    title: show.title,
+    wanted: seriesWanted(show),
+    hasFiles: show.statistics.episodeFileCount > 0,
+    added: show.added,
+    queued: queued.has(`series:${show.id}`),
+  }));
+
+  return [...heldMovies, ...heldSeries];
+}
+
 /**
  * Everything the sweep decides from. Anything that throws here aborts the
  * whole sweep, and that is the point: a service that cannot be asked about a
@@ -108,5 +143,5 @@ export async function gatherSweepState(): Promise<SweepState> {
     resolved.push(...(await Promise.all(batch.map((torrent) => resolve(torrent, downloadIds)))));
   }
 
-  return { torrents: resolved, queue: entries };
+  return { torrents: resolved, queue: entries, media: await heldMedia(entries) };
 }

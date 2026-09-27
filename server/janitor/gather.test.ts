@@ -19,6 +19,7 @@ function services(
     historyTruncated?: boolean;
     importOnSecondPage?: boolean;
     queuedOnSecondPage?: boolean;
+    series?: unknown[];
   } = {},
 ) {
   Object.assign(process.env, {
@@ -79,6 +80,8 @@ function services(
         totalRecords: options.historyTruncated ? 2 : 1,
       });
     }
+    if (path.endsWith("/movie")) return Response.json([]);
+    if (path.endsWith("/series")) return Response.json(options.series ?? []);
     if (path.includes("/moviefile/"))
       return options.fileResponse ?? new Response("", { status: 404 });
     throw new Error(`Unexpected request: ${url}`);
@@ -130,4 +133,37 @@ test("deletes only after the file endpoint confirms absence", async () => {
   const { deleted } = services({ fileId: 12 });
   expect((await sweep(true)).applied).toBe(1);
   expect(deleted).toHaveLength(1);
+});
+
+function show(id: number, overrides: Record<string, unknown>) {
+  return {
+    id,
+    title: `Show ${id}`,
+    monitored: true,
+    monitorNewItems: "none",
+    seasons: [{ seasonNumber: 1, monitored: false }],
+    statistics: { episodeFileCount: 0 },
+    added: "2020-01-01T00:00:00Z",
+    ...overrides,
+  };
+}
+
+test("removes a series only when nothing in it is monitored or followed", async () => {
+  services({
+    fileId: 12,
+    fileResponse: Response.json({ id: 12 }),
+    series: [
+      show(1, {}),
+      show(2, { monitored: false, monitorNewItems: "all" }),
+      show(3, { monitorNewItems: "all" }),
+      show(4, { seasons: [{ seasonNumber: 1, monitored: true }] }),
+      show(5, { statistics: { episodeFileCount: 3 } }),
+    ],
+  });
+
+  const removed = (await sweep(false)).actions
+    .filter((action) => action.kind === "remove-media")
+    .map((action) => action.subject);
+
+  expect(removed).toEqual(["Show 1", "Show 2"]);
 });

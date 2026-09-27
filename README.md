@@ -263,11 +263,14 @@ web/                         → Vue 3 + Vite + Tailwind CSS 4 SPA
   the torrent seeding it is deleting 60 GB of nothing. It also retries downloads stalled
   past half a day — blocklist, then search again — drops imports blocked by releases that
   can never import (`.exe` bait, sample packs), and only ever _flags_ what it cannot
-  prove: a torrent with no history was added by hand. Restraint is structural, not a flag
+  prove: a torrent with no history was added by hand. A title with nothing on disk and
+  nothing monitored or followed, added over two weeks ago, is removed along with its folder
+  and recorded as removed by Kyle. Restraint is structural, not a flag
   somebody remembers: a service that fails to answer aborts the whole sweep, because
   unreachable looks like unknown and unknown is a reason to delete; torrents still in a
   queue are exempt; nothing settled less than two days ago is touched; a sweep wanting
-  more than 40 deletions or 2 TB has misread something and deletes nothing instead.
+  more than 40 deletions or 2 TB has misread something and deletes nothing instead, and
+  one wanting more than 20 removals removes nothing.
   `bun run scripts/janitor.ts` is the dry run that says what tonight would do.
 - **Media events + subscriptions** — `media_events` is an append-only log of tool actions.
   `movie_subscriptions` / `series_subscriptions` track notification preferences (created on

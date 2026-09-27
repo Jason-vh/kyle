@@ -1,6 +1,7 @@
 import * as qbittorrent from "#server/qbittorrent/api.ts";
 import * as radarr from "#server/radarr/api.ts";
 import * as sonarr from "#server/sonarr/api.ts";
+import { removeLibraryItem } from "#server/library/service.ts";
 import type { JanitorAction } from "./plan.ts";
 
 /**
@@ -26,6 +27,9 @@ export async function applyAction(action: JanitorAction): Promise<void> {
     case "discard-download":
       if (action.mediaType === "movie") await radarr.removeQueueItem(action.queueId, true);
       else await sonarr.removeQueueItem(action.queueId, true);
+      return;
+    case "remove-media":
+      await removeLibraryItem(action.mediaType, action.serviceId, true, "Kyle");
       return;
     case "flag":
       return;
