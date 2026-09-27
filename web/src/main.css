@@ -7,8 +7,8 @@
  */
 @theme {
   /* Typography */
-  --font-family-sans: "Inter", system-ui, sans-serif;
-  --font-family-mono: "JetBrains Mono", Menlo, monospace;
+  --font-family-sans: "Inter Variable", system-ui, sans-serif;
+  --font-family-mono: "JetBrains Mono Variable", Menlo, monospace;
 
   /* Surfaces */
   --color-bg-base: #f7f7f9;

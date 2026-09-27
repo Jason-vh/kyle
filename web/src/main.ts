@@ -3,6 +3,8 @@ import { PiniaColada } from "@pinia/colada";
 import App from "./App.vue";
 import { pinia } from "./pinia";
 import { router } from "./router";
+import "@fontsource-variable/inter";
+import "@fontsource-variable/jetbrains-mono";
 import "./main.css";
 
 // Router last, so its first navigation guard runs with the cache already there.
