@@ -1,6 +1,10 @@
-import { and, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, sql, type Column } from "drizzle-orm";
 import { db } from "./index.ts";
-import { mediaRequests, users } from "./schema.ts";
+import { mediaRequests, platformIdentities, users } from "./schema.ts";
+
+function plexIdentityOf(userId: Column) {
+  return and(eq(platformIdentities.userId, userId), eq(platformIdentities.platform, "plex"));
+}
 
 export interface NewMediaRequest {
   userId: string;
@@ -100,10 +104,11 @@ export async function getAllRequesters() {
       tmdbId: mediaRequests.tmdbId,
       userId: mediaRequests.userId,
       name: users.displayName,
-      plexAccountId: users.plexAccountId,
+      plexAccountId: platformIdentities.platformUserId,
     })
     .from(mediaRequests)
-    .innerJoin(users, eq(mediaRequests.userId, users.id));
+    .innerJoin(users, eq(mediaRequests.userId, users.id))
+    .leftJoin(platformIdentities, plexIdentityOf(mediaRequests.userId));
 }
 
 /**
@@ -116,12 +121,13 @@ export async function getRequestersForMedia(mediaType: "movie" | "series", tmdbI
     .select({
       userId: mediaRequests.userId,
       name: users.displayName,
-      plexAccountId: users.plexAccountId,
+      plexAccountId: platformIdentities.platformUserId,
       seasonNumber: mediaRequests.seasonNumber,
       createdAt: mediaRequests.createdAt,
     })
     .from(mediaRequests)
     .innerJoin(users, eq(mediaRequests.userId, users.id))
+    .leftJoin(platformIdentities, plexIdentityOf(mediaRequests.userId))
     .where(and(eq(mediaRequests.mediaType, mediaType), eq(mediaRequests.tmdbId, tmdbId)));
 }
 

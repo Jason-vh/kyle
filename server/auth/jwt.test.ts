@@ -1,7 +1,7 @@
 import { afterEach, expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
 import { db } from "#server/db/index.ts";
-import { users } from "#server/db/schema.ts";
+import { plexAccountOwners, users } from "#server/db/schema.ts";
 import { createTestUser, deleteTestUser } from "#server/db/testing.ts";
 import { buildJwtCookie, revokeUserSessions, signJwt, verifyJwt } from "./jwt.ts";
 import { requireAdmin } from "./middleware.ts";
@@ -76,7 +76,9 @@ test("disabled and deleted accounts cannot use an existing session", async () =>
 
 test("Plex-origin accounts cannot bypass membership checks with a passkey session", async () => {
   const user = await account();
-  await db.update(users).set({ plexAccountId: "removed-plex-member" }).where(eq(users.id, user.id));
+  await db
+    .insert(plexAccountOwners)
+    .values({ plexAccountId: `removed-${user.id}`, userId: user.id });
   globalThis.fetch = (async () => new Response(null, { status: 503 })) as unknown as typeof fetch;
   const token = await signJwt(user);
 

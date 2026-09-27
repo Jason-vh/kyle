@@ -170,7 +170,6 @@ export async function mergeUsers(from: string, into: string, name: string): Prom
       .set({
         displayName: name,
         isAdmin: kept.isAdmin || gone.isAdmin,
-        plexAccountId: kept.plexAccountId ?? gone.plexAccountId,
         updatedAt: new Date(),
       })
       .where(eq(users.id, into));

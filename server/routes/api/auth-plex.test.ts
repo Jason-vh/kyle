@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
 import { db } from "#server/db/index.ts";
-import { users } from "#server/db/schema.ts";
+import { plexAccountOwners, users } from "#server/db/schema.ts";
 import {
   createPlatformLink,
   createUserWithPlatformLink,
@@ -69,6 +69,14 @@ afterEach(async () => {
   for (const id of userIds.splice(0)) await deleteTestUser(id);
 });
 
+async function plexOwner(plexAccountId: string) {
+  const [owner] = await db
+    .select()
+    .from(plexAccountOwners)
+    .where(eq(plexAccountOwners.plexAccountId, plexAccountId));
+  return owner?.userId;
+}
+
 async function flow(response: Response) {
   const body = (await response.json()) as { authUrl: string };
   return {
@@ -112,7 +120,7 @@ test("Plex sign-in recovers the same account after unlinking its only credential
   expect(await getPlatformIdentity(user.id, "plex")).toBeUndefined();
   expect(await userFromResponse(await loginWithPlex())).toMatchObject({ id: user.id });
   expect((await getPlatformIdentity(user.id, "plex"))?.platformUserId).toBe("999");
-  expect(await db.select().from(users).where(eq(users.plexAccountId, "999"))).toHaveLength(1);
+  expect(await plexOwner("999")).toBe(user.id);
 });
 
 test("recovers the most recently linked account, including accounts not created through Plex", async () => {
@@ -141,7 +149,7 @@ test.each(["disabled", "removed"])("recovery cannot bypass %s access", async (re
   expect(response.headers.get("location")).toBe("/login?error=plex_no_access");
   expect(response.headers.get("set-cookie")).toBeNull();
   expect(await getPlatformIdentity(user.id, "plex")).toBeUndefined();
-  expect(await db.select().from(users).where(eq(users.plexAccountId, "999"))).toHaveLength(1);
+  expect(await plexOwner("999")).toBe(user.id);
 });
 
 test("recovery does not replace another Plex account already linked to the user", async () => {
@@ -160,7 +168,7 @@ test("concurrent recovery callbacks relink one account", async () => {
   for (const response of responses) {
     expect(await userFromResponse(response)).toMatchObject({ id: user.id });
   }
-  expect(await db.select().from(users).where(eq(users.plexAccountId, "999"))).toHaveLength(1);
+  expect(await plexOwner("999")).toBe(user.id);
 });
 
 test("an existing Plex user is refused after server access is removed", async () => {

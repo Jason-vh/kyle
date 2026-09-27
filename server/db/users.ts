@@ -23,6 +23,15 @@ export async function resolveAppUserId(
   return row?.userId ?? null;
 }
 
+/** Every Plex account the user has held, linked now or since unlinked. */
+export async function getPlexAccountIds(userId: string): Promise<string[]> {
+  const rows = await db
+    .select({ plexAccountId: plexAccountOwners.plexAccountId })
+    .from(plexAccountOwners)
+    .where(eq(plexAccountOwners.userId, userId));
+  return rows.map((row) => row.plexAccountId);
+}
+
 export async function getPreviousPlexUser(plexAccountId: string) {
   const owner = await db.query.plexAccountOwners.findFirst({
     where: eq(plexAccountOwners.plexAccountId, plexAccountId),
@@ -207,7 +216,6 @@ export async function createUserWithPlatformLink(input: {
       .values({
         displayName: input.displayName,
         isAdmin: input.isAdmin,
-        plexAccountId: input.platform === "plex" ? input.platformUserId : null,
       })
       .returning();
 
