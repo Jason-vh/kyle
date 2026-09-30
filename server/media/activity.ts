@@ -23,14 +23,16 @@ const log = createLogger("media-activity");
 /** Longer than a binge, shorter than the gap between two evenings. */
 const SITTING_MS = 6 * 60 * 60 * 1000;
 
-type RepeatedKind = Extract<MediaActivityKind, "imported" | "watched">;
+type RepeatedKind = Extract<MediaActivityKind, "grabbed" | "imported" | "watched">;
 
 /**
- * The history events worth telling. A download is told once, when it lands:
- * the grab before it is half of the same story, and renames, deletions and
- * failures are noise here.
+ * The history events worth telling: a download starting and landing. Renames,
+ * deletions and failures are noise here.
  */
-const SERVICE_EVENTS = new Map<string, RepeatedKind>([["downloadFolderImported", "imported"]]);
+const SERVICE_EVENTS = new Map<string, RepeatedKind>([
+  ["grabbed", "grabbed"],
+  ["downloadFolderImported", "imported"],
+]);
 
 /** Something that happens once per file or per play, and reads better folded with its neighbours. */
 export interface Occurrence {

@@ -218,7 +218,7 @@ export interface TitleStatus {
   missing?: MissingSeason[];
 }
 
-export type MediaActivityKind = "requested" | "imported" | "watched" | "removed";
+export type MediaActivityKind = "requested" | "grabbed" | "imported" | "watched" | "removed";
 
 /** One thing that happened to a title. Episodes handled in one sitting read as one. */
 export interface MediaActivity {

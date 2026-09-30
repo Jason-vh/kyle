@@ -56,6 +56,7 @@ import { capitalized, nameOf } from "#web/utils/people";
 import type { MediaActivity, MediaActivityKind } from "#shared/types";
 import { formatDate } from "#web/utils/format";
 import IconCheck from "~icons/ph/check-bold";
+import IconDownload from "~icons/ph/download-simple-bold";
 import IconEye from "~icons/ph/eye";
 import IconPlus from "~icons/ph/plus-bold";
 import IconTrash from "~icons/ph/trash";
@@ -75,6 +76,7 @@ interface Look {
 
 const LOOKS: Record<MediaActivityKind, Look> = {
   requested: { icon: IconPlus, verb: "requested", unattributed: "Requested" },
+  grabbed: { icon: IconDownload, verb: "started downloading", unattributed: "Started downloading" },
   imported: { icon: IconCheck, verb: "downloaded", unattributed: "Downloaded" },
   watched: { icon: IconEye, verb: "watched", unattributed: "Watched" },
   removed: { icon: IconTrash, verb: "removed it", unattributed: "Removed outside Kyle" },

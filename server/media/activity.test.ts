@@ -65,6 +65,21 @@ describe("groupOccurrences", () => {
     ]);
   });
 
+  // Three releases grabbed in a minute started one download, not three.
+  test("folds grabs in one sitting into one start, apart from the landing", () => {
+    const events = groupOccurrences([
+      { kind: "grabbed", at: at(0) },
+      { kind: "grabbed", at: at(0.01) },
+      { kind: "grabbed", at: at(0.02) },
+      { kind: "imported", at: at(0.2) },
+    ]);
+
+    expect(events.map((event) => [event.kind, event.at])).toEqual([
+      ["grabbed", at(0.02)],
+      ["imported", at(0.2)],
+    ]);
+  });
+
   test("leaves a movie download undescribed", () => {
     const [event] = groupOccurrences([{ kind: "imported", at: at(0) }]);
 

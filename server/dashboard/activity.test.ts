@@ -39,6 +39,7 @@ const IMPORT = "downloadFolderImported";
 function movieRecord(overrides: Record<string, unknown> = {}) {
   return {
     id: 1,
+    movieId: 7,
     eventType: IMPORT,
     date: "2026-09-05T12:00:00Z",
     movie: { title: "Arrival", year: 2016, tmdbId: 329865 },
@@ -134,6 +135,37 @@ describe("getActivity", () => {
 
     expect(activity).toHaveLength(1);
     expect(activity[0]).toMatchObject({ title: "Severance", detail: "Season 1 · 3 episodes" });
+  });
+
+  // Radarr imports a movie again each time a better copy replaces the last.
+  test("shows a movie imported several times once, at its newest import", async () => {
+    stubHistory(
+      [
+        movieRecord({ id: 1, date: "2026-09-03T00:00:00Z" }),
+        movieRecord({ id: 2, date: "2026-09-05T00:00:00Z" }),
+        movieRecord({ id: 3, date: "2026-09-04T00:00:00Z" }),
+      ],
+      [],
+    );
+
+    const activity = await getActivity(userId, since);
+
+    expect(activity).toHaveLength(1);
+    expect(activity[0]).toMatchObject({ id: "movie-7", at: "2026-09-05T00:00:00Z" });
+  });
+
+  test("keeps two movies apart", async () => {
+    stubHistory(
+      [
+        movieRecord(),
+        movieRecord({ id: 2, movieId: 8, movie: { title: "Heat", year: 1995, tmdbId: 949 } }),
+      ],
+      [],
+    );
+
+    const activity = await getActivity(userId, since);
+
+    expect(activity.map((item) => item.title).sort()).toEqual(["Arrival", "Heat"]);
   });
 
   test("counts episodes spanning seasons without naming one", async () => {

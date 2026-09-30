@@ -1,4 +1,5 @@
 import type { ActivityItem } from "#shared/types.ts";
+import type { RadarrHistoryRecord, RadarrMovie } from "#server/radarr/types.ts";
 import type { SonarrEpisode, SonarrHistoryItem, SonarrSeries } from "#server/sonarr/types.ts";
 import * as radarr from "#server/radarr/api.ts";
 import * as sonarr from "#server/sonarr/api.ts";
@@ -58,10 +59,20 @@ export async function getActivity(viewerId: string, since: Date): Promise<Activi
   const items: ActivityItem[] = [];
   const landed = (at: string) => new Date(at) >= since;
 
+  // A movie is imported again each time a better copy replaces it; it arrived once.
+  const newestImports = new Map<number, RadarrHistoryRecord & { movie: RadarrMovie }>();
   for (const record of movies?.records ?? []) {
     if (record.eventType !== IMPORTED || !record.movie || !landed(record.date)) continue;
+
+    const newest = newestImports.get(record.movieId);
+    if (!newest || record.date > newest.date) {
+      newestImports.set(record.movieId, { ...record, movie: record.movie });
+    }
+  }
+
+  for (const record of newestImports.values()) {
     items.push({
-      id: `movie-${record.id}`,
+      id: `movie-${record.movieId}`,
       mediaType: "movie",
       title: record.movie.title,
       year: record.movie.year || undefined,
