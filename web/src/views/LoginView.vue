@@ -9,8 +9,7 @@
             K
           </div>
         </div>
-        <h1 class="mb-1 text-center text-xl font-semibold">Sign in</h1>
-        <p class="mb-6 text-center text-sm text-text-muted">Access the thread viewer</p>
+        <h1 class="mb-6 text-center text-xl font-semibold">Sign in</h1>
         <div
           v-if="error"
           class="mb-4 rounded-lg bg-accent-red-light px-3 py-2 text-center text-sm text-accent-red"
