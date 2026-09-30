@@ -1,6 +1,14 @@
 import { startRegistration, startAuthentication } from "@simplewebauthn/browser";
 import type { AuthUser } from "./auth";
 
+/**
+ * Dismissing the browser's passkey prompt rejects with NotAllowedError, which
+ * @simplewebauthn/browser rewraps as a plain Error carrying the same name.
+ */
+export function isPasskeyCancelled(error: unknown): boolean {
+  return error instanceof Error && error.name === "NotAllowedError";
+}
+
 export async function passkeyLogin(): Promise<AuthUser> {
   // Get authentication options
   const optionsRes = await fetch("/api/auth/passkey/login/options", { method: "POST" });

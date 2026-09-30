@@ -53,7 +53,7 @@ import { ref } from "vue";
 import { useTitle } from "@vueuse/core";
 import { useRoute, useRouter } from "vue-router";
 
-import { passkeyLogin } from "#web/api/passkey";
+import { isPasskeyCancelled, passkeyLogin } from "#web/api/passkey";
 import { plexErrorMessage, startPlexLogin } from "#web/api/plex";
 import IconPlex from "~icons/cib/plex";
 import AppButton from "#web/components/ui/AppButton.vue";
@@ -88,7 +88,7 @@ async function onPasskeyLogin() {
     await refreshSession();
     await router.push("/home");
   } catch (e) {
-    if (e instanceof DOMException && e.name === "NotAllowedError") return;
+    if (isPasskeyCancelled(e)) return;
     error.value = e instanceof Error ? e.message : "Login failed";
   } finally {
     loading.value = null;

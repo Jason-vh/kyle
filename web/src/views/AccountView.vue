@@ -30,25 +30,29 @@
         :identity="links?.identities.find((identity) => identity.platform === platform)"
       />
 
-      <section v-if="plexEnabled" class="flex items-center justify-between gap-4 p-4">
+      <router-link
+        v-if="plexEnabled"
+        to="/members"
+        class="flex items-center justify-between gap-4 p-4 no-underline transition-colors hover:bg-bg-elevated focus:outline-none focus-visible:bg-bg-elevated"
+      >
         <div>
           <p class="text-sm font-medium text-text-primary">Plex access</p>
           <p class="text-sm text-text-muted">Invite someone, and see who can watch</p>
         </div>
-        <AppButton as-child>
-          <router-link to="/members">Manage</router-link>
-        </AppButton>
-      </section>
+        <IconCaretRight class="size-4 shrink-0 text-text-muted" aria-hidden="true" />
+      </router-link>
 
-      <section v-if="isAdmin" class="flex items-center justify-between gap-4 p-4">
+      <router-link
+        v-if="isAdmin"
+        to="/people"
+        class="flex items-center justify-between gap-4 p-4 no-underline transition-colors hover:bg-bg-elevated focus:outline-none focus-visible:bg-bg-elevated"
+      >
         <div>
           <p class="text-sm font-medium text-text-primary">People</p>
           <p class="text-sm text-text-muted">Rename, merge and tidy up accounts</p>
         </div>
-        <AppButton as-child>
-          <router-link to="/people">Manage</router-link>
-        </AppButton>
-      </section>
+        <IconCaretRight class="size-4 shrink-0 text-text-muted" aria-hidden="true" />
+      </router-link>
 
       <section class="p-4">
         <div class="flex items-center justify-between gap-4">
@@ -90,9 +94,10 @@ import { reactive, ref } from "vue";
 import { useTitle } from "@vueuse/core";
 import { useRoute, useRouter } from "vue-router";
 import { logout } from "#web/api/auth";
-import { passkeyRegisterExisting } from "#web/api/passkey";
+import { isPasskeyCancelled, passkeyRegisterExisting } from "#web/api/passkey";
 import { plexErrorMessage, startPlexLink, unlinkPlex } from "#web/api/plex";
 import IconPlex from "~icons/cib/plex";
+import IconCaretRight from "~icons/ph/caret-right";
 import LinkedAccount from "#web/components/LinkedAccount.vue";
 import AppButton from "#web/components/ui/AppButton.vue";
 import AppCard from "#web/components/ui/AppCard.vue";
@@ -123,7 +128,6 @@ async function run(key: Action, action: () => Promise<void>, fallback: string): 
   try {
     await action();
   } catch (e) {
-    if (e instanceof DOMException && e.name === "NotAllowedError") return;
     errors[key] = e instanceof Error ? e.message : fallback;
   } finally {
     busy.value = null;
@@ -156,8 +160,12 @@ async function onAddPasskey() {
   return run(
     "passkey",
     async () => {
-      await passkeyRegisterExisting();
-      passkeyAdded.value = true;
+      try {
+        await passkeyRegisterExisting();
+        passkeyAdded.value = true;
+      } catch (e) {
+        if (!isPasskeyCancelled(e)) throw e;
+      }
     },
     "Could not add a passkey",
   );
