@@ -49,15 +49,20 @@
       <RouterView />
     </main>
 
-    <!--
-      A capsule narrower than the cards, so it reads as a control and not as
-      another row. It stays clear of the bottom edge: iOS Safari tints the area
-      under its toolbar after any fixed element that touches it.
-    -->
+    <!-- A capsule narrower than the cards, so it reads as a control and not as another row. -->
     <nav
       v-if="user && !route.meta.hideNav"
-      class="fixed inset-x-0 bottom-[calc(0.75rem+env(safe-area-inset-bottom))] z-10 mx-auto flex w-[min(20rem,calc(100%-3rem))] rounded-full bg-bg-elevated/85 p-1 shadow-float backdrop-blur-xl backdrop-saturate-150 sm:hidden"
+      class="fixed inset-x-0 bottom-[calc(0.75rem+env(safe-area-inset-bottom))] z-10 mx-auto flex w-[min(20rem,calc(100%-3rem))] p-1 sm:hidden"
     >
+      <!--
+        The material sits on a child because iOS Safari tints its toolbar after
+        the background of fixed elements near the screen's edge, and it does
+        not look at absolutely positioned children.
+      -->
+      <div
+        class="absolute inset-0 -z-10 rounded-full bg-bg-elevated/85 shadow-float backdrop-blur-xl backdrop-saturate-150"
+        aria-hidden="true"
+      />
       <router-link
         v-for="link in NAV_LINKS"
         :key="link.to"

@@ -174,13 +174,14 @@
   }
 }
 
+/* On the root rather than the body: iOS Safari tints its toolbars after the root's own background. */
 html {
+  background: var(--color-bg-base);
   color-scheme: light dark;
   touch-action: manipulation;
 }
 
 body {
-  background: var(--color-bg-base);
   color: var(--color-text-primary);
   font-family: var(--font-family-sans);
   line-height: 1.6;
