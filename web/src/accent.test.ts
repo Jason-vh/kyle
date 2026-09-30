@@ -18,7 +18,7 @@ describe("chooseAccent", () => {
   });
 
   test("rolls on a first visit", () => {
-    expect(chooseAccent(null, now, () => 0.99)).toEqual({ accent: "orange", rolledAt: now });
+    expect(chooseAccent(null, now, () => 0.99)).toEqual({ accent: "teal", rolledAt: now });
   });
 
   // A clock set back would otherwise hold one colour until it caught up.
@@ -39,6 +39,7 @@ describe("applyAccent", () => {
   afterEach(() => {
     localStorage.clear();
     delete document.documentElement.dataset.accent;
+    document.head.innerHTML = "";
   });
 
   test("wears the rolled accent and remembers it", () => {
@@ -46,6 +47,16 @@ describe("applyAccent", () => {
 
     expect(document.documentElement.dataset.accent).toBe(accent);
     expect(JSON.parse(localStorage.getItem("kyle-accent")!)).toEqual({ accent, rolledAt: now });
+  });
+
+  test("the favicon wears it too", () => {
+    document.head.innerHTML = '<link rel="icon" href="/favicons/violet.svg" />';
+    localStorage.setItem("kyle-accent", JSON.stringify({ accent: "teal", rolledAt: now }));
+
+    applyAccent(now);
+
+    const favicon = document.querySelector<HTMLLinkElement>('link[rel="icon"]')!;
+    expect(favicon.getAttribute("href")).toBe("/favicons/teal.svg");
   });
 
   test("a reload within the hour keeps the same accent", () => {

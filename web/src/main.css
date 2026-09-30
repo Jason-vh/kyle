@@ -115,7 +115,8 @@
 }
 
 /*
- * The other accents Kyle can wear, named to match ACCENTS in accent.ts.
+ * The other accents Kyle can wear, named to match ACCENTS in accent.ts and
+ * the icons in public/favicons.
  * Hues near green, amber, red and blue are left out so the accent is never
  * mistaken for a status. Dark comes last to win over light at equal weight.
  */
@@ -135,10 +136,6 @@
   --color-accent: #0f766e;
   --color-accent-light: #ccfbf1;
 }
-:root[data-accent="orange"] {
-  --color-accent: #c2410c;
-  --color-accent-light: #ffedd5;
-}
 
 @media (prefers-color-scheme: dark) {
   :root[data-accent="indigo"] {
@@ -156,10 +153,6 @@
   :root[data-accent="teal"] {
     --color-accent: #2dd4bf;
     --color-accent-light: #0c302c;
-  }
-  :root[data-accent="orange"] {
-    --color-accent: #fb923c;
-    --color-accent-light: #3a1f0c;
   }
 }
 

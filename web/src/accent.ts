@@ -3,10 +3,11 @@
  * colour does not flicker between page loads; after that the next visit rolls
  * again, which may well land on the same one.
  *
- * The colours themselves live in main.css; violet is the theme's own default
- * and so needs no rule of its own there.
+ * The colours themselves live in main.css, where violet is the theme's own
+ * default and so needs no rule of its own, and each has a favicon to match in
+ * public/favicons.
  */
-export const ACCENTS = ["violet", "indigo", "fuchsia", "pink", "teal", "orange"] as const;
+export const ACCENTS = ["violet", "indigo", "fuchsia", "pink", "teal"] as const;
 
 export type Accent = (typeof ACCENTS)[number];
 
@@ -56,5 +57,9 @@ export function applyAccent(now = Date.now()): Accent {
   const roll = chooseAccent(readRoll(), now);
   localStorage.setItem(STORAGE_KEY, JSON.stringify(roll));
   document.documentElement.dataset.accent = roll.accent;
+
+  const favicon = document.querySelector<HTMLLinkElement>('link[rel="icon"]');
+  if (favicon) favicon.href = `/favicons/${roll.accent}.svg`;
+
   return roll.accent;
 }

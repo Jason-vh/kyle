@@ -33,7 +33,8 @@ is guaranteed to have contrast in both schemes. Do not mix pairs.
 
 `accent` is Kyle's own colour, and it is not fixed: `web/src/accent.ts` rolls one of a
 small palette per visit, keeps it for an hour, and sets `data-accent` on `<html>`. Each
-hue's values live next to the theme in `main.css`. Use `accent` for brand and emphasis,
+hue's values live next to the theme in `main.css`, with a matching favicon in
+`web/public/favicons/`; adding a hue means adding both. Use `accent` for brand and emphasis,
 never for a status — the palette steers clear of green, amber, red and blue for that
 reason.
 
