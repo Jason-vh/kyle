@@ -56,7 +56,7 @@ describe("WatcherAvatars", () => {
   test("stacks a face per watcher up to the limit, then counts the rest", () => {
     const avatars = render([{ name: "A" }, { name: "B" }, { name: "C" }, { name: "D" }], 3);
 
-    expect(avatars.findAll("img, .bg-accent-purple")).toHaveLength(3);
+    expect(avatars.findAll("img, .bg-accent")).toHaveLength(3);
     expect(avatars.text()).toContain("+1");
   });
 

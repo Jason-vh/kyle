@@ -1,8 +1,8 @@
 <template>
   <div role="img" :aria-label="summary">
     <div class="flex h-1.5 gap-0.5 overflow-hidden rounded-full bg-bg-elevated">
-      <span class="bg-accent-purple" :style="{ width: share(movieBytes) }" />
-      <span class="bg-accent-purple/45" :style="{ width: share(seriesBytes) }" />
+      <span class="bg-accent" :style="{ width: share(movieBytes) }" />
+      <span class="bg-accent/45" :style="{ width: share(seriesBytes) }" />
       <span class="bg-border-secondary" :style="{ width: share(otherBytes) }" />
     </div>
     <div
@@ -10,11 +10,11 @@
     >
       <span class="flex items-center gap-3">
         <span class="flex items-center gap-1.5">
-          <span class="size-1.5 rounded-full bg-accent-purple" />
+          <span class="size-1.5 rounded-full bg-accent" />
           Movies {{ formatSize(movieBytes) }}
         </span>
         <span class="flex items-center gap-1.5">
-          <span class="size-1.5 rounded-full bg-accent-purple/45" />
+          <span class="size-1.5 rounded-full bg-accent/45" />
           Series {{ formatSize(seriesBytes) }}
         </span>
       </span>

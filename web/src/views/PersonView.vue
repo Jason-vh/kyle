@@ -37,7 +37,7 @@
                 <h1 class="truncate text-xl font-semibold text-text-primary">
                   {{ person.displayName }}
                 </h1>
-                <StatusPill v-if="person.isAdmin" tone="purple">Admin</StatusPill>
+                <StatusPill v-if="person.isAdmin" tone="accent">Admin</StatusPill>
               </div>
               <p class="mt-0.5 text-sm text-text-muted">{{ subtitle }}</p>
             </div>
@@ -86,7 +86,7 @@
             <template v-if="profile.requests.length > REQUEST_PREVIEW" #aside>
               <button
                 type="button"
-                class="text-xs font-semibold text-accent-purple hover:underline"
+                class="text-xs font-semibold text-accent hover:underline"
                 @click="showAllRequests = !showAllRequests"
               >
                 {{ showAllRequests ? "Show fewer" : `Show all (${profile.requests.length})` }}

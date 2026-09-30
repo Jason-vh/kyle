@@ -4,7 +4,7 @@
       <div class="rounded-lg border border-border-primary bg-bg-surface p-8 shadow-sm">
         <div class="mb-6 flex justify-center">
           <div
-            class="flex size-12 items-center justify-center rounded-lg bg-accent-purple text-lg font-bold text-text-inverse"
+            class="flex size-12 items-center justify-center rounded-lg bg-accent text-lg font-bold text-text-inverse"
           >
             K
           </div>

@@ -13,7 +13,7 @@
 
       <template #empty>
         Nothing requested yet.
-        <router-link to="/discover" class="text-accent-purple hover:underline">
+        <router-link to="/discover" class="text-accent hover:underline">
           Request something
         </router-link>
       </template>

@@ -37,7 +37,7 @@ const VALUE_TONES: Record<Tone, string> = {
 };
 
 const BAR_TONES: Record<Tone, string> = {
-  neutral: "bg-accent-purple",
+  neutral: "bg-accent",
   green: "bg-accent-green",
   amber: "bg-accent-amber",
   red: "bg-accent-red",

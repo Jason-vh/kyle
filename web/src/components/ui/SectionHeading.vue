@@ -5,7 +5,7 @@
     <router-link
       v-if="to"
       :to="to"
-      class="text-xs font-semibold text-accent-purple no-underline hover:underline"
+      class="text-xs font-semibold text-accent no-underline hover:underline"
     >
       See all<template v-if="count"> ({{ count }})</template>
     </router-link>

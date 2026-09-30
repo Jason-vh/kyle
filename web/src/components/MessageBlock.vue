@@ -105,7 +105,7 @@
   >
     <div class="mb-2 flex items-center gap-2">
       <UserAvatar name="Kyle" />
-      <span class="text-sm font-semibold text-accent-purple">Kyle</span>
+      <span class="text-sm font-semibold text-accent">Kyle</span>
       <a
         :href="anchorUrl(msg.id)"
         class="ml-auto whitespace-nowrap text-xs text-text-muted no-underline hover:text-text-secondary"

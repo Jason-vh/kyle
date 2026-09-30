@@ -7,7 +7,7 @@
       <IconBell class="size-5" aria-hidden="true" />
       <span
         v-if="unread > 0"
-        class="absolute top-1.5 right-1.5 min-w-4 rounded-full bg-accent-purple px-1 text-[10px] leading-4 font-bold text-text-inverse"
+        class="absolute top-1.5 right-1.5 min-w-4 rounded-full bg-accent px-1 text-[10px] leading-4 font-bold text-text-inverse"
       >
         {{ unread > 9 ? "9+" : unread }}
       </span>
@@ -86,7 +86,7 @@
                   </div>
                   <span
                     v-if="!item.read"
-                    class="mt-1.5 size-2 shrink-0 rounded-full bg-accent-purple"
+                    class="mt-1.5 size-2 shrink-0 rounded-full bg-accent"
                     role="img"
                     aria-label="Unread"
                   />

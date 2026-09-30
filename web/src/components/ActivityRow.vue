@@ -20,7 +20,7 @@
         </p>
       </div>
 
-      <StatusPill v-if="item.requestedByMe" tone="purple">Yours</StatusPill>
+      <StatusPill v-if="item.requestedByMe" tone="accent">Yours</StatusPill>
     </div>
   </AppCard>
 </template>

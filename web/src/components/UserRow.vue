@@ -28,7 +28,7 @@
       </ul>
 
       <StatusPill v-if="isYou" tone="blue">You</StatusPill>
-      <StatusPill v-if="user.isAdmin" tone="purple">Admin</StatusPill>
+      <StatusPill v-if="user.isAdmin" tone="accent">Admin</StatusPill>
     </div>
   </AppCard>
 </template>

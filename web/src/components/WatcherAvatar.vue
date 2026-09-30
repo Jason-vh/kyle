@@ -9,7 +9,7 @@
     />
     <div
       v-else
-      class="flex size-full items-center justify-center bg-accent-purple text-[10px] font-semibold text-text-inverse"
+      class="flex size-full items-center justify-center bg-accent text-[10px] font-semibold text-text-inverse"
     >
       {{ initial(watcher.name) }}
     </div>

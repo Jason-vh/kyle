@@ -11,7 +11,7 @@
       v-for="option in options"
       :key="option.value"
       :value="option.value"
-      class="min-h-8 shrink-0 rounded-full border px-3 py-1 text-xs font-semibold transition-colors data-[state=off]:border-border-primary data-[state=off]:text-text-muted data-[state=on]:border-accent-purple data-[state=on]:bg-accent-purple-light data-[state=on]:text-accent-purple hover:data-[state=off]:text-text-primary"
+      class="min-h-8 shrink-0 rounded-full border px-3 py-1 text-xs font-semibold transition-colors data-[state=off]:border-border-primary data-[state=off]:text-text-muted data-[state=on]:border-accent data-[state=on]:bg-accent-light data-[state=on]:text-accent hover:data-[state=off]:text-text-primary"
     >
       {{ option.label }}
     </ToggleGroupItem>

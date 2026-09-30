@@ -32,7 +32,7 @@
         <IconSliders class="size-6" aria-hidden="true" />
         <span
           v-if="changed.length"
-          class="absolute -top-1.5 -right-1.5 flex size-5 items-center justify-center rounded-full bg-accent-purple text-[10px] font-bold text-text-inverse"
+          class="absolute -top-1.5 -right-1.5 flex size-5 items-center justify-center rounded-full bg-accent text-[10px] font-bold text-text-inverse"
           aria-hidden="true"
         >
           {{ changed.length }}
@@ -45,7 +45,7 @@
         v-for="filterKey in changed"
         :key="filterKey"
         type="button"
-        class="inline-flex min-h-8 items-center gap-1 rounded-full bg-accent-purple-light py-1 pr-2 pl-3 text-xs font-semibold text-accent-purple"
+        class="inline-flex min-h-8 items-center gap-1 rounded-full bg-accent-light py-1 pr-2 pl-3 text-xs font-semibold text-accent"
         :aria-label="`Stop ${filterKey === 'sort' ? 'sorting by' : 'filtering by'} ${filterLabel(filterKey, view)}`"
         @click="clearFilter(filterKey)"
       >

@@ -22,7 +22,7 @@ Defined in `web/src/main.css` under `@theme`, so Tailwind generates utilities fo
 | Surfaces | `bg-base`, `bg-surface`, `bg-elevated`, `bg-input`, `bg-overlay` | page, cards, fills, inputs                        |
 | Lines    | `border-primary`, `border-secondary`                             | card edges, dividers                              |
 | Text     | `text-primary`, `text-secondary`, `text-muted`, `text-inverse`   | body copy down to captions                        |
-| Accents  | `accent-purple`, `-blue`, `-green`, `-red`, `-amber`, `-cyan`    | brand and status                                  |
+| Accents  | `accent`, `accent-blue`, `-green`, `-red`, `-amber`, `-cyan`     | brand and status                                  |
 | Tints    | each accent's `-light`                                           | a background behind text of the same accent       |
 | Shape    | `rounded-card`, `rounded-control`                                | cards, and everything you press or type into      |
 | Depth    | `shadow-card`, `shadow-raised`                                   | deliberately shallow; borders do most of the work |
@@ -30,6 +30,12 @@ Defined in `web/src/main.css` under `@theme`, so Tailwind generates utilities fo
 
 An accent and its `-light` are a **pair**: `text-accent-green` on `bg-accent-green-light`
 is guaranteed to have contrast in both schemes. Do not mix pairs.
+
+`accent` is Kyle's own colour, and it is not fixed: `web/src/accent.ts` rolls one of a
+small palette per visit, keeps it for an hour, and sets `data-accent` on `<html>`. Each
+hue's values live next to the theme in `main.css`. Use `accent` for brand and emphasis,
+never for a status — the palette steers clear of green, amber, red and blue for that
+reason.
 
 ### Dark scheme
 

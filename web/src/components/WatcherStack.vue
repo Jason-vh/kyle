@@ -2,7 +2,7 @@
   <div
     role="img"
     :aria-label="label"
-    class="stack flex items-center rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-purple"
+    class="stack flex items-center rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
   >
     <WatcherAvatar v-for="watcher in shown" :key="watcher.name" :watcher="watcher" />
 

@@ -29,7 +29,7 @@ import StatusPill from "./ui/StatusPill.vue";
 import type { Tone } from "./ui/types";
 
 const STATES: Record<PlexMemberStatus, { label: string; tone: Tone }> = {
-  owner: { label: "Owner", tone: "purple" },
+  owner: { label: "Owner", tone: "accent" },
   member: { label: "Member", tone: "neutral" },
   pending: { label: "Invited", tone: "amber" },
 };

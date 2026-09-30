@@ -16,7 +16,7 @@
           <div class="flex items-center gap-2">
             <!-- Stretched over the header, so a tap anywhere but a button opens the season. -->
             <AccordionTrigger
-              class="min-w-0 flex-1 text-left after:absolute after:inset-0 after:rounded-card focus:outline-none focus-visible:after:ring-2 focus-visible:after:ring-accent-purple/40"
+              class="min-w-0 flex-1 text-left after:absolute after:inset-0 after:rounded-card focus:outline-none focus-visible:after:ring-2 focus-visible:after:ring-accent/40"
             >
               <span class="block text-sm font-semibold text-text-primary">
                 {{ seasonName(season.seasonNumber) }}

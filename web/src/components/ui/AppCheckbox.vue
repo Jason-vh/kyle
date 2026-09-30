@@ -3,7 +3,7 @@
     <CheckboxRoot
       :id="id"
       :value="value"
-      class="flex size-5 shrink-0 items-center justify-center rounded-md border border-border-secondary bg-bg-input transition-colors focus-visible:ring-2 focus-visible:ring-accent-purple/40 focus-visible:outline-none data-[state=checked]:border-accent-purple data-[state=checked]:bg-accent-purple"
+      class="flex size-5 shrink-0 items-center justify-center rounded-md border border-border-secondary bg-bg-input transition-colors focus-visible:ring-2 focus-visible:ring-accent/40 focus-visible:outline-none data-[state=checked]:border-accent data-[state=checked]:bg-accent"
     >
       <CheckboxIndicator class="text-text-inverse">
         <IconCheck class="size-3.5" aria-hidden="true" />

@@ -1,6 +1,7 @@
 import { createApp } from "vue";
 import { PiniaColada } from "@pinia/colada";
 import { PiniaColadaCachePersister } from "@pinia/colada-plugin-cache-persister";
+import { applyAccent } from "./accent";
 import App from "./App.vue";
 import { pinia } from "./pinia";
 import { router } from "./router";
@@ -8,6 +9,8 @@ import { isKeptBetweenVisits } from "./queries/kept";
 import "@fontsource-variable/inter";
 import "@fontsource-variable/jetbrains-mono";
 import "./main.css";
+
+applyAccent();
 
 const persister = PiniaColadaCachePersister({
   key: "kyle-query-cache",

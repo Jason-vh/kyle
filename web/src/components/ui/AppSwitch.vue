@@ -13,7 +13,7 @@
       :id="id"
       :model-value="modelValue"
       :disabled="disabled"
-      class="relative shrink-0 rounded-full bg-border-secondary transition-colors focus-visible:ring-2 focus-visible:ring-accent-purple/40 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:bg-accent-purple"
+      class="relative shrink-0 rounded-full bg-border-secondary transition-colors focus-visible:ring-2 focus-visible:ring-accent/40 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:bg-accent"
       :class="SIZES[size].track"
       @update:model-value="emit('update:modelValue', $event)"
     >

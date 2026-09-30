@@ -18,7 +18,7 @@ const TONES: Record<Tone, string> = {
   green: "bg-accent-green-light text-accent-green",
   amber: "bg-accent-amber-light text-accent-amber",
   red: "bg-accent-red-light text-accent-red",
-  purple: "bg-accent-purple-light text-accent-purple",
+  accent: "bg-accent-light text-accent",
   blue: "bg-accent-blue-light text-accent-blue",
 };
 

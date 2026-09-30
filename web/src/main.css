@@ -27,9 +27,13 @@
   --color-text-muted: #8b93a1;
   --color-text-inverse: #ffffff;
 
-  /* Accents. `-light` is a tint to sit behind text of the same name. */
-  --color-accent-purple: #7c3aed;
-  --color-accent-purple-light: #ede9fe;
+  /*
+   * Accents. `-light` is a tint to sit behind text of the same name.
+   * `accent` is Kyle's own colour, rolled per visit (see accent.ts); violet
+   * is where it starts. The rest mean something and never change.
+   */
+  --color-accent: #7c3aed;
+  --color-accent-light: #ede9fe;
   --color-accent-blue: #2563eb;
   --color-accent-blue-light: #dbeafe;
   --color-accent-green: #15803d;
@@ -92,8 +96,8 @@
     --color-text-muted: #6f7887;
     --color-text-inverse: #0e1117;
 
-    --color-accent-purple: #a78bfa;
-    --color-accent-purple-light: #2c2350;
+    --color-accent: #a78bfa;
+    --color-accent-light: #2c2350;
     --color-accent-blue: #60a5fa;
     --color-accent-blue-light: #16294a;
     --color-accent-green: #4ade80;
@@ -107,6 +111,55 @@
 
     --shadow-card: 0 1px 2px rgb(0 0 0 / 0.4);
     --shadow-raised: 0 4px 16px rgb(0 0 0 / 0.5);
+  }
+}
+
+/*
+ * The other accents Kyle can wear, named to match ACCENTS in accent.ts.
+ * Hues near green, amber, red and blue are left out so the accent is never
+ * mistaken for a status. Dark comes last to win over light at equal weight.
+ */
+:root[data-accent="indigo"] {
+  --color-accent: #4f46e5;
+  --color-accent-light: #e0e7ff;
+}
+:root[data-accent="fuchsia"] {
+  --color-accent: #c026d3;
+  --color-accent-light: #fae8ff;
+}
+:root[data-accent="pink"] {
+  --color-accent: #db2777;
+  --color-accent-light: #fce7f3;
+}
+:root[data-accent="teal"] {
+  --color-accent: #0f766e;
+  --color-accent-light: #ccfbf1;
+}
+:root[data-accent="orange"] {
+  --color-accent: #c2410c;
+  --color-accent-light: #ffedd5;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root[data-accent="indigo"] {
+    --color-accent: #818cf8;
+    --color-accent-light: #1e1f4d;
+  }
+  :root[data-accent="fuchsia"] {
+    --color-accent: #e879f9;
+    --color-accent-light: #3b1540;
+  }
+  :root[data-accent="pink"] {
+    --color-accent: #f472b6;
+    --color-accent-light: #3d1428;
+  }
+  :root[data-accent="teal"] {
+    --color-accent: #2dd4bf;
+    --color-accent-light: #0c302c;
+  }
+  :root[data-accent="orange"] {
+    --color-accent: #fb923c;
+    --color-accent-light: #3a1f0c;
   }
 }
 
@@ -128,7 +181,7 @@ body {
 }
 
 ::selection {
-  background: color-mix(in srgb, var(--color-accent-purple) 25%, transparent);
+  background: color-mix(in srgb, var(--color-accent) 25%, transparent);
 }
 
 /*
