@@ -1,16 +1,15 @@
 <template>
   <div class="flex min-h-screen flex-col">
-    <header class="px-3 pt-3 sm:pt-4">
+    <header v-if="!route.meta.hideNav" class="px-3 pt-3 sm:pt-4">
       <div
         class="mx-auto flex h-header max-w-page items-center gap-3 rounded-card border border-border-primary bg-bg-surface px-4 shadow-raised"
       >
-        <router-link to="/" class="flex items-center gap-2.5 no-underline">
-          <div
-            class="flex size-8 items-center justify-center rounded-control bg-accent-purple text-sm font-bold text-text-inverse"
-          >
-            K
-          </div>
-          <span class="text-base font-semibold text-text-primary">Kyle</span>
+        <router-link
+          to="/"
+          class="flex size-8 items-center justify-center rounded-control bg-accent-purple text-sm font-bold text-text-inverse no-underline"
+          aria-label="Kyle home"
+        >
+          K
         </router-link>
 
         <!-- Phones get these as a tab bar instead, within reach of a thumb. -->
@@ -51,7 +50,7 @@
     </main>
 
     <nav
-      v-if="user"
+      v-if="user && !route.meta.hideNav"
       class="fixed inset-x-3 bottom-[calc(0.75rem+env(safe-area-inset-bottom))] z-10 rounded-card border border-border-primary bg-bg-surface/80 shadow-raised backdrop-blur-md sm:hidden"
     >
       <div class="flex px-1">
