@@ -1,18 +1,13 @@
 <template>
   <AppPage>
-    <PageHeader :title="greeting" :subtitle="`The last ${data?.windowDays ?? 7} days`" />
+    <PageHeader :title="greeting" :subtitle="`Over the last ${data?.windowDays ?? 7} days`" />
 
     <QueryState :loading="isPending" :error="error">
       <template #loading>
-        <section class="stagger mb-8 grid grid-cols-2 gap-2 sm:grid-cols-3">
-          <AppCard
-            v-for="stat in 3"
-            :key="stat"
-            :class="stat === 3 ? 'col-span-2 sm:col-span-1' : ''"
-          >
-            <Skeleton class="h-3 w-16" />
-            <Skeleton class="mt-2 h-7 w-24" />
-            <Skeleton class="mt-1.5 h-3 w-20" />
+        <section class="stagger mb-8 grid grid-cols-2 gap-2">
+          <AppCard v-for="stat in 3" :key="stat" :class="stat === 3 ? 'col-span-2' : ''">
+            <Skeleton class="h-7 w-28" />
+            <Skeleton v-if="stat === 3" class="mt-2.5 h-1.5 w-full" />
           </AppCard>
         </section>
 
@@ -23,18 +18,12 @@
         {{ data.unavailable.join(" and ") }} could not be reached, so part of this is missing.
       </AppNotice>
 
-      <!-- Storage takes the full width on a phone; it is the one that needs a bar. -->
-      <section class="stagger mb-8 grid grid-cols-2 gap-2 sm:grid-cols-3">
-        <StatCard label="Watched" :value="watched" hint="across everyone" />
-        <StatCard label="Arrived" :value="arrived" :hint="arrivedHint" />
-        <StatCard
-          class="col-span-2 sm:col-span-1"
-          label="Space left"
-          :value="spaceLeft"
-          :hint="spaceHint"
-          :tone="spaceTone"
-          :fraction="spaceFraction"
-        />
+      <!-- Storage takes a row of its own; it is the one that needs a bar. -->
+      <section class="stagger mb-8 grid grid-cols-2 gap-2">
+        <DashboardStat :value="watched" caption="watched" />
+        <DashboardStat :value="downloads" caption="downloads" />
+        <SpaceLeftCard v-if="storage" class="col-span-2" :storage="storage" />
+        <DashboardStat v-else class="col-span-2" value="—" caption="space left" />
       </section>
 
       <section v-if="requests.length" class="mb-8">
@@ -59,10 +48,12 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { useTitle } from "@vueuse/core";
-import { formatDuration, formatSize } from "#web/utils/format";
+import { formatHours } from "#web/utils/format";
 import ActivityRow from "#web/components/ActivityRow.vue";
+import DashboardStat from "#web/components/DashboardStat.vue";
 import MediaRowSkeleton from "#web/components/MediaRowSkeleton.vue";
 import RequestRow from "#web/components/RequestRow.vue";
+import SpaceLeftCard from "#web/components/SpaceLeftCard.vue";
 import SectionHeading from "#web/components/ui/SectionHeading.vue";
 import AppCard from "#web/components/ui/AppCard.vue";
 import AppNotice from "#web/components/ui/AppNotice.vue";
@@ -70,7 +61,6 @@ import Skeleton from "#web/components/ui/Skeleton.vue";
 import AppPage from "#web/components/ui/AppPage.vue";
 import PageHeader from "#web/components/ui/PageHeader.vue";
 import QueryState from "#web/components/ui/QueryState.vue";
-import StatCard from "#web/components/ui/StatCard.vue";
 import { useDashboard } from "#web/queries/media";
 import { useSession } from "#web/queries/session";
 
@@ -84,7 +74,7 @@ const { user } = useSession();
 
 const greeting = computed(() => {
   const first = user.value?.name.split(" ")[0];
-  return first ? `Hey ${first}` : "Home";
+  return first ? `Hey ${first}! Kyle here` : "Hey! Kyle here";
 });
 
 const requests = computed(() => (data.value?.requests ?? []).slice(0, REQUEST_PREVIEW));
@@ -92,44 +82,14 @@ const activity = computed(() => data.value?.activity ?? []);
 
 const watched = computed(() => {
   const minutes = data.value?.stats.watchMinutes;
-  return minutes === undefined ? "—" : formatDuration(minutes);
+  return minutes === undefined ? "—" : formatHours(minutes);
 });
 
-const arrived = computed(() => {
+const downloads = computed(() => {
   const { newMovies, newEpisodes } = data.value?.stats ?? {};
   if (newMovies === undefined || newEpisodes === undefined) return "—";
   return String(newMovies + newEpisodes);
 });
 
-const arrivedHint = computed(() => {
-  const { newMovies, newEpisodes } = data.value?.stats ?? {};
-  if (newMovies === undefined || newEpisodes === undefined) return undefined;
-  return `${newMovies} films · ${newEpisodes} episodes`;
-});
-
 const storage = computed(() => data.value?.stats.storage);
-
-const spaceLeft = computed(() => (storage.value ? formatSize(storage.value.freeBytes) : "—"));
-
-const spaceHint = computed(() => {
-  if (!storage.value) return undefined;
-  const parts = [`of ${formatSize(storage.value.totalBytes)}`];
-  if (storage.value.requestedBytes)
-    parts.push(`${formatSize(storage.value.requestedBytes)} requested`);
-  return parts.join(" \u00b7 ");
-});
-
-/** The bar fills as the disk does, so a full disk is a full red bar. */
-const spaceFraction = computed(() => {
-  if (!storage.value?.totalBytes) return undefined;
-  return 1 - storage.value.freeBytes / storage.value.totalBytes;
-});
-
-const spaceTone = computed(() => {
-  const used = spaceFraction.value;
-  if (used === undefined) return "neutral";
-  if (used >= 0.95) return "red";
-  if (used >= 0.85) return "amber";
-  return "green";
-});
 </script>

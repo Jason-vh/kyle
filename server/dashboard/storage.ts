@@ -47,10 +47,14 @@ function totalOf(keys: Set<string>, sizes: Map<string, number>): number {
   return total;
 }
 
-/** What the titles someone asked for take up, across both services. */
-export async function getRequestedBytes(): Promise<number> {
+/** What the titles one person asked for take up, across both services. */
+export async function getRequestedBytes(userId: string): Promise<number> {
   const [requests, sizes] = await Promise.all([getAllRequesters(), sizesByTitle()]);
-  const requested = new Set(requests.map((request) => titleKey(request.mediaType, request.tmdbId)));
+  const requested = new Set(
+    requests
+      .filter((request) => request.userId === userId)
+      .map((request) => titleKey(request.mediaType, request.tmdbId)),
+  );
   return totalOf(requested, sizes);
 }
 

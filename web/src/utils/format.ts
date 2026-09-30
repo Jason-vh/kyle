@@ -35,6 +35,13 @@ export function formatDuration(minutes: number): string {
   return `${hours}h ${whole % 60}m`;
 }
 
+/** "42h", or "45m" under an hour: a week's total, where minutes are noise. */
+export function formatHours(minutes: number): string {
+  const whole = Math.round(minutes);
+  if (whole < 60) return `${whole}m`;
+  return `${Math.round(whole / 60)}h`;
+}
+
 /**
  * What a download client's "00:12:31" or "1.02:00:00" leaves, read aloud:
  * "12 min", "2h 5m", "1d 2h". Empty for anything it cannot read.

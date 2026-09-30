@@ -393,8 +393,8 @@ export interface NotificationsResponse {
 export interface StorageStat {
   freeBytes: number;
   totalBytes: number;
-  /** What the titles someone asked for take up, absent when it cannot be counted. */
-  requestedBytes?: number;
+  /** What the viewer's requests take up, absent when it cannot be counted. */
+  viewerBytes?: number;
 }
 
 export interface DashboardStats {

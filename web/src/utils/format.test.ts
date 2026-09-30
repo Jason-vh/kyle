@@ -1,5 +1,12 @@
 import { describe, expect, test } from "vitest";
-import { formatDate, formatDuration, formatEta, formatNames, formatSize } from "./format";
+import {
+  formatDate,
+  formatDuration,
+  formatEta,
+  formatHours,
+  formatNames,
+  formatSize,
+} from "./format";
 
 describe("formatNames", () => {
   test("reads as a sentence at every length", () => {
@@ -47,6 +54,21 @@ describe("formatSize", () => {
   // Beyond terabytes there is no unit left, so it must not fall off the end.
   test("caps at the largest unit it knows", () => {
     expect(formatSize(5_000_000_000_000_000)).toBe("5000 TB");
+  });
+});
+
+describe("formatHours", () => {
+  test("reads as whole hours", () => {
+    expect(formatHours(2520)).toBe("42h");
+    expect(formatHours(2549)).toBe("42h");
+    expect(formatHours(2550)).toBe("43h");
+    expect(formatHours(60)).toBe("1h");
+  });
+
+  test("falls back to minutes under an hour", () => {
+    expect(formatHours(45)).toBe("45m");
+    expect(formatHours(0)).toBe("0m");
+    expect(formatHours(59.4)).toBe("59m");
   });
 });
 

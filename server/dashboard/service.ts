@@ -73,13 +73,13 @@ export async function getDashboard(viewerId: string): Promise<DashboardResponse>
   const [
     { watch, additions },
     [storage, storageDown],
-    [requestedBytes, requestedDown],
+    [viewerBytes, viewerBytesDown],
     [activity, activityDown],
     [requests, requestsDown],
   ] = await Promise.all([
     getPlexFigures(since),
     tolerate("Ultra", undefined, getStorage),
-    tolerate("Radarr and Sonarr", undefined, getRequestedBytes),
+    tolerate("Radarr and Sonarr", undefined, () => getRequestedBytes(viewerId)),
     tolerate("Activity", [], () => getActivity(viewerId, since)),
     tolerate("Requests", [], async () =>
       attachPosters(stillComing(await withState(await getMediaRequestsForUser(viewerId)))),
@@ -92,11 +92,11 @@ export async function getDashboard(viewerId: string): Promise<DashboardResponse>
       watchMinutes: watch?.minutes,
       newMovies: additions?.movies,
       newEpisodes: additions?.episodes,
-      storage: storage && { ...storage, requestedBytes },
+      storage: storage && { ...storage, viewerBytes },
     },
     activity: activity.slice(0, ACTIVITY_LIMIT),
     requests,
-    unavailable: [storageDown, requestedDown, activityDown, requestsDown].filter(
+    unavailable: [storageDown, viewerBytesDown, activityDown, requestsDown].filter(
       (name) => name !== undefined,
     ),
   };

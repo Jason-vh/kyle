@@ -55,13 +55,16 @@ function stubServices(options: { ultra?: unknown; down?: "ultra" | "radarr" | "s
 }
 
 let storageUserId = "";
+let otherUserId = "";
 
 beforeAll(async () => {
   storageUserId = await createTestUser("Storage");
+  otherUserId = await createTestUser("Storage Other");
 });
 
 afterAll(async () => {
   await deleteTestUser(storageUserId);
+  await deleteTestUser(otherUserId);
 });
 
 beforeEach(() => {
@@ -71,6 +74,7 @@ beforeEach(() => {
 afterEach(async () => {
   globalThis.fetch = realFetch;
   await db.delete(mediaRequests).where(eq(mediaRequests.userId, storageUserId));
+  await db.delete(mediaRequests).where(eq(mediaRequests.userId, otherUserId));
 });
 
 describe("getStorage", () => {
@@ -123,20 +127,30 @@ describe("getStorage", () => {
 });
 
 describe("getRequestedBytes", () => {
-  test("counts only what someone asked for, across both services", async () => {
+  test("counts only what was asked for, across both services", async () => {
     stubServices();
     await db.insert(mediaRequests).values([
       { userId: storageUserId, mediaType: "movie", tmdbId: 111, title: "Asked For" },
       { userId: storageUserId, mediaType: "series", tmdbId: 333, title: "Asked For Too" },
     ]);
 
-    expect(await getRequestedBytes()).toBe(6_000_000_000);
+    expect(await getRequestedBytes(storageUserId)).toBe(6_000_000_000);
+  });
+
+  test("counts only what this person asked for", async () => {
+    stubServices();
+    await db.insert(mediaRequests).values([
+      { userId: storageUserId, mediaType: "movie", tmdbId: 111, title: "Asked For" },
+      { userId: otherUserId, mediaType: "series", tmdbId: 333, title: "Asked For Too" },
+    ]);
+
+    expect(await getRequestedBytes(storageUserId)).toBe(4_000_000_000);
   });
 
   test("counts nothing when nobody has asked for anything", async () => {
     stubServices();
 
-    expect(await getRequestedBytes()).toBe(0);
+    expect(await getRequestedBytes(storageUserId)).toBe(0);
   });
 
   // A movie and a series can share a TMDB id; they are numbered separately.
@@ -149,12 +163,12 @@ describe("getRequestedBytes", () => {
       title: "Asked For Too",
     });
 
-    expect(await getRequestedBytes()).toBe(0);
+    expect(await getRequestedBytes(storageUserId)).toBe(0);
   });
 
   test.each(["radarr", "sonarr"] as const)("fails when %s cannot be reached", async (down) => {
     stubServices({ down });
 
-    expect(getRequestedBytes()).rejects.toThrow();
+    expect(getRequestedBytes(storageUserId)).rejects.toThrow();
   });
 });
