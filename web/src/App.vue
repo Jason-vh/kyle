@@ -49,17 +49,23 @@
       <RouterView />
     </main>
 
-    <nav
-      v-if="user && !route.meta.hideNav"
-      class="fixed inset-x-3 bottom-[calc(0.75rem+env(safe-area-inset-bottom))] z-10 rounded-card border border-border-primary bg-bg-surface/80 shadow-raised backdrop-blur-md sm:hidden"
-    >
-      <div class="flex px-1">
+    <template v-if="user && !route.meta.hideNav">
+      <!-- Content fades out as it nears the tab bar and the browser's own controls below it. -->
+      <div
+        class="pointer-events-none fixed inset-x-0 bottom-0 z-10 h-[calc(6rem+env(safe-area-inset-bottom))] bg-linear-to-t from-bg-base from-25% to-transparent sm:hidden"
+        aria-hidden="true"
+      />
+
+      <!-- A capsule narrower than the cards, so it reads as a control and not as another row. -->
+      <nav
+        class="fixed inset-x-0 bottom-[calc(0.75rem+env(safe-area-inset-bottom))] z-10 mx-auto flex w-[min(20rem,calc(100%-3rem))] rounded-full bg-bg-elevated/85 p-1 shadow-float backdrop-blur-xl backdrop-saturate-150 sm:hidden"
+      >
         <router-link
           v-for="link in NAV_LINKS"
           :key="link.to"
           :to="link.to"
-          class="flex flex-1 flex-col items-center gap-0.5 py-2 text-[11px] font-medium no-underline transition-colors"
-          :class="isActive(link.to) ? 'text-accent' : 'text-text-muted'"
+          class="flex flex-1 flex-col items-center gap-0.5 rounded-full py-1.5 text-[11px] font-medium no-underline transition-colors"
+          :class="isActive(link.to) ? 'bg-accent-light text-accent' : 'text-text-muted'"
         >
           <component
             :is="isActive(link.to) ? link.activeIcon : link.icon"
@@ -68,8 +74,8 @@
           />
           {{ link.label }}
         </router-link>
-      </div>
-    </nav>
+      </nav>
+    </template>
   </div>
 </template>
 

@@ -156,6 +156,30 @@
   }
 }
 
+/*
+ * Controls that float over content: a hairline edge and a lit top, since a
+ * shadow alone disappears against a dark page. A utility of its own rather
+ * than a theme shadow, because Tailwind bakes theme shadows into the class,
+ * where the dark scheme cannot re-point them.
+ */
+:root {
+  --float-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.7), 0 0 0 1px rgb(17 24 39 / 0.08),
+    0 8px 24px rgb(17 24 39 / 0.12);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --float-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.04), 0 0 0 1px rgb(255 255 255 / 0.1),
+      0 8px 24px rgb(0 0 0 / 0.5);
+  }
+}
+
+@utility shadow-float {
+  box-shadow: var(--float-shadow);
+}
+
 html {
   color-scheme: light dark;
   touch-action: manipulation;
