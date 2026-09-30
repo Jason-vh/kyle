@@ -49,9 +49,16 @@
   --radius-card: 0.875rem;
   --radius-control: 0.625rem;
 
-  /* Depth. Deliberately shallow; borders carry most of the separation. */
-  --shadow-card: 0 1px 2px rgb(17 24 39 / 0.05);
-  --shadow-raised: 0 4px 16px rgb(17 24 39 / 0.08);
+  /*
+   * Depth. Deliberately shallow; borders carry most of the separation.
+   * Tailwind copies a theme shadow's value into its class, where the dark
+   * scheme could not re-point it, so each names a variable set per scheme.
+   * `float` is for controls over content: a hairline edge and a lit top,
+   * since a shadow alone disappears against a dark page.
+   */
+  --shadow-card: var(--card-shadow);
+  --shadow-raised: var(--raised-shadow);
+  --shadow-float: var(--float-shadow);
 
   /* The reading column every page shares. */
   --container-page: 46rem;
@@ -74,6 +81,14 @@
       opacity: 0.22;
     }
   }
+}
+
+:root {
+  --card-shadow: 0 1px 2px rgb(17 24 39 / 0.05);
+  --raised-shadow: 0 4px 16px rgb(17 24 39 / 0.08);
+  --float-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.7), 0 0 0 1px rgb(17 24 39 / 0.08),
+    0 8px 24px rgb(17 24 39 / 0.12);
 }
 
 /*
@@ -109,8 +124,11 @@
     --color-accent-cyan: #22d3ee;
     --color-accent-cyan-light: #0e3038;
 
-    --shadow-card: 0 1px 2px rgb(0 0 0 / 0.4);
-    --shadow-raised: 0 4px 16px rgb(0 0 0 / 0.5);
+    --card-shadow: 0 1px 2px rgb(0 0 0 / 0.4);
+    --raised-shadow: 0 4px 16px rgb(0 0 0 / 0.5);
+    --float-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.04), 0 0 0 1px rgb(255 255 255 / 0.1),
+      0 8px 24px rgb(0 0 0 / 0.5);
   }
 }
 
@@ -154,30 +172,6 @@
     --color-accent: #2dd4bf;
     --color-accent-light: #0c302c;
   }
-}
-
-/*
- * Controls that float over content: a hairline edge and a lit top, since a
- * shadow alone disappears against a dark page. A utility of its own rather
- * than a theme shadow, because Tailwind bakes theme shadows into the class,
- * where the dark scheme cannot re-point them.
- */
-:root {
-  --float-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 0.7), 0 0 0 1px rgb(17 24 39 / 0.08),
-    0 8px 24px rgb(17 24 39 / 0.12);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --float-shadow:
-      inset 0 1px 0 rgb(255 255 255 / 0.04), 0 0 0 1px rgb(255 255 255 / 0.1),
-      0 8px 24px rgb(0 0 0 / 0.5);
-  }
-}
-
-@utility shadow-float {
-  box-shadow: var(--float-shadow);
 }
 
 html {
