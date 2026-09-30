@@ -100,6 +100,8 @@ export interface AdminUser {
   avatarUrl?: string;
   isAdmin: boolean;
   createdAt: string;
+  /** Last time they used the web app or messaged Kyle, to within a few minutes. */
+  lastSeenAt?: string;
   identities: LinkedIdentity[];
   footprint: UserFootprint;
   requestedBytes?: number;

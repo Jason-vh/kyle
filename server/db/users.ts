@@ -1,4 +1,4 @@
-import { eq, and, sql } from "drizzle-orm";
+import { eq, and, isNull, lt, or, sql } from "drizzle-orm";
 import { createLogger } from "#server/logger.ts";
 import { db, query } from "./index.ts";
 import { users, platformIdentities, plexAccountOwners, userCredentials } from "./schema.ts";
@@ -125,6 +125,24 @@ export async function getUserById(id: string) {
   return db.query.users.findFirst({
     where: eq(users.id, id),
   });
+}
+
+/** How far behind last_seen_at may fall before activity writes it again. */
+const LAST_SEEN_PRECISION_MS = 5 * 60_000;
+
+/**
+ * Note that the user just did something. Writes at most once per precision
+ * window, so an active session costs an update every few minutes rather than
+ * one per request.
+ */
+export async function markUserSeen(userId: string, now: Date = new Date()): Promise<void> {
+  const staleBefore = new Date(now.getTime() - LAST_SEEN_PRECISION_MS);
+  await db
+    .update(users)
+    .set({ lastSeenAt: now })
+    .where(
+      and(eq(users.id, userId), or(isNull(users.lastSeenAt), lt(users.lastSeenAt, staleBefore))),
+    );
 }
 
 /**

@@ -191,7 +191,12 @@ export async function getUserProfile(
 
   return {
     user,
-    lastActiveAt: latest([conversations[0]?.createdAt, requests[0]?.createdAt, plays[0]?.at]),
+    lastActiveAt: latest([
+      user.lastSeenAt,
+      conversations[0]?.createdAt,
+      requests[0]?.createdAt,
+      plays[0]?.at,
+    ]),
     requests,
     requestsWatched: requested.size > 0 ? { watched, total: requested.size } : undefined,
     storage: lib.reachable ? storageOf(requested, lib) : undefined,

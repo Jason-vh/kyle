@@ -6,6 +6,7 @@ import { runConversationTurn, ConversationNotFoundError } from "#server/agent/co
 import { timingSafeEqual } from "crypto";
 import { errorFields } from "#server/errors.ts";
 import { getActiveUser } from "#server/auth/account.ts";
+import { markUserSeen } from "#server/db/users.ts";
 import { isLocalDevelopmentRequest } from "#server/config.ts";
 
 const log = createLogger("chat");
@@ -43,6 +44,7 @@ export async function handleChat(req: Request): Promise<Response> {
 
   const rateLimit = userRateLimit(req, user.id);
   if (rateLimit) return rateLimit;
+  await markUserSeen(user.id);
 
   let body: ChatRequest;
   try {

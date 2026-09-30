@@ -8,7 +8,7 @@ import { runConversationTurn } from "#server/agent/conversation.ts";
 import { describeToolCall, isActionTool } from "#server/agent/tool-display.ts";
 import { parseToolPayload } from "#server/agent/tool-result.ts";
 import { extractTable, type ResultTable } from "#server/agent/result-tables.ts";
-import { resolveAppUserId } from "#server/db/users.ts";
+import { markUserSeen, resolveAppUserId } from "#server/db/users.ts";
 import { getActiveUser } from "#server/auth/account.ts";
 import {
   linkReply,
@@ -140,6 +140,7 @@ export async function processSlackMessage(
     await postSlackReply(slackEvent, text);
     return text;
   }
+  await markUserSeen(appUserId);
 
   const images = await downloadImages("slack", remoteImages);
   if (!messageText && images.length === 0) return "";

@@ -1,4 +1,5 @@
 import { userRateLimit } from "#server/http/rate-limit.ts";
+import { markUserSeen } from "#server/db/users.ts";
 import {
   parseAuthCookie,
   getJwtFromRequest,
@@ -51,6 +52,8 @@ export async function requireAuth(req: Request): Promise<AuthResult> {
 
   const rateLimit = userRateLimit(req, user.id);
   if (rateLimit) return { error: rateLimit };
+
+  await markUserSeen(user.id);
 
   const jwtToken = getJwtFromRequest(req);
   if (jwtToken && (await shouldRefreshJwt(jwtToken))) {

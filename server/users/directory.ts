@@ -41,6 +41,7 @@ export async function listAdminUsers(
     avatarUrl: avatarOf(u.platformIdentities, avatars),
     isAdmin: u.isAdmin,
     createdAt: u.createdAt.toISOString(),
+    lastSeenAt: u.lastSeenAt?.toISOString(),
     identities: u.platformIdentities.map((pi) => ({
       id: pi.id,
       platform: pi.platform,

@@ -1,5 +1,8 @@
 import { afterAll, beforeAll, expect, test } from "bun:test";
 import { SignJWT, decodeJwt } from "jose";
+import { eq } from "drizzle-orm";
+import { db } from "#server/db/index.ts";
+import { users } from "#server/db/schema.ts";
 import { createTestUser, deleteTestUser } from "#server/db/testing.ts";
 import { startServer } from "#server/server.ts";
 import { signJwt, verifyJwt } from "./jwt.ts";
@@ -67,6 +70,15 @@ test("authenticated error responses still refresh the session", async () => {
   });
   expect(response.status).toBe(404);
   expect(response.headers.get("set-cookie")).toStartWith("kyle_auth=");
+});
+
+test("authenticated requests mark the user seen", async () => {
+  await db.update(users).set({ lastSeenAt: null }).where(eq(users.id, userId));
+
+  await fetch(`http://localhost:${server.port}/api/auth/status`, { headers: { cookie } });
+
+  const [user] = await db.select().from(users).where(eq(users.id, userId));
+  expect(user?.lastSeenAt).toBeInstanceOf(Date);
 });
 
 test("logout clears rather than renews the session", async () => {

@@ -48,6 +48,7 @@ export const users = pgTable("users", {
   isDisabled: boolean("is_disabled").notNull().default(false),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  lastSeenAt: timestamp("last_seen_at"),
 });
 
 export const plexAccountOwners = pgTable("plex_account_owners", {

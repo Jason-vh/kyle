@@ -2,7 +2,12 @@ import { afterEach, expect, test } from "bun:test";
 import { eq, inArray } from "drizzle-orm";
 import { db } from "./index.ts";
 import { conversations, messages, platformIdentities, users } from "./schema.ts";
-import { backfillUserFromPlatformLink, createPlatformLink, resolveAppUserId } from "./users.ts";
+import {
+  backfillUserFromPlatformLink,
+  createPlatformLink,
+  markUserSeen,
+  resolveAppUserId,
+} from "./users.ts";
 import { createTestUser, deleteTestUser } from "./testing.ts";
 
 const userIds: string[] = [];
@@ -35,6 +40,24 @@ test.each(["slack", "discord", "plex"])(
     expect(await resolveAppUserId(platform, platformUserId)).toBeNull();
   },
 );
+
+test("marks a user seen at most once every few minutes", async () => {
+  const userId = await createTestUser();
+  userIds.push(userId);
+  const lastSeen = async () =>
+    (await db.select().from(users).where(eq(users.id, userId)))[0]?.lastSeenAt;
+  const first = new Date("2026-03-01T12:00:00Z");
+
+  await markUserSeen(userId, first);
+  expect(await lastSeen()).toEqual(first);
+
+  await markUserSeen(userId, new Date("2026-03-01T12:04:00Z"));
+  expect(await lastSeen()).toEqual(first);
+
+  const later = new Date("2026-03-01T12:06:00Z");
+  await markUserSeen(userId, later);
+  expect(await lastSeen()).toEqual(later);
+});
 
 test("backfills conversations and messages only on the linked platform", async () => {
   const userId = await createTestUser();

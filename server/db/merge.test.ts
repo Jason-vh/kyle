@@ -161,6 +161,22 @@ describe("mergeUsers", () => {
     expect(survivor?.isAdmin).toBe(true);
   });
 
+  test("keeps whichever side was seen last", async () => {
+    const gone = await user();
+    const kept = await user();
+    const later = new Date("2026-03-02T00:00:00Z");
+    await db.update(users).set({ lastSeenAt: later }).where(eq(users.id, gone));
+    await db
+      .update(users)
+      .set({ lastSeenAt: new Date("2026-03-01T00:00:00Z") })
+      .where(eq(users.id, kept));
+
+    await mergeUsers(gone, kept);
+
+    const [survivor] = await db.select().from(users).where(eq(users.id, kept));
+    expect(survivor?.lastSeenAt).toEqual(later);
+  });
+
   test("refuses to join two Plex accounts", async () => {
     const gone = await user();
     const kept = await user();

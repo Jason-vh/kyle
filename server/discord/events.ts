@@ -12,7 +12,7 @@ import {
 import { BOT_USER_ID } from "./client.ts";
 import { resolveDiscordUsername } from "./users.ts";
 import { sendDiscordMessage } from "./messages.ts";
-import { resolveAppUserId } from "#server/db/users.ts";
+import { markUserSeen, resolveAppUserId } from "#server/db/users.ts";
 import { getActiveUser } from "#server/auth/account.ts";
 import { errorFields } from "#server/errors.ts";
 import {
@@ -117,6 +117,7 @@ export async function handleDiscordMessage(message: Message): Promise<void> {
     await replyChannel.send(unlinkedReply("discord"));
     return;
   }
+  await markUserSeen(appUserId);
 
   log.info("processing discord message", {
     externalId,

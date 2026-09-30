@@ -167,13 +167,22 @@ export async function mergeUsers(from: string, into: string): Promise<void> {
 
     await tx
       .update(users)
-      .set({ isAdmin: kept.isAdmin || gone.isAdmin, updatedAt: new Date() })
+      .set({
+        isAdmin: kept.isAdmin || gone.isAdmin,
+        lastSeenAt: latestOf(kept.lastSeenAt, gone.lastSeenAt),
+        updatedAt: new Date(),
+      })
       .where(eq(users.id, into));
 
     await tx.delete(users).where(eq(users.id, from));
   });
 
   log.info("users merged", { from, into });
+}
+
+function latestOf(a: Date | null, b: Date | null): Date | null {
+  if (!a || !b) return a ?? b;
+  return a > b ? a : b;
 }
 
 async function moveEverything(tx: Transaction, from: string, into: string): Promise<void> {
