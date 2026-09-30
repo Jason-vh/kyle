@@ -183,7 +183,10 @@ export async function getUserProfile(
     removalsOf(userId, user.displayName),
   ]);
 
-  const [requests, plays] = await Promise.all([withState(rows, viewer), getPlaysBy(plexAccounts)]);
+  const [requests, plays] = await Promise.all([
+    withState(rows, viewer).then(attachPosters),
+    getPlaysBy(plexAccounts),
+  ]);
 
   const requested = new Set(rows.map((row) => watchKey(row.mediaType, row.tmdbId)));
   const watched = [...requested].filter((key) => (watchers.get(key)?.length ?? 0) > 0).length;

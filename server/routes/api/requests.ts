@@ -16,6 +16,7 @@ import { getLibraryIndex } from "#server/requests/library.ts";
 import { getSeriesRequestOptions } from "#server/requests/series-options.ts";
 import { retryRequest } from "#server/requests/retry.ts";
 import { withState } from "#server/requests/state.ts";
+import { attachPosters } from "#server/tmdb/artwork.ts";
 import { isLibraryMediaType } from "#shared/types.ts";
 import { createLogger } from "#server/logger.ts";
 import { errorMessage, errorResponse } from "#server/errors.ts";
@@ -249,7 +250,8 @@ export async function handleGetRequests(req: Request): Promise<Response> {
       }))
     : await getMediaRequestsForUser(auth.user.id);
 
-  return Response.json({ requests: await withState(rows, viewer) });
+  const requests = await attachPosters(await withState(rows, viewer));
+  return Response.json({ requests });
 }
 
 // ---------------------------------------------------------------------------

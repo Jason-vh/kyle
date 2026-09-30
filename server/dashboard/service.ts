@@ -1,6 +1,7 @@
 import type { DashboardResponse, MediaRequest } from "#shared/types.ts";
 import { getMediaRequestsForUser } from "#server/db/requests.ts";
 import { withState } from "#server/requests/state.ts";
+import { attachPosters } from "#server/tmdb/artwork.ts";
 import { tryGetAdditions, type Additions } from "#server/plex/additions.ts";
 import { tryGetWatchTime, type WatchTime } from "#server/plex/watch-time.ts";
 import { getActivity } from "./activity.ts";
@@ -81,7 +82,7 @@ export async function getDashboard(viewerId: string): Promise<DashboardResponse>
     tolerate("Radarr and Sonarr", undefined, getRequestedBytes),
     tolerate("Activity", [], () => getActivity(viewerId, since)),
     tolerate("Requests", [], async () =>
-      stillComing(await withState(await getMediaRequestsForUser(viewerId))),
+      attachPosters(stillComing(await withState(await getMediaRequestsForUser(viewerId)))),
     ),
   ]);
 

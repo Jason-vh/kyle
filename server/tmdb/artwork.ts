@@ -108,7 +108,7 @@ export async function getPosters(refs: TitleRef[]): Promise<Map<string, string>>
 }
 
 export async function attachPosters<
-  T extends { mediaType: LibraryMediaType; tmdbId?: number; posterPath?: string },
+  T extends { mediaType: LibraryMediaType; tmdbId?: number; posterPath?: string | null },
 >(items: T[]): Promise<T[]> {
   const refs = items.flatMap((item) =>
     item.tmdbId ? [{ mediaType: item.mediaType, tmdbId: item.tmdbId }] : [],
