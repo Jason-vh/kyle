@@ -49,33 +49,30 @@
       <RouterView />
     </main>
 
-    <template v-if="user && !route.meta.hideNav">
-      <!-- Content fades out as it nears the tab bar and the browser's own controls below it. -->
-      <div
-        class="pointer-events-none fixed inset-x-0 bottom-0 z-10 h-[calc(6rem+env(safe-area-inset-bottom))] bg-linear-to-t from-bg-base from-25% to-transparent sm:hidden"
-        aria-hidden="true"
-      />
-
-      <!-- A capsule narrower than the cards, so it reads as a control and not as another row. -->
-      <nav
-        class="fixed inset-x-0 bottom-[calc(0.75rem+env(safe-area-inset-bottom))] z-10 mx-auto flex w-[min(20rem,calc(100%-3rem))] rounded-full bg-bg-elevated/85 p-1 shadow-float backdrop-blur-xl backdrop-saturate-150 sm:hidden"
+    <!--
+      A capsule narrower than the cards, so it reads as a control and not as
+      another row. It stays clear of the bottom edge: iOS Safari tints the area
+      under its toolbar after any fixed element that touches it.
+    -->
+    <nav
+      v-if="user && !route.meta.hideNav"
+      class="fixed inset-x-0 bottom-[calc(0.75rem+env(safe-area-inset-bottom))] z-10 mx-auto flex w-[min(20rem,calc(100%-3rem))] rounded-full bg-bg-elevated/85 p-1 shadow-float backdrop-blur-xl backdrop-saturate-150 sm:hidden"
+    >
+      <router-link
+        v-for="link in NAV_LINKS"
+        :key="link.to"
+        :to="link.to"
+        class="flex flex-1 flex-col items-center gap-0.5 py-1.5 text-[11px] font-medium no-underline transition-colors"
+        :class="isActive(link.to) ? 'text-accent' : 'text-text-muted'"
       >
-        <router-link
-          v-for="link in NAV_LINKS"
-          :key="link.to"
-          :to="link.to"
-          class="flex flex-1 flex-col items-center gap-0.5 rounded-full py-1.5 text-[11px] font-medium no-underline transition-colors"
-          :class="isActive(link.to) ? 'bg-accent-light text-accent' : 'text-text-muted'"
-        >
-          <component
-            :is="isActive(link.to) ? link.activeIcon : link.icon"
-            class="size-6"
-            aria-hidden="true"
-          />
-          {{ link.label }}
-        </router-link>
-      </nav>
-    </template>
+        <component
+          :is="isActive(link.to) ? link.activeIcon : link.icon"
+          class="size-6"
+          aria-hidden="true"
+        />
+        {{ link.label }}
+      </router-link>
+    </nav>
   </div>
 </template>
 
