@@ -54,7 +54,9 @@
    * Tailwind copies a theme shadow's value into its class, where the dark
    * scheme could not re-point it, so each names a variable set per scheme.
    * `float` is for controls over content: a hairline edge and a lit top,
-   * since a shadow alone disappears against a dark page.
+   * since a shadow alone disappears against a dark page. Both are inset, as
+   * anything drawn outside a bar fixed near the bottom makes iOS Safari dim
+   * the page above it.
    */
   --shadow-card: var(--card-shadow);
   --shadow-raised: var(--raised-shadow);
@@ -86,9 +88,7 @@
 :root {
   --card-shadow: 0 1px 2px rgb(17 24 39 / 0.05);
   --raised-shadow: 0 4px 16px rgb(17 24 39 / 0.08);
-  --float-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 0.7), 0 0 0 1px rgb(17 24 39 / 0.08),
-    0 8px 24px rgb(17 24 39 / 0.12);
+  --float-shadow: inset 0 1px 0 rgb(255 255 255 / 0.7), inset 0 0 0 1px rgb(17 24 39 / 0.08);
 }
 
 /*
@@ -126,9 +126,7 @@
 
     --card-shadow: 0 1px 2px rgb(0 0 0 / 0.4);
     --raised-shadow: 0 4px 16px rgb(0 0 0 / 0.5);
-    --float-shadow:
-      inset 0 1px 0 rgb(255 255 255 / 0.04), 0 0 0 1px rgb(255 255 255 / 0.1),
-      0 8px 24px rgb(0 0 0 / 0.5);
+    --float-shadow: inset 0 1px 0 rgb(255 255 255 / 0.04), inset 0 0 0 1px rgb(255 255 255 / 0.1);
   }
 }
 
@@ -174,14 +172,13 @@
   }
 }
 
-/* On the root rather than the body: iOS Safari tints its toolbars after the root's own background. */
 html {
-  background: var(--color-bg-base);
   color-scheme: light dark;
   touch-action: manipulation;
 }
 
 body {
+  background: var(--color-bg-base);
   color: var(--color-text-primary);
   font-family: var(--font-family-sans);
   line-height: 1.6;
