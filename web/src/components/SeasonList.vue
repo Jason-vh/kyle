@@ -242,9 +242,23 @@ function summary(season: SeasonSummary): string {
   if (season.state === "airing" && season.expectedAt) {
     parts.push(`next ${airDate(season.expectedAt)}`);
   }
-  if (!QUIET.has(season.state)) parts.push(SEASON_STATES[season.state].label);
+  if (!QUIET.has(season.state) && !settled(season)) parts.push(SEASON_STATES[season.state].label);
   parts.push(...downloadFacts(season));
   return parts.join(" · ");
+}
+
+/**
+ * A season done airing that Sonarr still looks for, with nothing found, is not
+ * going to change by itself: that it is still looked for is not worth saying.
+ */
+function settled(season: SeasonSummary): boolean {
+  if (season.state !== "searching" || season.episodes.length === 0) return false;
+  return season.episodes.every(hasAired);
+}
+
+/** An episode with no date has not been scheduled, so it has not aired either. */
+function hasAired(episode: EpisodeSummary): boolean {
+  return !!episode.airDate && new Date(episode.airDate) <= new Date();
 }
 
 function downloadFacts(season: SeasonSummary): string[] {

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { toMovie, toSeries } from "./service.ts";
+import { isListed, toMovie, toSeries } from "./service.ts";
 import { seriesAvailability } from "./item.ts";
 import type { RadarrMovie } from "#server/radarr/types.ts";
 import type { SonarrSeries } from "#server/sonarr/types.ts";
@@ -42,6 +42,32 @@ describe("toMovie", () => {
 
   test("drops the year Radarr reports as 0", () => {
     expect(toMovie({ ...movie, year: 0 }).year).toBeUndefined();
+  });
+});
+
+describe("isListed", () => {
+  test("a movie on disk is listed", () => {
+    expect(isListed(toMovie(movie))).toBe(true);
+  });
+
+  test("a movie Radarr is only watching for is not", () => {
+    expect(isListed(toMovie({ ...movie, hasFile: false }))).toBe(false);
+  });
+
+  test("a movie on its way is listed", () => {
+    const downloading = {
+      ...toMovie({ ...movie, hasFile: false }),
+      download: { state: "downloading" as const },
+    };
+    expect(isListed(downloading)).toBe(true);
+  });
+
+  test("a movie nobody is watching for is listed", () => {
+    expect(isListed(toMovie({ ...movie, hasFile: false, monitored: false }))).toBe(true);
+  });
+
+  test("a series with nothing on disk is listed, since it can still gain episodes", () => {
+    expect(isListed(toSeries(series()))).toBe(true);
   });
 });
 

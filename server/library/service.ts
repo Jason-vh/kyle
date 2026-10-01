@@ -46,6 +46,16 @@ export function toSeries(series: SonarrSeries): LibraryItem {
   };
 }
 
+/**
+ * A movie Radarr is watching for, with no file and nothing on the way, is not
+ * in the library in any sense worth showing: a movie does not grow new parts,
+ * so until a download starts, nothing about it changes.
+ */
+export function isListed(item: LibraryItem): boolean {
+  if (item.mediaType !== "movie") return true;
+  return !item.monitored || item.availability !== "missing" || item.download !== undefined;
+}
+
 export interface LibraryListing {
   items: LibraryItem[];
   /** Services that could not be reached, so the listing is incomplete. */
@@ -111,7 +121,7 @@ export async function listLibrary(viewer: Viewer): Promise<LibraryListing> {
     }
   }
 
-  return { items, unavailable, storage };
+  return { items: items.filter(isListed), unavailable, storage };
 }
 
 export async function isRequester(

@@ -534,4 +534,29 @@ describe("a season in the queue", () => {
 
     expect(list.text()).not.toContain("irrelevant");
   });
+
+  test("a season done airing with nothing found does not say it is still looked for", async () => {
+    const aired = episode({ hasFile: false, airDate: iso(-400) });
+    const list = await render([
+      season({ state: "searching", episodeFileCount: 0, episodes: [aired] }),
+    ]);
+
+    expect(list.text()).toContain("0 of 2");
+    expect(list.text()).not.toContain("Looking");
+  });
+
+  test("a season still airing with nothing found says it is looked for", async () => {
+    const list = await render([
+      season({
+        state: "searching",
+        episodeFileCount: 0,
+        episodes: [
+          episode({ hasFile: false, airDate: iso(-3) }),
+          episode({ episodeNumber: 2, hasFile: false, airDate: iso(4) }),
+        ],
+      }),
+    ]);
+
+    expect(list.text()).toContain("Looking");
+  });
 });
