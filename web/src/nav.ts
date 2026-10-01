@@ -15,6 +15,9 @@ export interface NavLink {
   activeIcon: Component;
 }
 
+/** Whether a link is the section the path is in, so a title page keeps its tab lit. */
+export const isNavLinkActive = (path: string, to: string) => path.startsWith(to);
+
 /** The places worth a tab. Everything else is reached from within them. */
 export const NAV_LINKS: NavLink[] = [
   { to: "/home", label: "Home", icon: IconHouse, activeIcon: IconHouseFill },

@@ -49,38 +49,20 @@
       <RouterView />
     </main>
 
-    <!-- A capsule narrower than the cards, so it reads as a control and not as another row. -->
-    <nav
-      v-if="user && !route.meta.hideNav"
-      class="fixed inset-x-0 bottom-[calc(0.75rem+env(safe-area-inset-bottom))] z-10 mx-auto flex w-[min(20rem,calc(100%-3rem))] rounded-full bg-bg-float p-1 shadow-float backdrop-blur-xl backdrop-saturate-180 sm:hidden"
-    >
-      <router-link
-        v-for="link in NAV_LINKS"
-        :key="link.to"
-        :to="link.to"
-        class="flex flex-1 flex-col items-center gap-0.5 py-1.5 text-[11px] font-medium no-underline transition-colors"
-        :class="isActive(link.to) ? 'text-accent' : 'text-text-muted'"
-      >
-        <component
-          :is="isActive(link.to) ? link.activeIcon : link.icon"
-          class="size-6"
-          aria-hidden="true"
-        />
-        {{ link.label }}
-      </router-link>
-    </nav>
+    <TabBar v-if="user && !route.meta.hideNav" />
   </div>
 </template>
 
 <script setup lang="ts">
 import { RouterView, useRoute } from "vue-router";
 import NotificationBell from "./components/NotificationBell.vue";
+import TabBar from "./components/TabBar.vue";
 import UserAvatar from "./components/UserAvatar.vue";
-import { NAV_LINKS } from "./nav";
+import { isNavLinkActive, NAV_LINKS } from "./nav";
 import { useSession } from "./queries/session";
 
 const route = useRoute();
 const { user } = useSession();
 
-const isActive = (to: string) => route.path.startsWith(to);
+const isActive = (to: string) => isNavLinkActive(route.path, to);
 </script>
