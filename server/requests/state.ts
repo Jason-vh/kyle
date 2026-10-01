@@ -83,7 +83,7 @@ function seasonQueues(queued: SonarrQueueItem[]): Map<number, QueueStatus> {
 
   const seasons = new Map<number, QueueStatus>();
   for (const [seasonNumber, items] of bySeason) {
-    const status = summarise(items);
+    const status = summarise(items, seasonNumber);
     if (status) seasons.set(seasonNumber, status);
   }
   return seasons;
@@ -156,6 +156,7 @@ function collect<K>(records: Map<K, QueueRecord[]>, at: K, record: QueueRecord):
  */
 export async function queuesByService(): Promise<Map<string, QueueStatus>> {
   const records = new Map<string, QueueRecord[]>();
+  const seasonOf = new Map<string, number>();
 
   const [movies, series] = await Promise.allSettled([radarr.getQueue(), sonarr.getQueue()]);
 
@@ -176,7 +177,9 @@ export async function queuesByService(): Promise<Map<string, QueueStatus>> {
 
       const seasonNumber = item.seasonNumber ?? item.episode?.seasonNumber;
       if (seasonNumber !== undefined) {
-        collect(records, serviceKey("series", item.seriesId, seasonNumber), item);
+        const key = serviceKey("series", item.seriesId, seasonNumber);
+        seasonOf.set(key, seasonNumber);
+        collect(records, key, item);
       }
     }
   } else {
@@ -185,7 +188,7 @@ export async function queuesByService(): Promise<Map<string, QueueStatus>> {
 
   const statuses = new Map<string, QueueStatus>();
   for (const [at, items] of records) {
-    const status = summarise(items);
+    const status = summarise(items, seasonOf.get(at));
     if (status) statuses.set(at, status);
   }
 

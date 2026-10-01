@@ -1,3 +1,4 @@
+import { episodeCode, seasonName } from "#shared/media.ts";
 import type { DownloadState } from "#shared/types.ts";
 
 /** What a title's download is doing, as opposed to where its file is. */
@@ -25,6 +26,11 @@ export interface QueueRecord {
   sizeleft?: number;
   timeleft?: string;
   added?: string;
+  /** The client's id for the torrent, shared by every episode it carries. */
+  downloadId?: string;
+  /** The release name. */
+  title?: string;
+  episode?: { seasonNumber: number; episodeNumber: number };
 }
 
 /** Downloaded, but sitting in the client until somebody sorts it out. */
@@ -78,6 +84,63 @@ export function classify(record: QueueRecord): QueueStatus {
   return { state: "downloading", since: record.added, ...progressOf(record) };
 }
 
+/** A release named for its episodes rather than its season: "S05E13-E14". */
+const EPISODE_MARKER = /\bS\d+E\d+/i;
+
+/**
+ * Sonarr lists a download once per episode in it, so a season pack is many
+ * records. Grouped back together, each download counts once.
+ */
+function byDownload(records: QueueRecord[]): QueueRecord[][] {
+  const downloads = new Map<string, QueueRecord[]>();
+  const unidentified: QueueRecord[][] = [];
+
+  for (const record of records) {
+    if (!record.downloadId) {
+      unidentified.push([record]);
+      continue;
+    }
+    const existing = downloads.get(record.downloadId);
+    if (existing) existing.push(record);
+    else downloads.set(record.downloadId, [record]);
+  }
+
+  return [...downloads.values(), ...unidentified];
+}
+
+/**
+ * What one download carries: "S06E07", "S05E13–E14", "Season 7" or
+ * "Seasons 1–5". A movie carries no episodes and so has no label, and nor does
+ * a pack of the very season being summarised, which would only repeat it.
+ */
+function downloadLabel(records: QueueRecord[], seasonNumber?: number): string | undefined {
+  const episodes = records
+    .flatMap((record) => (record.episode ? [record.episode] : []))
+    .sort((a, b) => a.seasonNumber - b.seasonNumber || a.episodeNumber - b.episodeNumber);
+  const first = episodes[0];
+  const last = episodes.at(-1);
+  if (!first || !last) return undefined;
+
+  const firstCode = episodeCode(first.seasonNumber, first.episodeNumber);
+  if (episodes.length === 1) return firstCode;
+
+  if (first.seasonNumber !== last.seasonNumber) {
+    return `Seasons ${first.seasonNumber}–${last.seasonNumber}`;
+  }
+  if (EPISODE_MARKER.test(records[0]?.title ?? "")) {
+    return `${firstCode}–E${String(last.episodeNumber).padStart(2, "0")}`;
+  }
+  if (first.seasonNumber === seasonNumber) return undefined;
+  return seasonName(first.seasonNumber);
+}
+
+/** "S06E07 and 34 more · The download is stalled with no connections". */
+function describe(detail: string, label: string | undefined, others: number): string {
+  if (!label) return detail;
+  const subject = others > 0 ? `${label} and ${others} more` : label;
+  return `${subject} · ${detail}`;
+}
+
 /** Attention first: what somebody would have to act on before anything else moves. */
 const ATTENTION: Record<QueueState, number> = {
   blocked: 4,
@@ -95,17 +158,26 @@ function beats(next: QueueStatus, current: QueueStatus): boolean {
 }
 
 /**
- * What a title's queue amounts to. A movie has one record, a series one per
- * episode: of those, the one needing a hand wins, and among equals the
- * furthest along, since it is the next thing that becomes watchable.
+ * What a title's queue amounts to. A movie has one download, a series one per
+ * episode or season pack: of those, the one needing a hand wins, and among
+ * equals the furthest along, since it is the next thing that becomes
+ * watchable. Its detail names the download, and how many share its state.
+ * `seasonNumber` is the season being summarised, when it is just one.
  */
-export function summarise(records: QueueRecord[]): QueueStatus | undefined {
-  let best: QueueStatus | undefined;
+export function summarise(records: QueueRecord[], seasonNumber?: number): QueueStatus | undefined {
+  const downloads = byDownload(records).map((download) => ({
+    // One download's records share a status; any of them speaks for it.
+    status: classify(download[0]!),
+    label: downloadLabel(download, seasonNumber),
+  }));
 
-  for (const record of records) {
-    const next = classify(record);
-    if (!best || beats(next, best)) best = next;
+  let best: (typeof downloads)[number] | undefined;
+  for (const download of downloads) {
+    if (!best || beats(download.status, best.status)) best = download;
   }
+  if (!best?.status.detail) return best?.status;
 
-  return best;
+  const { state } = best.status;
+  const others = downloads.filter((download) => download.status.state === state).length - 1;
+  return { ...best.status, detail: describe(best.status.detail, best.label, others) };
 }
