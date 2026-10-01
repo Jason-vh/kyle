@@ -108,15 +108,27 @@ function byDownload(records: QueueRecord[]): QueueRecord[][] {
   return [...downloads.values(), ...unidentified];
 }
 
+type EpisodeNumber = NonNullable<QueueRecord["episode"]>;
+
+function episodesOf(records: QueueRecord[]): EpisodeNumber[] {
+  return records
+    .flatMap((record) => (record.episode ? [record.episode] : []))
+    .sort((a, b) => a.seasonNumber - b.seasonNumber || a.episodeNumber - b.episodeNumber);
+}
+
+/** A download of its own episodes, as opposed to a season pack. */
+function isEpisodic(records: QueueRecord[]): boolean {
+  const episodes = episodesOf(records);
+  return episodes.length === 1 || EPISODE_MARKER.test(records[0]?.title ?? "");
+}
+
 /**
  * What one download carries: "S06E07", "S05E13–E14", "Season 7" or
  * "Seasons 1–5". A movie carries no episodes and so has no label, and nor does
  * a pack of the very season being summarised, which would only repeat it.
  */
 function downloadLabel(records: QueueRecord[], seasonNumber?: number): string | undefined {
-  const episodes = records
-    .flatMap((record) => (record.episode ? [record.episode] : []))
-    .sort((a, b) => a.seasonNumber - b.seasonNumber || a.episodeNumber - b.episodeNumber);
+  const episodes = episodesOf(records);
   const first = episodes[0];
   const last = episodes.at(-1);
   if (!first || !last) return undefined;
@@ -127,7 +139,7 @@ function downloadLabel(records: QueueRecord[], seasonNumber?: number): string | 
   if (first.seasonNumber !== last.seasonNumber) {
     return `Seasons ${first.seasonNumber}–${last.seasonNumber}`;
   }
-  if (EPISODE_MARKER.test(records[0]?.title ?? "")) {
+  if (isEpisodic(records)) {
     return `${firstCode}–E${String(last.episodeNumber).padStart(2, "0")}`;
   }
   if (first.seasonNumber === seasonNumber) return undefined;
@@ -157,27 +169,88 @@ function beats(next: QueueStatus, current: QueueStatus): boolean {
   return (next.progress ?? 0) > (current.progress ?? 0);
 }
 
-/**
- * What a title's queue amounts to. A movie has one download, a series one per
- * episode or season pack: of those, the one needing a hand wins, and among
- * equals the furthest along, since it is the next thing that becomes
- * watchable. Its detail names the download, and how many share its state.
- * `seasonNumber` is the season being summarised, when it is just one.
- */
-export function summarise(records: QueueRecord[], seasonNumber?: number): QueueStatus | undefined {
-  const downloads = byDownload(records).map((download) => ({
-    // One download's records share a status; any of them speaks for it.
-    status: classify(download[0]!),
-    label: downloadLabel(download, seasonNumber),
-  }));
+/** One download, read once for the records Sonarr lists it under. */
+interface Queued {
+  records: QueueRecord[];
+  status: QueueStatus;
+}
 
-  let best: (typeof downloads)[number] | undefined;
+function queued(records: QueueRecord[]): Queued[] {
+  // One download's records share a status; any of them speaks for it.
+  return byDownload(records).map((download) => ({
+    records: download,
+    status: classify(download[0]!),
+  }));
+}
+
+/**
+ * The one needing a hand wins, and among equals the furthest along, since it
+ * is the next thing that becomes watchable.
+ */
+function mostPressing(downloads: Queued[]): Queued | undefined {
+  let best: Queued | undefined;
   for (const download of downloads) {
     if (!best || beats(download.status, best.status)) best = download;
   }
+  return best;
+}
+
+/**
+ * What a title's queue amounts to, for a line that has to speak for all of it:
+ * a movie has one download, a series one per episode or season pack. Its
+ * detail names the most pressing download, and how many share its state.
+ * `seasonNumber` is the season being summarised, when it is just one.
+ */
+export function summarise(records: QueueRecord[], seasonNumber?: number): QueueStatus | undefined {
+  const downloads = queued(records);
+  const best = mostPressing(downloads);
   if (!best?.status.detail) return best?.status;
 
   const { state } = best.status;
   const others = downloads.filter((download) => download.status.state === state).length - 1;
-  return { ...best.status, detail: describe(best.status.detail, best.label, others) };
+  const label = downloadLabel(best.records, seasonNumber);
+  return { ...best.status, detail: describe(best.status.detail, label, others) };
+}
+
+/**
+ * A season's own row, above a row for each of its episodes. Its state is
+ * everything queued for the season, but it speaks only for season packs: what
+ * an episode's own download has to say is said on that episode's row.
+ */
+export function summariseSeason(records: QueueRecord[]): QueueStatus | undefined {
+  const downloads = queued(records);
+  const best = mostPressing(downloads);
+  if (!best) return undefined;
+
+  const packs = downloads.filter(
+    (download) => !isEpisodic(download.records) && download.status.state === best.status.state,
+  );
+  return { ...best.status, detail: mostPressing(packs)?.status.detail };
+}
+
+/** "6:7", the key an episode's queue is found under. */
+export function episodeKey(seasonNumber: number, episodeNumber: number): string {
+  return `${seasonNumber}:${episodeNumber}`;
+}
+
+/**
+ * What each episode's download is doing, by episodeKey(). An episode in a
+ * season pack shares the pack's state, but not its message, which is the
+ * season's to tell.
+ */
+export function episodeQueues(records: QueueRecord[]): Map<string, QueueStatus> {
+  const episodes = new Map<string, QueueStatus>();
+
+  for (const download of queued(records)) {
+    const { detail, ...status } = download.status;
+    const own = isEpisodic(download.records) ? { ...status, detail } : status;
+
+    for (const episode of episodesOf(download.records)) {
+      const key = episodeKey(episode.seasonNumber, episode.episodeNumber);
+      const current = episodes.get(key);
+      if (!current || beats(own, current)) episodes.set(key, own);
+    }
+  }
+
+  return episodes;
 }

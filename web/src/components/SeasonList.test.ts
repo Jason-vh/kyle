@@ -481,6 +481,54 @@ describe("a season in the queue", () => {
     expect(list.text()).toContain("Sample rejected");
   });
 
+  // Which episode, and why, is on the episode's own row; the season only counts them.
+  test("a season held up by its episodes' downloads counts them, and each says why", async () => {
+    const stalled = (episodeNumber: number, detail: string) =>
+      episode({
+        episodeNumber,
+        title: `Episode ${episodeNumber}`,
+        hasFile: false,
+        download: { state: "stalled", detail, progress: 0.25 },
+      });
+
+    const list = await render([
+      season({
+        state: "stalled",
+        episodes: [
+          episode(),
+          stalled(2, "The download is stalled with no connections"),
+          stalled(3, "qBittorrent is downloading metadata"),
+          episode({
+            episodeNumber: 4,
+            hasFile: false,
+            download: { state: "downloading", progress: 0.5 },
+          }),
+        ],
+      }),
+    ]);
+
+    expect(list.text()).toContain("2 episodes stalled");
+    const rows = list.findAll("li").map((row) => row.text());
+    expect(rows[1]).toContain("The download is stalled with no connections");
+    expect(rows[1]).toContain("Stalled \u00b7 25%");
+    expect(rows[2]).toContain("qBittorrent is downloading metadata");
+    expect(rows[3]).toContain("Downloading \u00b7 50%");
+    expect(rows[3]).not.toContain("Missing");
+  });
+
+  test("a season pack's message is on the season, not its episodes", async () => {
+    const list = await render([
+      season({
+        state: "stalled",
+        detail: "The download is stalled with no connections",
+        episodes: [episode({ hasFile: false, download: { state: "stalled" } })],
+      }),
+    ]);
+
+    expect(list.text().match(/stalled with no connections/g)).toHaveLength(1);
+    expect(list.find("li").text()).toContain("Stalled");
+  });
+
   test("a season merely searching says nothing more", async () => {
     const list = await render([season({ state: "searching", detail: "irrelevant" })]);
 

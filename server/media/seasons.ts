@@ -1,6 +1,6 @@
 import type { EpisodeSummary, SeasonStatus, SeasonSummary, Watcher } from "#shared/types.ts";
 import type { SonarrEpisode, SonarrSeason, SonarrSeries } from "#server/sonarr/types.ts";
-import type { QueueStatus } from "#server/requests/queue.ts";
+import { episodeKey, type QueueStatus } from "#server/requests/queue.ts";
 import type { PlexPlace } from "#server/requests/state.ts";
 import { seasonEntry } from "#server/requests/library.ts";
 import { resolveState } from "#server/requests/state.ts";
@@ -9,8 +9,9 @@ import { episodeWatchKey } from "#server/plex/history.ts";
 /** Sonarr files specials under season 0, which nobody thinks of as the first one. */
 const SPECIALS = 0;
 
-function toEpisode(episode: SonarrEpisode): EpisodeSummary {
-  return {
+/** An episode already on disk can only be downloading an upgrade, which nobody waits on. */
+function toEpisode(episode: SonarrEpisode, queue: QueueStatus | undefined): EpisodeSummary {
+  const summary: EpisodeSummary = {
     episodeNumber: episode.episodeNumber,
     title: episode.title,
     airDate: episode.airDateUtc ?? episode.airDate,
@@ -18,6 +19,10 @@ function toEpisode(episode: SonarrEpisode): EpisodeSummary {
     monitored: episode.monitored,
     watchedBy: [],
   };
+  if (!queue || episode.hasFile) return summary;
+
+  const { state, detail, progress } = queue;
+  return { ...summary, download: { state, detail, progress } };
 }
 
 /** Annotates each episode with whoever has played it, leaving the rest alone. */
@@ -100,6 +105,8 @@ export interface SeasonContext {
   requestedBy: Map<number, string[]>;
   /** What each season's queue is doing, by season number. */
   queues: Map<number, QueueStatus>;
+  /** What each episode's own download is doing, by episodeKey(). */
+  episodeQueues: Map<string, QueueStatus>;
   /** Where Plex has the series, so a season on disk knows if it is watchable. */
   plex: PlexPlace;
 }
@@ -117,7 +124,10 @@ export function buildSeasons(
   const bySeason = new Map<number, EpisodeSummary[]>();
   for (const episode of episodes) {
     const list = bySeason.get(episode.seasonNumber) ?? [];
-    list.push(toEpisode(episode));
+    const queue = context.episodeQueues.get(
+      episodeKey(episode.seasonNumber, episode.episodeNumber),
+    );
+    list.push(toEpisode(episode, queue));
     bySeason.set(episode.seasonNumber, list);
   }
 

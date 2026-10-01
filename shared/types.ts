@@ -287,6 +287,14 @@ export interface EpisodeSummary {
   monitored: boolean;
   /** Anyone who has played this episode on the Plex server. */
   watchedBy: Watcher[];
+  /** While it is in the queue and not yet on disk. */
+  download?: EpisodeDownload;
+}
+
+/** What an episode's download is doing; a season pack's message is the season's, not its. */
+export interface EpisodeDownload extends Download {
+  /** What the service says about the episode's own download: a stall, a rejection. */
+  detail?: string;
 }
 
 // Requests

@@ -105,7 +105,12 @@ function heldFrom(stored: Stored, seasonRequesters: Map<number, string[]>, plex:
   if (stored.mediaType === "movie") return heldMovie(stored.movie);
 
   const { series, episodes, queue } = stored;
-  const context: SeasonContext = { requestedBy: seasonRequesters, queues: queue.seasons, plex };
+  const context: SeasonContext = {
+    requestedBy: seasonRequesters,
+    queues: queue.seasons,
+    episodeQueues: queue.episodes,
+    plex,
+  };
   return {
     state: seriesState(series),
     entry: seriesEntry(series),

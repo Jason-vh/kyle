@@ -81,11 +81,16 @@
               <span class="w-5 shrink-0 text-right text-xs tabular-nums text-text-muted">
                 {{ episode.episodeNumber }}
               </span>
-              <span
-                class="min-w-0 flex-1 truncate text-sm"
-                :class="episode.hasFile ? 'text-text-primary' : 'text-text-secondary'"
-              >
-                {{ episode.title }}
+              <span class="min-w-0 flex-1">
+                <span
+                  class="block truncate text-sm"
+                  :class="episode.hasFile ? 'text-text-primary' : 'text-text-secondary'"
+                >
+                  {{ episode.title }}
+                </span>
+                <span v-if="episodeReason(episode)" class="block text-xs text-text-secondary">
+                  {{ episodeReason(episode) }}
+                </span>
               </span>
               <span v-if="lastWatched(episode)" class="shrink-0 text-xs text-text-muted">
                 {{ lastWatched(episode) }}
@@ -97,6 +102,18 @@
                 aria-label="Downloaded"
                 class="size-1.5 shrink-0 rounded-full bg-accent-green"
               />
+              <span
+                v-else-if="episode.download"
+                class="flex shrink-0 items-center gap-1.5 text-xs text-text-muted"
+              >
+                <span
+                  v-if="ATTENTION[episode.download.state]"
+                  class="size-1.5 shrink-0 rounded-full"
+                  :class="ATTENTION[episode.download.state]"
+                  aria-hidden="true"
+                />
+                {{ downloadSummary(episode.download) }}
+              </span>
               <span v-else-if="unaired(episode)" class="shrink-0 text-xs text-text-muted">
                 {{ airDate(episode.airDate) }}
               </span>
@@ -148,7 +165,7 @@ import {
   AccordionRoot,
   AccordionTrigger,
 } from "reka-ui";
-import type { EpisodeSummary, SeasonState, SeasonSummary } from "#shared/types";
+import type { EpisodeDownload, EpisodeSummary, SeasonState, SeasonSummary } from "#shared/types";
 import { seasonName } from "#shared/media";
 import { formatDate, formatEta, formatSize } from "#web/utils/format";
 import { SEASON_STATES } from "#web/utils/states";
@@ -241,9 +258,32 @@ function downloadFacts(season: SeasonSummary): string[] {
   return facts;
 }
 
+/**
+ * A season pack's own message, or, when it is the episodes' own downloads the
+ * season is held up by, how many: each says why on its own row.
+ */
 function reason(season: SeasonSummary): string | undefined {
   if (!ATTENTION[season.state]) return undefined;
-  return season.detail;
+  if (season.detail) return season.detail;
+
+  const held = season.episodes.filter((episode) => episode.download?.state === season.state);
+  if (held.length === 0) return undefined;
+  const plural = held.length === 1 ? "episode" : "episodes";
+  return `${held.length} ${plural} ${SEASON_STATES[season.state].label.toLowerCase()}`;
+}
+
+function episodeReason(episode: EpisodeSummary): string | undefined {
+  const download = episode.download;
+  if (!download || !ATTENTION[download.state]) return undefined;
+  return download.detail;
+}
+
+/** "Downloading · 42%", "Can't import". */
+function downloadSummary(download: EpisodeDownload): string {
+  const label = SEASON_STATES[download.state].label;
+  const moving = download.state === "downloading" || download.state === "stalled";
+  if (!moving || download.progress === undefined) return label;
+  return `${label} · ${Math.round(download.progress * 100)}%`;
 }
 
 function showsBar(season: SeasonSummary): boolean {

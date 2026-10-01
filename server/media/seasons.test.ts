@@ -3,6 +3,7 @@ import { buildSeasons, withEpisodeWatchers, type SeasonContext } from "./seasons
 import type { SonarrEpisode, SonarrSeries } from "#server/sonarr/types.ts";
 import { episodeWatchKey, watchKey } from "#server/plex/history.ts";
 import type { Watcher } from "#shared/types.ts";
+import type { QueueStatus } from "#server/requests/queue.ts";
 
 /** Nobody asked for anything and nothing is downloading, unless a test says so. */
 function build(
@@ -13,6 +14,7 @@ function build(
   return buildSeasons(series, episodes, {
     requestedBy: new Map(),
     queues: new Map(),
+    episodeQueues: new Map(),
     plex: { reachable: false },
     ...context,
   });
@@ -171,6 +173,20 @@ describe("season state", () => {
     expect(season?.state).toBe("downloading");
     expect(season?.progress).toBe(0.4);
     expect(season?.eta).toBe("00:10:00");
+  });
+
+  test("an episode still to come down says what its download is doing", () => {
+    const stalled: QueueStatus = { state: "stalled", detail: "No connections", progress: 0.1 };
+    const [season] = build(counted(2, 1), [aired(1, true), aired(2, false)], {
+      episodeQueues: new Map<string, QueueStatus>([
+        ["1:1", { state: "downloading", progress: 0.5 }],
+        ["1:2", stalled],
+      ]),
+    });
+
+    // An episode on disk can only be fetching an upgrade, which nobody waits on.
+    expect(season?.episodes[0]?.download).toBeUndefined();
+    expect(season?.episodes[1]?.download).toEqual(stalled);
   });
 
   // 1883: aired years ago, files gone, every episode switched off while the

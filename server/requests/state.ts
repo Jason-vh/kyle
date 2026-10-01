@@ -12,7 +12,13 @@ import { getLibraryIndex, type LibraryEntry } from "./library.ts";
 import { getRemovals, type Removal } from "#server/db/removals.ts";
 import { getPlexPlaces, type PlexPlaces } from "#server/plex/catalog.ts";
 import { watchKey } from "#server/plex/keys.ts";
-import { summarise, type QueueRecord, type QueueStatus } from "./queue.ts";
+import {
+  episodeQueues,
+  summarise,
+  summariseSeason,
+  type QueueRecord,
+  type QueueStatus,
+} from "./queue.ts";
 import { createLogger } from "#server/logger.ts";
 import { errorMessage } from "#server/errors.ts";
 import { removedByViewer, type Viewer } from "#server/people.ts";
@@ -72,6 +78,8 @@ const SCAN_GRACE_MS = 6 * 60 * 60 * 1000;
 export interface TitleQueue {
   title?: QueueStatus;
   seasons: Map<number, QueueStatus>;
+  /** By episodeKey(). */
+  episodes: Map<string, QueueStatus>;
 }
 
 function seasonQueues(queued: SonarrQueueItem[]): Map<number, QueueStatus> {
@@ -83,7 +91,7 @@ function seasonQueues(queued: SonarrQueueItem[]): Map<number, QueueStatus> {
 
   const seasons = new Map<number, QueueStatus>();
   for (const [seasonNumber, items] of bySeason) {
-    const status = summarise(items, seasonNumber);
+    const status = summariseSeason(items);
     if (status) seasons.set(seasonNumber, status);
   }
   return seasons;
@@ -96,13 +104,17 @@ export async function titleQueue(
   try {
     if (mediaType === "movie") {
       const queue = await radarr.getQueue({ movieIds: [serviceId] });
-      return { title: summarise(queue.records), seasons: new Map() };
+      return { title: summarise(queue.records), seasons: new Map(), episodes: new Map() };
     }
     const queue = await sonarr.getQueue({ seriesIds: [serviceId] });
-    return { title: summarise(queue.records), seasons: seasonQueues(queue.records) };
+    return {
+      title: summarise(queue.records),
+      seasons: seasonQueues(queue.records),
+      episodes: episodeQueues(queue.records),
+    };
   } catch (error) {
     log.warn("queue unavailable", { mediaType, serviceId, error: errorMessage(error) });
-    return { seasons: new Map() };
+    return { seasons: new Map(), episodes: new Map() };
   }
 }
 

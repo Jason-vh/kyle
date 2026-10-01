@@ -1,5 +1,12 @@
 import { describe, expect, test } from "bun:test";
-import { classify, summarise, type QueueRecord } from "./queue.ts";
+import {
+  classify,
+  episodeKey,
+  episodeQueues,
+  summarise,
+  summariseSeason,
+  type QueueRecord,
+} from "./queue.ts";
 
 /** A healthy download, which each case bends into the shape it is about. */
 function record(overrides: Partial<QueueRecord> = {}): QueueRecord {
@@ -193,5 +200,58 @@ describe("summarise, naming the download", () => {
   test("a movie's download is not named, having no episodes", () => {
     const status = summarise([record({ status: "warning", errorMessage: NO_CONNECTIONS })]);
     expect(status?.detail).toBe(NO_CONNECTIONS);
+  });
+});
+
+describe("a season's row and its episodes' rows", () => {
+  const NO_CONNECTIONS = "The download is stalled with no connections";
+
+  function download(downloadId: string, title: string, episodes: number[], overrides = {}) {
+    return episodes.map((episodeNumber) =>
+      record({
+        downloadId,
+        title,
+        episode: { seasonNumber: 6, episodeNumber },
+        ...overrides,
+      }),
+    );
+  }
+  const stall = { status: "warning", errorMessage: NO_CONNECTIONS };
+
+  test("a season pack's message is the season's", () => {
+    const status = summariseSeason(download("pack", "Show.S06.1080p", [1, 2, 3], stall));
+    expect(status).toMatchObject({ state: "stalled", detail: NO_CONNECTIONS });
+  });
+
+  // The season still reads as stalled, but which episode and why is on its row.
+  test("an episode's message is not the season's", () => {
+    const status = summariseSeason([
+      ...download("a", "Show S06E07 1080p", [7], stall),
+      ...download("b", "Show S06E08 1080p", [8]),
+    ]);
+    expect(status?.state).toBe("stalled");
+    expect(status?.detail).toBeUndefined();
+  });
+
+  test("an episode's own download carries its message", () => {
+    const episodes = episodeQueues(download("a", "Show S06E07 1080p", [7], stall));
+    expect(episodes.get(episodeKey(6, 7))).toMatchObject({
+      state: "stalled",
+      detail: NO_CONNECTIONS,
+    });
+  });
+
+  test("an episode in a season pack shares its state, not its message", () => {
+    const episodes = episodeQueues(download("pack", "Show.S06.1080p", [1, 2], stall));
+    expect(episodes.get(episodeKey(6, 2))?.state).toBe("stalled");
+    expect(episodes.get(episodeKey(6, 2))?.detail).toBeUndefined();
+  });
+
+  test("an episode fetched twice shows the download needing a hand", () => {
+    const episodes = episodeQueues([
+      ...download("a", "Show S06E07 720p", [7]),
+      ...download("b", "Show S06E07 1080p", [7], stall),
+    ]);
+    expect(episodes.get(episodeKey(6, 7))?.state).toBe("stalled");
   });
 });
