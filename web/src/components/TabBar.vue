@@ -8,17 +8,7 @@
   <nav
     class="glass fixed inset-x-0 bottom-[calc(0.75rem+env(safe-area-inset-bottom))] z-10 mx-auto flex w-[min(20rem,calc(100%-3rem))] rounded-full p-1 sm:hidden"
   >
-    <div
-      ref="lens"
-      class="lens absolute inset-y-1 left-1 rounded-full"
-      :class="{ 'opacity-0': activeIndex === -1 }"
-      :style="{
-        width: `calc((100% - 0.5rem) / ${NAV_LINKS.length})`,
-        translate: `${lensIndex * 100}% 0`,
-      }"
-      aria-hidden="true"
-    />
-
+    <!-- Positioned, so the sheen drawn over the glass stays beneath it. -->
     <router-link
       v-for="(link, index) in NAV_LINKS"
       :key="link.to"
@@ -37,34 +27,15 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, useTemplateRef, watch } from "vue";
+import { computed } from "vue";
 import { useRoute } from "vue-router";
 import { isNavLinkActive, NAV_LINKS } from "#web/nav";
 
 const route = useRoute();
-const lens = useTemplateRef<HTMLElement>("lens");
 
 const activeIndex = computed(() =>
   NAV_LINKS.findIndex((link) => isNavLinkActive(route.path, link.to)),
 );
-
-// Off every tab, the lens fades where it was, so coming back slides it from there.
-const lensIndex = ref(Math.max(activeIndex.value, 0));
-
-watch(activeIndex, (index, previous) => {
-  if (index === -1) return;
-  lensIndex.value = index;
-  if (previous !== -1) stretch();
-});
-
-/** The lens stretches as it slides and settles round when it lands, like a drop. */
-function stretch() {
-  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-  lens.value?.animate([{ scale: "1 1" }, { scale: "1.22 0.86", offset: 0.35 }, { scale: "1 1" }], {
-    duration: 520,
-    easing: "cubic-bezier(0.3, 0, 0.2, 1)",
-  });
-}
 </script>
 
 <style scoped>
@@ -106,22 +77,5 @@ function stretch() {
   mask:
     linear-gradient(#000 0 0) content-box exclude,
     linear-gradient(#000 0 0);
-}
-
-/* A neutral tint rather than the accent: the tab's own colour already says which. */
-.lens {
-  background: color-mix(in srgb, var(--color-text-primary) 7%, transparent);
-  box-shadow:
-    inset 0 1px 0 var(--float-sheen),
-    inset 0 0 0 1px color-mix(in srgb, var(--color-text-primary) 5%, transparent);
-  transition:
-    translate 0.5s cubic-bezier(0.34, 1.3, 0.5, 1),
-    opacity 0.2s ease-out;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .lens {
-    transition: opacity 0.2s ease-out;
-  }
 }
 </style>
