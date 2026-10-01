@@ -16,6 +16,8 @@
   --color-bg-elevated: #f1f2f4;
   --color-bg-input: #ffffff;
   --color-bg-overlay: rgb(17 24 39 / 0.45);
+  /* Frosted glass for controls over content; translucent so the blur shows. */
+  --color-bg-float: rgb(255 255 255 / 0.7);
 
   /* Lines */
   --color-border-primary: #e5e7eb;
@@ -102,6 +104,7 @@
     --color-bg-elevated: #1f242e;
     --color-bg-input: #1a1f28;
     --color-bg-overlay: rgb(0 0 0 / 0.6);
+    --color-bg-float: rgb(31 36 46 / 0.7);
 
     --color-border-primary: #262c37;
     --color-border-secondary: #333b48;

@@ -52,7 +52,7 @@
     <!-- A capsule narrower than the cards, so it reads as a control and not as another row. -->
     <nav
       v-if="user && !route.meta.hideNav"
-      class="fixed inset-x-0 bottom-[calc(0.75rem+env(safe-area-inset-bottom))] z-10 mx-auto flex w-[min(20rem,calc(100%-3rem))] rounded-full bg-bg-elevated/85 p-1 shadow-float backdrop-blur-xl backdrop-saturate-150 sm:hidden"
+      class="fixed inset-x-0 bottom-[calc(0.75rem+env(safe-area-inset-bottom))] z-10 mx-auto flex w-[min(20rem,calc(100%-3rem))] rounded-full bg-bg-float p-1 shadow-float backdrop-blur-xl backdrop-saturate-180 sm:hidden"
     >
       <router-link
         v-for="link in NAV_LINKS"
