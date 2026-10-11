@@ -93,9 +93,8 @@ for (const mediaType of ["movie", "series"] as const) {
         expect((await handleRemoveLibraryItem(req, mediaType, String(item.id))).status).toBe(200);
       } else {
         let result;
-        if (mediaType === "movie")
-          result = await removeMovieTool.execute("remove", { movieId: item.id });
-        else result = await removeSeriesTool.execute("remove", { seriesId: item.id });
+        if (mediaType === "movie") result = await removeMovieTool.execute({ movieId: item.id });
+        else result = await removeSeriesTool.execute({ seriesId: item.id });
         expect(parseToolPayload(result)).toMatchObject({
           success: true,
           title: item.title,
@@ -123,7 +122,7 @@ for (const mediaType of ["movie", "series"] as const) {
 
 test("a failed deletion does not claim the title was removed", async () => {
   stubLibrary(true);
-  await expect(removeMovieTool.execute("remove", { movieId: movie.id })).rejects.toThrow("offline");
+  await expect(removeMovieTool.execute({ movieId: movie.id })).rejects.toThrow("offline");
   expect((await getLibraryIndex()).movie.has(movie.tmdbId)).toBe(true);
   expect(
     await db

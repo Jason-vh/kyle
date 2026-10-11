@@ -1,4 +1,4 @@
-import { Type } from "@sinclair/typebox";
+import { Type } from "typebox";
 import type { Tool } from "#server/agent/tool.ts";
 import { jsonResult } from "#server/agent/tool-result.ts";
 import * as brave from "./api.ts";
@@ -23,7 +23,7 @@ export const webSearchTool: Tool<typeof webSearchParams> = {
   parameters: webSearchParams,
   label: "Searching the web",
   summary: (args) => `Searched the web for '${args.query}'`,
-  async execute(_toolCallId, params) {
+  async execute(params) {
     const count = params.count ?? 5;
     const response = await brave.searchWeb(params.query, { count });
     const results = (response.web?.results ?? []).map(toPartialWebResult);

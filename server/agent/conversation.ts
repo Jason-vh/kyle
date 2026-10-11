@@ -1,6 +1,6 @@
 import { and, eq } from "drizzle-orm";
-import type { AgentEvent } from "@mariozechner/pi-agent-core";
-import type { ImageContent } from "@mariozechner/pi-ai";
+import type { AgentEvent } from "@earendil-works/pi-agent-core";
+import type { ImageContent } from "@earendil-works/pi-ai";
 import { createLogger } from "#server/logger.ts";
 import { db } from "#server/db/index.ts";
 import { withDatabaseLock } from "#server/db/lock.ts";

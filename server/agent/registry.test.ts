@@ -53,7 +53,7 @@ test("permissions are checked again when a tool executes", async () => {
   const remove = tools.find((tool) => tool.name === "remove_movie")!;
   await db.update(users).set({ isAdmin: false }).where(eq(users.id, adminId));
   try {
-    await expect(remove.execute("call", { movieId: 1 })).rejects.toThrow("not authorized");
+    await expect(remove.execute({ movieId: 1 })).rejects.toThrow("not authorized");
   } finally {
     await db.update(users).set({ isAdmin: true }).where(eq(users.id, adminId));
   }
@@ -63,7 +63,7 @@ test("members cannot substitute another user's id", async () => {
   const tools = await toolsForTurn({ userId: memberId });
   for (const name of ["get_request_states", "get_requests_for_user", "unsubscribe_notifications"]) {
     await expect(
-      tools.find((tool) => tool.name === name)!.execute("call", { userId: adminId }),
+      tools.find((tool) => tool.name === name)!.execute({ userId: adminId }),
     ).rejects.toThrow("your own");
   }
 });

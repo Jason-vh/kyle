@@ -42,7 +42,7 @@ describe("a tool's result and the event extracted from it", () => {
     });
 
     const args = { tmdbId: 27205 };
-    const output = await createAddMovieTool().execute("call-1", args);
+    const output = await createAddMovieTool().execute(args);
 
     expect(extractMediaEvent("add_movie", args, output)).toEqual({
       action: "add",
@@ -69,7 +69,7 @@ describe("a tool's result and the event extracted from it", () => {
     });
 
     const args = { tvdbId: 371980 };
-    const output = await createAddSeriesTool().execute("call-2", args);
+    const output = await createAddSeriesTool().execute(args);
 
     expect(extractMediaEvent("add_series", args, output)).toEqual({
       action: "add",
@@ -91,7 +91,7 @@ describe("a tool's result and the event extracted from it", () => {
     });
 
     const args = { movieId: 42 };
-    const output = await removeMovieTool.execute("call-3", args);
+    const output = await removeMovieTool.execute(args);
 
     expect(extractMediaEvent("remove_movie", args, output)).toMatchObject({
       action: "remove",
@@ -107,7 +107,7 @@ describe("a tool's result and the event extracted from it", () => {
     });
 
     const args = { seriesId: 9 };
-    const output = await removeSeriesTool.execute("call-4", args);
+    const output = await removeSeriesTool.execute(args);
 
     expect(extractMediaEvent("remove_series", args, output)).toMatchObject({
       action: "remove",

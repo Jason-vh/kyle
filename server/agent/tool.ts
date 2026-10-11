@@ -1,14 +1,24 @@
-import type { AgentTool } from "@mariozechner/pi-agent-core";
-import type { TSchema } from "@sinclair/typebox";
+import type { ImageContent, TextContent, Tool as ModelTool } from "@earendil-works/pi-ai";
+import type { Static, TSchema } from "typebox";
 import type { ResultTable } from "./table.ts";
+
+export interface ToolResult {
+  content: (TextContent | ImageContent)[];
+}
 
 /**
  * An agent tool plus everything the interfaces need to talk about it.
  *
  * Presentation lives with the tool so adding one means touching a single file;
  * the registry is the only place that maps a tool name back to its definition.
+ * `execute` takes only the arguments, so the same definition fits whichever
+ * runner drives the agent.
  */
-export interface Tool<P extends TSchema = TSchema> extends AgentTool<P> {
+export interface Tool<P extends TSchema = TSchema> extends ModelTool<P> {
+  /** Human-readable progress line shown while the tool runs. */
+  label: string;
+  /** Throws on failure; the runner reports the error to the model. */
+  execute(args: Static<P>): Promise<ToolResult>;
   /**
    * Marks a tool that changes something, so it is worth surfacing as a task card.
    * Lookups run constantly and say nothing useful, so they leave it unset. Tools

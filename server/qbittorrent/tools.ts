@@ -1,4 +1,4 @@
-import { Type } from "@sinclair/typebox";
+import { Type } from "typebox";
 import type { Tool } from "#server/agent/tool.ts";
 import { jsonResult } from "#server/agent/tool-result.ts";
 import * as qbittorrent from "./api.ts";
@@ -31,7 +31,7 @@ export const getTorrentsTool: Tool<typeof getTorrentsParams> = {
   parameters: getTorrentsParams,
   label: "Fetching torrents from qBittorrent",
   summary: "Listed torrents",
-  async execute(_toolCallId, params) {
+  async execute(params) {
     const torrents = await qbittorrent.getTorrents(params.filter ?? "all");
     return jsonResult(
       torrents.map((t) => ({
@@ -74,7 +74,7 @@ export const deleteTorrentsTool: Tool<typeof deleteTorrentsParams> = {
     if (!count) return "Deleted torrents from qBittorrent";
     return `Deleted ${count} torrent${count === 1 ? "" : "s"} from qBittorrent`;
   },
-  async execute(_toolCallId, params) {
+  async execute(params) {
     const deleteFiles = params.deleteFiles ?? true;
     await qbittorrent.deleteTorrents(params.hashes, deleteFiles);
     return jsonResult({

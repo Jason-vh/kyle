@@ -1,4 +1,4 @@
-import { Type } from "@sinclair/typebox";
+import { Type } from "typebox";
 import type { Tool, ToolPresentation } from "#server/agent/tool.ts";
 import { jsonResult } from "#server/agent/tool-result.ts";
 import { buildTable } from "#server/agent/table.ts";
@@ -102,7 +102,7 @@ export const getSeriesByIdTool: Tool<typeof getSeriesByIdParams> = {
   parameters: getSeriesByIdParams,
   label: "Checking series details in Sonarr",
   summary: "Fetched series details",
-  async execute(_toolCallId, params) {
+  async execute(params) {
     const series = await sonarr.getSeries(params.seriesId);
     return jsonResult(toPartialSeries(series));
   },
@@ -121,7 +121,7 @@ export const searchSeriesTool: Tool<typeof searchSeriesParams> = {
   parameters: searchSeriesParams,
   label: "Searching for series in Sonarr",
   summary: (args) => `Searched for series '${args.title}'`,
-  async execute(_toolCallId, params) {
+  async execute(params) {
     const series = await sonarr.searchSeries(params.title);
     return jsonResult(series.map(toSeriesLookupResult));
   },
@@ -158,7 +158,7 @@ export function createAddSeriesTool(requestedBy?: Requester): Tool<typeof addSer
     description:
       "Add a TV series to Sonarr and record who asked for it: which seasons to download now, and whether to follow it for new seasons. For a series Sonarr already holds, the seasons given are searched for and following is set as given; nothing else changes. To ask for one season, prefer request_season.",
     parameters: addSeriesParams,
-    async execute(_toolCallId, params) {
+    async execute(params) {
       const { status, series } = await requestSeries({
         tvdbId: params.tvdbId,
         seasons: params.seasons,
@@ -201,7 +201,7 @@ export function createRequestSeasonTool(requestedBy?: Requester): Tool<typeof re
     description:
       "Request one season of a TV series and record who asked for it. Adds the series to Sonarr unmonitored if it is not there, monitors that season alone, and searches for it. This is how to ask for more of a series already in the library — add_series does nothing for one Sonarr already holds.",
     parameters: requestSeasonParams,
-    async execute(_toolCallId, params) {
+    async execute(params) {
       const { status, series, seasonNumber } = await requestSeason({
         tvdbId: params.tvdbId,
         tmdbId: params.tmdbId,
@@ -237,7 +237,7 @@ export const removeSeriesTool: Tool<typeof removeSeriesParams> = {
   label: "Removing series from Sonarr",
   action: true,
   summary: (_args, payload) => `Removed ${seriesName(payload)} from Sonarr`,
-  async execute(_toolCallId, params) {
+  async execute(params) {
     const series = await removeLibraryItem("series", params.seriesId, true, { name: "Kyle" });
     return jsonResult({
       success: true,
@@ -271,7 +271,7 @@ export const removeSeasonTool: Tool<typeof removeSeasonParams> = {
     const season = args.seasonNumber !== undefined ? ` season ${args.seasonNumber}` : "";
     return `Removed ${seriesName(payload)}${season} from Sonarr`;
   },
-  async execute(_toolCallId, params) {
+  async execute(params) {
     const { series, filesDeleted } = await releaseSeason(params.seriesId, params.seasonNumber);
 
     return jsonResult({
@@ -306,7 +306,7 @@ export const getEpisodesTool: Tool<typeof getEpisodesParams> = {
   parameters: getEpisodesParams,
   label: "Fetching episodes from Sonarr",
   summary: "Fetched episode list",
-  async execute(_toolCallId, params) {
+  async execute(params) {
     const episodes = await sonarr.getEpisodes(params.seriesId);
     const mapped = episodes.map(toPartialEpisode);
     const results =
@@ -330,7 +330,7 @@ export const getSeriesQueueTool: Tool<typeof getSeriesQueueParams> = {
   label: "Checking Sonarr download queue",
   summary: "Checked download queue (TV)",
   table: seriesQueueTable,
-  async execute(_toolCallId, params) {
+  async execute(params) {
     const queueResponse = await sonarr.getQueue({
       seriesIds: params.seriesId ? [params.seriesId] : undefined,
     });
@@ -373,7 +373,7 @@ export const getCalendarTool: Tool<typeof getCalendarParams> = {
   label: "Checking Sonarr calendar",
   summary: "Checked upcoming episodes",
   table: calendarTable,
-  async execute(_toolCallId, params) {
+  async execute(params) {
     const includeSeries = params.includeSeries ?? true;
     const episodes = await sonarr.getCalendar(params.start, params.end, includeSeries);
     return jsonResult(episodes.map(toPartialCalendarEpisode));
@@ -412,7 +412,7 @@ export const downloadEpisodesTool: Tool<typeof searchEpisodesParams> = {
       ? `Started downloading ${series} season ${args.seasonNumber}`
       : `Started downloading ${series}`;
   },
-  async execute(_toolCallId, params) {
+  async execute(params) {
     const monitoringActions: string[] = [];
 
     // Season-specific search with auto-monitoring
@@ -525,7 +525,7 @@ export const getSeriesHistoryTool: Tool<typeof getSeriesHistoryParams> = {
   parameters: getSeriesHistoryParams,
   label: "Checking Sonarr history",
   summary: "Checked series history",
-  async execute(_toolCallId, params) {
+  async execute(params) {
     // Series-specific history uses a dedicated endpoint
     if (params.seriesId) {
       const items = await sonarr.getSeriesHistory(params.seriesId);
@@ -585,7 +585,7 @@ export const manualImportTool: Tool<typeof manualImportParams> = {
     const count = `${files.length} file${files.length === 1 ? "" : "s"}`;
     return series ? `Imported ${count} for ${series}` : `Imported ${count} into Sonarr`;
   },
-  async execute(_toolCallId, params) {
+  async execute(params) {
     const items = await sonarr.getManualImport(params.downloadId, params.seriesId);
 
     if (items.length === 0) {

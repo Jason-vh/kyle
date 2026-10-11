@@ -17,7 +17,7 @@ import {
   type StoredMessage,
 } from "#server/threads/items.ts";
 import type { ThreadListItem, ThreadDetail, MediaRef } from "#shared/types.ts";
-import type { UserMessage } from "@mariozechner/pi-ai";
+import type { UserMessage } from "@earendil-works/pi-ai";
 
 const log = createLogger("api-threads");
 

@@ -1,4 +1,4 @@
-import { Type } from "@sinclair/typebox";
+import { Type } from "typebox";
 import type { Tool } from "./tool.ts";
 import { jsonResult } from "./tool-result.ts";
 import { buildTable, type ResultTable } from "./table.ts";
@@ -21,7 +21,7 @@ export const getRequestsForUserTool: Tool<typeof params> = {
   parameters: params,
   label: "Looking up user subscriptions",
   summary: "Looked up user subscriptions",
-  async execute(_toolCallId, params) {
+  async execute(params) {
     const subscriptions = await getSubscriptionsForUser(params.userId);
     return jsonResult(subscriptions);
   },
@@ -83,7 +83,7 @@ export const getRequestStatesTool: Tool<typeof params> = {
   label: "Checking where requests have got to",
   summary: "Checked where requests have got to",
   table: requestStatesTable,
-  async execute(_toolCallId, params) {
+  async execute(params) {
     const requests = await withState(await getMediaRequestsForUser(params.userId));
     return jsonResult(requests.map(toRequestState));
   },

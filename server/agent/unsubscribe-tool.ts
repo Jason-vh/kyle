@@ -1,4 +1,4 @@
-import { Type } from "@sinclair/typebox";
+import { Type } from "typebox";
 import type { Tool } from "./tool.ts";
 import { jsonResult } from "./tool-result.ts";
 import {
@@ -48,7 +48,7 @@ export const unsubscribeNotificationsTool: Tool<typeof params> = {
     args.title
       ? `Unsubscribed from notifications for ${args.title}`
       : "Unsubscribed from notifications",
-  async execute(_toolCallId, params) {
+  async execute(params) {
     let count = 0;
 
     if (params.mediaType === "movie") {

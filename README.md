@@ -4,7 +4,7 @@ AI-powered Plex media library assistant. A natural-language interface for managi
 Radarr, Sonarr, TMDB, qBittorrent, an Ultra seedbox, and Brave web search — reachable
 from Slack, Discord, a web SPA, a CLI, or plain HTTP.
 
-Built with [pi-agent-core](https://github.com/badlogic/pi-mono) + Anthropic Claude,
+Built with [pi-agent-core](https://github.com/earendil-works/pi) + Anthropic Claude,
 persisted in Postgres via Drizzle ORM, running on Bun. Live at <https://kyle.vhtm.eu>.
 
 More in [`docs/`](docs/): the [design system](docs/design-system.md), the
@@ -83,7 +83,7 @@ server/
     webauthn.ts              → WebAuthn registration/authentication (simplewebauthn)
   agent/
     index.ts                 → Public surface of the agent package
-    tool.ts                  → Tool type: an AgentTool plus how to describe it
+    tool.ts                  → Tool type: a runner-agnostic tool plus how to describe it
     registry.ts              → The one map from tool name to tool
     model.ts                 → Model selection (ANTHROPIC_MODEL)
     run.ts                   → Agent factory + runAgent(), overload retries

@@ -4,7 +4,7 @@ import type {
   TextContent,
   ToolResultMessage,
   UserMessage,
-} from "@mariozechner/pi-ai";
+} from "@earendil-works/pi-ai";
 import type { WebhookNotification } from "#server/db/webhook-notifications.ts";
 import type { ThreadItem, ThreadMessage, ToolCallSummary } from "#shared/types.ts";
 import { describeToolCall } from "#server/agent/tool-display.ts";

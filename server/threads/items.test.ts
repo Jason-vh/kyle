@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import type { AssistantMessage, ToolResultMessage, UserMessage } from "@mariozechner/pi-ai";
+import type { AssistantMessage, ToolResultMessage, UserMessage } from "@earendil-works/pi-ai";
 import { buildThreadItems, type ThreadMessageRow } from "./items.ts";
 import type { WebhookNotification } from "#server/db/webhook-notifications.ts";
 

@@ -1,4 +1,4 @@
-import { Type } from "@sinclair/typebox";
+import { Type } from "typebox";
 import type { Tool, ToolPresentation } from "#server/agent/tool.ts";
 import { jsonResult } from "#server/agent/tool-result.ts";
 import { buildTable } from "#server/agent/table.ts";
@@ -57,7 +57,7 @@ export const getRadarrMovieTool: Tool<typeof getRadarrMovieParams> = {
   parameters: getRadarrMovieParams,
   label: "Checking movie details in Radarr",
   summary: "Fetched movie details",
-  async execute(_toolCallId, params) {
+  async execute(params) {
     const movie = await radarr.getMovie(params.radarrMovieId);
     return jsonResult(toPartialMovie(movie));
   },
@@ -86,7 +86,7 @@ export const searchMoviesTool: Tool<typeof searchMoviesParams> = {
   parameters: searchMoviesParams,
   label: "Searching for movies in Radarr",
   summary: (args) => `Searched for movie '${args.title}'`,
-  async execute(_toolCallId, params) {
+  async execute(params) {
     const movies = await radarr.searchMovies(params.title);
     return jsonResult(movies.map(toMovieLookupResult));
   },
@@ -110,7 +110,7 @@ export function createAddMovieTool(requestedBy?: Requester): Tool<typeof addMovi
     description:
       "Add a movie to Radarr. Requires TMDB ID. The movie will be monitored and downloaded (if available). Adding one already in the library is safe and changes nothing.",
     parameters: addMovieParams,
-    async execute(_toolCallId, params) {
+    async execute(params) {
       const { status, movie } = await requestMovie({ tmdbId: params.tmdbId, requestedBy });
       const name = titleWithYear(movie.title, movie.year);
       return jsonResult({
@@ -138,7 +138,7 @@ export const removeMovieTool: Tool<typeof removeMovieParams> = {
   label: "Removing movie from Radarr",
   action: true,
   summary: (_args, payload) => `Removed ${movieName(payload)} from Radarr`,
-  async execute(_toolCallId, params) {
+  async execute(params) {
     const movie = await removeLibraryItem("movie", params.movieId, true, { name: "Kyle" });
     return jsonResult({
       success: true,
@@ -168,7 +168,7 @@ export const getMovieQueueTool: Tool<typeof getMovieQueueParams> = {
   label: "Checking movie download queue",
   summary: "Checked download queue (movies)",
   table: movieQueueTable,
-  async execute(_toolCallId, params) {
+  async execute(params) {
     const queue = await radarr.getQueue({
       movieIds: params.movieId ? [params.movieId] : undefined,
     });
@@ -190,7 +190,7 @@ export const getMovieHistoryTool: Tool<typeof getMovieHistoryParams> = {
   parameters: getMovieHistoryParams,
   label: "Checking Radarr history",
   summary: "Checked movie history",
-  async execute(_toolCallId, params) {
+  async execute(params) {
     const history = await radarr.getHistory(params.pageSize);
     return jsonResult(history.records.map(toPartialHistoryRecord));
   },

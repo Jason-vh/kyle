@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, mock, test } from "bun:test";
 import { eq, sql } from "drizzle-orm";
-import type { AgentEvent } from "@mariozechner/pi-agent-core";
+import type { AgentEvent } from "@earendil-works/pi-agent-core";
 import type { RunAgentOptions, RunAgentResult } from "./index.ts";
 
 /** Exercises the real persistence path against a real database. */

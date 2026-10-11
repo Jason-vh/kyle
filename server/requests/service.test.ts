@@ -686,7 +686,7 @@ describe("releaseSeason", () => {
         { seasonNumber: 3, episodeFileId: 55 },
       ],
     });
-    await removeSeasonTool.execute("call", { seriesId: 9, seasonNumber: 3 });
+    await removeSeasonTool.execute({ seriesId: 9, seasonNumber: 3 });
 
     expect(calls.filter((call) => call.method === "DELETE")).toHaveLength(1);
     expect(

@@ -1,4 +1,4 @@
-import { Type } from "@sinclair/typebox";
+import { Type } from "typebox";
 import type { Tool } from "#server/agent/tool.ts";
 import { jsonResult } from "#server/agent/tool-result.ts";
 
@@ -31,7 +31,7 @@ export const convertTimeTool: Tool<typeof convertTimeParams> = {
   label: "Converting timezone",
   summary: (args) =>
     `Converted ${args.time} from ${cityOf(args.fromTimezone)} to ${cityOf(args.toTimezone)}`,
-  async execute(_toolCallId, { time, fromTimezone, toTimezone, date }) {
+  async execute({ time, fromTimezone, toTimezone, date }) {
     const dateStr = date ?? new Date().toISOString().split("T")[0]!;
 
     // Parse the input time

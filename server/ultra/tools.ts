@@ -1,4 +1,4 @@
-import { Type } from "@sinclair/typebox";
+import { Type } from "typebox";
 import type { Tool } from "#server/agent/tool.ts";
 import { jsonResult } from "#server/agent/tool-result.ts";
 import * as ultra from "./api.ts";

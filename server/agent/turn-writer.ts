@@ -1,4 +1,4 @@
-import type { AgentEvent, AgentMessage } from "@mariozechner/pi-agent-core";
+import type { AgentEvent, AgentMessage } from "@earendil-works/pi-agent-core";
 import { createLogger } from "#server/logger.ts";
 import { errorMessage } from "#server/errors.ts";
 import { db } from "#server/db/index.ts";
@@ -86,6 +86,8 @@ export function createTurnWriter(options: TurnWriterOptions): TurnWriter {
   return {
     observe(event) {
       if (event.type === "message_end") {
+        // The prompt and tool declarations are rebuilt every turn, so they are not history.
+        if (event.message.role === "system") return;
         if (!storePrompt && event.message.role === "user") return;
         enqueue("message", () => insertMessage(event.message));
         return;

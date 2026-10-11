@@ -1,4 +1,4 @@
-import type { ImageContent } from "@mariozechner/pi-ai";
+import type { ImageContent } from "@earendil-works/pi-ai";
 import { createLogger } from "./logger.ts";
 import { errorMessage } from "./errors.ts";
 import { createConcurrencyLimit } from "./http/concurrency.ts";

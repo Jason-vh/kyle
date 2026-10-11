@@ -1,4 +1,4 @@
-import type { AgentEvent } from "@mariozechner/pi-agent-core";
+import type { AgentEvent } from "@earendil-works/pi-agent-core";
 import { createLogger } from "#server/logger.ts";
 import { errorFields } from "#server/errors.ts";
 import { downloadImages, MAX_IMAGE_SIZE, type RemoteImage } from "#server/images.ts";

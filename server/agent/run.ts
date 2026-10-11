@@ -1,15 +1,15 @@
-import { Agent, type AgentEvent, type AgentMessage } from "@mariozechner/pi-agent-core";
 import {
-  getEnvApiKey,
-  type AssistantMessage,
-  type ImageContent,
-  type Message,
-  type TextContent,
-} from "@mariozechner/pi-ai";
+  Agent,
+  type AgentEvent,
+  type AgentMessage,
+  type AgentTool,
+} from "@earendil-works/pi-agent-core";
+import type { AssistantMessage, ImageContent, Message, TextContent } from "@earendil-works/pi-ai";
 import { createLogger } from "#server/logger.ts";
-import { model } from "./model.ts";
+import { model, models } from "./model.ts";
 import { toolsForTurn } from "./registry.ts";
 import { getSystemPrompt, type AgentContext } from "./system-prompt.ts";
+import type { AnyTool } from "./tool.ts";
 
 const log = createLogger("agent");
 
@@ -35,7 +35,11 @@ function isOverloadedError(error?: string): boolean {
 function withTimestamps(messages: AgentMessage[], timestamps?: WeakMap<object, Date>): Message[] {
   return messages
     .filter(
-      (m): m is Message => m.role === "user" || m.role === "assistant" || m.role === "toolResult",
+      (m): m is Message =>
+        m.role === "system" ||
+        m.role === "user" ||
+        m.role === "assistant" ||
+        m.role === "toolResult",
     )
     .map((m) => {
       if (m.role !== "user") return m;
@@ -55,21 +59,37 @@ function withTimestamps(messages: AgentMessage[], timestamps?: WeakMap<object, D
     });
 }
 
+function toAgentTool(tool: AnyTool): AgentTool {
+  return {
+    name: tool.name,
+    label: tool.label,
+    description: tool.description,
+    parameters: tool.parameters,
+    async execute(_toolCallId, args) {
+      return { ...(await tool.execute(args)), details: undefined };
+    },
+  };
+}
+
 export async function createAgent(
   context?: AgentContext,
+  previousMessages: AgentMessage[] = [],
   messageTimestamps?: WeakMap<object, Date>,
 ): Promise<Agent> {
-  if (!getEnvApiKey("anthropic")) {
+  if (!(await models.getAuth(model))) {
     throw new Error("ANTHROPIC_API_KEY environment variable is required");
   }
 
+  const tools = await toolsForTurn(context);
   return new Agent({
     initialState: {
       systemPrompt: getSystemPrompt(context),
       model,
       thinkingLevel: "off",
-      tools: await toolsForTurn(context),
+      tools: tools.map(toAgentTool),
+      messages: previousMessages,
     },
+    streamFn: models.streamSimple.bind(models),
     convertToLlm: (messages) => withTimestamps(messages, messageTimestamps),
   });
 }
@@ -104,42 +124,41 @@ function lastResponseText(messages: AgentMessage[]): string {
 /** Runs one prompt to completion, retrying while the API reports it is overloaded. */
 export async function runAgent(options: RunAgentOptions): Promise<RunAgentResult> {
   const { message, previousMessages = [], context, images, messageTimestamps } = options;
-  const agent = await createAgent(context, messageTimestamps);
+  const agent = await createAgent(context, previousMessages, messageTimestamps);
 
-  if (previousMessages.length > 0) agent.replaceMessages(previousMessages);
   if (options.onEvent) agent.subscribe(options.onEvent);
 
   await agent.prompt(message, images?.length ? images : undefined);
 
   for (let attempt = 0; attempt < RETRY_DELAYS.length; attempt++) {
-    if (!isOverloadedError(agent.state.error)) break;
+    if (!isOverloadedError(agent.state.errorMessage)) break;
 
     log.warn("API overloaded, retrying", {
       attempt: attempt + 1,
       maxAttempts: RETRY_DELAYS.length,
       delayMs: RETRY_DELAYS[attempt],
-      error: agent.state.error,
+      error: agent.state.errorMessage,
     });
     options.onRetry?.(attempt + 1, RETRY_DELAYS.length);
 
     // The failed attempt is already persisted; drop it so the retry starts clean.
-    agent.replaceMessages(agent.state.messages.slice(0, -1));
+    agent.state.messages = agent.state.messages.slice(0, -1);
     await new Promise((resolve) => setTimeout(resolve, RETRY_DELAYS[attempt]));
     await agent.continue();
   }
 
-  if (isOverloadedError(agent.state.error)) {
+  if (isOverloadedError(agent.state.errorMessage)) {
     log.error("API overloaded after all retries", {
       attempts: RETRY_DELAYS.length,
-      error: agent.state.error,
+      error: agent.state.errorMessage,
     });
     throw new ApiOverloadedError();
   }
 
   // Anything else — billing, auth, an invalid request — is not worth retrying.
-  if (agent.state.error) {
-    log.error("agent API error", { error: agent.state.error });
-    throw new Error(agent.state.error);
+  if (agent.state.errorMessage) {
+    log.error("agent API error", { error: agent.state.errorMessage });
+    throw new Error(agent.state.errorMessage);
   }
 
   return {

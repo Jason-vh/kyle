@@ -1,4 +1,4 @@
-import { Type } from "@sinclair/typebox";
+import { Type } from "typebox";
 import type { Tool } from "#server/agent/tool.ts";
 import { jsonResult } from "#server/agent/tool-result.ts";
 import * as tmdb from "./api.ts";
@@ -33,7 +33,7 @@ export const searchTmdbMoviesTool: Tool<typeof searchTmdbMoviesParams> = {
   parameters: searchTmdbMoviesParams,
   label: "Searching for movies on TMDB",
   summary: (args) => `Searched TMDB movies for '${args.query}'`,
-  async execute(_toolCallId, params) {
+  async execute(params) {
     const results = await tmdb.searchMovies(params.query, {
       year: params.year,
       page: params.page,
@@ -66,7 +66,7 @@ export const searchTmdbSeriesTool: Tool<typeof searchTmdbSeriesParams> = {
   parameters: searchTmdbSeriesParams,
   label: "Searching for TV shows on TMDB",
   summary: (args) => `Searched TMDB series for '${args.query}'`,
-  async execute(_toolCallId, params) {
+  async execute(params) {
     const results = await tmdb.searchTV(params.query, {
       page: params.page,
       include_adult: false,
@@ -98,7 +98,7 @@ export const searchTmdbTool: Tool<typeof searchTmdbParams> = {
   parameters: searchTmdbParams,
   label: "Searching TMDB",
   summary: (args) => `Searched TMDB for '${args.query}'`,
-  async execute(_toolCallId, params) {
+  async execute(params) {
     const results = await tmdb.searchMulti(params.query, {
       page: params.page,
       include_adult: false,
@@ -125,7 +125,7 @@ export const getTmdbMovieDetailsTool: Tool<typeof getTmdbMovieDetailsParams> = {
   parameters: getTmdbMovieDetailsParams,
   label: "Fetching movie details from TMDB",
   summary: "Fetched TMDB movie details",
-  async execute(_toolCallId, params) {
+  async execute(params) {
     const movie = await tmdb.getMovie(params.tmdbMovieId);
     return jsonResult(toPartialMovieDetails(movie));
   },
@@ -144,7 +144,7 @@ export const getTmdbSeriesDetailsTool: Tool<typeof getTmdbSeriesDetailsParams> =
   parameters: getTmdbSeriesDetailsParams,
   label: "Fetching TV show details from TMDB",
   summary: "Fetched TMDB series details",
-  async execute(_toolCallId, params) {
+  async execute(params) {
     const show = await tmdb.getTVShow(params.tmdbTVId);
     return jsonResult(toPartialTVShowDetails(show));
   },

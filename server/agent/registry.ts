@@ -94,17 +94,20 @@ export async function toolsForTurn(context?: AgentContext): Promise<AnyTool[]> {
     createRequestSeasonTool(requestedBy),
   ]
     .filter((tool) => user.isAdmin || MEMBER_TOOLS.has(tool.name))
-    .map((tool) => ({
-      ...tool,
-      async execute(toolCallId, args, signal, onUpdate) {
-        const current = await getActiveUser(user.id);
-        if (!current || (!current.isAdmin && !MEMBER_TOOLS.has(tool.name))) {
-          throw new Error("You are not authorized to use this tool");
-        }
-        if (typeof args.userId === "string" && args.userId !== current.id && !current.isAdmin) {
-          throw new Error("You can only manage your own requests and subscriptions");
-        }
-        return tool.execute(toolCallId, args, signal, onUpdate);
-      },
-    }));
+    .map(
+      (tool): AnyTool => ({
+        ...tool,
+        async execute(args) {
+          const current = await getActiveUser(user.id);
+          if (!current || (!current.isAdmin && !MEMBER_TOOLS.has(tool.name))) {
+            throw new Error("You are not authorized to use this tool");
+          }
+          const { userId } = args as { userId?: unknown };
+          if (typeof userId === "string" && userId !== current.id && !current.isAdmin) {
+            throw new Error("You can only manage your own requests and subscriptions");
+          }
+          return tool.execute(args);
+        },
+      }),
+    );
 }

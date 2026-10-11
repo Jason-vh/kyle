@@ -1,6 +1,6 @@
 import { eq, asc } from "drizzle-orm";
-import type { AgentMessage } from "@mariozechner/pi-agent-core";
-import type { AssistantMessage, TextContent, ImageContent } from "@mariozechner/pi-ai";
+import type { AgentMessage } from "@earendil-works/pi-agent-core";
+import type { AssistantMessage, TextContent, ImageContent } from "@earendil-works/pi-ai";
 import { db } from "./index.ts";
 import { messages } from "./schema.ts";
 import { getWebhookNotifications, type WebhookNotification } from "./webhook-notifications.ts";
