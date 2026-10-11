@@ -17,7 +17,10 @@ if (!connectionString) {
   throw new Error("DATABASE_URL environment variable is required");
 }
 
-type Database = PgDatabase<PgQueryResultHKT, typeof schema>;
+export type Database = PgDatabase<PgQueryResultHKT, typeof schema>;
+
+/** The database or a transaction on it. */
+export type Executor = Pick<Database, "execute">;
 
 async function connect(url: string): Promise<Database> {
   if (!url.startsWith(IN_PROCESS)) {
@@ -48,8 +51,8 @@ export const db = await connect(connectionString);
  * statement has no inferable row type — but it lives here rather than at each
  * of the places that would otherwise have to guess.
  */
-export async function query<T>(statement: SQL): Promise<T[]> {
-  const result: unknown = await db.execute(statement);
+export async function query<T>(statement: SQL, executor: Executor = db): Promise<T[]> {
+  const result: unknown = await executor.execute(statement);
   if (Array.isArray(result)) return result as T[];
   return (result as { rows: T[] }).rows;
 }

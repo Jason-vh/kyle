@@ -109,6 +109,9 @@ server/
     notifications.ts         → What Kyle has to tell someone, and whether they read it
     removals.ts              → Why a title left the library, since the services forget
     migrate.ts               → Migration runner
+  durable/
+    postgres-storage.ts      → pi-durable Storage on Postgres; one process owns it at a time
+    postgres-schema.ts       → Its tables, in their own schema (`durable`), migrated on open
   routes/
     chat.ts                  → POST /chat
     health.ts                → GET /health (includes deployId)

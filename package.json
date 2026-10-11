@@ -26,8 +26,10 @@
     "build:web": "cd web && bun run build"
   },
   "dependencies": {
+    "@earendil-works/chord": "^1.1.0",
     "@earendil-works/pi-agent-core": "^1.1.0",
     "@earendil-works/pi-ai": "^1.1.0",
+    "@earendil-works/pi-durable": "^1.1.0",
     "@simplewebauthn/server": "^13.2.3",
     "@slack/web-api": "^8",
     "discord.js": "^14.25.1",
