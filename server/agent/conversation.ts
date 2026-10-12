@@ -26,7 +26,7 @@ import { model } from "./model.ts";
 import { createProjection } from "./projection.ts";
 import { toolsForTurn } from "./registry.ts";
 import type { AgentContext } from "./system-prompt.ts";
-import { writeTurnContext } from "./turn-context.ts";
+import { writeTurn } from "./turn-context.ts";
 import { createTurnEventTranslator, type TurnEvent } from "./turn-events.ts";
 
 const log = createLogger("conversation");
@@ -57,6 +57,8 @@ export interface ConversationTurn {
    * for the one already submitted rather than running it again.
    */
   requestId?: string;
+  /** Where to answer, should the turn outlive this process; Discord does not redeliver a message. */
+  discordChannelId?: string;
   context?: AgentContext;
   /** Platform-specific side effects (streaming, thread status, tables). */
   onEvent?: (event: TurnEvent) => void;
@@ -198,6 +200,16 @@ function failure(settled: Extract<SettledSubmissionRecord, { status: "unanswered
   return new Error(`Turn went unanswered (${settled.reason})${detail ? `: ${detail}` : ""}`);
 }
 
+/** The text of a settled turn's answer; throws for one that went unanswered. */
+export async function replyText(
+  durable: Conversation,
+  settled: SettledSubmissionRecord,
+): Promise<string> {
+  if (settled.status === "unanswered") throw failure(settled);
+  if (settled.type !== "input" || settled.answer === undefined) return "";
+  return answerText(durable, settled.answer);
+}
+
 /**
  * Submits the turn's input, or finds it submitted already. A request whose earlier
  * attempt went unanswered is submitted afresh, under a key derived from that
@@ -238,7 +250,12 @@ async function runTurn(
   const agentContext: AgentContext = { ...turn.context, conversationId };
   const offered = (await toolsForTurn(agentContext)).map((tool) => turnTools.get(tool.name)!);
   await durable.commit(async (tx) => {
-    await writeTurnContext(tx, durable.id, agentContext);
+    await writeTurn(tx, durable.id, {
+      context: agentContext,
+      author: { platformUserId: turn.platformUserId ?? null, appUserId: turn.appUserId ?? null },
+      hidePrompt: turn.storePrompt === false,
+      discordChannelId: turn.discordChannelId,
+    });
     await configure(tx, durable.id, {
       model: { provider: model.provider, modelId: model.id },
       thinkingLevel: "off",
@@ -261,9 +278,9 @@ async function runTurn(
     durable,
     platformUserId: turn.platformUserId ?? null,
     appUserId: turn.appUserId ?? null,
-    hiddenEntry:
+    isHidden:
       turn.storePrompt === false
-        ? async () => (await (await submission!).status(context)).entry
+        ? async (entry) => entry === (await (await submission!).status(context)).entry
         : undefined,
   });
 
@@ -285,12 +302,7 @@ async function runTurn(
   try {
     submission = submitTurn(durable, userContent(turn), turn.requestId);
     const settled = await (await submission).wait(context);
-    if (settled.status === "unanswered") throw failure(settled);
-
-    const responseText =
-      settled.type === "input" && settled.answer !== undefined
-        ? await answerText(durable, settled.answer)
-        : "";
+    const responseText = await replyText(durable, settled);
     log.info("agent completed", { conversationId, responseLength: responseText.length });
     return { conversationId, responseText };
   } finally {

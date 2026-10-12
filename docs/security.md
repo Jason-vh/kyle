@@ -55,7 +55,9 @@ Slack events are persisted before acknowledgement and deduplicated by event ID. 
 recovers pending events after restarts and retries processing failures. Each event is submitted
 to its conversation under a request ID, so a retry waits for the turn already running, which
 resumes after a restart, rather than starting it again. A tool call cut short by a crash is not
-repeated unless it only reads; the model is told it was interrupted. Final replies
+repeated unless it only reads; the model is told it was interrupted. Discord turns have no job
+queue; a turn running when the process stopped is finished at startup and its reply posted to
+the channel it came from. Final replies
 are persisted before delivery; delivery retries resend the saved text without rerunning the agent.
 A handled agent error is completed only after its reply is delivered. A crash after Slack accepts
 a reply but before completion is recorded can duplicate the reply.

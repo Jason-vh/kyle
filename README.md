@@ -92,6 +92,7 @@ server/
     turn-context.ts          → Who a conversation's current turn is for, as a durable document
     turn-events.ts           → TurnEvent: what the interfaces show of a running turn
     projection.ts            → Copies the durable transcript into `messages`, with media events
+    recovery.ts              → Finishes turns a restart interrupted, answering Discord ones
     errors.ts                → ApiOverloadedError
     testing.ts               → useFauxModel(): scripted model answers for tests
     tool-result.ts           → jsonResult(): the shape every tool returns
@@ -208,7 +209,10 @@ web/                         → Vue 3 + Vite + Tailwind CSS 4 SPA
 - **One turn pipeline** — Slack, Discord, and HTTP all call `runConversationTurn()`. Each
   interface only supplies its own I/O (streaming, replies, thread status) through
   `TurnEvent`s, and a `requestId` where the platform retries: a retried message waits for the
-  turn already submitted instead of running it twice.
+  turn already submitted instead of running it twice. A turn a restart cuts short is resumed by
+  pi-durable; at startup `recovery.ts` waits for it, copies it to `messages`, and answers it on
+  Discord, which never redelivers a message. Slack and webhook turns are answered by their job
+  queues' retries.
 - **Messages as a copy** — `messages` holds the transcript's user, assistant, and tool result
   messages for the thread viewer, media events, and subscriptions. `projection.ts` copies new
   entries in order as the turn runs, past `conversations.durable_projected_through`, so a turn

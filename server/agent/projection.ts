@@ -26,8 +26,8 @@ export interface ProjectionOptions {
   durable: Conversation;
   platformUserId: string | null;
   appUserId: string | null;
-  /** The user entry to leave out, for a prompt nobody typed; see `ConversationTurn.storePrompt`. */
-  hiddenEntry?: () => Promise<EntryId | undefined>;
+  /** Whether a user entry is a prompt nobody typed, to leave out; see `ConversationTurn.storePrompt`. */
+  isHidden?: (entry: EntryId) => Promise<boolean>;
 }
 
 export interface Projection {
@@ -71,8 +71,8 @@ export function createProjection(options: ProjectionOptions): Projection {
   }
 
   async function isHidden(entry: EntryRecord): Promise<boolean> {
-    if (!options.hiddenEntry || !UserEntry.is(entry)) return false;
-    return entry.id === (await options.hiddenEntry());
+    if (!options.isHidden || !UserEntry.is(entry)) return false;
+    return options.isHidden(entry.id);
   }
 
   async function storedMessage(entry: EntryRecord): Promise<Message | undefined> {

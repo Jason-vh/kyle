@@ -1,5 +1,6 @@
 import { BACKGROUND_CONTEXT } from "@earendil-works/chord/context";
-import { createRegistry, Harness } from "@earendil-works/pi-durable";
+import type { Models } from "@earendil-works/pi-ai";
+import { createRegistry, Harness, type Storage } from "@earendil-works/pi-durable";
 import { db } from "#server/db/index.ts";
 import { errorFields } from "#server/errors.ts";
 import { createLogger } from "#server/logger.ts";
@@ -12,33 +13,37 @@ const log = createLogger("durable");
 /** Generation retries, as Kyle's own loop did them: two more tries, five seconds apart and growing. */
 export const RETRY_POLICY = { maxRetries: 2, baseDelayMs: 5_000 };
 
-let opening: Promise<Harness> | undefined;
-
-/** The process's one Harness; it owns the `durable` schema while the process runs. */
-export function getHarness(): Promise<Harness> {
-  opening ??= openHarness();
-  return opening;
-}
-
-async function openHarness(): Promise<Harness> {
+/** A Harness running Kyle over `storage`; the process normally has one, from `getHarness()`. */
+export async function openHarness(
+  storage: Storage,
+  harnessModels: Models = models,
+): Promise<Harness> {
   const registry = createRegistry();
   registry.install(KyleExtension);
-  const harness = await Harness.open(
-    await PostgresStorage.open(db),
+  return Harness.open(
+    storage,
     {
-      models,
+      models: harnessModels,
       registry,
       settings: { retry: RETRY_POLICY },
       onReport: (error) => log.error("durable extension failed", errorFields(error)),
     },
     BACKGROUND_CONTEXT,
   );
-  log.info("durable harness open");
-  return harness;
+}
+
+let opening: Promise<Harness> | undefined;
+
+/** The process's one Harness; it owns the `durable` schema while the process runs. */
+export function getHarness(): Promise<Harness> {
+  opening ??= PostgresStorage.open(db).then((storage) => openHarness(storage));
+  return opening;
 }
 
 /** Opens the Harness at startup and continues any run the last process left unfinished. */
-export async function startHarness(): Promise<void> {
+export async function startHarness(): Promise<Harness> {
   const harness = await getHarness();
   harness.resume();
+  log.info("durable harness open");
+  return harness;
 }

@@ -7,6 +7,7 @@ const log = createLogger("discord");
 
 let client: Client | null = null;
 export let BOT_USER_ID: string | null = null;
+const ready = Promise.withResolvers<void>();
 
 /**
  * Connect to Discord Gateway and register event handlers.
@@ -31,6 +32,7 @@ export function startDiscordBot(): void {
 
   client.on("clientReady", (c) => {
     BOT_USER_ID = c.user.id;
+    ready.resolve();
     log.info("discord bot ready", { username: c.user.tag, userId: BOT_USER_ID });
   });
 
@@ -47,6 +49,11 @@ export function startDiscordBot(): void {
       error: errorMessage(error),
     });
   });
+}
+
+/** Resolves once the bot has connected; never, when Discord is not configured. */
+export function discordReady(): Promise<void> {
+  return ready.promise;
 }
 
 /**

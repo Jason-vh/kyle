@@ -136,8 +136,7 @@ Honest list, so nobody assumes coverage that is not there:
 - `server/dashboard/service.ts` — the per-source `tolerate` fallback is untested.
 - pglite is single-connection, so nothing about locking or concurrent writes is covered.
   CI runs the same suite against a real Postgres, which at least catches dialect drift.
-- `server/agent/` — pi-durable's overload retry is not covered, nor is a run resumed after
-  a restart.
+- `server/agent/` — pi-durable's overload retry is not covered.
 - `server/slack/`, `server/discord/` — only the stream buffering is covered.
 - `web/` — the views have no tests, by choice; the primitives are covered where they
   carry behaviour or wording, not where they are markup.

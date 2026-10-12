@@ -10,7 +10,7 @@ import {
 import { toolCatalog, toolsForTurn } from "./registry.ts";
 import { getSystemPrompt } from "./system-prompt.ts";
 import type { AnyTool } from "./tool.ts";
-import { readTurnContext, TurnContextDoc } from "./turn-context.ts";
+import { readTurn, TurnDoc } from "./turn-context.ts";
 
 /**
  * Registers a tool under its own name and schema, and runs whichever version the
@@ -24,8 +24,10 @@ function turnBoundTool(template: AnyTool): ToolRegistration {
     // Lookups change nothing, so a run interrupted mid-call may repeat them.
     replay: template.action === undefined ? "safe" : "unsafe",
     async execute(args, api, context) {
-      const turn = readTurnContext(await api.snapshot(TurnContextDoc, api.conversationId, context));
-      const tool = (await toolsForTurn(turn)).find((candidate) => candidate.name === template.name);
+      const turn = readTurn(await api.snapshot(TurnDoc, api.conversationId, context));
+      const tool = (await toolsForTurn(turn.context)).find(
+        (candidate) => candidate.name === template.name,
+      );
       if (!tool) throw new Error("You are not authorized to use this tool");
       return tool.execute(args);
     },
@@ -78,7 +80,7 @@ export const KyleExtension = defineExtension({
       "kyle",
       async (input, context) =>
         getSystemPrompt(
-          readTurnContext(await input.read.snapshot(TurnContextDoc, input.conversationId, context)),
+          readTurn(await input.read.snapshot(TurnDoc, input.conversationId, context)).context,
         ),
       { tag: false },
     ),
