@@ -23,7 +23,7 @@ const convertTimeParams = Type.Object({
   ),
 });
 
-export const convertTimeTool: Tool<typeof convertTimeParams> = {
+const convertTimeTool: Tool<typeof convertTimeParams> = {
   name: "convert_time",
   description:
     "Convert a time between timezones. Handles date boundary crossings (e.g. 8 PM ET → 1 AM UTC next day). Use IANA timezone names.",

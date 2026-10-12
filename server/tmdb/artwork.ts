@@ -21,7 +21,7 @@ export interface TitleRef {
 
 type Row = typeof tmdbArtwork.$inferSelect;
 
-export function artworkKey(mediaType: string, tmdbId: number): string {
+function artworkKey(mediaType: string, tmdbId: number): string {
   return `${mediaType}:${tmdbId}`;
 }
 

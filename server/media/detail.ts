@@ -33,7 +33,7 @@ import { errorMessage } from "#server/errors.ts";
 const log = createLogger("media-detail");
 
 /** "4K" rather than "2160p", since that is what a television box says. */
-export function resolutionLabel(resolution: number | undefined): string | undefined {
+function resolutionLabel(resolution: number | undefined): string | undefined {
   if (!resolution) return undefined;
   return resolution >= 2160 ? "4K" : `${resolution}p`;
 }

@@ -16,7 +16,7 @@ const webSearchParams = Type.Object({
   ),
 });
 
-export const webSearchTool: Tool<typeof webSearchParams> = {
+const webSearchTool: Tool<typeof webSearchParams> = {
   name: "web_search",
   description:
     "Search the web for information — release dates, cast info, reviews, general knowledge, or anything else online",

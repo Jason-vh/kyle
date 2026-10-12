@@ -191,7 +191,7 @@ async function lookupSeries(ref: SeriesRef): Promise<SonarrSeries> {
 }
 
 /** Every season but the specials, which nobody means by "the series". */
-export function regularSeasons(series: SonarrSeries): number[] {
+function regularSeasons(series: SonarrSeries): number[] {
   return (series.seasons ?? [])
     .map((season) => season.seasonNumber)
     .filter((seasonNumber) => seasonNumber > 0);

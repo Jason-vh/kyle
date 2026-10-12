@@ -1,11 +1,9 @@
 import type {
-  RadarrDiskSpace,
   RadarrHistoryRecord,
   RadarrHistoryResponse,
   RadarrMovie,
   RadarrMovieFile,
   RadarrQueueResponse,
-  RadarrRootFolder,
 } from "./types.ts";
 import { createApiClient, optional } from "#server/http/client.ts";
 import { readAllPages } from "#server/http/pagination.ts";
@@ -28,15 +26,6 @@ export async function getMovie(id: number): Promise<RadarrMovie> {
 
 export async function getMovies(): Promise<RadarrMovie[]> {
   return request<RadarrMovie[]>("/movie");
-}
-
-export async function getRootFolders(): Promise<RadarrRootFolder[]> {
-  return request<RadarrRootFolder[]>("/rootfolder");
-}
-
-/** Every mount the service can see, which is where a total size comes from. */
-export async function getDiskSpace(): Promise<RadarrDiskSpace[]> {
-  return request<RadarrDiskSpace[]>("/diskspace");
 }
 
 export async function searchMovies(title: string): Promise<RadarrMovie[]> {

@@ -26,7 +26,7 @@ type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
 export class MergeRefusedError extends Error {}
 
-export const FOOTPRINT_TABLES = {
+const FOOTPRINT_TABLES = {
   identities: { table: platformIdentities, column: platformIdentities.userId },
   passkeys: { table: userCredentials, column: userCredentials.userId },
   requests: { table: mediaRequests, column: mediaRequests.userId },
@@ -79,7 +79,7 @@ export async function footprintOf(userId: string): Promise<UserFootprint> {
 }
 
 /** What a user would take with them, beyond the ways they sign in. */
-export function hasHistory(footprint: UserFootprint): boolean {
+function hasHistory(footprint: UserFootprint): boolean {
   const { identities, passkeys, plexAccounts, ...history } = footprint;
   return Object.values(history).some((total) => total > 0);
 }

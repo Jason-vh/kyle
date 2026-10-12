@@ -13,7 +13,7 @@ import {
 /**
  * Try to authenticate via JWT cookie.
  */
-export async function optionalAuth(req: Request): Promise<JwtUser | null> {
+async function optionalAuth(req: Request): Promise<JwtUser | null> {
   return parseAuthCookie(req);
 }
 

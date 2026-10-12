@@ -26,7 +26,7 @@ const searchTmdbMoviesParams = Type.Object({
   ),
 });
 
-export const searchTmdbMoviesTool: Tool<typeof searchTmdbMoviesParams> = {
+const searchTmdbMoviesTool: Tool<typeof searchTmdbMoviesParams> = {
   name: "search_tmdb_movies",
   description:
     "Search for movies on The Movie Database (TMDB). Use this to find movies by title, get TMDB IDs, release dates, ratings, and overviews. This is useful when users want to find a specific movie or get information about a movie before adding it to Radarr.",
@@ -59,7 +59,7 @@ const searchTmdbSeriesParams = Type.Object({
   ),
 });
 
-export const searchTmdbSeriesTool: Tool<typeof searchTmdbSeriesParams> = {
+const searchTmdbSeriesTool: Tool<typeof searchTmdbSeriesParams> = {
   name: "search_tmdb_series",
   description:
     "Search for TV shows on The Movie Database (TMDB). Use this to find TV shows by name, get TMDB IDs, first air dates, ratings, and overviews. This is useful when users want to find a specific TV show or get information about a show before adding it to Sonarr.",
@@ -91,7 +91,7 @@ const searchTmdbParams = Type.Object({
   ),
 });
 
-export const searchTmdbTool: Tool<typeof searchTmdbParams> = {
+const searchTmdbTool: Tool<typeof searchTmdbParams> = {
   name: "search_tmdb",
   description:
     "Search for movies, TV shows, and people on The Movie Database (TMDB) in a single query. Use this when users make a general search request without specifying whether they want movies or TV shows, or when they might be looking for a person. Results include a media_type field to distinguish between 'movie', 'tv', and 'person'.",
@@ -118,7 +118,7 @@ const getTmdbMovieDetailsParams = Type.Object({
   }),
 });
 
-export const getTmdbMovieDetailsTool: Tool<typeof getTmdbMovieDetailsParams> = {
+const getTmdbMovieDetailsTool: Tool<typeof getTmdbMovieDetailsParams> = {
   name: "get_tmdb_movie_details",
   description:
     "Get detailed information about a specific movie from TMDB by its TMDB ID. This provides comprehensive details including runtime, budget, revenue, genres, production companies, IMDB ID, and more. Use this after you've searched for a movie and have its TMDB ID. `releases` holds the earliest date worldwide for each kind of release (premiere, cinema, digital, physical, tv), null when none is announced. Only a digital or physical release can be downloaded in decent quality; a film only in cinemas has at best camrips.",
@@ -137,7 +137,7 @@ const getTmdbSeriesDetailsParams = Type.Object({
   }),
 });
 
-export const getTmdbSeriesDetailsTool: Tool<typeof getTmdbSeriesDetailsParams> = {
+const getTmdbSeriesDetailsTool: Tool<typeof getTmdbSeriesDetailsParams> = {
   name: "get_tmdb_series_details",
   description:
     "Get detailed information about a specific TV show from TMDB by its TMDB ID. This provides comprehensive details including number of seasons, episodes, networks, creators, episode runtime, genres, and season information. Use this after you've searched for a TV show and have its TMDB ID.",

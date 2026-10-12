@@ -51,7 +51,7 @@ const getRadarrMovieParams = Type.Object({
   }),
 });
 
-export const getRadarrMovieTool: Tool<typeof getRadarrMovieParams> = {
+const getRadarrMovieTool: Tool<typeof getRadarrMovieParams> = {
   name: "get_radarr_movie",
   description: "Get information about a specific movie in Radarr by ID",
   parameters: getRadarrMovieParams,
@@ -63,7 +63,7 @@ export const getRadarrMovieTool: Tool<typeof getRadarrMovieParams> = {
   },
 };
 
-export const getAllMoviesTool: Tool<typeof emptyParams> = {
+const getAllMoviesTool: Tool<typeof emptyParams> = {
   name: "get_all_movies",
   description: "Get all movies in the Radarr library",
   parameters: emptyParams,
@@ -79,7 +79,7 @@ const searchMoviesParams = Type.Object({
   title: Type.String({ description: "The title of the movie to search for" }),
 });
 
-export const searchMoviesTool: Tool<typeof searchMoviesParams> = {
+const searchMoviesTool: Tool<typeof searchMoviesParams> = {
   name: "search_movies",
   description:
     "Search for movies in external databases (TMDB). Returns lookup results, not library entries — use get_all_movies to check what's already in the library.",
@@ -97,7 +97,7 @@ const addMovieParams = Type.Object({
 });
 
 /** Bound to the requester at call time, so the registry indexes it separately. */
-export const addMoviePresentation: ToolPresentation = {
+const addMoviePresentation: ToolPresentation = {
   name: "add_movie",
   label: "Adding movie to Radarr",
   action: true,
@@ -161,7 +161,7 @@ const getMovieQueueParams = Type.Object({
   ),
 });
 
-export const getMovieQueueTool: Tool<typeof getMovieQueueParams> = {
+const getMovieQueueTool: Tool<typeof getMovieQueueParams> = {
   name: "get_movie_queue",
   description: "Get movies currently downloading or in the queue",
   parameters: getMovieQueueParams,
@@ -183,7 +183,7 @@ const getMovieHistoryParams = Type.Object({
   pageSize: Type.Number({ description: "The number of items to return" }),
 });
 
-export const getMovieHistoryTool: Tool<typeof getMovieHistoryParams> = {
+const getMovieHistoryTool: Tool<typeof getMovieHistoryParams> = {
   name: "get_movie_history",
   description:
     "Get the history of movies in Radarr. Each item has a type, which indicates what action was taken (grabbed, downloaded, deleted, etc.). Grabbing in this context means to start downloading it. History can be quite noisy, and there may be an unexpected number of items returned.",

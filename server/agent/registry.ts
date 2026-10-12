@@ -15,7 +15,7 @@ import type { AnyTool, ToolPresentation } from "./tool.ts";
 const log = createLogger("agent:registry");
 
 /** Every tool offered on every turn. */
-export const allTools: AnyTool[] = [
+const allTools: AnyTool[] = [
   ...sonarrTools,
   ...radarrTools,
   ...tmdbTools,

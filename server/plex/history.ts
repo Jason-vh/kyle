@@ -1,7 +1,7 @@
 import { getServerAccountNames, type PlexPerson } from "./access.ts";
 import type { Watcher } from "#shared/types.ts";
 import type { EpisodeRef } from "#shared/media.ts";
-import { listPlexTitles, tmdbIdOf } from "./catalog.ts";
+import { listPlexTitles } from "./catalog.ts";
 import { episodeWatchKey, titleKey, watchKey } from "./keys.ts";
 import { pmsRequest } from "./server.ts";
 import { createLogger } from "#server/logger.ts";
@@ -12,7 +12,7 @@ const log = createLogger("plex-history");
 
 const CACHE_TTL_MS = 10 * 60 * 1000;
 
-export { episodeWatchKey, titleKey, watchKey };
+export { episodeWatchKey, watchKey };
 
 export interface HistoryEntry {
   type: string;
@@ -53,10 +53,8 @@ export function resolveEpisodeKey(entry: HistoryEntry, seriesKey: string): strin
   return episodeWatchKey(seriesKey, seasonNumber, episodeNumber);
 }
 
-export { tmdbIdOf };
-
 /** The last path segment of `/library/metadata/14026`. */
-export function ratingKeyOfPath(path: string | null | undefined): string | undefined {
+function ratingKeyOfPath(path: string | null | undefined): string | undefined {
   return path?.split("/").pop() || undefined;
 }
 
@@ -253,8 +251,4 @@ export async function getPlaysBy(accountIds: string[]): Promise<TitlePlay[]> {
     }
   }
   return theirs.sort((a, b) => b.at.localeCompare(a.at));
-}
-
-export function invalidateWatchers(): void {
-  watchHistory.invalidate();
 }

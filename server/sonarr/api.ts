@@ -1,7 +1,6 @@
 import type {
   SonarrCalendarEpisode,
   SonarrCommand,
-  SonarrDiskSpace,
   SonarrEpisode,
   SonarrEpisodeFile,
   SonarrHistoryItem,
@@ -144,11 +143,11 @@ export async function getQueue(options?: { seriesIds?: number[] }): Promise<Sona
   return response;
 }
 
-export async function getQualityProfiles(): Promise<SonarrQualityProfile[]> {
+async function getQualityProfiles(): Promise<SonarrQualityProfile[]> {
   return request<SonarrQualityProfile[]>("/qualityprofile");
 }
 
-export async function getRootFolders(): Promise<SonarrRootFolder[]> {
+async function getRootFolders(): Promise<SonarrRootFolder[]> {
   return request<SonarrRootFolder[]>("/rootfolder");
 }
 
@@ -297,9 +296,4 @@ export async function triggerManualImport(
       importMode: "move",
     }),
   });
-}
-
-/** Every mount the service can see, which is where a total size comes from. */
-export async function getDiskSpace(): Promise<SonarrDiskSpace[]> {
-  return request<SonarrDiskSpace[]>("/diskspace");
 }

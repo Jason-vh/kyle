@@ -78,7 +78,7 @@ function calendarTable(payload: unknown) {
   );
 }
 
-export const getAllSeriesTool: Tool<typeof emptyParams> = {
+const getAllSeriesTool: Tool<typeof emptyParams> = {
   name: "get_all_series",
   description: "Get all TV series currently in the Sonarr library",
   parameters: emptyParams,
@@ -96,7 +96,7 @@ const getSeriesByIdParams = Type.Object({
   }),
 });
 
-export const getSeriesByIdTool: Tool<typeof getSeriesByIdParams> = {
+const getSeriesByIdTool: Tool<typeof getSeriesByIdParams> = {
   name: "get_series_by_id",
   description: "Get information about a specific TV series in Sonarr by ID",
   parameters: getSeriesByIdParams,
@@ -114,7 +114,7 @@ const searchSeriesParams = Type.Object({
   }),
 });
 
-export const searchSeriesTool: Tool<typeof searchSeriesParams> = {
+const searchSeriesTool: Tool<typeof searchSeriesParams> = {
   name: "search_series",
   description:
     "Search for TV series in external databases (TVDB). Returns lookup results, not library entries — use get_all_series to check what's already in the library.",
@@ -144,7 +144,7 @@ const addSeriesParams = Type.Object({
 });
 
 /** Bound to the requester at call time, so the registry indexes it separately. */
-export const addSeriesPresentation: ToolPresentation = {
+const addSeriesPresentation: ToolPresentation = {
   name: "add_series",
   label: "Adding series to Sonarr",
   action: true,
@@ -187,7 +187,7 @@ const requestSeasonParams = Type.Object({
 });
 
 /** Bound to the requester at call time, so the registry indexes it separately. */
-export const requestSeasonPresentation: ToolPresentation = {
+const requestSeasonPresentation: ToolPresentation = {
   name: "request_season",
   label: "Requesting a season in Sonarr",
   action: true,
@@ -300,7 +300,7 @@ const getEpisodesParams = Type.Object({
   ),
 });
 
-export const getEpisodesTool: Tool<typeof getEpisodesParams> = {
+const getEpisodesTool: Tool<typeof getEpisodesParams> = {
   name: "get_episodes",
   description: "Get episodes for a specific TV series",
   parameters: getEpisodesParams,
@@ -323,7 +323,7 @@ const getSeriesQueueParams = Type.Object({
   ),
 });
 
-export const getSeriesQueueTool: Tool<typeof getSeriesQueueParams> = {
+const getSeriesQueueTool: Tool<typeof getSeriesQueueParams> = {
   name: "get_series_queue",
   description: "Get TV series episodes currently downloading or in the queue",
   parameters: getSeriesQueueParams,
@@ -366,7 +366,7 @@ const getCalendarParams = Type.Object({
   ),
 });
 
-export const getCalendarTool: Tool<typeof getCalendarParams> = {
+const getCalendarTool: Tool<typeof getCalendarParams> = {
   name: "get_calendar",
   description: "Get upcoming episodes from the calendar for a date range",
   parameters: getCalendarParams,
@@ -399,7 +399,7 @@ const searchEpisodesParams = Type.Object({
   ),
 });
 
-export const downloadEpisodesTool: Tool<typeof searchEpisodesParams> = {
+const downloadEpisodesTool: Tool<typeof searchEpisodesParams> = {
   name: "download_episodes",
   description:
     "Search indexers and download missing episodes for a series, a specific season, or specific episodes. When seasonNumber is provided with seriesId, automatically monitors unmonitored episodes before searching.",
@@ -518,7 +518,7 @@ const getSeriesHistoryParams = Type.Object({
   ),
 });
 
-export const getSeriesHistoryTool: Tool<typeof getSeriesHistoryParams> = {
+const getSeriesHistoryTool: Tool<typeof getSeriesHistoryParams> = {
   name: "get_series_history",
   description:
     "Get download and import history from Sonarr. When investigating a specific series, pass seriesId to get all history for that series.",
@@ -569,7 +569,7 @@ const manualImportParams = Type.Object({
   ),
 });
 
-export const manualImportTool: Tool<typeof manualImportParams> = {
+const manualImportTool: Tool<typeof manualImportParams> = {
   name: "manual_import",
   description:
     "Inspect and force-import downloaded files that are stuck in the queue (downloaded but not imported). First call without importAll to see what files are available and any rejections, then call with importAll=true to import them.",

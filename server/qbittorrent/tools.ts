@@ -24,7 +24,7 @@ const getTorrentsParams = Type.Object({
   ),
 });
 
-export const getTorrentsTool: Tool<typeof getTorrentsParams> = {
+const getTorrentsTool: Tool<typeof getTorrentsParams> = {
   name: "get_torrents",
   description:
     "Get torrents from qBittorrent, optionally filtered by state (downloading, seeding, completed, paused, active, inactive, stalled, errored)",
@@ -61,7 +61,7 @@ const deleteTorrentsParams = Type.Object({
   ),
 });
 
-export const deleteTorrentsTool: Tool<typeof deleteTorrentsParams> = {
+const deleteTorrentsTool: Tool<typeof deleteTorrentsParams> = {
   name: "delete_torrents",
   description:
     "Delete one or more torrents from qBittorrent by hash. Deletes files from disk by default.",

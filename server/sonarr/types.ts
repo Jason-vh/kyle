@@ -320,10 +320,3 @@ export interface SonarrCommand {
   exception?: string;
   trigger: "manual" | "scheduled" | "automatic";
 }
-
-export interface SonarrDiskSpace {
-  path: string;
-  label: string;
-  freeSpace: number;
-  totalSpace: number;
-}

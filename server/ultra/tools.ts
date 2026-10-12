@@ -5,7 +5,7 @@ import * as ultra from "./api.ts";
 
 const emptyParams = Type.Object({});
 
-export const getUltraStatsTool: Tool<typeof emptyParams> = {
+const getUltraStatsTool: Tool<typeof emptyParams> = {
   name: "get_ultra_stats",
   description:
     "Get Ultra seedbox storage and traffic stats including free/used/total storage and traffic usage",
