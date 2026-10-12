@@ -60,6 +60,7 @@ async function prepareReply(
     conversationId,
     text: webhookPrompt(media, source),
     storePrompt: false,
+    requestId: deliveryId ? `webhook:${deliveryId}` : undefined,
     context: { interfaceType },
   });
   if (!responseText) throw new Error("Agent returned an empty notification");

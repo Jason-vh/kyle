@@ -1,8 +1,7 @@
-import type { AgentEvent } from "@earendil-works/pi-agent-core";
 import { createLogger } from "#server/logger.ts";
 import { errorFields } from "#server/errors.ts";
 import { downloadImages, MAX_IMAGE_SIZE, type RemoteImage } from "#server/images.ts";
-import { toolPresentation, type AgentContext } from "#server/agent/index.ts";
+import { toolPresentation, type AgentContext, type TurnEvent } from "#server/agent/index.ts";
 import { EMPTY_REPLY, failureReply } from "#server/agent/replies.ts";
 import { runConversationTurn } from "#server/agent/conversation.ts";
 import { describeToolCall, isActionTool } from "#server/agent/tool-display.ts";
@@ -40,13 +39,13 @@ function toRemoteImages(event: SlackEvent): RemoteImage[] {
 
 /**
  * Mirrors the agent's progress into the thread: an ephemeral status line, a task
- * card per action, and a table for results that read poorly as prose.
+ * card per action, a table for results that read poorly as prose, and retries.
  */
 function createProgressReporter(
   stream: SlackResponseStream,
   channel: string,
   threadTs: string,
-): { onEvent: (event: AgentEvent) => void; tables: () => ResultTable[] } {
+): { onEvent: (event: TurnEvent) => void; tables: () => ResultTable[] } {
   const toolArgs = new Map<string, Record<string, unknown>>();
   // Keyed by tool so repeated calls in one turn render a single, latest table.
   const tables = new Map<string, ResultTable>();
@@ -54,16 +53,20 @@ function createProgressReporter(
   return {
     tables: () => [...tables.values()],
     onEvent(event) {
-      if (event.type === "message_start" && event.message.role === "assistant") {
-        stream.newParagraph();
+      if (event.type === "assistant_start") stream.newParagraph();
+
+      if (event.type === "text_delta") stream.appendText(event.delta);
+
+      if (event.type === "retry") {
+        setThreadStatus(
+          channel,
+          threadTs,
+          `is retrying... (${event.attempt}/${event.maxAttempts})`,
+        );
       }
 
-      if (event.type === "message_update" && event.assistantMessageEvent.type === "text_delta") {
-        stream.appendText(event.assistantMessageEvent.delta);
-      }
-
-      if (event.type === "tool_execution_start") {
-        if (event.args) toolArgs.set(event.toolCallId, event.args);
+      if (event.type === "tool_start") {
+        toolArgs.set(event.toolCallId, event.args);
         const label = toolPresentation(event.toolName)?.label;
         if (!label) return;
 
@@ -73,7 +76,7 @@ function createProgressReporter(
         }
       }
 
-      if (event.type === "tool_execution_end") {
+      if (event.type === "tool_end") {
         const args = toolArgs.get(event.toolCallId) ?? {};
         toolArgs.delete(event.toolCallId);
 
@@ -88,7 +91,7 @@ function createProgressReporter(
           return;
         }
 
-        const payload = parseToolPayload(event.result);
+        const payload = parseToolPayload(event);
 
         const table = extractTable(event.toolName, payload);
         if (table) tables.set(event.toolName, table);
@@ -177,11 +180,9 @@ export async function processSlackMessage(
       appUserId,
       text: messageText,
       images,
+      requestId: `slack:${slackEvent.ts}`,
       context: agentContext,
       onEvent: progress.onEvent,
-      onRetry: (attempt, maxAttempts) => {
-        setThreadStatus(channel, replyThreadTs, `is retrying... (${attempt}/${maxAttempts})`);
-      },
     });
 
     tables = progress.tables();

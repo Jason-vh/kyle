@@ -1,64 +1,60 @@
-import { afterAll, beforeAll, describe, expect, mock, test } from "bun:test";
+import { afterAll, afterEach, beforeAll, describe, expect, test } from "bun:test";
 import { eq, sql } from "drizzle-orm";
-import type { AgentEvent } from "@earendil-works/pi-agent-core";
-import type { RunAgentOptions, RunAgentResult } from "./index.ts";
+import {
+  fauxAssistantMessage,
+  fauxText,
+  fauxToolCall,
+  type FauxResponseFactory,
+  type Message,
+  type TranscriptContext,
+} from "@earendil-works/pi-ai";
+import { useFauxModel } from "./testing.ts";
+import { runConversationTurn, ConversationNotFoundError } from "./conversation.ts";
+import type { TurnEvent } from "./turn-events.ts";
+import { db } from "#server/db/index.ts";
+import { conversations, messages, mediaEvents, users } from "#server/db/schema.ts";
 
-/** Exercises the real persistence path against a real database. */
+/** Runs real turns through pi-durable and Postgres; only the model is scripted. */
 
-// The agent itself is scripted; this suite is about what happens around it.
-let script: (options: RunAgentOptions) => RunAgentResult | Promise<RunAgentResult> = () => {
-  throw new Error("no script set");
-};
+const faux = useFauxModel();
 
-const realAgent = await import("./index.ts");
-mock.module("./index.ts", () => ({
-  ...realAgent,
-  runAgent: async (options: RunAgentOptions) => script(options),
-  ApiOverloadedError: class ApiOverloadedError extends Error {},
-}));
+process.env.RADARR_HOST = "http://radarr.test";
+process.env.RADARR_API_KEY = "k";
 
-const { runConversationTurn, ConversationNotFoundError } = await import("./conversation.ts");
-const { db } = await import("#server/db/index.ts");
-const { conversations, messages, mediaEvents, users } = await import("#server/db/schema.ts");
+const realFetch = globalThis.fetch;
+afterEach(() => {
+  globalThis.fetch = realFetch;
+  faux.setResponses([]);
+});
 
-type NewMessages = RunAgentResult["messages"];
-
-/**
- * Mirrors the real agent: every new message is announced with `message_end` as it
- * is produced, and the returned history is the replayed messages plus the new turn.
- * Persistence is driven by those events, so a script that skips them stores nothing.
- */
-function emit(options: RunAgentOptions, newMessages: NewMessages): NewMessages {
-  for (const message of newMessages) {
-    options.onEvent?.({ type: "message_end", message } as AgentEvent);
-  }
-  return [...(options.previousMessages ?? []), ...newMessages];
+function conversationOf(context: TranscriptContext): Message[] {
+  return context.messages.filter((message) => message.role !== "system");
 }
 
-function assistantText(options: RunAgentOptions, text: string): RunAgentResult {
-  const messages = emit(options, [
-    { role: "user", content: options.message },
-    { role: "assistant", content: [{ type: "text", text }], stopReason: "stop" },
-  ] as NewMessages);
-  return { messages, responseText: text };
+function textOf(message: Message | undefined): string {
+  if (!message || message.role === "toolResult") return "";
+  if (typeof message.content === "string") return message.content;
+  return message.content.flatMap((block) => (block.type === "text" ? [block.text] : [])).join("");
 }
 
-/** Writes are queued off the agent's synchronous events, so wait for them to land. */
-async function rolesAfter(conversationId: string, expected: number): Promise<string[]> {
-  for (let attempt = 0; attempt < 100; attempt++) {
-    const rows = await db
-      .select({ role: messages.role })
-      .from(messages)
-      .where(eq(messages.conversationId, conversationId))
-      .orderBy(messages.sequence);
-    if (rows.length >= expected) return rows.map((r) => r.role);
-    await new Promise((resolve) => setTimeout(resolve, 10));
-  }
-  throw new Error(`timed out waiting for ${expected} messages`);
+/** Answers with `text`, after recording what the model was shown. */
+function reply(text: string, seen?: (context: TranscriptContext) => void): FauxResponseFactory {
+  return (context) => {
+    seen?.(context);
+    return fauxAssistantMessage(text);
+  };
+}
+
+async function roles(conversationId: string): Promise<string[]> {
+  const rows = await db
+    .select({ role: messages.role })
+    .from(messages)
+    .where(eq(messages.conversationId, conversationId))
+    .orderBy(messages.sequence);
+  return rows.map((row) => row.role);
 }
 
 let appUserId: string;
-const externalId = `test:${crypto.randomUUID()}`;
 const createdConversationIds: string[] = [];
 
 beforeAll(async () => {
@@ -71,6 +67,7 @@ beforeAll(async () => {
 
 afterAll(async () => {
   await db.execute(sql`DELETE FROM movie_subscriptions WHERE user_id = ${appUserId}`);
+  await db.execute(sql`DELETE FROM media_requests WHERE user_id = ${appUserId}`);
   for (const id of createdConversationIds) {
     await db.delete(conversations).where(eq(conversations.id, id));
   }
@@ -78,53 +75,14 @@ afterAll(async () => {
 });
 
 describe("runConversationTurn", () => {
-  test("concurrent turns share one conversation and replay completed turns", async () => {
-    const replayed: number[] = [];
-    script = (options) => {
-      replayed.push(options.previousMessages?.length ?? 0);
-      return assistantText(options, "reply");
-    };
-    const turn = {
-      interfaceType: "slack" as const,
-      externalId: crypto.randomUUID(),
-      text: "hello",
-    };
-    const results = await Promise.all([runConversationTurn(turn), runConversationTurn(turn)]);
-    createdConversationIds.push(results[0]!.conversationId);
-
-    expect(results[0]!.conversationId).toBe(results[1]!.conversationId);
-    expect(replayed).toEqual([0, 2]);
-    expect(await rolesAfter(results[0]!.conversationId, 4)).toEqual([
-      "user",
-      "assistant",
-      "user",
-      "assistant",
-    ]);
-  });
-
-  test("a failed turn releases its lock for the next turn", async () => {
-    let calls = 0;
-    script = (options) => {
-      if (calls++ === 0) throw new Error("failed turn");
-      return assistantText(options, "recovered");
-    };
-    const turn = {
-      interfaceType: "slack" as const,
-      externalId: crypto.randomUUID(),
-      text: "hello",
-    };
-    const results = await Promise.allSettled([
-      runConversationTurn(turn),
-      runConversationTurn(turn),
-    ]);
-    for (const result of results) {
-      if (result.status === "fulfilled") createdConversationIds.push(result.value.conversationId);
-    }
-    expect(results.map((result) => result.status).sort()).toEqual(["fulfilled", "rejected"]);
-  });
-
   test("creates a conversation, then continues the same one by externalId", async () => {
-    script = (options) => assistantText(options, "first reply");
+    const externalId = `test:${crypto.randomUUID()}`;
+    let shown: Message[] = [];
+    faux.setResponses([
+      reply("first reply"),
+      reply("second reply", (c) => (shown = conversationOf(c))),
+    ]);
+
     const first = await runConversationTurn({
       interfaceType: "slack",
       externalId,
@@ -134,14 +92,8 @@ describe("runConversationTurn", () => {
       text: "hello",
     });
     createdConversationIds.push(first.conversationId);
-
     expect(first.responseText).toBe("first reply");
 
-    let replayed: number | undefined;
-    script = (options) => {
-      replayed = options.previousMessages?.length;
-      return assistantText(options, "second reply");
-    };
     const second = await runConversationTurn({
       interfaceType: "slack",
       externalId,
@@ -149,9 +101,11 @@ describe("runConversationTurn", () => {
       appUserId,
       text: "again",
     });
-
     expect(second.conversationId).toBe(first.conversationId);
-    expect(replayed).toBe(2); // the first turn's user + assistant messages
+    expect(second.responseText).toBe("second reply");
+    expect(shown.map((message) => message.role)).toEqual(["user", "assistant", "user"]);
+    // Each user message carries the time it was sent.
+    expect(textOf(shown[2])).toMatch(/^\[\d{1,2}:\d{2} [AP]M [A-Z+\d:]+\] again$/);
 
     const conversation = await db.query.conversations.findFirst({
       where: eq(conversations.id, first.conversationId),
@@ -175,58 +129,143 @@ describe("runConversationTurn", () => {
     expect(rows[1]).toMatchObject({ platformUserId: null, userId: null });
   });
 
-  test("links a media event to the message that made the tool call", async () => {
-    const toolCallId = `call-${crypto.randomUUID().slice(0, 8)}`;
-    const toolCall = {
-      type: "toolCall" as const,
-      id: toolCallId,
-      name: "add_movie",
-      arguments: { tmdbId: 27205 },
+  test("the system prompt is written for the turn's user and interface", async () => {
+    let prompt = "";
+    faux.setResponses([
+      reply("hi", (context) => {
+        prompt = JSON.stringify(context.messages.filter((m) => m.role === "system"));
+      }),
+    ]);
+    const { conversationId } = await runConversationTurn({
+      interfaceType: "discord",
+      externalId: `test:${crypto.randomUUID()}`,
+      appUserId,
+      text: "hello",
+      context: { username: "Ada", userId: appUserId, interfaceType: "discord" },
+    });
+    createdConversationIds.push(conversationId);
+    expect(prompt).toContain("You are Kyle");
+    expect(prompt).toContain("You are chatting with Ada");
+    expect(prompt).toContain("You are posting in Discord");
+  });
+
+  test("concurrent turns share one conversation and run one after the other", async () => {
+    const seen: number[] = [];
+    faux.setResponses([
+      reply("one", (c) => seen.push(conversationOf(c).length)),
+      reply("two", (c) => seen.push(conversationOf(c).length)),
+    ]);
+    const turn = {
+      interfaceType: "slack" as const,
+      externalId: `test:${crypto.randomUUID()}`,
+      text: "hello",
     };
+    const results = await Promise.all([runConversationTurn(turn), runConversationTurn(turn)]);
+    createdConversationIds.push(results[0]!.conversationId);
 
-    // Ordered as the real agent does it: the tool call is announced before it runs.
-    script = (options) => {
-      const fire = options.onEvent!;
-      const messages = emit(options, [
-        { role: "user", content: options.message },
-        { role: "assistant", content: [toolCall], stopReason: "toolUse" },
-      ] as NewMessages);
+    expect(results[0]!.conversationId).toBe(results[1]!.conversationId);
+    expect(seen).toEqual([1, 3]);
+    expect(await roles(results[0]!.conversationId)).toEqual([
+      "user",
+      "assistant",
+      "user",
+      "assistant",
+    ]);
+  });
 
-      fire({
-        type: "tool_execution_start",
-        toolCallId,
-        toolName: "add_movie",
-        args: { tmdbId: 27205 },
-      } as AgentEvent);
-      fire({
-        type: "tool_execution_end",
-        toolCallId,
-        toolName: "add_movie",
-        isError: false,
-        result: {
-          content: [
-            {
-              type: "text",
-              text: JSON.stringify({ title: "Inception", id: 42, titleSlug: "inception-2010" }),
-            },
-          ],
-        },
-      } as AgentEvent);
+  test("a failed turn keeps what happened and lets the next turn run", async () => {
+    faux.setResponses([
+      fauxAssistantMessage([], { stopReason: "error", errorMessage: "invalid request" }),
+      reply("recovered"),
+    ]);
+    const turn = {
+      interfaceType: "http" as const,
+      externalId: `test:${crypto.randomUUID()}`,
+      text: "hello",
+    };
+    await expect(runConversationTurn(turn)).rejects.toThrow("invalid request");
+    const { conversationId, responseText } = await runConversationTurn(turn);
+    createdConversationIds.push(conversationId);
 
-      return {
-        messages: [
-          ...messages,
-          ...emit({ ...options, previousMessages: [] }, [
-            {
-              role: "assistant",
-              content: [{ type: "text", text: "Added it." }],
-              stopReason: "stop",
-            },
-          ] as NewMessages),
+    expect(responseText).toBe("recovered");
+    expect(await roles(conversationId)).toEqual(["user", "assistant", "user", "assistant"]);
+  });
+
+  test("streams the reply and its tool calls to the interface", async () => {
+    faux.setResponses([
+      fauxAssistantMessage(
+        [
+          fauxToolCall("convert_time", {
+            time: "8:00 PM",
+            fromTimezone: "America/New_York",
+            toTimezone: "Europe/Amsterdam",
+            date: "2026-01-15",
+          }),
         ],
-        responseText: "Added it.",
+        { stopReason: "toolUse" },
+      ),
+      fauxAssistantMessage([fauxText("2:00 AM in Amsterdam.")]),
+    ]);
+    const events: TurnEvent[] = [];
+    const { conversationId, responseText } = await runConversationTurn({
+      interfaceType: "slack",
+      externalId: `test:${crypto.randomUUID()}`,
+      appUserId,
+      text: "what time is 8pm New York in Amsterdam?",
+      context: { userId: appUserId },
+      onEvent: (event) => events.push(event),
+    });
+    createdConversationIds.push(conversationId);
+
+    expect(responseText).toBe("2:00 AM in Amsterdam.");
+    expect(events.filter((e) => e.type === "tool_start").map((e) => e.toolName)).toEqual([
+      "convert_time",
+    ]);
+    const end = events.find((e) => e.type === "tool_end");
+    expect(end).toMatchObject({ toolName: "convert_time", isError: false });
+    const streamed = events.flatMap((e) => (e.type === "text_delta" ? [e.delta] : [])).join("");
+    expect(streamed).toBe("2:00 AM in Amsterdam.");
+    expect(await roles(conversationId)).toEqual(["user", "assistant", "toolResult", "assistant"]);
+  });
+
+  test("tools are refused to a user who may not use them", async () => {
+    faux.setResponses([
+      fauxAssistantMessage([fauxToolCall("remove_movie", { movieId: 1 })], {
+        stopReason: "toolUse",
+      }),
+      reply("done"),
+    ]);
+    const events: TurnEvent[] = [];
+    const { conversationId } = await runConversationTurn({
+      interfaceType: "http",
+      text: "remove it",
+      context: { userId: appUserId },
+      onEvent: (event) => events.push(event),
+    });
+    createdConversationIds.push(conversationId);
+    expect(events.find((e) => e.type === "tool_end")).toMatchObject({ isError: true });
+  });
+
+  test("links a media event to the message that made the tool call", async () => {
+    globalThis.fetch = ((url: string) => {
+      const routes: Record<string, unknown> = {
+        "/movie?tmdbId=": [],
+        "/movie/lookup/tmdb": { title: "Inception", year: 2010 },
+        "/qualityprofile": [{ id: 1 }],
+        "/rootfolder": [{ path: "/movies" }],
+        "/api/v3/movie": { title: "Inception", year: 2010, id: 42, titleSlug: "inception-2010" },
       };
-    };
+      for (const [fragment, body] of Object.entries(routes)) {
+        if (url.includes(fragment)) return Promise.resolve(Response.json(body));
+      }
+      return Promise.resolve(new Response("unexpected", { status: 500 }));
+    }) as unknown as typeof fetch;
+    faux.setResponses([
+      fauxAssistantMessage([fauxToolCall("add_movie", { tmdbId: 27205 })], {
+        stopReason: "toolUse",
+      }),
+      reply("Added it."),
+    ]);
 
     const { conversationId } = await runConversationTurn({
       interfaceType: "discord",
@@ -234,6 +273,7 @@ describe("runConversationTurn", () => {
       platformUserId: "U2",
       appUserId,
       text: "add inception",
+      context: { userId: appUserId },
     });
     createdConversationIds.push(conversationId);
 
@@ -242,7 +282,6 @@ describe("runConversationTurn", () => {
       .from(mediaEvents)
       .where(eq(mediaEvents.conversationId, conversationId));
     expect(event).toMatchObject({
-      toolCallId,
       action: "add",
       mediaType: "movie",
       title: "Inception",
@@ -257,130 +296,158 @@ describe("runConversationTurn", () => {
       .from(messages)
       .where(eq(messages.conversationId, conversationId))
       .orderBy(messages.sequence);
-    const toolCallMessage = rows.find((r) => JSON.stringify(r.data).includes(`"${toolCallId}"`));
-    expect(toolCallMessage).toBeDefined();
+    const toolCallMessage = rows.find((r) => JSON.stringify(r.data).includes(event!.toolCallId));
+    expect(toolCallMessage?.role).toBe("assistant");
     expect(event!.messageId).toBe(toolCallMessage!.id);
   });
 
-  test("persists a failed attempt so the thread viewer can show it", async () => {
-    // A retried turn announces the failed attempt, then the recovery.
-    script = (options) => {
-      const failed = emit(options, [
-        { role: "user", content: options.message },
-        { role: "assistant", content: [], stopReason: "error", errorMessage: "overloaded" },
-      ] as NewMessages);
-      const recovered = emit({ ...options, previousMessages: [] }, [
-        { role: "assistant", content: [{ type: "text", text: "recovered" }], stopReason: "stop" },
-      ] as NewMessages);
-      return { messages: [...failed, ...recovered], responseText: "recovered" };
-    };
-
-    const { conversationId } = await runConversationTurn({
-      interfaceType: "http",
-      text: "hi",
-    });
+  test("a prompt the user did not type is seen by the model but not stored", async () => {
+    let shown: Message[] = [];
+    faux.setResponses([
+      reply("hello"),
+      reply("your show finished downloading"),
+      reply("you're welcome", (c) => (shown = conversationOf(c))),
+    ]);
+    const { conversationId } = await runConversationTurn({ interfaceType: "discord", text: "hi" });
     createdConversationIds.push(conversationId);
-
-    const rows = await db
-      .select()
-      .from(messages)
-      .where(eq(messages.conversationId, conversationId))
-      .orderBy(messages.sequence);
-    // Stored in the order they happened, failed attempt included.
-    expect(rows).toHaveLength(3);
-    expect(rows.map((r) => r.role)).toEqual(["user", "assistant", "assistant"]);
-    expect(rows[1]!.data).toMatchObject({ stopReason: "error" });
-    expect(rows[2]!.data).toMatchObject({ stopReason: "stop" });
-  });
-
-  test("a prompt the user did not type is replayed but not stored", async () => {
-    script = (options) => assistantText(options, "it's ready");
-    const { conversationId } = await runConversationTurn({
-      interfaceType: "discord",
-      text: "hello",
-    });
-    createdConversationIds.push(conversationId);
-
-    let replayed: string[] | undefined;
-    script = (options) => {
-      replayed = options.previousMessages?.map((m) => m.role);
-      return assistantText(options, "your show finished downloading");
-    };
     await runConversationTurn({
       interfaceType: "discord",
       conversationId,
       text: "[Webhook — Sonarr] Severance has finished downloading.",
       storePrompt: false,
     });
+    await runConversationTurn({ interfaceType: "discord", conversationId, text: "thanks" });
 
-    expect(replayed).toEqual(["user", "assistant"]);
-
-    const rows = await db
-      .select()
-      .from(messages)
-      .where(eq(messages.conversationId, conversationId))
-      .orderBy(messages.sequence);
-    expect(rows.map((r) => r.role)).toEqual(["user", "assistant", "assistant"]);
-  });
-
-  test("messages are stored while the turn is still running", async () => {
-    script = (options) => assistantText(options, "hello");
-    const { conversationId } = await runConversationTurn({ interfaceType: "http", text: "first" });
-    createdConversationIds.push(conversationId);
-
-    let midRun: string[] = [];
-    script = async (options) => {
-      const sofar = emit(options, [
-        { role: "user", content: options.message },
-        { role: "assistant", content: [{ type: "text", text: "thinking" }], stopReason: "toolUse" },
-      ] as NewMessages);
-      // The agent has not returned yet, but the turn so far should already be readable.
-      midRun = await rolesAfter(conversationId, 4);
-      return {
-        messages: [
-          ...sofar,
-          ...emit({ ...options, previousMessages: [] }, [
-            { role: "assistant", content: [{ type: "text", text: "done" }], stopReason: "stop" },
-          ] as NewMessages),
-        ],
-        responseText: "done",
-      };
-    };
-
-    await runConversationTurn({ interfaceType: "http", conversationId, text: "second" });
-
-    expect(midRun).toEqual(["user", "assistant", "user", "assistant"]);
-    expect(await rolesAfter(conversationId, 5)).toEqual([
+    expect(textOf(shown[2])).toContain("[Webhook — Sonarr] Severance has finished downloading.");
+    expect(await roles(conversationId)).toEqual([
       "user",
       "assistant",
-      "user",
       "assistant",
+      "user",
       "assistant",
     ]);
   });
 
-  test("a turn that fails part-way keeps what already happened", async () => {
-    script = (options) => {
-      emit(options, [
-        { role: "user", content: options.message },
-        { role: "assistant", content: [], stopReason: "error", errorMessage: "overloaded" },
-      ] as NewMessages);
-      throw new Error("API is overloaded after retries");
-    };
-
-    const conversationId = crypto.randomUUID();
-    await db.insert(conversations).values({ id: conversationId, interfaceType: "http" });
+  test("messages are stored while the turn is still running", async () => {
+    let midRun: string[] = [];
+    faux.setResponses([
+      fauxAssistantMessage(
+        [fauxToolCall("convert_time", { time: "8:00 PM", fromTimezone: "UTC", toTimezone: "UTC" })],
+        {
+          stopReason: "toolUse",
+        },
+      ),
+      async () => {
+        for (let attempt = 0; attempt < 100 && midRun.length < 3; attempt++) {
+          midRun = await roles(conversationId!);
+          await new Promise((resolve) => setTimeout(resolve, 10));
+        }
+        return fauxAssistantMessage("done");
+      },
+    ]);
+    let conversationId: string | undefined;
+    const externalId = `test:${crypto.randomUUID()}`;
+    const [created] = await db
+      .insert(conversations)
+      .values({ externalId, interfaceType: "http" })
+      .returning();
+    conversationId = created!.id;
     createdConversationIds.push(conversationId);
 
-    await expect(
-      runConversationTurn({ interfaceType: "http", conversationId, text: "hi" }),
-    ).rejects.toThrow("overloaded");
+    await runConversationTurn({
+      interfaceType: "http",
+      conversationId,
+      text: "what time is it",
+      context: { userId: appUserId },
+    });
+    expect(midRun).toEqual(["user", "assistant", "toolResult"]);
+  });
 
-    expect(await rolesAfter(conversationId, 2)).toEqual(["user", "assistant"]);
+  test("a conversation from before pi-durable brings its history", async () => {
+    const [created] = await db.insert(conversations).values({ interfaceType: "http" }).returning();
+    const conversationId = created!.id;
+    createdConversationIds.push(conversationId);
+    const stored = (role: string, data: object, minutesAgo: number) => ({
+      conversationId,
+      role,
+      data: { role, ...data },
+      createdAt: new Date(Date.now() - minutesAgo * 60_000),
+    });
+    const storedReply = (content: object[], extra: object) => ({
+      content,
+      api: "anthropic-messages",
+      provider: "anthropic",
+      model: "claude-sonnet-4-5",
+      usage: fauxAssistantMessage("").usage,
+      timestamp: 0,
+      ...extra,
+    });
+    await db
+      .insert(messages)
+      .values([
+        stored("user", { content: "remember Amsterdam", timestamp: 0 }, 10),
+        stored(
+          "assistant",
+          storedReply([{ type: "text", text: "noted" }], { stopReason: "stop" }),
+          9,
+        ),
+        stored("assistant", storedReply([], { stopReason: "error", errorMessage: "boom" }), 8),
+      ]);
+
+    let shown: Message[] = [];
+    faux.setResponses([reply("Amsterdam", (c) => (shown = conversationOf(c)))]);
+    await runConversationTurn({ interfaceType: "http", conversationId, text: "which city?" });
+
+    // The failed reply was never part of what the model saw, and still is not.
+    expect(shown.map(textOf).map((text) => text.replace(/^\[[^\]]+\] /, ""))).toEqual([
+      "remember Amsterdam",
+      "noted",
+      "which city?",
+    ]);
+    expect(await roles(conversationId)).toEqual([
+      "user",
+      "assistant",
+      "assistant",
+      "user",
+      "assistant",
+    ]);
+  });
+
+  test("a retried request waits for the turn already submitted", async () => {
+    faux.setResponses([reply("only once")]);
+    const turn = {
+      interfaceType: "slack" as const,
+      externalId: `test:${crypto.randomUUID()}`,
+      text: "hello",
+      requestId: "slack:1.1",
+    };
+    const first = await runConversationTurn(turn);
+    createdConversationIds.push(first.conversationId);
+    const again = await runConversationTurn(turn);
+
+    expect(again.responseText).toBe("only once");
+    expect(faux.getPendingResponseCount()).toBe(0);
+    expect(await roles(first.conversationId)).toEqual(["user", "assistant"]);
+  });
+
+  test("a request that failed is tried again under the same key", async () => {
+    faux.setResponses([
+      fauxAssistantMessage([], { stopReason: "error", errorMessage: "invalid request" }),
+      reply("second time lucky"),
+    ]);
+    const turn = {
+      interfaceType: "slack" as const,
+      externalId: `test:${crypto.randomUUID()}`,
+      text: "hello",
+      requestId: "slack:2.2",
+    };
+    await expect(runConversationTurn(turn)).rejects.toThrow("invalid request");
+    const again = await runConversationTurn(turn);
+    createdConversationIds.push(again.conversationId);
+    expect(again.responseText).toBe("second time lucky");
   });
 
   test("rejects an unknown conversation id", async () => {
-    script = (options) => assistantText(options, "never runs");
     await expect(
       runConversationTurn({
         interfaceType: "http",

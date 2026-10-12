@@ -1,35 +1,22 @@
 import { eq, asc } from "drizzle-orm";
-import type { AgentMessage } from "@earendil-works/pi-agent-core";
-import type { AssistantMessage, TextContent, ImageContent } from "@earendil-works/pi-ai";
+import type { AssistantMessage, ImageContent, Message, TextContent } from "@earendil-works/pi-ai";
 import { db } from "./index.ts";
 import { messages } from "./schema.ts";
 import { getWebhookNotifications, type WebhookNotification } from "./webhook-notifications.ts";
 
-/**
- * Strip base64 image data from user messages to avoid context bloat.
- * Replaces image blocks with a text placeholder so the model knows an image was sent.
- */
-function stripImageData(msg: AgentMessage): AgentMessage {
-  if (msg.role !== "user") return msg;
-  if (typeof msg.content === "string") return msg;
-
-  // AgentMessage with role "user" has content: string | (TextContent | ImageContent)[]
-  // but TypeScript can't narrow through the union, so check the array directly
-  const content = msg.content as (TextContent | ImageContent)[];
-
-  let hasImages = false;
-  const stripped: (TextContent | ImageContent)[] = content.map((block) => {
-    if (block.type === "image") {
-      hasImages = true;
-      return { type: "text" as const, text: "[image]" };
-    }
-    return block;
-  });
-
-  return hasImages ? { ...msg, content: stripped } : msg;
+/** Images were never replayed to the model, so the history keeps only a placeholder for each. */
+function stripImageData(message: Message): Message {
+  if (message.role !== "user" || typeof message.content === "string") return message;
+  if (!message.content.some((block) => block.type === "image")) return message;
+  return {
+    ...message,
+    content: message.content.map((block): TextContent | ImageContent =>
+      block.type === "image" ? { type: "text", text: "[image]" } : block,
+    ),
+  };
 }
 
-export function formatWebhookMessage(n: WebhookNotification): string {
+function formatWebhookMessage(n: WebhookNotification): string {
   const service = n.source === "sonarr" ? "Sonarr" : "Radarr";
   const ts = n.receivedAt.toLocaleString("en-US", {
     month: "short",
@@ -41,48 +28,32 @@ export function formatWebhookMessage(n: WebhookNotification): string {
   return `[Webhook — ${service}] ${n.message} (received ${ts})`;
 }
 
-export interface ConversationHistory {
-  messages: AgentMessage[];
-  timestamps: WeakMap<object, Date>;
+function isFailedReply(message: Message): boolean {
+  return message.role === "assistant" && (message as AssistantMessage).stopReason === "error";
 }
 
 /**
- * Load a conversation's full message history, interleaving webhook notifications
- * at their correct positions by timestamp.
+ * The model's view of a conversation stored before pi-durable kept transcripts:
+ * its messages, with webhook notifications placed where they arrived. Each message
+ * is stamped with the time it was stored.
  */
-export async function loadConversationHistory(
-  conversationId: string,
-): Promise<ConversationHistory> {
+export async function loadLegacyHistory(conversationId: string): Promise<Message[]> {
   const rows = await db.query.messages.findMany({
     where: eq(messages.conversationId, conversationId),
     orderBy: [asc(messages.sequence)],
   });
+  const stored = rows
+    .map((row) => ({ message: row.data as Message, at: row.createdAt }))
+    .filter(({ message }) => !isFailedReply(message))
+    .map(({ message, at }) => ({ ...stripImageData(message), timestamp: at.getTime() }));
 
-  const baseMessages = rows
-    .filter(
-      (r) =>
-        !(
-          (r.data as AgentMessage).role === "assistant" &&
-          (r.data as AgentMessage as AssistantMessage).stopReason === "error"
-        ),
-    )
-    .map((r) => ({ msg: stripImageData(r.data as AgentMessage), createdAt: r.createdAt }));
-
-  const notifications = await getWebhookNotifications(conversationId);
-  const webhookMessages = notifications.map((n) => ({
-    msg: { role: "user", content: formatWebhookMessage(n) } as AgentMessage,
-    createdAt: n.receivedAt,
-  }));
-
-  const timestamps = new WeakMap<object, Date>();
-  const sorted = [...baseMessages, ...webhookMessages].sort(
-    (a, b) => a.createdAt.getTime() - b.createdAt.getTime(),
+  const notifications = (await getWebhookNotifications(conversationId)).map(
+    (notification): Message => ({
+      role: "user",
+      content: formatWebhookMessage(notification),
+      timestamp: notification.receivedAt.getTime(),
+    }),
   );
 
-  const result = sorted.map((x) => {
-    timestamps.set(x.msg, x.createdAt);
-    return x.msg;
-  });
-
-  return { messages: result, timestamps };
+  return [...stored, ...notifications].sort((a, b) => a.timestamp - b.timestamp);
 }

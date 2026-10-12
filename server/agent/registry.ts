@@ -2,14 +2,8 @@ import { createLogger } from "#server/logger.ts";
 import { getActiveUser } from "#server/auth/account.ts";
 import { braveTools } from "#server/brave/tools.ts";
 import { qbittorrentTools } from "#server/qbittorrent/tools.ts";
-import { addMoviePresentation, createAddMovieTool, radarrTools } from "#server/radarr/tools.ts";
-import {
-  addSeriesPresentation,
-  createAddSeriesTool,
-  createRequestSeasonTool,
-  requestSeasonPresentation,
-  sonarrTools,
-} from "#server/sonarr/tools.ts";
+import { createAddMovieTool, radarrTools } from "#server/radarr/tools.ts";
+import { createAddSeriesTool, createRequestSeasonTool, sonarrTools } from "#server/sonarr/tools.ts";
 import { timeTools } from "#server/time/tools.ts";
 import { tmdbTools } from "#server/tmdb/tools.ts";
 import { ultraTools } from "#server/ultra/tools.ts";
@@ -34,16 +28,21 @@ export const allTools: AnyTool[] = [
   unsubscribeNotificationsTool,
 ];
 
-/** Tools built per turn, so only their presentation can live in the registry. */
-const contextualPresentations: ToolPresentation[] = [
-  addMoviePresentation,
-  addSeriesPresentation,
-  requestSeasonPresentation,
+/**
+ * Every tool there is, those bound to a requester included. Their schemas and
+ * presentation do not depend on the requester; running one goes through
+ * `toolsForTurn`, which binds it.
+ */
+export const toolCatalog: AnyTool[] = [
+  ...allTools,
+  createAddMovieTool(),
+  createAddSeriesTool(),
+  createRequestSeasonTool(),
 ];
 
 /** The one place a tool name maps back to how it should be described. */
 const presentationByName = new Map<string, ToolPresentation>(
-  [...allTools, ...contextualPresentations].map((tool) => [tool.name, tool]),
+  toolCatalog.map((tool) => [tool.name, tool]),
 );
 
 log.info("tools registered", {

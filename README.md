@@ -4,7 +4,7 @@ AI-powered Plex media library assistant. A natural-language interface for managi
 Radarr, Sonarr, TMDB, qBittorrent, an Ultra seedbox, and Brave web search — reachable
 from Slack, Discord, a web SPA, a CLI, or plain HTTP.
 
-Built with [pi-agent-core](https://github.com/earendil-works/pi) + Anthropic Claude,
+Built with [pi-durable](https://github.com/earendil-works/pi) + Anthropic Claude,
 persisted in Postgres via Drizzle ORM, running on Bun. Live at <https://kyle.vhtm.eu>.
 
 More in [`docs/`](docs/): the [design system](docs/design-system.md), the
@@ -30,9 +30,10 @@ comes from, and how [testing and tooling](docs/testing.md) hang together.
 
 ## Overview
 
-Kyle is a stateless, interface-agnostic agent. A new agent is created per request and
-previous messages are replayed from the database, so every frontend — Slack, Discord, the
-web app, the CLI, or raw HTTP — shares one backend and one conversation model.
+Kyle is an interface-agnostic agent. Each conversation's transcript lives in pi-durable,
+stored in Postgres, so every frontend — Slack, Discord, the web app, the CLI, or raw HTTP —
+shares one backend and one conversation model, and a run interrupted by a restart picks up
+where it stopped.
 
 Capabilities:
 
@@ -86,9 +87,13 @@ server/
     tool.ts                  → Tool type: a runner-agnostic tool plus how to describe it
     registry.ts              → The one map from tool name to tool
     model.ts                 → Model selection (ANTHROPIC_MODEL)
-    run.ts                   → Agent factory + runAgent(), overload retries
     conversation.ts          → runConversationTurn(): the turn pipeline every interface uses
-    turn-writer.ts           → Persists messages + media events as the agent produces them
+    extension.ts             → The `kyle` pi-durable extension: tools, system prompt, request hook
+    turn-context.ts          → Who a conversation's current turn is for, as a durable document
+    turn-events.ts           → TurnEvent: what the interfaces show of a running turn
+    projection.ts            → Copies the durable transcript into `messages`, with media events
+    errors.ts                → ApiOverloadedError
+    testing.ts               → useFauxModel(): scripted model answers for tests
     tool-result.ts           → jsonResult(): the shape every tool returns
     table.ts                 → buildTable(): capped tables for tools that declare one
     tool-display.ts          → isActionTool() + describeToolCall(): how a call is shown
@@ -110,6 +115,7 @@ server/
     removals.ts              → Why a title left the library, since the services forget
     migrate.ts               → Migration runner
   durable/
+    harness.ts               → The process's one Harness, opened and resumed at startup
     postgres-storage.ts      → pi-durable Storage on Postgres; one process owns it at a time
     postgres-schema.ts       → Its tables, in their own schema (`durable`), migrated on open
   routes/
@@ -193,19 +199,22 @@ web/                         → Vue 3 + Vite + Tailwind CSS 4 SPA
 
 ## Key patterns
 
-- **Stateless agent** — created per request; previous messages loaded from DB and restored
-  via `agent.replaceMessages()`.
-- **One turn pipeline** — Slack, Discord, and HTTP all call `runConversationTurn()`, which
-  resolves the conversation, replays history, persists messages, and records media events.
-  Each interface only supplies its own I/O (streaming, replies, thread status).
-- **Incremental persistence** — messages are written on each `message_end` event rather than
-  in one batch at the end, so the thread viewer shows a turn in progress and a turn that
-  fails part-way still keeps what happened. Agent events are synchronous, so `turn-writer.ts`
-  chains its writes: `messages.sequence` is an identity column, and concurrent inserts would
-  order the thread by whichever insert landed first. A media event is queued behind the
-  message whose tool call produced it, since it needs that row's id. Note the viewer fetches
-  once on mount — following a live turn means refreshing.
-- **JSONB messages** — full `AgentMessage` objects stored as JSONB in the `messages` table.
+- **Durable transcripts** — each Kyle conversation has a pi-durable conversation
+  (`conversations.durable_conversation_id`), created on first use; one from before brings its
+  stored history along. A turn writes who it is for into a document, offers that user's tools,
+  and submits the input; the `kyle` extension renders the system prompt from that document and
+  binds each tool to the turn's user when it runs. Retries, context compaction, and resuming
+  after a restart are pi-durable's.
+- **One turn pipeline** — Slack, Discord, and HTTP all call `runConversationTurn()`. Each
+  interface only supplies its own I/O (streaming, replies, thread status) through
+  `TurnEvent`s, and a `requestId` where the platform retries: a retried message waits for the
+  turn already submitted instead of running it twice.
+- **Messages as a copy** — `messages` holds the transcript's user, assistant, and tool result
+  messages for the thread viewer, media events, and subscriptions. `projection.ts` copies new
+  entries in order as the turn runs, past `conversations.durable_projected_through`, so a turn
+  in progress or one that failed part-way is readable, and nothing is copied twice. Note the
+  viewer fetches once on mount — following a live turn means refreshing.
+- **JSONB messages** — full pi-ai `Message` objects stored as JSONB in the `messages` table.
   The `role` and `sequence` columns exist only for querying and ordering.
 - **Interface-agnostic conversations** — the `conversations` table has an `interfaceType`
   (http/slack/discord/cli). Slack is keyed by `externalId = "{channel}:{thread_ts}"`; Discord

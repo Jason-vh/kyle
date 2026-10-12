@@ -3,11 +3,13 @@ import { eq, inArray } from "drizzle-orm";
 import { db } from "#server/db/index.ts";
 import { conversations, platformIdentities, slackEventJobs } from "#server/db/schema.ts";
 import { createTestUser, deleteTestUser } from "#server/db/testing.ts";
-import * as agent from "#server/agent/index.ts";
+import { fauxAssistantMessage } from "@earendil-works/pi-ai";
+import { useFauxModel } from "#server/agent/testing.ts";
 import * as slack from "./client.ts";
 import { enqueueSlackEvent, processSlackEvent, processSlackEvents } from "./jobs.ts";
 import type { SlackEvent } from "./events.ts";
 
+const faux = useFauxModel();
 const eventIds: string[] = [];
 const event: SlackEvent = {
   type: "message",
@@ -110,10 +112,12 @@ test.each([false, true])(
         },
       },
     } as unknown as ReturnType<typeof slack.getSlackClient>);
-    const run = spyOn(agent, "runAgent").mockImplementation(async () => {
-      if (agentFails) throw new Error("Model unavailable");
-      return { messages: [], responseText: "Added your movie." };
-    });
+    faux.setResponses([
+      agentFails
+        ? fauxAssistantMessage([], { stopReason: "error", errorMessage: "Model unavailable" })
+        : fauxAssistantMessage("Added your movie."),
+    ]);
+    const modelCalls = faux.state.callCount;
     try {
       await enqueueSlackEvent(id, { ...event, user: platformUserId, ts: id });
       await processSlackEvent(id);
@@ -121,16 +125,15 @@ test.each([false, true])(
       expect(pending.completedAt).toBeNull();
       expect(pending.lastError).toBe("Slack unavailable");
       expect(pending.responseText).toBeTruthy();
-      expect(run).toHaveBeenCalledTimes(1);
+      expect(faux.state.callCount - modelCalls).toBe(1);
 
       deliveryFails = false;
       await processSlackEvent(id, undefined, pending.availableAt);
       expect(sent).toEqual([pending.responseText!]);
-      expect(run).toHaveBeenCalledTimes(1);
+      expect(faux.state.callCount - modelCalls).toBe(1);
       expect((await stored(id))!.completedAt).not.toBeNull();
       expect((await stored(id))!.lastError).toBeNull();
     } finally {
-      run.mockRestore();
       client.mockRestore();
       await db.delete(conversations).where(eq(conversations.userId, userId));
       await deleteTestUser(userId);

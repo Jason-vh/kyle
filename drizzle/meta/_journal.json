@@ -232,6 +232,13 @@
       "when": 1790795213704,
       "tag": "0032_user_last_seen",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1791791022243,
+      "tag": "0033_durable_conversations",
+      "breakpoints": true
     }
   ]
 }

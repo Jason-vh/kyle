@@ -417,9 +417,16 @@ export const conversations = pgTable(
     userId: uuid("user_id").references(() => users.id),
     metadata: jsonb("metadata"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
+    /** The pi-durable conversation holding this conversation's transcript. */
+    durableConversationId: bigint("durable_conversation_id", { mode: "number" }),
+    /** Newest durable entry copied into `messages`; entries after it are not there yet. */
+    durableProjectedThrough: bigint("durable_projected_through", { mode: "number" })
+      .notNull()
+      .default(0),
   },
   (table) => [
     uniqueIndex("conversations_external_id_idx").on(table.externalId, table.interfaceType),
+    uniqueIndex("conversations_durable_conversation_id_idx").on(table.durableConversationId),
     index("conversations_platform_user_id_idx").on(table.platformUserId),
   ],
 );

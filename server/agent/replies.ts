@@ -1,4 +1,4 @@
-import { ApiOverloadedError } from "./run.ts";
+import { ApiOverloadedError } from "./errors.ts";
 
 /** Stands in for a turn that produced no text at all. */
 export const EMPTY_REPLY = "Sorry, I wasn't able to generate a response. Please try again.";

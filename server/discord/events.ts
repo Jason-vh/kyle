@@ -146,6 +146,7 @@ export async function handleDiscordMessage(message: Message): Promise<void> {
       appUserId,
       text: messageText,
       images,
+      requestId: `discord:${message.id}`,
       context: agentContext,
     });
 
