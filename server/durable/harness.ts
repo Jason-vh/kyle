@@ -10,8 +10,11 @@ import { PostgresStorage } from "./postgres-storage.ts";
 
 const log = createLogger("durable");
 
-/** Generation retries, as Kyle's own loop did them: two more tries, five seconds apart and growing. */
-export const RETRY_POLICY = { maxRetries: 2, baseDelayMs: 5_000 };
+/**
+ * Generation retries, as Kyle's own loop did them: two more tries, five seconds
+ * apart and growing. Read at every use, so tests can shorten the wait.
+ */
+export const retryPolicy = { maxRetries: 2, baseDelayMs: 5_000 };
 
 /** A Harness running Kyle over `storage`; the process normally has one, from `getHarness()`. */
 export async function openHarness(
@@ -25,7 +28,11 @@ export async function openHarness(
     {
       models: harnessModels,
       registry,
-      settings: { retry: RETRY_POLICY },
+      settings: {
+        get retry() {
+          return retryPolicy;
+        },
+      },
       onReport: (error) => log.error("durable extension failed", errorFields(error)),
     },
     BACKGROUND_CONTEXT,

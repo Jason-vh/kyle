@@ -19,7 +19,7 @@ import { db } from "#server/db/index.ts";
 import { withDatabaseLock } from "#server/db/lock.ts";
 import { conversations } from "#server/db/schema.ts";
 import { loadLegacyHistory } from "#server/db/conversation-history.ts";
-import { getHarness, RETRY_POLICY } from "#server/durable/harness.ts";
+import { getHarness, retryPolicy } from "#server/durable/harness.ts";
 import { ApiOverloadedError, isOverloadedError } from "./errors.ts";
 import { turnTools } from "./extension.ts";
 import { model } from "./model.ts";
@@ -284,7 +284,7 @@ async function runTurn(
         : undefined,
   });
 
-  const translate = createTurnEventTranslator(RETRY_POLICY.maxRetries);
+  const translate = createTurnEventTranslator(retryPolicy.maxRetries);
   const events = await watchEvents(harness, durable.id, context);
   events.start(async (batch) => {
     for (const event of batch) {

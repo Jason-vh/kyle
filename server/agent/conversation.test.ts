@@ -8,8 +8,9 @@ import {
   type Message,
   type TranscriptContext,
 } from "@earendil-works/pi-ai";
-import { useFauxModel } from "./testing.ts";
+import { useFauxModel, useInstantRetries } from "./testing.ts";
 import { runConversationTurn, ConversationNotFoundError } from "./conversation.ts";
+import { ApiOverloadedError } from "./errors.ts";
 import type { TurnEvent } from "./turn-events.ts";
 import { db } from "#server/db/index.ts";
 import { conversations, messages, mediaEvents, users } from "#server/db/schema.ts";
@@ -445,6 +446,49 @@ describe("runConversationTurn", () => {
     const again = await runConversationTurn(turn);
     createdConversationIds.push(again.conversationId);
     expect(again.responseText).toBe("second time lucky");
+  });
+
+  test("an overloaded model is retried, and the interface hears about each retry", async () => {
+    const restore = useInstantRetries();
+    const overloaded = () =>
+      fauxAssistantMessage([], {
+        stopReason: "error",
+        errorMessage: "529 overloaded_error: Overloaded",
+      });
+    faux.setResponses([overloaded(), reply("made it on the second try")]);
+    const events: TurnEvent[] = [];
+    try {
+      const { conversationId, responseText } = await runConversationTurn({
+        interfaceType: "slack",
+        text: "hello",
+        onEvent: (event) => events.push(event),
+      });
+      createdConversationIds.push(conversationId);
+      expect(responseText).toBe("made it on the second try");
+      expect(events.filter((e) => e.type === "retry")).toEqual([
+        { type: "retry", attempt: 1, maxAttempts: 2 },
+      ]);
+    } finally {
+      restore();
+    }
+  });
+
+  test("a model still overloaded after every retry fails the turn as overloaded", async () => {
+    const restore = useInstantRetries();
+    const overloaded = () =>
+      fauxAssistantMessage([], {
+        stopReason: "error",
+        errorMessage: "529 overloaded_error: Overloaded",
+      });
+    faux.setResponses([overloaded(), overloaded(), overloaded()]);
+    try {
+      await expect(runConversationTurn({ interfaceType: "http", text: "hello" })).rejects.toThrow(
+        ApiOverloadedError,
+      );
+      expect(faux.getPendingResponseCount()).toBe(0);
+    } finally {
+      restore();
+    }
   });
 
   test("rejects an unknown conversation id", async () => {

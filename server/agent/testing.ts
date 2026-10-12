@@ -1,4 +1,5 @@
 import { fauxProvider, type FauxProviderHandle } from "@earendil-works/pi-ai";
+import { retryPolicy } from "#server/durable/harness.ts";
 import { model, models } from "./model.ts";
 
 /**
@@ -13,4 +14,11 @@ export function useFauxModel(): FauxProviderHandle {
   });
   models.setProvider(faux.provider);
   return faux;
+}
+
+/** Retries a failed model request at once instead of seconds later; returns the undo. */
+export function useInstantRetries(): () => void {
+  const saved = { ...retryPolicy };
+  retryPolicy.baseDelayMs = 1;
+  return () => Object.assign(retryPolicy, saved);
 }
