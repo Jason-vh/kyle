@@ -101,7 +101,12 @@ const addMoviePresentation: ToolPresentation = {
   name: "add_movie",
   label: "Adding movie to Radarr",
   action: true,
-  summary: (_args, payload) => `Added ${movieName(payload)} to Radarr`,
+  summary: (_args, payload) => {
+    if ((payload as { alreadyInLibrary?: boolean })?.alreadyInLibrary) {
+      return `${movieName(payload)} was already in Radarr`;
+    }
+    return `Added ${movieName(payload)} to Radarr`;
+  },
 };
 
 export function createAddMovieTool(requestedBy?: Requester): Tool<typeof addMovieParams> {
@@ -118,6 +123,7 @@ export function createAddMovieTool(requestedBy?: Requester): Tool<typeof addMovi
         year: movie.year,
         id: movie.id,
         titleSlug: movie.titleSlug,
+        alreadyInLibrary: status === "existing",
         message:
           status === "existing"
             ? `${name} is already in Radarr.`

@@ -148,8 +148,14 @@ const addSeriesPresentation: ToolPresentation = {
   name: "add_series",
   label: "Adding series to Sonarr",
   action: true,
-  summary: (_args, payload) =>
-    `Added ${seriesName((payload as { series?: unknown })?.series)} to Sonarr`,
+  summary: (_args, payload) => {
+    const { series, alreadyInLibrary } = (payload ?? {}) as {
+      series?: unknown;
+      alreadyInLibrary?: boolean;
+    };
+    if (alreadyInLibrary) return `${seriesName(series)} was already in Sonarr`;
+    return `Added ${seriesName(series)} to Sonarr`;
+  },
 };
 
 export function createAddSeriesTool(requestedBy?: Requester): Tool<typeof addSeriesParams> {
@@ -169,6 +175,7 @@ export function createAddSeriesTool(requestedBy?: Requester): Tool<typeof addSer
       return jsonResult({
         series: toPartialSeries(series),
         following: isFollowing(series),
+        alreadyInLibrary: status === "existing",
         message:
           status === "existing"
             ? `${name} is already in Sonarr as asked; nothing changed.`

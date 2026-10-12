@@ -1,4 +1,3 @@
-import { isObject } from "#server/http/input.ts";
 import { toolPresentation } from "./registry.ts";
 
 /** Tools that have since been renamed, so old threads still read correctly. */
@@ -30,14 +29,4 @@ export function describeToolCall(
   const summary = toolPresentation(name)?.summary;
   if (!summary) return name.replace(/_/g, " ");
   return typeof summary === "string" ? summary : summary(args, payload);
-}
-
-/** What the tool itself said happened: the error it failed with, or its result's `message`. */
-export function toolOutcome(
-  result: { isError: boolean; content: Array<{ type: string; text?: string }> },
-  payload?: unknown,
-): string | undefined {
-  if (result.isError) return result.content.find((block) => block.type === "text")?.text;
-  if (isObject(payload) && typeof payload.message === "string") return payload.message;
-  return undefined;
 }

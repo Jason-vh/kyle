@@ -25,7 +25,7 @@ export interface TaskUpdate {
   id: string;
   title: string;
   status: "in_progress" | "complete" | "error";
-  /** What came of the task, shown under its title. */
+  /** Shown under the title; used for the error a failed task hit. */
   output?: string;
 }
 

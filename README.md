@@ -309,8 +309,8 @@ web/                         → Vue 3 + Vite + Tailwind CSS 4 SPA
 - **Slack streaming** — replies stream via `chat.startStream`/`appendStream`/`stopStream`.
   Text deltas are buffered and flushed through a serialized promise chain (agent event
   handlers are synchronous, so unserialized calls would race). Action tools surface as
-  `task_update` cards in `timeline` mode, with the tool's own `message` (or its error) as
-  the card's output; lookups are not shown. Queue/calendar
+  `task_update` cards in `timeline` mode; a failed one shows its error as the card's
+  output. Lookups are not shown. Queue/calendar
   results append as Block Kit tables. Delivery is tracked exactly so text is never dropped
   or duplicated. Slack messages use **standard Markdown** (`markdown_text`), not mrkdwn.
 - **Slack agent sessions** — each thread is an agent session: `agents.sessions.setStatus`

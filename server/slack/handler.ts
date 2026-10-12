@@ -9,7 +9,7 @@ import {
   stopConversation,
 } from "#server/agent/conversation.ts";
 import { TurnStoppedError } from "#server/agent/errors.ts";
-import { describeToolCall, isActionTool, toolOutcome } from "#server/agent/tool-display.ts";
+import { describeToolCall, isActionTool } from "#server/agent/tool-display.ts";
 import { parseToolPayload } from "#server/agent/tool-result.ts";
 import { extractTable, type ResultTable } from "#server/agent/result-tables.ts";
 import { markUserSeen, resolveAppUserId } from "#server/db/users.ts";
@@ -91,7 +91,7 @@ function createProgressReporter(stream: SlackResponseStream): {
               id: event.toolCallId,
               title: label!,
               status: "error",
-              output: toolOutcome(event),
+              output: event.content.find((block) => block.type === "text")?.text,
             });
           }
           return;
@@ -108,7 +108,6 @@ function createProgressReporter(stream: SlackResponseStream): {
             id: event.toolCallId,
             title: describeToolCall(event.toolName, args, payload),
             status: "complete",
-            output: toolOutcome(event, payload),
           });
         }
       }
