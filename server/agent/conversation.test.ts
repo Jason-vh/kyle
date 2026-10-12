@@ -9,7 +9,12 @@ import {
   type TranscriptContext,
 } from "@earendil-works/pi-ai";
 import { useFauxModel, useInstantRetries } from "./testing.ts";
-import { runConversationTurn, ConversationNotFoundError } from "./conversation.ts";
+import {
+  importLegacyConversations,
+  runConversationTurn,
+  ConversationNotFoundError,
+} from "./conversation.ts";
+import { getHarness } from "#server/durable/harness.ts";
 import { ApiOverloadedError } from "./errors.ts";
 import type { TurnEvent } from "./turn-events.ts";
 import { db } from "#server/db/index.ts";
@@ -441,6 +446,17 @@ describe("runConversationTurn", () => {
       "user",
       "assistant",
     ]);
+  });
+
+  test("conversations from before pi-durable are all imported at startup", async () => {
+    const [created] = await db.insert(conversations).values({ interfaceType: "http" }).returning();
+    createdConversationIds.push(created!.id);
+    await importLegacyConversations(await getHarness());
+    const [row] = await db
+      .select({ durableId: conversations.durableConversationId })
+      .from(conversations)
+      .where(eq(conversations.id, created!.id));
+    expect(row?.durableId).not.toBeNull();
   });
 
   test("a retried request waits for the turn already submitted", async () => {

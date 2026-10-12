@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { BACKGROUND_CONTEXT } from "@earendil-works/chord/context";
 import type { AssistantMessage, ImageContent, Message, UserMessage } from "@earendil-works/pi-ai";
 import {
@@ -173,6 +173,27 @@ async function durableConversation(
     importedMessages: history.length,
   });
   return created;
+}
+
+/**
+ * Gives every conversation from before pi-durable its durable transcript at
+ * startup, before anything else touches them, so importing on first use can go.
+ */
+export async function importLegacyConversations(harness: Harness): Promise<void> {
+  const pending = await db
+    .select({ id: conversations.id })
+    .from(conversations)
+    .where(isNull(conversations.durableConversationId));
+  let failed = 0;
+  for (const { id } of pending) {
+    try {
+      await durableConversation(harness, id);
+    } catch (error) {
+      failed++;
+      log.error("could not import a conversation", { conversationId: id, ...errorFields(error) });
+    }
+  }
+  log.info("legacy conversations imported", { imported: pending.length - failed, failed });
 }
 
 function userContent(turn: ConversationTurn): UserMessage["content"] {
