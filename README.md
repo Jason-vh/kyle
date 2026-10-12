@@ -202,8 +202,7 @@ web/                         → Vue 3 + Vite + Tailwind CSS 4 SPA
 ## Key patterns
 
 - **Durable transcripts** — each Kyle conversation has a pi-durable conversation
-  (`conversations.durable_conversation_id`), created on first use; one from before brings its
-  stored history along. A turn writes who it is for into a document, offers that user's tools,
+  (`conversations.durable_conversation_id`), created on its first turn. A turn writes who it is for into a document, offers that user's tools,
   and submits the input; the `kyle` extension renders the system prompt from that document and
   binds each tool to the turn's user when it runs. Retries, context compaction, and resuming
   after a restart are pi-durable's.

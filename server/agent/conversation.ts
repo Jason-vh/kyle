@@ -1,11 +1,8 @@
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { BACKGROUND_CONTEXT } from "@earendil-works/chord/context";
-import type { AssistantMessage, ImageContent, Message, UserMessage } from "@earendil-works/pi-ai";
+import type { AssistantMessage, ImageContent, UserMessage } from "@earendil-works/pi-ai";
 import {
-  AssistantEntry,
   configure,
-  ToolResultEntry,
-  UserEntry,
   watchEvents,
   type Conversation,
   type EntryId,
@@ -18,7 +15,6 @@ import { errorFields } from "#server/errors.ts";
 import { db } from "#server/db/index.ts";
 import { withLock } from "#server/lock.ts";
 import { conversations } from "#server/db/schema.ts";
-import { loadLegacyHistory } from "#server/db/conversation-history.ts";
 import { getHarness, retryPolicy } from "#server/durable/harness.ts";
 import { ApiOverloadedError, isOverloadedError } from "./errors.ts";
 import { turnTools } from "./extension.ts";
@@ -121,17 +117,7 @@ async function resolveConversationId(turn: ConversationTurn): Promise<string> {
   return existing!.id;
 }
 
-function entryTokenFor(message: Message) {
-  if (message.role === "user") return UserEntry;
-  if (message.role === "assistant") return AssistantEntry;
-  return ToolResultEntry;
-}
-
-/**
- * The durable conversation behind a Kyle conversation, created on first use. A
- * conversation from before pi-durable brings its history along, in the same
- * commit, and marks it as already copied to `messages`.
- */
+/** The durable conversation behind a Kyle conversation, created on its first turn. */
 async function durableConversation(
   harness: Harness,
   conversationId: string,
@@ -145,55 +131,13 @@ async function durableConversation(
     if (existing) return existing;
   }
 
-  const history = await loadLegacyHistory(conversationId);
-  let imported = 0;
-  const created = await harness.createConversation(
-    {
-      ownership: { kind: "ownerless" },
-      init: async (tx, id) => {
-        for (const message of history) {
-          const token = entryTokenFor(message);
-          const draft =
-            token === ToolResultEntry
-              ? { model: [message], data: { diagnostics: [] } }
-              : { model: [message] };
-          imported = (await tx.appendEntry(id, { kind: token.kind, ...draft })).id;
-        }
-      },
-    },
-    context,
-  );
+  const created = await harness.createConversation({ ownership: { kind: "ownerless" } }, context);
   await db
     .update(conversations)
-    .set({ durableConversationId: created.id, durableProjectedThrough: imported })
+    .set({ durableConversationId: created.id })
     .where(eq(conversations.id, conversationId));
-  log.info("durable conversation created", {
-    conversationId,
-    durableConversationId: created.id,
-    importedMessages: history.length,
-  });
+  log.info("durable conversation created", { conversationId, durableConversationId: created.id });
   return created;
-}
-
-/**
- * Gives every conversation from before pi-durable its durable transcript at
- * startup, before anything else touches them, so importing on first use can go.
- */
-export async function importLegacyConversations(harness: Harness): Promise<void> {
-  const pending = await db
-    .select({ id: conversations.id })
-    .from(conversations)
-    .where(isNull(conversations.durableConversationId));
-  let failed = 0;
-  for (const { id } of pending) {
-    try {
-      await durableConversation(harness, id);
-    } catch (error) {
-      failed++;
-      log.error("could not import a conversation", { conversationId: id, ...errorFields(error) });
-    }
-  }
-  log.info("legacy conversations imported", { imported: pending.length - failed, failed });
 }
 
 function userContent(turn: ConversationTurn): UserMessage["content"] {

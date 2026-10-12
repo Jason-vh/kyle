@@ -9,12 +9,7 @@ import {
   type TranscriptContext,
 } from "@earendil-works/pi-ai";
 import { useFauxModel, useInstantRetries } from "./testing.ts";
-import {
-  importLegacyConversations,
-  runConversationTurn,
-  ConversationNotFoundError,
-} from "./conversation.ts";
-import { getHarness } from "#server/durable/harness.ts";
+import { runConversationTurn, ConversationNotFoundError } from "./conversation.ts";
 import { ApiOverloadedError } from "./errors.ts";
 import type { TurnEvent } from "./turn-events.ts";
 import { db } from "#server/db/index.ts";
@@ -396,67 +391,6 @@ describe("runConversationTurn", () => {
       context: { userId: appUserId },
     });
     expect(midRun).toEqual(["user", "assistant", "toolResult"]);
-  });
-
-  test("a conversation from before pi-durable brings its history", async () => {
-    const [created] = await db.insert(conversations).values({ interfaceType: "http" }).returning();
-    const conversationId = created!.id;
-    createdConversationIds.push(conversationId);
-    const stored = (role: string, data: object, minutesAgo: number) => ({
-      conversationId,
-      role,
-      data: { role, ...data },
-      createdAt: new Date(Date.now() - minutesAgo * 60_000),
-    });
-    const storedReply = (content: object[], extra: object) => ({
-      content,
-      api: "anthropic-messages",
-      provider: "anthropic",
-      model: "claude-sonnet-4-5",
-      usage: fauxAssistantMessage("").usage,
-      timestamp: 0,
-      ...extra,
-    });
-    await db
-      .insert(messages)
-      .values([
-        stored("user", { content: "remember Amsterdam", timestamp: 0 }, 10),
-        stored(
-          "assistant",
-          storedReply([{ type: "text", text: "noted" }], { stopReason: "stop" }),
-          9,
-        ),
-        stored("assistant", storedReply([], { stopReason: "error", errorMessage: "boom" }), 8),
-      ]);
-
-    let shown: Message[] = [];
-    faux.setResponses([reply("Amsterdam", (c) => (shown = conversationOf(c)))]);
-    await runConversationTurn({ interfaceType: "http", conversationId, text: "which city?" });
-
-    // The failed reply was never part of what the model saw, and still is not.
-    expect(shown.map(textOf).map((text) => text.replace(/^\[[^\]]+\] /, ""))).toEqual([
-      "remember Amsterdam",
-      "noted",
-      "which city?",
-    ]);
-    expect(await roles(conversationId)).toEqual([
-      "user",
-      "assistant",
-      "assistant",
-      "user",
-      "assistant",
-    ]);
-  });
-
-  test("conversations from before pi-durable are all imported at startup", async () => {
-    const [created] = await db.insert(conversations).values({ interfaceType: "http" }).returning();
-    createdConversationIds.push(created!.id);
-    await importLegacyConversations(await getHarness());
-    const [row] = await db
-      .select({ durableId: conversations.durableConversationId })
-      .from(conversations)
-      .where(eq(conversations.id, created!.id));
-    expect(row?.durableId).not.toBeNull();
   });
 
   test("a retried request waits for the turn already submitted", async () => {
