@@ -3,7 +3,8 @@ import { errorFields } from "#server/errors.ts";
 import { downloadImages, MAX_IMAGE_SIZE, type RemoteImage } from "#server/images.ts";
 import { toolPresentation, type AgentContext, type TurnEvent } from "#server/agent/index.ts";
 import { EMPTY_REPLY, failureReply } from "#server/agent/replies.ts";
-import { runConversationTurn } from "#server/agent/conversation.ts";
+import { runConversationTurn, stopConversation } from "#server/agent/conversation.ts";
+import { TurnStoppedError } from "#server/agent/errors.ts";
 import { describeToolCall, isActionTool } from "#server/agent/tool-display.ts";
 import { parseToolPayload } from "#server/agent/tool-result.ts";
 import { extractTable, type ResultTable } from "#server/agent/result-tables.ts";
@@ -16,10 +17,16 @@ import {
   unlinkedReply,
 } from "#server/auth/link-codes.ts";
 import { tableBlocks } from "./tables.ts";
-import { getSlackClient, setThreadStatus } from "./client.ts";
+import { getSlackClient, setSessionStatus } from "./client.ts";
 import { describeAppContext } from "./context.ts";
 import { SlackResponseStream } from "./stream.ts";
-import { buildExternalId, cleanMessageText, getImageFiles, type SlackEvent } from "./events.ts";
+import {
+  buildExternalId,
+  cleanMessageText,
+  getImageFiles,
+  threadExternalId,
+  type SlackEvent,
+} from "./events.ts";
 import { extractUserIds, resolveUsernames } from "./users.ts";
 
 const log = createLogger("slack");
@@ -38,14 +45,13 @@ function toRemoteImages(event: SlackEvent): RemoteImage[] {
 }
 
 /**
- * Mirrors the agent's progress into the thread: an ephemeral status line, a task
- * card per action, a table for results that read poorly as prose, and retries.
+ * Mirrors the agent's progress into the thread: a task card per action, and a
+ * table for results that read poorly as prose.
  */
-function createProgressReporter(
-  stream: SlackResponseStream,
-  channel: string,
-  threadTs: string,
-): { onEvent: (event: TurnEvent) => void; tables: () => ResultTable[] } {
+function createProgressReporter(stream: SlackResponseStream): {
+  onEvent: (event: TurnEvent) => void;
+  tables: () => ResultTable[];
+} {
   const toolArgs = new Map<string, Record<string, unknown>>();
   // Keyed by tool so repeated calls in one turn render a single, latest table.
   const tables = new Map<string, ResultTable>();
@@ -57,21 +63,10 @@ function createProgressReporter(
 
       if (event.type === "text_delta") stream.appendText(event.delta);
 
-      if (event.type === "retry") {
-        setThreadStatus(
-          channel,
-          threadTs,
-          `is retrying... (${event.attempt}/${event.maxAttempts})`,
-        );
-      }
-
       if (event.type === "tool_start") {
         toolArgs.set(event.toolCallId, event.args);
         const label = toolPresentation(event.toolName)?.label;
-        if (!label) return;
-
-        setThreadStatus(channel, threadTs, label);
-        if (isActionTool(event.toolName, event.args)) {
+        if (label && isActionTool(event.toolName, event.args)) {
           stream.updateTask({ id: event.toolCallId, title: label, status: "in_progress" });
         }
       }
@@ -159,7 +154,7 @@ export async function processSlackMessage(
     };
   }
 
-  setThreadStatus(channel, replyThreadTs, "is thinking...");
+  await setSessionStatus(channel, replyThreadTs, "processing");
 
   const stream = new SlackResponseStream(getSlackClient(), {
     channel,
@@ -167,10 +162,11 @@ export async function processSlackMessage(
     userId,
     teamId,
   });
-  const progress = createProgressReporter(stream, channel, replyThreadTs);
+  const progress = createProgressReporter(stream);
 
   let replyText: string;
   let tables: ResultTable[] = [];
+  let stopped = false;
   try {
     const { conversationId, responseText } = await runConversationTurn({
       interfaceType: "slack",
@@ -189,24 +185,34 @@ export async function processSlackMessage(
     replyText = responseText || EMPTY_REPLY;
     log.info("slack reply prepared", { channel, threadTs: replyThreadTs, conversationId });
   } catch (error) {
-    log.error("slack message processing failed", {
-      channel,
-      threadTs: replyThreadTs,
-      ...errorFields(error),
-    });
-
     replyText = failureReply(error);
-    stream.newParagraph();
-    stream.appendText(replyText);
+    stopped = error instanceof TurnStoppedError;
+    if (stopped) {
+      log.info("slack turn stopped", { channel, threadTs: replyThreadTs });
+    } else {
+      log.error("slack message processing failed", {
+        channel,
+        threadTs: replyThreadTs,
+        ...errorFields(error),
+      });
+      stream.newParagraph();
+      stream.appendText(replyText);
+    }
   }
 
   try {
     await saveReply?.(replyText);
-    await stream.finish(replyText, tables.length ? tableBlocks(tables) : undefined);
+    if (stopped) await stream.stop(replyText);
+    else await stream.finish(replyText, tables.length ? tableBlocks(tables) : undefined);
     return replyText;
   } finally {
-    setThreadStatus(channel, replyThreadTs, "");
+    await setSessionStatus(channel, replyThreadTs, "active");
   }
+}
+
+/** Answers Slack's stop button by ending the turn running in that thread. */
+export async function stopSlackThread(channel: string, threadTs: string): Promise<void> {
+  await stopConversation("slack", threadExternalId(channel, threadTs));
 }
 
 export async function postSlackReply(event: SlackEvent, text: string): Promise<void> {

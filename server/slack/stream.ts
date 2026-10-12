@@ -98,6 +98,14 @@ export class SlackResponseStream {
     }
   }
 
+  /** Abandon a stream Slack has already stopped, delivering only `note`. */
+  async stop(note: string): Promise<void> {
+    this.broken = true;
+    await this.queue;
+    this.pending = "";
+    await this.post(note);
+  }
+
   private enqueue(chunk?: AnyChunk): void {
     this.queue = this.queue.then(() => this.flush(chunk));
   }

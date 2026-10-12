@@ -71,9 +71,12 @@ export function isSlackEvent(value: unknown): value is SlackEvent {
   return true;
 }
 
+export function threadExternalId(channel: string, threadTs: string): string {
+  return `${channel}:${threadTs}`;
+}
+
 export function buildExternalId(event: SlackEvent): string {
-  const threadTs = event.thread_ts ?? event.ts;
-  return `${event.channel}:${threadTs}`;
+  return threadExternalId(event.channel, event.thread_ts ?? event.ts);
 }
 
 export function getImageFiles(files?: SlackFile[]): SlackFile[] {

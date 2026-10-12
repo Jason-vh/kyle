@@ -15,24 +15,21 @@ afterEach(async () => {
     await db.delete(slackEventJobs).where(inArray(slackEventJobs.eventId, ids.splice(0)));
 });
 
-function request(id: string, retry = false) {
+const imageMessage = {
+  type: "message",
+  channel: "C1",
+  channel_type: "im",
+  user: "U1",
+  ts: "1",
+  files: [
+    { id: "F1", mimetype: "image/png", size: 10_000_000, url_private: "https://unused.test" },
+  ],
+};
+
+function request(id: string, retry = false, event: Record<string, unknown> = imageMessage) {
   process.env.SLACK_SIGNING_SECRET = "slack-inbox-test";
   const timestamp = String(Math.floor(Date.now() / 1000));
-  const body = JSON.stringify({
-    type: "event_callback",
-    event_id: id,
-    team_id: "T1",
-    event: {
-      type: "message",
-      channel: "C1",
-      channel_type: "im",
-      user: "U1",
-      ts: "1",
-      files: [
-        { id: "F1", mimetype: "image/png", size: 10_000_000, url_private: "https://unused.test" },
-      ],
-    },
-  });
+  const body = JSON.stringify({ type: "event_callback", event_id: id, team_id: "T1", event });
   const signature = createHmac("sha256", process.env.SLACK_SIGNING_SECRET)
     .update(`v0:${timestamp}:${body}`)
     .digest("hex");
@@ -73,4 +70,24 @@ test("rejects unsigned events without persisting them", async () => {
   expect(
     await db.query.slackEventJobs.findFirst({ where: eq(slackEventJobs.eventId, id) }),
   ).toBeUndefined();
+});
+
+test("acknowledges a stop without queueing it as a message", async () => {
+  const id = crypto.randomUUID();
+  const stop = {
+    type: "agent_session_stopped",
+    channel: "C1",
+    thread_ts: "1.1",
+    user: "U1",
+    streaming_message_ts: [],
+  };
+  expect((await handleSlackEvents(request(id, false, stop))).status).toBe(200);
+  expect(
+    await db.query.slackEventJobs.findFirst({ where: eq(slackEventJobs.eventId, id) }),
+  ).toBeUndefined();
+});
+
+test("rejects a stop that does not name its thread", async () => {
+  const stop = { type: "agent_session_stopped", channel: "C1", user: "U1" };
+  expect((await handleSlackEvents(request(crypto.randomUUID(), false, stop))).status).toBe(400);
 });

@@ -12,8 +12,7 @@ export type TurnEvent =
       toolName: string;
       isError: boolean;
       content: ToolResultMessage["content"];
-    }
-  | { type: "retry"; attempt: number; maxAttempts: number };
+    };
 
 function assistantText(message: Message | undefined): string {
   if (message?.role !== "assistant") return "";
@@ -27,7 +26,7 @@ function assistantText(message: Message | undefined): string {
  * their changes. Partial answers are committed at intervals, so the deltas seen
  * may stop short of the answer; the rest is sent when the answer is complete.
  */
-export function createTurnEventTranslator(maxRetries: number): (event: AgentEvent) => TurnEvent[] {
+export function createTurnEventTranslator(): (event: AgentEvent) => TurnEvent[] {
   let streamed = "";
 
   function textSoFar(text: string): TurnEvent[] {
@@ -70,8 +69,6 @@ export function createTurnEventTranslator(maxRetries: number): (event: AgentEven
           },
         ];
       }
-      case "auto_retry_start":
-        return [{ type: "retry", attempt: event.attempt, maxAttempts: maxRetries }];
       default:
         return [];
     }

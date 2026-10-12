@@ -309,9 +309,14 @@ web/                         → Vue 3 + Vite + Tailwind CSS 4 SPA
 - **Slack streaming** — replies stream via `chat.startStream`/`appendStream`/`stopStream`.
   Text deltas are buffered and flushed through a serialized promise chain (agent event
   handlers are synchronous, so unserialized calls would race). Action tools surface as
-  `task_update` cards; lookups only move the ephemeral thread status. Queue/calendar
+  `task_update` cards; lookups are not shown. Queue/calendar
   results append as Block Kit tables. Delivery is tracked exactly so text is never dropped
   or duplicated. Slack messages use **standard Markdown** (`markdown_text`), not mrkdwn.
+- **Slack agent sessions** — each thread is an agent session: `agents.sessions.setStatus`
+  marks it `processing` when a turn starts and `active` when it ends (Slack no longer
+  clears it on reply). The native stop button sends `agent_session_stopped`, which aborts
+  the thread's durable conversation; the turn settles as `TurnStoppedError` and the
+  thread gets "Stopped." instead of the rest of the reply.
 - **Slack dedup** — in-memory `Set<string>` on `event_id` (capped at 10k) plus
   `X-Slack-Retry-Num` header skipping.
 - **One HTTP client** — every outbound service (Sonarr, Radarr, TMDB, Ultra, Brave,
@@ -546,31 +551,18 @@ join two Plex accounts. The admin picks which user survives, and it keeps its ow
 - **App settings**: managed via manifest at [api.slack.com/apps](https://api.slack.com/apps)
 - **Request URL**: `https://kyle.vhtm.eu/slack/events`
 - **Bot events**: `message.im`, `message.channels`, `message.groups`, `message.mpim`,
-  `assistant_thread_started`, `assistant_thread_context_changed`
+  `app_context_changed`, `agent_session_stopped`
 - **Bot scopes**: `chat:write`, `app_mentions:read`, `assistant:write`, `im:history`,
-  `im:read`, `channels:history`, `groups:history`, `mpim:history`, `users:read`,
-  `chat:write.customize`, `incoming-webhook`
-- The app uses Slack's **Assistant** feature (assistant events are subscribed but not yet
-  handled with the `assistant.threads.*` API).
+  `im:read`, `channels:history`, `channels:read`, `groups:history`, `mpim:history`,
+  `users:read`, `chat:write.customize`, `incoming-webhook`
+- The app uses Slack's **Agent messaging experience** (`agent_view`): conversations live
+  in the Messages tab and each thread is an agent session.
 
-### Migrating to the Agent messaging experience (`agent_view`)
-
-Slack is deprecating `assistant_view` in favour of `agent_view`, where agent conversations
-live in the normal Messages tab. **The switch is irreversible** and only needs app-settings
-changes — no server code depends on the assistant events:
-
-1. In [app settings](https://api.slack.com/apps) → **Agent** tab, switch the app to the
-   Agent experience (`assistant_view` → `agent_view`; `assistant_description` →
-   `agent_description`).
-2. Change event subscriptions: drop `assistant_thread_started` and
-   `assistant_thread_context_changed`; add `app_home_opened` and `app_context_changed`.
-3. Users must hard refresh Slack to see the new experience.
-
+Without `agent_session_stopped`, Slack shows a loading indicator with no stop button.
 Subscribing to `app_context_changed` makes Slack attach `app_context` to `message.im`, which
-Kyle already reads (`describeAppContext` in `server/slack/context.ts`) to tell the agent
-what the user is looking at. That code is inert until `agent_view` is on. Resolving a
-channel ID to a name also needs the `channels:read` scope; without it the context is dropped
-rather than passed to the agent as an opaque ID.
+Kyle reads (`describeAppContext` in `server/slack/context.ts`) to tell the agent what the
+user is looking at. Resolving a channel ID to a name needs `channels:read`; without it the
+context is dropped rather than passed to the agent as an opaque ID.
 
 ## Environment variables
 

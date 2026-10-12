@@ -9,8 +9,12 @@ import {
   type TranscriptContext,
 } from "@earendil-works/pi-ai";
 import { useFauxModel, useInstantRetries } from "./testing.ts";
-import { runConversationTurn, ConversationNotFoundError } from "./conversation.ts";
-import { ApiOverloadedError } from "./errors.ts";
+import {
+  runConversationTurn,
+  stopConversation,
+  ConversationNotFoundError,
+} from "./conversation.ts";
+import { ApiOverloadedError, TurnStoppedError } from "./errors.ts";
 import type { TurnEvent } from "./turn-events.ts";
 import { db } from "#server/db/index.ts";
 import { conversations, messages, mediaEvents, users } from "#server/db/schema.ts";
@@ -427,7 +431,7 @@ describe("runConversationTurn", () => {
     expect(again.responseText).toBe("second time lucky");
   });
 
-  test("an overloaded model is retried, and the interface hears about each retry", async () => {
+  test("an overloaded model is retried", async () => {
     const restore = useInstantRetries();
     const overloaded = () =>
       fauxAssistantMessage([], {
@@ -435,18 +439,13 @@ describe("runConversationTurn", () => {
         errorMessage: "529 overloaded_error: Overloaded",
       });
     faux.setResponses([overloaded(), reply("made it on the second try")]);
-    const events: TurnEvent[] = [];
     try {
       const { conversationId, responseText } = await runConversationTurn({
         interfaceType: "slack",
         text: "hello",
-        onEvent: (event) => events.push(event),
       });
       createdConversationIds.push(conversationId);
       expect(responseText).toBe("made it on the second try");
-      expect(events.filter((e) => e.type === "retry")).toEqual([
-        { type: "retry", attempt: 1, maxAttempts: 2 },
-      ]);
     } finally {
       restore();
     }
@@ -478,5 +477,32 @@ describe("runConversationTurn", () => {
         text: "hi",
       }),
     ).rejects.toThrow(ConversationNotFoundError);
+  });
+
+  test("stopping a conversation ends its running turn, and the next turn runs", async () => {
+    const started = Promise.withResolvers<void>();
+    faux.setResponses([
+      async (_context, options) => {
+        started.resolve();
+        await new Promise((resolve) => options?.signal?.addEventListener("abort", resolve));
+        return fauxAssistantMessage("too late");
+      },
+      reply("after the stop"),
+    ]);
+    const externalId = `test:${crypto.randomUUID()}`;
+    const turn = { interfaceType: "slack" as const, externalId, text: "hello" };
+
+    const running = runConversationTurn(turn).catch((error: unknown) => error);
+    await started.promise;
+    await stopConversation("slack", externalId);
+    expect(await running).toBeInstanceOf(TurnStoppedError);
+
+    const next = await runConversationTurn(turn);
+    createdConversationIds.push(next.conversationId);
+    expect(next.responseText).toBe("after the stop");
+  });
+
+  test("stopping a conversation that does not exist does nothing", async () => {
+    await stopConversation("slack", `test:${crypto.randomUUID()}`);
   });
 });

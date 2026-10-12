@@ -17,20 +17,22 @@ export function getSlackClient(): WebClient {
   return client;
 }
 
-export async function setThreadStatus(
+/** Where an agent session stands; `processing` shows Slack's "Working…" and stop button. */
+export type SessionStatus = "processing" | "active";
+
+export async function setSessionStatus(
   channelId: string,
   threadTs: string,
-  status: string,
+  status: SessionStatus,
 ): Promise<void> {
   try {
-    const slack = getSlackClient();
-    await slack.assistant.threads.setStatus({
+    await getSlackClient().agents.sessions.setStatus({
       channel_id: channelId,
       thread_ts: threadTs,
       status,
     });
   } catch (error) {
-    log.warn("failed to set thread status", {
+    log.warn("failed to set session status", {
       channelId,
       threadTs,
       status,

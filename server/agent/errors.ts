@@ -10,3 +10,10 @@ export function isOverloadedError(error?: string): boolean {
   const lower = error.toLowerCase();
   return lower.includes("overloaded") || lower.includes("529");
 }
+
+export class TurnStoppedError extends Error {
+  constructor() {
+    super("Turn was stopped before it answered");
+    this.name = "TurnStoppedError";
+  }
+}

@@ -130,6 +130,20 @@ test("a stream that never starts falls back to the full text", async () => {
   expect(posted!.args.markdown_text).toBe("a".repeat(600));
 });
 
+test("a stream Slack stopped delivers only the note, never the rest of the text", async () => {
+  const { client, calls } = fakeSlack();
+  const stream = new SlackResponseStream(client, target);
+
+  stream.appendText("a".repeat(600));
+  await settle();
+  stream.appendText("b".repeat(600));
+  await stream.stop("Stopped.");
+
+  expect(calls.map((c) => c.method)).toEqual(["startStream", "postMessage"]);
+  expect(textOf(calls[0]!)).toBe("a".repeat(600));
+  expect(calls[1]!.args.markdown_text).toBe("Stopped.");
+});
+
 test("blocks are appended to the finished message, opening a stream if needed", async () => {
   const { client, calls } = fakeSlack();
   const stream = new SlackResponseStream(client, target);

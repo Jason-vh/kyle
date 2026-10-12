@@ -15,8 +15,8 @@ import { errorFields } from "#server/errors.ts";
 import { db } from "#server/db/index.ts";
 import { withLock } from "#server/lock.ts";
 import { conversations } from "#server/db/schema.ts";
-import { getHarness, retryPolicy } from "#server/durable/harness.ts";
-import { ApiOverloadedError, isOverloadedError } from "./errors.ts";
+import { getHarness } from "#server/durable/harness.ts";
+import { ApiOverloadedError, isOverloadedError, TurnStoppedError } from "./errors.ts";
 import { turnTools } from "./extension.ts";
 import { model } from "./model.ts";
 import { createProjection } from "./projection.ts";
@@ -160,6 +160,7 @@ async function answerText(durable: Conversation, answer: EntryId): Promise<strin
 }
 
 function failure(settled: Extract<SettledSubmissionRecord, { status: "unanswered" }>): Error {
+  if (settled.reason === "aborted") return new TurnStoppedError();
   const detail = typeof settled.detail === "string" ? settled.detail : undefined;
   if (isOverloadedError(detail)) return new ApiOverloadedError();
   return new Error(`Turn went unanswered (${settled.reason})${detail ? `: ${detail}` : ""}`);
@@ -202,6 +203,30 @@ async function submitTurn(
 export async function runConversationTurn(turn: ConversationTurn): Promise<ConversationTurnResult> {
   const conversationId = await resolveConversationId(turn);
   return withLock(`conversation:${conversationId}`, () => runTurn(turn, conversationId));
+}
+
+/**
+ * Stops whatever a platform conversation is working on and withdraws its queued
+ * input; the stopped turn settles with a `TurnStoppedError`.
+ */
+export async function stopConversation(
+  interfaceType: InterfaceType,
+  externalId: string,
+): Promise<void> {
+  const [row] = await db
+    .select({ id: conversations.id, durableId: conversations.durableConversationId })
+    .from(conversations)
+    .where(
+      and(eq(conversations.externalId, externalId), eq(conversations.interfaceType, interfaceType)),
+    );
+  if (row?.durableId == null) return;
+
+  const harness = await getHarness();
+  const durable = await harness.conversation(row.durableId as Conversation["id"], context);
+  if (!durable) return;
+
+  await durable.abort(context);
+  log.info("conversation stopped", { conversationId: row.id, interfaceType });
 }
 
 async function runTurn(
@@ -249,7 +274,7 @@ async function runTurn(
         : undefined,
   });
 
-  const translate = createTurnEventTranslator(retryPolicy.maxRetries);
+  const translate = createTurnEventTranslator();
   const events = await watchEvents(harness, durable.id, context);
   events.start(async (batch) => {
     for (const event of batch) {
