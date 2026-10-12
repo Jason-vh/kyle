@@ -83,20 +83,25 @@ export function getImageFiles(files?: SlackFile[]): SlackFile[] {
   return (files ?? []).filter((f) => SUPPORTED_IMAGE_TYPES.has(f.mimetype));
 }
 
+/** Subtypes that are still a person writing to Kyle. */
+const ANSWERED_SUBTYPES = new Set(["file_share", "thread_broadcast"]);
+
+/** Whether a message has anything to answer, wherever it was sent. */
 export function shouldProcess(event: SlackEvent): boolean {
   if (event.bot_id) return false;
-  if (event.subtype && event.subtype !== "file_share") return false;
+  if (event.subtype && !ANSWERED_SUBTYPES.has(event.subtype)) return false;
 
   const hasText = !!event.text?.trim();
   const hasImages = getImageFiles(event.files).length > 0;
-  if (!hasText && !hasImages) return false;
+  return hasText || hasImages;
+}
 
-  // DMs always pass through; channels require @mention
-  if (event.channel_type !== "im") {
-    if (!event.text?.includes(`<@${BOT_USER_ID}>`)) return false;
-  }
+export function mentionsKyle(event: SlackEvent): boolean {
+  return !!event.text?.includes(`<@${BOT_USER_ID}>`);
+}
 
-  return true;
+export function isThreadReply(event: SlackEvent): boolean {
+  return !!event.thread_ts && event.thread_ts !== event.ts;
 }
 
 function decodeSlackEntities(text: string): string {

@@ -318,6 +318,8 @@ web/                         → Vue 3 + Vite + Tailwind CSS 4 SPA
   clears it on reply). The native stop button sends `agent_session_stopped`, which aborts
   the thread's durable conversation; the turn settles as `TurnStoppedError` and the
   thread gets "Stopped." instead of the rest of the reply.
+- **Slack addressing** — Kyle answers every DM, any @mention, and every reply in a
+  thread he already has a conversation in, so a thread needs only its first @mention.
 - **Slack dedup** — in-memory `Set<string>` on `event_id` (capped at 10k) plus
   `X-Slack-Retry-Num` header skipping.
 - **One HTTP client** — every outbound service (Sonarr, Radarr, TMDB, Ultra, Brave,
@@ -417,8 +419,9 @@ BASE_URL=https://kyle.vhtm.eu bun run scripts/test-slack.ts "hello"
 
 The script signs requests with `SLACK_SIGNING_SECRET` from `.env`, matching Slack's
 signature format, and returns Kyle's response synchronously via the `X-Sync-Response`
-header. **The test payload doesn't set `channel_type`, so `shouldProcess` treats it as a
-channel message and requires a bot mention** — prefix messages with the bot ID:
+header. **The test payload doesn't set `channel_type`, so it counts as a channel message
+and needs a bot mention** unless it replies in a thread Kyle already answers in — prefix
+messages with the bot ID:
 
 ```bash
 BASE_URL=https://kyle.vhtm.eu bun run scripts/test-slack.ts "<@U099N4BJT5Y> add inception"

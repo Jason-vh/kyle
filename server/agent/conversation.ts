@@ -117,6 +117,20 @@ async function resolveConversationId(turn: ConversationTurn): Promise<string> {
   return existing!.id;
 }
 
+export async function conversationExists(
+  interfaceType: InterfaceType,
+  externalId: string,
+): Promise<boolean> {
+  const existing = await db.query.conversations.findFirst({
+    columns: { id: true },
+    where: and(
+      eq(conversations.externalId, externalId),
+      eq(conversations.interfaceType, interfaceType),
+    ),
+  });
+  return !!existing;
+}
+
 /** The durable conversation behind a Kyle conversation, created on its first turn. */
 async function durableConversation(
   harness: Harness,

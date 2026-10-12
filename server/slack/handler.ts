@@ -3,7 +3,11 @@ import { errorFields } from "#server/errors.ts";
 import { downloadImages, MAX_IMAGE_SIZE, type RemoteImage } from "#server/images.ts";
 import { toolPresentation, type AgentContext, type TurnEvent } from "#server/agent/index.ts";
 import { EMPTY_REPLY, failureReply } from "#server/agent/replies.ts";
-import { runConversationTurn, stopConversation } from "#server/agent/conversation.ts";
+import {
+  conversationExists,
+  runConversationTurn,
+  stopConversation,
+} from "#server/agent/conversation.ts";
 import { TurnStoppedError } from "#server/agent/errors.ts";
 import { describeToolCall, isActionTool, toolOutcome } from "#server/agent/tool-display.ts";
 import { parseToolPayload } from "#server/agent/tool-result.ts";
@@ -24,6 +28,8 @@ import {
   buildExternalId,
   cleanMessageText,
   getImageFiles,
+  isThreadReply,
+  mentionsKyle,
   threadExternalId,
   type SlackEvent,
 } from "./events.ts";
@@ -108,6 +114,16 @@ function createProgressReporter(stream: SlackResponseStream): {
       }
     },
   };
+}
+
+/**
+ * Whether a message is meant for Kyle: anything in a DM, an @mention, or any
+ * reply in a thread Kyle is already part of.
+ */
+export async function isAddressedToKyle(event: SlackEvent): Promise<boolean> {
+  if (event.channel_type === "im" || mentionsKyle(event)) return true;
+  if (!isThreadReply(event)) return false;
+  return conversationExists("slack", buildExternalId(event));
 }
 
 /** Runs one Slack message through the agent and streams the reply back into the thread. */

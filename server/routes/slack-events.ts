@@ -3,7 +3,7 @@ import { safeJsonParse } from "#server/json.ts";
 import { errorFields } from "#server/errors.ts";
 import { verifySlackSignature } from "#server/slack/verify.ts";
 import { enqueueSlackEvent, processSlackEvent } from "#server/slack/jobs.ts";
-import { stopSlackThread } from "#server/slack/handler.ts";
+import { isAddressedToKyle, stopSlackThread } from "#server/slack/handler.ts";
 import { isSlackEvent, shouldProcess } from "#server/slack/events.ts";
 import { isObject, isText } from "#server/http/input.ts";
 
@@ -50,7 +50,7 @@ export async function handleSlackEvents(req: Request): Promise<Response> {
   if (!isSlackEvent(event) || (payload.team_id !== undefined && !isText(payload.team_id))) {
     return Response.json({ error: "Invalid message event" }, { status: 400 });
   }
-  if (!shouldProcess(event)) return ack;
+  if (!shouldProcess(event) || !(await isAddressedToKyle(event))) return ack;
   if (typeof payload.event_id !== "string" || !payload.event_id) {
     return Response.json({ error: "event_id is required" }, { status: 400 });
   }
