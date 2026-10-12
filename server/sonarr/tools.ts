@@ -451,7 +451,7 @@ const downloadEpisodesTool: Tool<typeof searchEpisodesParams> = {
       return jsonResult({
         commandId: command.id,
         status: command.status,
-        message: `SeasonSearch queued for ${series.title} season ${params.seasonNumber}`,
+        message: `Searching for ${series.title} season ${params.seasonNumber}.`,
         seriesId: series.id,
         seriesTitle: series.title,
         tvdbId: series.tvdbId,
@@ -470,7 +470,7 @@ const downloadEpisodesTool: Tool<typeof searchEpisodesParams> = {
       return jsonResult({
         commandId: command.id,
         status: command.status,
-        message: `EpisodeSearch queued for ${params.episodeIds.length} episode${params.episodeIds.length === 1 ? "" : "s"}`,
+        message: `Searching for ${params.episodeIds.length} episode${params.episodeIds.length === 1 ? "" : "s"}${series ? ` of ${series.title}` : ""}.`,
         ...(series
           ? { seriesId: series.id, seriesTitle: series.title, tvdbId: series.tvdbId }
           : {}),
@@ -486,7 +486,7 @@ const downloadEpisodesTool: Tool<typeof searchEpisodesParams> = {
       return jsonResult({
         commandId: command.id,
         status: command.status,
-        message: `SeriesSearch queued for series ${params.seriesId}`,
+        message: `Searching for every missing episode of ${series.title}.`,
         seriesId: series.id,
         seriesTitle: series.title,
         tvdbId: series.tvdbId,

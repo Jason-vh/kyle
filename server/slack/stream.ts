@@ -7,8 +7,11 @@ const log = createLogger("slack:stream");
 /** Flush buffered text once it reaches this many characters. */
 const FLUSH_THRESHOLD = 512;
 
-/** Collapse consecutive tool calls into a single summarized task card. */
-const TASK_DISPLAY_MODE = "dense";
+/** Task cards appear one by one, between the text they came with. */
+const TASK_DISPLAY_MODE = "timeline";
+
+/** Slack caps task chunks at 256 characters, title included. */
+const MAX_TASK_OUTPUT = 160;
 
 export interface StreamTarget {
   channel: string;
@@ -22,6 +25,8 @@ export interface TaskUpdate {
   id: string;
   title: string;
   status: "in_progress" | "complete" | "error";
+  /** What came of the task, shown under its title. */
+  output?: string;
 }
 
 /**
@@ -59,8 +64,12 @@ export class SlackResponseStream {
   }
 
   /** Show tool progress in the streamed message. */
-  updateTask(task: TaskUpdate): void {
-    this.enqueue({ type: "task_update", ...task });
+  updateTask({ output, ...task }: TaskUpdate): void {
+    this.enqueue({
+      type: "task_update",
+      ...task,
+      ...(output ? { output: truncate(output, MAX_TASK_OUTPUT) } : {}),
+    });
   }
 
   /**
@@ -159,4 +168,8 @@ export class SlackResponseStream {
   private context() {
     return { channel: this.target.channel, threadTs: this.target.threadTs, ts: this.ts };
   }
+}
+
+function truncate(text: string, max: number): string {
+  return text.length <= max ? text : `${text.slice(0, max - 1).trimEnd()}…`;
 }

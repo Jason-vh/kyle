@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { describeToolCall, isActionTool } from "./tool-display.ts";
+import { describeToolCall, isActionTool, toolOutcome } from "./tool-display.ts";
 
 test("library changes are actions", () => {
   for (const tool of ["add_movie", "remove_series", "remove_season", "download_episodes"]) {
@@ -52,4 +52,16 @@ test("a call with no result still reads sensibly", () => {
   expect(describeToolCall("unsubscribe_notifications", { userId: "u" })).toBe(
     "Unsubscribed from notifications",
   );
+});
+
+test("the outcome is the tool's own message, or the error it failed with", () => {
+  const ok = { isError: false, content: [] };
+  expect(toolOutcome(ok, { message: "Inception (2010) is already in Radarr." })).toBe(
+    "Inception (2010) is already in Radarr.",
+  );
+  expect(toolOutcome(ok, { title: "Inception" })).toBeUndefined();
+  expect(toolOutcome(ok)).toBeUndefined();
+  expect(
+    toolOutcome({ isError: true, content: [{ type: "text", text: "radarr API error 503" }] }),
+  ).toBe("radarr API error 503");
 });

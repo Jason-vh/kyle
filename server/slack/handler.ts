@@ -5,7 +5,7 @@ import { toolPresentation, type AgentContext, type TurnEvent } from "#server/age
 import { EMPTY_REPLY, failureReply } from "#server/agent/replies.ts";
 import { runConversationTurn, stopConversation } from "#server/agent/conversation.ts";
 import { TurnStoppedError } from "#server/agent/errors.ts";
-import { describeToolCall, isActionTool } from "#server/agent/tool-display.ts";
+import { describeToolCall, isActionTool, toolOutcome } from "#server/agent/tool-display.ts";
 import { parseToolPayload } from "#server/agent/tool-result.ts";
 import { extractTable, type ResultTable } from "#server/agent/result-tables.ts";
 import { markUserSeen, resolveAppUserId } from "#server/db/users.ts";
@@ -81,7 +81,12 @@ function createProgressReporter(stream: SlackResponseStream): {
         if (event.isError) {
           // A failed action keeps the present tense: it was attempted, not done.
           if (isAction) {
-            stream.updateTask({ id: event.toolCallId, title: label!, status: "error" });
+            stream.updateTask({
+              id: event.toolCallId,
+              title: label!,
+              status: "error",
+              output: toolOutcome(event),
+            });
           }
           return;
         }
@@ -97,6 +102,7 @@ function createProgressReporter(stream: SlackResponseStream): {
             id: event.toolCallId,
             title: describeToolCall(event.toolName, args, payload),
             status: "complete",
+            output: toolOutcome(event, payload),
           });
         }
       }
