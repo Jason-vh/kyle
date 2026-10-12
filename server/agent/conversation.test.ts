@@ -14,6 +14,7 @@ import { ApiOverloadedError } from "./errors.ts";
 import type { TurnEvent } from "./turn-events.ts";
 import { db } from "#server/db/index.ts";
 import { conversations, messages, mediaEvents, users } from "#server/db/schema.ts";
+import { createTestUser, deleteTestUser } from "#server/db/testing.ts";
 
 /** Runs real turns through pi-durable and Postgres; only the model is scripted. */
 
@@ -57,6 +58,7 @@ async function roles(conversationId: string): Promise<string[]> {
 
 let appUserId: string;
 const createdConversationIds: string[] = [];
+const cleanupUsers: string[] = [];
 
 beforeAll(async () => {
   const [user] = await db
@@ -73,6 +75,7 @@ afterAll(async () => {
     await db.delete(conversations).where(eq(conversations.id, id));
   }
   await db.delete(users).where(eq(users.id, appUserId));
+  for (const id of cleanupUsers) await deleteTestUser(id);
 });
 
 describe("runConversationTurn", () => {
@@ -245,6 +248,32 @@ describe("runConversationTurn", () => {
     });
     createdConversationIds.push(conversationId);
     expect(events.find((e) => e.type === "tool_end")).toMatchObject({ isError: true });
+  });
+
+  test("permissions are read again when a tool runs, not when the turn starts", async () => {
+    const adminId = await createTestUser("Demoted admin", true);
+    cleanupUsers.push(adminId);
+    faux.setResponses([
+      async () => {
+        // Demoted after the turn offered admin tools, before the model's call runs.
+        await db.update(users).set({ isAdmin: false }).where(eq(users.id, adminId));
+        return fauxAssistantMessage([fauxToolCall("remove_movie", { movieId: 1 })], {
+          stopReason: "toolUse",
+        });
+      },
+      reply("done"),
+    ]);
+    const events: TurnEvent[] = [];
+    const { conversationId } = await runConversationTurn({
+      interfaceType: "http",
+      text: "remove it",
+      context: { userId: adminId },
+      onEvent: (event) => events.push(event),
+    });
+    createdConversationIds.push(conversationId);
+    const end = events.find((e) => e.type === "tool_end");
+    expect(end).toMatchObject({ isError: true });
+    expect(JSON.stringify(end)).toContain("not authorized");
   });
 
   test("links a media event to the message that made the tool call", async () => {

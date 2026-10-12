@@ -1,9 +1,6 @@
 import { afterAll, beforeAll, expect, test } from "bun:test";
-import { eq } from "drizzle-orm";
 import { toolPresentation, toolsForTurn } from "./registry.ts";
 import { describeToolCall } from "./tool-display.ts";
-import { db } from "#server/db/index.ts";
-import { users } from "#server/db/schema.ts";
 import { createTestUser, deleteTestUser } from "#server/db/testing.ts";
 
 let memberId: string;
@@ -45,17 +42,6 @@ test("members can request but cannot delete, import or manage torrents", async (
     "download_episodes",
   ]) {
     expect(names).not.toContain(name);
-  }
-});
-
-test("permissions are checked again when a tool executes", async () => {
-  const tools = await toolsForTurn({ userId: adminId });
-  const remove = tools.find((tool) => tool.name === "remove_movie")!;
-  await db.update(users).set({ isAdmin: false }).where(eq(users.id, adminId));
-  try {
-    await expect(remove.execute({ movieId: 1 })).rejects.toThrow("not authorized");
-  } finally {
-    await db.update(users).set({ isAdmin: true }).where(eq(users.id, adminId));
   }
 });
 
