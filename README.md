@@ -74,6 +74,7 @@ server/
   logger.ts                  → Structured JSON logger
   errors.ts                  → errorMessage()/errorFields(): log fields for a thrown value
   json.ts                    → safeJsonParse(): parse without throwing
+  lock.ts                    → withLock(): one holder per key at a time, within the process
   images.ts                  → downloadImages(): platform-agnostic image fetching
   media-links.ts             → Deep links into Radarr/Sonarr
   http/
@@ -293,7 +294,8 @@ web/                         → Vue 3 + Vite + Tailwind CSS 4 SPA
   queue are exempt; nothing settled less than two days ago is touched; a sweep wanting
   more than 40 deletions or 2 TB has misread something and deletes nothing instead, and
   one wanting more than 20 removals removes nothing.
-  `bun run scripts/janitor.ts` is the dry run that says what tonight would do.
+  `bun run scripts/janitor.ts` is the dry run that says what tonight would do; only the
+  server's own sweep changes anything, since its locks live in the server's process.
 - **Media events + subscriptions** — `media_events` is an append-only log of tool actions.
   `movie_subscriptions` / `series_subscriptions` track notification preferences (created on
   add by the request service, on download by `processMediaEvent`, deactivated on

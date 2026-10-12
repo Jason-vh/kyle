@@ -14,7 +14,7 @@ import {
 import { invalidateLibraryIndex } from "./library.ts";
 import { discardStalled } from "./retry.ts";
 import { createLogger } from "#server/logger.ts";
-import { withDatabaseLock } from "#server/db/lock.ts";
+import { withLock } from "#server/lock.ts";
 import { ApiError } from "#server/http/client.ts";
 
 const log = createLogger("requests");
@@ -115,7 +115,7 @@ export async function requestMovie(input: {
   requestedBy?: Requester;
   posterPath?: string;
 }): Promise<{ status: RequestStatus; movie: RadarrMovie }> {
-  return withDatabaseLock(`media:movie:${input.tmdbId}`, async () => {
+  return withLock(`media:movie:${input.tmdbId}`, async () => {
     let movie = await radarr.getLibraryMovieByTmdbId(input.tmdbId);
     let status: RequestStatus = "existing";
     if (!movie) {
@@ -173,7 +173,7 @@ async function withRequestedSeriesLock<T>(ref: SeriesRef, run: () => Promise<T>)
     tvdbId = lookup?.tvdbId;
   }
   if (!tvdbId) throw new MediaNotFoundError("series", seriesTerm(ref));
-  return withDatabaseLock(`media:series:${tvdbId}`, run);
+  return withLock(`media:series:${tvdbId}`, run);
 }
 
 function seriesTerm(ref: SeriesRef): string {
@@ -270,7 +270,7 @@ export async function setSeasonMonitored(
   monitored: boolean,
 ): Promise<{ changed: boolean }> {
   const { tvdbId } = await sonarr.getSeries(seriesId);
-  return withDatabaseLock(`media:series:${tvdbId}`, async () => {
+  return withLock(`media:series:${tvdbId}`, async () => {
     const series = await sonarr.getSeries(seriesId);
     const changed = await monitorSeason(series, seasonNumber, monitored);
     if (changed) invalidateLibraryIndex();
@@ -410,7 +410,7 @@ export async function followSeries(input: {
   requestedBy?: Requester;
 }): Promise<{ series: SonarrSeries; changed: boolean }> {
   const { tvdbId } = await sonarr.getSeries(input.serviceId);
-  return withDatabaseLock(`media:series:${tvdbId}`, async () => {
+  return withLock(`media:series:${tvdbId}`, async () => {
     const series = await sonarr.getSeries(input.serviceId);
     const changed = await setFollowing(series, input.follow);
 
@@ -559,7 +559,7 @@ export async function releaseSeason(
   seasonNumber: number,
 ): Promise<{ series: SonarrSeries; filesDeleted: number }> {
   const { tvdbId } = await sonarr.getSeries(seriesId);
-  return withDatabaseLock(`media:series:${tvdbId}`, async () => {
+  return withLock(`media:series:${tvdbId}`, async () => {
     const [series, episodes] = await Promise.all([
       sonarr.getSeries(seriesId),
       sonarr.getEpisodes(seriesId),

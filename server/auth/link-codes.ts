@@ -2,7 +2,7 @@ import { and, eq, gt } from "drizzle-orm";
 import { db } from "#server/db/index.ts";
 import { linkCodes } from "#server/db/schema.ts";
 import { createPlatformLink, getUserById, resolveAppUserId } from "#server/db/users.ts";
-import { withDatabaseLock } from "#server/db/lock.ts";
+import { withLock } from "#server/lock.ts";
 import { appOrigin } from "#server/config.ts";
 import { createLogger } from "#server/logger.ts";
 
@@ -82,7 +82,7 @@ export async function redeemLinkCode(
   platformUserId: string,
   platformUsername?: string,
 ): Promise<LinkOutcome> {
-  return withDatabaseLock(`platform-account:${platform}:${platformUserId}`, async () => {
+  return withLock(`platform-account:${platform}:${platformUserId}`, async () => {
     const userId = await consume(code, platform);
     if (!userId) return { kind: "invalid" };
 

@@ -6,7 +6,7 @@ import {
   getPlatformIdentity,
   renameUser,
 } from "#server/db/users.ts";
-import { withDatabaseLock } from "#server/db/lock.ts";
+import { withLock } from "#server/lock.ts";
 import { PLEX_PLATFORM } from "#server/auth/plex.ts";
 import { checkPlexAccess, listPlexAccounts } from "#server/plex/access.ts";
 import { isPlexServerConfigured } from "#server/plex/server.ts";
@@ -198,8 +198,8 @@ export async function handleCreateLink(req: Request, userId: string): Promise<Re
 
   const { platform, platformUserId, platformUsername } = body;
   if (platform === PLEX_PLATFORM) {
-    return withDatabaseLock(`plex-account:${platformUserId}`, () =>
-      withDatabaseLock(`plex-user:${userId}`, async () => {
+    return withLock(`plex-account:${platformUserId}`, () =>
+      withLock(`plex-user:${userId}`, async () => {
         const refusal = await plexLinkRefusal(userId, platformUserId);
         if (refusal) return Response.json({ error: refusal }, { status: 409 });
         return linkAccount(userId, platform, platformUserId, platformUsername);

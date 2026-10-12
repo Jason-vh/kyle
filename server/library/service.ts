@@ -6,7 +6,7 @@ import * as sonarr from "#server/sonarr/api.ts";
 import { movieState, seriesState } from "./item.ts";
 import { getAllRequesters, getRequestersForMedia } from "#server/db/requests.ts";
 import { recordRemoval } from "#server/db/removals.ts";
-import { withDatabaseLock } from "#server/db/lock.ts";
+import { withLock } from "#server/lock.ts";
 import { invalidateLibraryIndex } from "#server/requests/library.ts";
 import { annotateRequesters } from "#server/requests/requesters.ts";
 import { queuesByService, serviceKey } from "#server/requests/state.ts";
@@ -173,7 +173,7 @@ export async function removeLibraryItem(
   let removed: RadarrMovie | SonarrSeries;
   if (mediaType === "movie") {
     const movie = await radarr.getMovie(serviceId);
-    removed = await withDatabaseLock(`media:movie:${movie.tmdbId}`, async () => {
+    removed = await withLock(`media:movie:${movie.tmdbId}`, async () => {
       await radarr.removeMovie(serviceId, deleteFiles);
       invalidateLibraryIndex();
       await recordRemoval({
@@ -188,7 +188,7 @@ export async function removeLibraryItem(
     });
   } else {
     const series = await sonarr.getSeries(serviceId);
-    removed = await withDatabaseLock(`media:series:${series.tvdbId}`, async () => {
+    removed = await withLock(`media:series:${series.tvdbId}`, async () => {
       await sonarr.removeSeries(serviceId, deleteFiles);
       invalidateLibraryIndex();
       if (series.tmdbId) {

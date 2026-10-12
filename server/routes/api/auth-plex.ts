@@ -10,7 +10,7 @@ import type { PlexAccount } from "#server/plex/types.ts";
 import { buildJwtCookie, isLocalhost, signJwt } from "#server/auth/jwt.ts";
 import { requireAuth } from "#server/auth/middleware.ts";
 import { getActiveUser } from "#server/auth/account.ts";
-import { withDatabaseLock } from "#server/db/lock.ts";
+import { withLock } from "#server/lock.ts";
 import { createFlowCookie, readFlowCookie } from "#server/auth/flow-cookie.ts";
 import {
   createPlatformLink,
@@ -109,11 +109,9 @@ export async function handlePlexCallback(req: Request): Promise<Response> {
   if (result.status !== "ok") return redirect(`/login?error=plex_${result.status}`);
 
   const { intent, account } = result;
-  return withDatabaseLock(`plex-account:${plexIdentityKey(account)}`, () => {
+  return withLock(`plex-account:${plexIdentityKey(account)}`, () => {
     if (intent.type === "login") return loginWithPlexAccount(req, account);
-    return withDatabaseLock(`plex-user:${intent.userId}`, () =>
-      linkPlexAccount(intent.userId, account),
-    );
+    return withLock(`plex-user:${intent.userId}`, () => linkPlexAccount(intent.userId, account));
   });
 }
 
@@ -144,7 +142,7 @@ async function loginWithPlexAccount(req: Request, account: PlexAccount): Promise
     });
   } else if (!userId) {
     const recoveredUserId = user.id;
-    const relinked = await withDatabaseLock(`plex-user:${recoveredUserId}`, async () => {
+    const relinked = await withLock(`plex-user:${recoveredUserId}`, async () => {
       if (await getPlatformIdentity(recoveredUserId, PLEX_PLATFORM)) return false;
       await createPlatformLink(recoveredUserId, PLEX_PLATFORM, identityKey, account.username);
       return true;

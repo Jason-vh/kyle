@@ -1,6 +1,6 @@
 import { and, asc, eq, isNull, lte, sql } from "drizzle-orm";
 import { db } from "#server/db/index.ts";
-import { withDatabaseLock } from "#server/db/lock.ts";
+import { withLock } from "#server/lock.ts";
 import { slackEventJobs } from "#server/db/schema.ts";
 import { createLogger } from "#server/logger.ts";
 import { errorMessage } from "#server/errors.ts";
@@ -27,7 +27,7 @@ export async function processSlackEvent(
   now = new Date(),
   postReply: typeof postSlackReply = postSlackReply,
 ): Promise<string | undefined> {
-  return withDatabaseLock(`slack-event:${eventId}`, async () => {
+  return withLock(`slack-event:${eventId}`, async () => {
     const job = await db.query.slackEventJobs.findFirst({
       where: eq(slackEventJobs.eventId, eventId),
     });

@@ -16,7 +16,7 @@ import {
 import { createLogger } from "#server/logger.ts";
 import { errorFields } from "#server/errors.ts";
 import { db } from "#server/db/index.ts";
-import { withDatabaseLock } from "#server/db/lock.ts";
+import { withLock } from "#server/lock.ts";
 import { conversations } from "#server/db/schema.ts";
 import { loadLegacyHistory } from "#server/db/conversation-history.ts";
 import { getHarness, retryPolicy } from "#server/durable/harness.ts";
@@ -236,7 +236,7 @@ async function submitTurn(
  */
 export async function runConversationTurn(turn: ConversationTurn): Promise<ConversationTurnResult> {
   const conversationId = await resolveConversationId(turn);
-  return withDatabaseLock(`conversation:${conversationId}`, () => runTurn(turn, conversationId));
+  return withLock(`conversation:${conversationId}`, () => runTurn(turn, conversationId));
 }
 
 async function runTurn(

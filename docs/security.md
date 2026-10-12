@@ -79,7 +79,7 @@ backoff are not counted as overdue. Delivery metrics include pending, failed and
 counts, the highest attempt count, and the oldest pending creation time. They are read from
 PostgreSQL, survive restarts, and exclude completed jobs. Raw errors remain private.
 
-Conversation turns and media writes are serialized across processes with PostgreSQL advisory
-locks. Each nesting depth has its own connection pool, so parent operations cannot exhaust
-the connections their children need. External thread identifiers are unique; the migration
+Conversation turns and media writes are serialized with in-process locks. Kyle runs as a
+single process, which pi-durable's storage requires, so nothing outside it takes them; the
+janitor script only ever does a dry run. External thread identifiers are unique; the migration
 merges existing duplicates and preserves their messages, events, and subscriptions.

@@ -2,13 +2,14 @@
 import { sweep } from "#server/janitor/run.ts";
 import { formatBytes } from "#server/ultra/health.ts";
 
-const apply = process.argv.includes("--apply");
-const report = await sweep(apply);
+// A dry run only: changes belong to the server's own nightly sweep, whose locks this process cannot see.
+const report = await sweep(false);
 
 for (const action of report.actions) {
   const bytes = "bytes" in action && action.bytes > 0 ? ` (${formatBytes(action.bytes)})` : "";
   console.log(`${action.kind.padEnd(16)} ${action.subject}${bytes} — ${action.reason}`);
 }
 
-const summary = `${report.applied} applied, ${report.failed} failed, ${report.actions.length} decided`;
-console.log(apply ? `\n${summary}` : `\n${summary} — dry run, nothing was changed`);
+console.log(
+  `\n${report.applied} applied, ${report.failed} failed, ${report.actions.length} decided — dry run, nothing was changed`,
+);

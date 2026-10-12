@@ -2,7 +2,7 @@ import type { JwtUser } from "#server/auth/jwt.ts";
 import { readJsonObject } from "#server/http/input.ts";
 import { requireAuth, type AuthResult } from "#server/auth/middleware.ts";
 import { getPlexInviters, recordPlexInvite, type PlexInviter } from "#server/db/plex-invites.ts";
-import { withDatabaseLock } from "#server/db/lock.ts";
+import { withLock } from "#server/lock.ts";
 import { getNamesByPlexAccount } from "#server/db/users.ts";
 import {
   invitePlexMember,
@@ -144,7 +144,7 @@ export async function handleCreatePlexInvite(req: Request): Promise<Response> {
   }
 
   try {
-    return await withDatabaseLock(`plex-invites:${auth.user.id}`, async () => {
+    return await withLock(`plex-invites:${auth.user.id}`, async () => {
       const [members, inviters] = await Promise.all([listPlexMembers(), getPlexInviters()]);
 
       const outstanding = members.filter(

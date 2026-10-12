@@ -1,6 +1,6 @@
 import { and, asc, eq, gt, isNull, lte, sql } from "drizzle-orm";
 import { db } from "#server/db/index.ts";
-import { withDatabaseLock } from "#server/db/lock.ts";
+import { withLock } from "#server/lock.ts";
 import { webhookJobs } from "#server/db/schema.ts";
 import { createLogger } from "#server/logger.ts";
 import { errorMessage } from "#server/errors.ts";
@@ -18,7 +18,7 @@ export async function enqueueWebhook(
   now = new Date(),
 ): Promise<string> {
   const batchKey = `${media.mediaType}:${ids.radarr ?? ids.sonarr}`;
-  return withDatabaseLock(`webhook:${batchKey}`, async () => {
+  return withLock(`webhook:${batchKey}`, async () => {
     if (media.mediaType === "series") {
       const pending = await db.query.webhookJobs.findFirst({
         where: and(
@@ -57,7 +57,7 @@ export async function processWebhookJobs(
     .orderBy(asc(webhookJobs.availableAt))
     .limit(50);
   for (const candidate of pending) {
-    await withDatabaseLock(`webhook-job:${candidate.id}`, async () => {
+    await withLock(`webhook-job:${candidate.id}`, async () => {
       const job = await db.query.webhookJobs.findFirst({ where: eq(webhookJobs.id, candidate.id) });
       if (!job || job.completedAt || job.availableAt > now) return;
       await db
