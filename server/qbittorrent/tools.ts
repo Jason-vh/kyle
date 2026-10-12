@@ -1,6 +1,6 @@
 import { Type } from "typebox";
 import type { Tool } from "#server/agent/tool.ts";
-import { jsonResult } from "#server/agent/tool-result.ts";
+import { bulletList, jsonResult } from "#server/agent/tool-result.ts";
 import * as qbittorrent from "./api.ts";
 
 const getTorrentsParams = Type.Object({
@@ -68,19 +68,28 @@ const deleteTorrentsTool: Tool<typeof deleteTorrentsParams> = {
   parameters: deleteTorrentsParams,
   label: "Deleting torrents from qBittorrent",
   action: true,
-  // Torrent names are not in the result, so a count is the most we can say.
   summary: (args) => {
     const count = (args.hashes as string[] | undefined)?.length ?? 0;
     if (!count) return "Deleted torrents from qBittorrent";
     return `Deleted ${count} torrent${count === 1 ? "" : "s"} from qBittorrent`;
   },
+  details: (_args, payload) => {
+    const { names, deletedFiles } = (payload ?? {}) as { names?: string[]; deletedFiles?: boolean };
+    if (!names?.length) return undefined;
+    const files = deletedFiles ? "Their files were deleted too." : "Their files were kept on disk.";
+    return `${files}\n${bulletList(names)}`;
+  },
   async execute(params) {
     const deleteFiles = params.deleteFiles ?? true;
+    // Read the names first; once deleted, qBittorrent no longer knows them.
+    const torrents = await qbittorrent.getTorrentsByHash(params.hashes);
     await qbittorrent.deleteTorrents(params.hashes, deleteFiles);
     return jsonResult({
       success: true,
       message: `Deleted ${params.hashes.length} torrent${params.hashes.length === 1 ? "" : "s"}${deleteFiles ? " and files from disk" : ""}`,
       hashes: params.hashes,
+      names: torrents.map((torrent) => torrent.name),
+      deletedFiles: deleteFiles,
     });
   },
 };

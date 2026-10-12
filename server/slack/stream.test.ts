@@ -91,16 +91,16 @@ test("tool progress is streamed as task updates", async () => {
   ]);
 });
 
-test("tasks show as a timeline, with long outcomes cut to fit Slack's limit", async () => {
+test("tasks show as a timeline, with long errors cut short", async () => {
   const { client, calls } = fakeSlack();
   const stream = new SlackResponseStream(client, target);
 
-  stream.updateTask({ id: "t1", title: "Added Dune", status: "complete", output: "x".repeat(400) });
+  stream.updateTask({ id: "t1", title: "Adding Dune", status: "error", output: "x".repeat(400) });
   await stream.finish("fallback");
 
   expect(calls[0]!.args.task_display_mode).toBe("timeline");
   const task = (calls[0]!.args.chunks as Array<{ type: string; output?: string }>)[0]!;
-  expect(task.output).toHaveLength(160);
+  expect(task.output).toHaveLength(300);
   expect(task.output!.endsWith("…")).toBe(true);
 });
 

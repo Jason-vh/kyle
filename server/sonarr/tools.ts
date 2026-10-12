@@ -1,6 +1,6 @@
 import { Type } from "typebox";
 import type { Tool, ToolPresentation } from "#server/agent/tool.ts";
-import { jsonResult } from "#server/agent/tool-result.ts";
+import { bulletList, jsonResult } from "#server/agent/tool-result.ts";
 import { buildTable } from "#server/agent/table.ts";
 import {
   releaseSeason,
@@ -156,7 +156,19 @@ const addSeriesPresentation: ToolPresentation = {
     if (alreadyInLibrary) return `${seriesName(series)} was already in Sonarr`;
     return `Added ${seriesName(series)} to Sonarr`;
   },
+  details: (args, payload) => {
+    const { following } = (payload ?? {}) as { following?: boolean };
+    const followLine = following ? "Following it for new seasons" : "Not following new seasons";
+    return `${describeRequestedSeasons(args.seasons as number[] | undefined)}\n${followLine}`;
+  },
 };
+
+function describeRequestedSeasons(seasons: number[] | undefined): string {
+  if (seasons === undefined) return "Downloading every regular season";
+  if (seasons.length === 0) return "Downloading no seasons yet";
+  const label = seasons.length === 1 ? "season" : "seasons";
+  return `Downloading ${label} ${seasons.join(", ")}`;
+}
 
 export function createAddSeriesTool(requestedBy?: Requester): Tool<typeof addSeriesParams> {
   return {
@@ -200,6 +212,10 @@ const requestSeasonPresentation: ToolPresentation = {
   action: true,
   summary: (args, payload) =>
     `Requested ${seriesName(payload)} season ${(args as { seasonNumber?: number }).seasonNumber}`,
+  details: (_args, payload) => {
+    if (!(payload as { alreadyMonitored?: boolean })?.alreadyMonitored) return undefined;
+    return "It was already monitored, so this searches for it again";
+  },
 };
 
 export function createRequestSeasonTool(requestedBy?: Requester): Tool<typeof requestSeasonParams> {
@@ -225,6 +241,7 @@ export function createRequestSeasonTool(requestedBy?: Requester): Tool<typeof re
         year: series.year,
         tvdbId: series.tvdbId,
         tmdbId: series.tmdbId,
+        alreadyMonitored: status === "existing",
         message: `Requested season ${seasonNumber} of ${name}.${already}`,
       });
     },
@@ -277,6 +294,11 @@ export const removeSeasonTool: Tool<typeof removeSeasonParams> = {
   summary: (args, payload) => {
     const season = args.seasonNumber !== undefined ? ` season ${args.seasonNumber}` : "";
     return `Removed ${seriesName(payload)}${season} from Sonarr`;
+  },
+  details: (_args, payload) => {
+    const { filesDeleted } = (payload ?? {}) as { filesDeleted?: number };
+    if (filesDeleted === undefined) return undefined;
+    return `Deleted ${filesDeleted} file${filesDeleted === 1 ? "" : "s"} from disk`;
   },
   async execute(params) {
     const { series, filesDeleted } = await releaseSeason(params.seriesId, params.seasonNumber);
@@ -418,6 +440,10 @@ const downloadEpisodesTool: Tool<typeof searchEpisodesParams> = {
     return args.seasonNumber !== undefined
       ? `Started downloading ${series} season ${args.seasonNumber}`
       : `Started downloading ${series}`;
+  },
+  details: (_args, payload) => {
+    const { monitoringActions } = (payload ?? {}) as { monitoringActions?: string[] };
+    return monitoringActions?.join("\n");
   },
   async execute(params) {
     const monitoringActions: string[] = [];
@@ -591,6 +617,21 @@ const manualImportTool: Tool<typeof manualImportParams> = {
     const series = files[0]!.seriesTitle;
     const count = `${files.length} file${files.length === 1 ? "" : "s"}`;
     return series ? `Imported ${count} for ${series}` : `Imported ${count} into Sonarr`;
+  },
+  details: (args, payload) => {
+    if (!args.importAll) return undefined;
+    const { importedFiles, skippedFiles } = (payload ?? {}) as {
+      importedFiles?: { name?: string; episodes?: string[] }[];
+      skippedFiles?: number;
+    };
+    const lines: string[] = [];
+    if (skippedFiles) lines.push(`Skipped ${skippedFiles} file${skippedFiles === 1 ? "" : "s"}`);
+    if (importedFiles?.length) {
+      lines.push(
+        bulletList(importedFiles.map((file) => file.episodes?.join(", ") || file.name || "file")),
+      );
+    }
+    return lines.join("\n") || undefined;
   },
   async execute(params) {
     const items = await sonarr.getManualImport(params.downloadId, params.seriesId);

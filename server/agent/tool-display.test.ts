@@ -1,5 +1,6 @@
 import { expect, test } from "bun:test";
-import { describeToolCall, isActionTool } from "./tool-display.ts";
+import { describeToolCall, describeToolDetails, isActionTool } from "./tool-display.ts";
+import { bulletList } from "./tool-result.ts";
 
 test("library changes are actions", () => {
   for (const tool of ["add_movie", "remove_series", "remove_season", "download_episodes"]) {
@@ -66,4 +67,52 @@ test("a call with no result still reads sensibly", () => {
   expect(describeToolCall("unsubscribe_notifications", { userId: "u" })).toBe(
     "Unsubscribed from notifications",
   );
+});
+
+test("a long list is cut short, saying how many it left out", () => {
+  expect(bulletList(["a", "b"])).toBe("- a\n- b");
+  expect(bulletList(["a", "b", "c"], 2)).toBe("- a\n- b\n- and 1 more");
+});
+
+test("details say what the one-line description has no room for", () => {
+  expect(
+    describeToolDetails(
+      "delete_torrents",
+      { hashes: ["a", "b"] },
+      { names: ["Dune.2021.2160p", "Severance.S02"], deletedFiles: true },
+    ),
+  ).toBe("Their files were deleted too.\n- Dune.2021.2160p\n- Severance.S02");
+  expect(
+    describeToolDetails("add_series", { tvdbId: 1, seasons: [1, 2] }, { following: true }),
+  ).toBe("Downloading seasons 1, 2\nFollowing it for new seasons");
+  expect(describeToolDetails("add_series", { tvdbId: 1 }, { following: false })).toBe(
+    "Downloading every regular season\nNot following new seasons",
+  );
+  expect(describeToolDetails("remove_season", { seasonNumber: 2 }, { filesDeleted: 1 })).toBe(
+    "Deleted 1 file from disk",
+  );
+  expect(describeToolDetails("request_season", {}, { alreadyMonitored: true })).toBe(
+    "It was already monitored, so this searches for it again",
+  );
+  expect(
+    describeToolDetails(
+      "download_episodes",
+      { seriesId: 1, seasonNumber: 3 },
+      { monitoringActions: ["Monitored season 3 on Dark", "Monitored 8 episodes"] },
+    ),
+  ).toBe("Monitored season 3 on Dark\nMonitored 8 episodes");
+  expect(
+    describeToolDetails(
+      "manual_import",
+      { downloadId: "x", importAll: true },
+      { importedFiles: [{ episodes: ["S01E01", "S01E02"] }], skippedFiles: 1 },
+    ),
+  ).toBe("Skipped 1 file\n- S01E01, S01E02");
+});
+
+test("details are left out when there is nothing to add", () => {
+  expect(describeToolDetails("add_movie", { tmdbId: 1 }, { title: "Dune" })).toBeUndefined();
+  expect(describeToolDetails("request_season", {}, { alreadyMonitored: false })).toBeUndefined();
+  expect(describeToolDetails("delete_torrents", { hashes: ["a"] })).toBeUndefined();
+  expect(describeToolDetails("download_episodes", { seriesId: 1 }, {})).toBeUndefined();
 });

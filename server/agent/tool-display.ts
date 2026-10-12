@@ -30,3 +30,13 @@ export function describeToolCall(
   if (!summary) return name.replace(/_/g, " ");
   return typeof summary === "string" ? summary : summary(args, payload);
 }
+
+/** What a finished tool call did beyond its one-line description, if anything. */
+export function describeToolDetails(
+  toolName: string,
+  args: Record<string, unknown>,
+  payload?: unknown,
+): string | undefined {
+  const name = RENAMED.get(toolName) ?? toolName;
+  return toolPresentation(name)?.details?.(args, payload) || undefined;
+}

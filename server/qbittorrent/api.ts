@@ -89,6 +89,10 @@ export async function getTorrents(filter: TorrentFilter = "all"): Promise<QBitto
   return request<QBittorrentTorrent[]>(`/torrents/info?filter=${filter}`);
 }
 
+export async function getTorrentsByHash(hashes: string[]): Promise<QBittorrentTorrent[]> {
+  return request<QBittorrentTorrent[]>(`/torrents/info?hashes=${hashes.join("|")}`);
+}
+
 export async function deleteTorrents(hashes: string[], deleteFiles: boolean = true): Promise<void> {
   await request<void>("/torrents/delete", {
     method: "POST",

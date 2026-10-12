@@ -32,6 +32,12 @@ export interface Tool<P extends TSchema = TSchema> extends ModelTool<P> {
    * finished, so always keep a sensible fallback.
    */
   summary?: string | ((args: Record<string, unknown>, payload?: unknown) => string);
+  /**
+   * Markdown shown under a finished action's summary: what the summary has no room
+   * for, such as the names of what was acted on. Leave it out when the summary says
+   * it all.
+   */
+  details?: (args: Record<string, unknown>, payload?: unknown) => string | undefined;
   /** Renders the tool's JSON payload as a table, for clients that show tables. */
   table?: (payload: unknown) => ResultTable | undefined;
 }
@@ -41,4 +47,7 @@ export interface Tool<P extends TSchema = TSchema> extends ModelTool<P> {
 export type AnyTool = Tool<any>;
 
 /** Everything the interfaces need to describe a tool call, without being able to run it. */
-export type ToolPresentation = Pick<AnyTool, "name" | "label" | "action" | "summary" | "table">;
+export type ToolPresentation = Pick<
+  AnyTool,
+  "name" | "label" | "action" | "summary" | "details" | "table"
+>;

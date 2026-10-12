@@ -10,8 +10,8 @@ const FLUSH_THRESHOLD = 512;
 /** Task cards appear one by one, between the text they came with. */
 const TASK_DISPLAY_MODE = "timeline";
 
-/** Slack caps task chunks at 256 characters, title included. */
-const MAX_TASK_OUTPUT = 160;
+/** Errors can carry a whole response body, which reads poorly on a card. */
+const MAX_TASK_OUTPUT = 300;
 
 export interface StreamTarget {
   channel: string;
@@ -25,6 +25,8 @@ export interface TaskUpdate {
   id: string;
   title: string;
   status: "in_progress" | "complete" | "error";
+  /** Markdown under the title: what a finished task did. */
+  details?: string;
   /** Shown under the title; used for the error a failed task hit. */
   output?: string;
 }
