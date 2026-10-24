@@ -2,7 +2,7 @@ import { createLogger } from "#server/logger.ts";
 import { errorFields } from "#server/errors.ts";
 import { downloadImages, MAX_IMAGE_SIZE, type RemoteImage } from "#server/images.ts";
 import { toolPresentation, type AgentContext, type TurnEvent } from "#server/agent/index.ts";
-import { EMPTY_REPLY, failureReply } from "#server/agent/replies.ts";
+import { EMPTY_REPLY, failureReply, isNoReply } from "#server/agent/replies.ts";
 import {
   conversationExists,
   runConversationTurn,
@@ -173,6 +173,7 @@ export async function processSlackMessage(
       userId: appUserId ?? undefined,
       interfaceType: "slack",
       viewing: await describeAppContext(slackEvent.app_context),
+      replyOptional: slackEvent.channel_type !== "im" && !mentionsKyle(slackEvent),
     };
   }
 
@@ -223,6 +224,12 @@ export async function processSlackMessage(
   }
 
   try {
+    if (isNoReply(replyText)) {
+      log.info("slack message needed no reply", { channel, threadTs: replyThreadTs });
+      await saveReply?.("");
+      await stream.discard();
+      return "";
+    }
     await saveReply?.(replyText);
     if (stopped) await stream.stop(replyText);
     else await stream.finish(replyText, tables.length ? tableBlocks(tables) : undefined);

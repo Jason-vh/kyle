@@ -12,3 +12,8 @@ test("prompt stays clean without user context", () => {
   expect(prompt).not.toContain("currently looking at");
   expect(prompt).not.toContain("{USER_CONTEXT}");
 });
+
+test("a message Kyle may ignore lets it answer with no reply", () => {
+  expect(getSystemPrompt({ replyOptional: true })).toContain("reply with exactly NO_REPLY");
+  expect(getSystemPrompt({})).not.toContain("NO_REPLY");
+});

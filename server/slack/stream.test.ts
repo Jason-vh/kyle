@@ -157,6 +157,28 @@ test("a stream Slack stopped delivers only the note, never the rest of the text"
   expect(calls[1]!.args.markdown_text).toBe("Stopped.");
 });
 
+test("a discarded reply that never streamed posts nothing", async () => {
+  const { client, calls } = fakeSlack();
+  const stream = new SlackResponseStream(client, target);
+
+  stream.appendText("NO_REPLY");
+  await stream.discard();
+
+  expect(calls).toEqual([]);
+});
+
+test("a discarded reply closes an open stream without adding text", async () => {
+  const { client, calls } = fakeSlack();
+  const stream = new SlackResponseStream(client, target);
+
+  stream.updateTask({ id: "t1", title: "Checking", status: "complete" });
+  stream.appendText("NO_REPLY");
+  await stream.discard();
+
+  expect(calls.map((c) => c.method)).toEqual(["startStream", "stopStream"]);
+  expect(textOf(calls[1]!)).toBe("");
+});
+
 test("blocks are appended to the finished message, opening a stream if needed", async () => {
   const { client, calls } = fakeSlack();
   const stream = new SlackResponseStream(client, target);

@@ -1,7 +1,7 @@
 import { defineDoc, type ConversationId, type Tx } from "@earendil-works/pi-durable";
 import type { AgentContext } from "./system-prompt.ts";
 
-type StoredContext = { [K in keyof AgentContext]?: string };
+type StoredContext = Partial<AgentContext>;
 
 type StoredTurn = {
   context: StoredContext;
@@ -53,14 +53,16 @@ export async function writeTurn(tx: Tx, conversationId: ConversationId, turn: Tu
 }
 
 export function readTurn(stored: Readonly<StoredTurn> | undefined): Turn {
-  const { username, userId, conversationId, interfaceType, viewing } = stored?.context ?? {};
+  const { username, userId, conversationId, interfaceType, viewing, replyOptional } =
+    stored?.context ?? {};
   return {
     context: {
       username,
       userId,
       conversationId,
-      interfaceType: interfaceType as AgentContext["interfaceType"],
+      interfaceType,
       viewing,
+      replyOptional,
     },
     author: {
       platformUserId: stored?.author.platformUserId ?? null,

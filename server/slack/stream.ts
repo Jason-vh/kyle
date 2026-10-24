@@ -109,6 +109,18 @@ export class SlackResponseStream {
     }
   }
 
+  /** Close the message without saying anything, keeping any task cards it already shows. */
+  async discard(): Promise<void> {
+    await this.queue;
+    this.pending = "";
+    if (!this.ts || this.broken) return;
+    try {
+      await this.slack.chat.stopStream({ channel: this.target.channel, ts: this.ts, chunks: [] });
+    } catch (error) {
+      log.warn("failed to stop slack stream", { ...this.context(), error: errorMessage(error) });
+    }
+  }
+
   /** Abandon a stream Slack has already stopped, delivering only `note`. */
   async stop(note: string): Promise<void> {
     this.broken = true;

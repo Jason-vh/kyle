@@ -1,3 +1,5 @@
+import { NO_REPLY } from "./replies.ts";
+
 export interface AgentContext {
   username?: string;
   userId?: string; // App user UUID (from users table)
@@ -5,6 +7,8 @@ export interface AgentContext {
   interfaceType?: "slack" | "discord" | "http" | "cli";
   /** What the user is currently looking at, e.g. "the #movies channel". */
   viewing?: string;
+  /** Posted in a shared thread without addressing Kyle, so it may need no answer. */
+  replyOptional?: boolean;
 }
 
 const SYSTEM_PROMPT = `
@@ -147,6 +151,11 @@ export function getSystemPrompt(context?: AgentContext): string {
   if (context?.viewing) {
     userContext.push(
       `- They are currently looking at ${context.viewing} — use it to resolve vague references, but don't mention it unprompted`,
+    );
+  }
+  if (context?.replyOptional) {
+    userContext.push(
+      `- This message was posted in a shared thread without mentioning you, so it may be meant for someone else. If it asks nothing of you — people talking to each other, acknowledgements, reactions — reply with exactly ${NO_REPLY} and nothing else`,
     );
   }
   prompt = prompt.replace("{USER_CONTEXT}", userContext.join("\n"));

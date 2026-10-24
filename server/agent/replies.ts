@@ -5,6 +5,13 @@ export const EMPTY_REPLY = "Sorry, I wasn't able to generate a response. Please 
 
 export const STOPPED_REPLY = "Stopped.";
 
+/** What the model answers when a message it may ignore needs nothing from it. */
+export const NO_REPLY = "NO_REPLY";
+
+export function isNoReply(text: string): boolean {
+  return text.trim() === NO_REPLY;
+}
+
 /** What a user sees when the turn fails outright. */
 export function failureReply(error: unknown): string {
   if (error instanceof TurnStoppedError) return STOPPED_REPLY;

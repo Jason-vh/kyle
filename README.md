@@ -322,6 +322,8 @@ web/                         → Vue 3 + Vite + Tailwind CSS 4 SPA
   thread gets "Stopped." instead of the rest of the reply.
 - **Slack addressing** — Kyle answers every DM, any @mention, and every reply in a
   thread he already has a conversation in, so a thread needs only its first @mention.
+  A reply that doesn't mention him may need nothing from him; the model then answers
+  `NO_REPLY` and the Slack message closes without text.
 - **Slack dedup** — in-memory `Set<string>` on `event_id` (capped at 10k) plus
   `X-Slack-Retry-Num` header skipping.
 - **One HTTP client** — every outbound service (Sonarr, Radarr, TMDB, Ultra, Brave,
