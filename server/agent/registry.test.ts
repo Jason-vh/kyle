@@ -29,20 +29,10 @@ test("unlinked and nonexistent users receive no tools", async () => {
   expect(await toolsForTurn({ userId: crypto.randomUUID() })).toEqual([]);
 });
 
-test("members can request but cannot delete, import or manage torrents", async () => {
-  const names = (await toolsForTurn({ userId: memberId })).map((tool) => tool.name);
-  expect(names).toContain("add_movie");
-  expect(names).toContain("request_season");
-  for (const name of [
-    "remove_movie",
-    "remove_series",
-    "remove_season",
-    "delete_torrents",
-    "manual_import",
-    "download_episodes",
-  ]) {
-    expect(names).not.toContain(name);
-  }
+test("members receive the same tools as admins", async () => {
+  const memberTools = (await toolsForTurn({ userId: memberId })).map((tool) => tool.name);
+  const adminTools = (await toolsForTurn({ userId: adminId })).map((tool) => tool.name);
+  expect(memberTools).toEqual(adminTools);
 });
 
 test("members cannot substitute another user's id", async () => {

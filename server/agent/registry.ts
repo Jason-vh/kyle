@@ -54,32 +54,6 @@ export function toolPresentation(name: string): ToolPresentation | undefined {
   return presentationByName.get(name);
 }
 
-const MEMBER_TOOLS = new Set([
-  "get_all_series",
-  "get_series_by_id",
-  "search_series",
-  "get_episodes",
-  "get_series_queue",
-  "get_calendar",
-  "get_radarr_movie",
-  "get_all_movies",
-  "search_movies",
-  "get_movie_queue",
-  "search_tmdb_movies",
-  "search_tmdb_series",
-  "search_tmdb",
-  "get_tmdb_movie_details",
-  "get_tmdb_series_details",
-  "web_search",
-  "convert_time",
-  "get_requests_for_user",
-  "get_request_states",
-  "unsubscribe_notifications",
-  "add_movie",
-  "add_series",
-  "request_season",
-]);
-
 export async function toolsForTurn(context?: AgentContext): Promise<AnyTool[]> {
   if (!context?.userId) return [];
   const user = await getActiveUser(context.userId);
@@ -91,18 +65,16 @@ export async function toolsForTurn(context?: AgentContext): Promise<AnyTool[]> {
     createAddMovieTool(requestedBy),
     createAddSeriesTool(requestedBy),
     createRequestSeasonTool(requestedBy),
-  ]
-    .filter((tool) => user.isAdmin || MEMBER_TOOLS.has(tool.name))
-    .map(
-      (tool): AnyTool => ({
-        ...tool,
-        async execute(args) {
-          const { userId } = args as { userId?: unknown };
-          if (typeof userId === "string" && userId !== user.id && !user.isAdmin) {
-            throw new Error("You can only manage your own requests and subscriptions");
-          }
-          return tool.execute(args);
-        },
-      }),
-    );
+  ].map(
+    (tool): AnyTool => ({
+      ...tool,
+      async execute(args) {
+        const { userId } = args as { userId?: unknown };
+        if (typeof userId === "string" && userId !== user.id && !user.isAdmin) {
+          throw new Error("You can only manage your own requests and subscriptions");
+        }
+        return tool.execute(args);
+      },
+    }),
+  );
 }

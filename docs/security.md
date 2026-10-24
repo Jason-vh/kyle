@@ -29,9 +29,9 @@ administrator access. Missing `CHAT_API_KEY` or `WEBHOOK_AUTH` disables that end
   they unlink Plex or add a passkey. Existing linked accounts are migrated to this policy.
 - Plex access checks cache for five minutes. Removing a member through Kyle invalidates
   that cache immediately. An upstream outage fails closed after cached access expires.
-- Slack and Discord users need an active, linked Kyle account. Members can browse and
-  request; destructive and administrative tools require current administrator status.
-  Tools recheck permission at execution, including ownership of subscription operations.
+- Slack and Discord users need an active, linked Kyle account. Every active member gets
+  every agent tool, removals included; only another user's requests and subscriptions
+  stay an administrator's. Tools recheck access at execution, including that ownership.
 - Passkey challenges and Plex callbacks are single-use and bound to their initiating browser.
   Their temporary state remains process-local, so a restart requires restarting sign-in.
 

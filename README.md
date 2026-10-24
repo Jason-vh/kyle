@@ -48,7 +48,8 @@ Capabilities:
 - **Auth** — Plex sign-in for anyone with access to the Plex server, plus WebAuthn passkeys
   and JWT sessions.
 - **Requests & library** — search TMDB and add straight to Radarr/Sonarr without the agent;
-  browse what the library holds. Anyone signed in can request and browse; only admins remove.
+  browse what the library holds. Anyone signed in can request and browse; in the web app only
+  admins and the requester remove, while through the agent anyone can.
 
 ## Architecture
 

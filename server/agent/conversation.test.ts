@@ -236,7 +236,10 @@ describe("runConversationTurn", () => {
     expect(await roles(conversationId)).toEqual(["user", "assistant", "toolResult", "assistant"]);
   });
 
-  test("tools are refused to a user who may not use them", async () => {
+  test("tools are refused to a disabled user", async () => {
+    const disabledId = await createTestUser("Disabled");
+    cleanupUsers.push(disabledId);
+    await db.update(users).set({ isDisabled: true }).where(eq(users.id, disabledId));
     faux.setResponses([
       fauxAssistantMessage([fauxToolCall("remove_movie", { movieId: 1 })], {
         stopReason: "toolUse",
@@ -247,7 +250,7 @@ describe("runConversationTurn", () => {
     const { conversationId } = await runConversationTurn({
       interfaceType: "http",
       text: "remove it",
-      context: { userId: appUserId },
+      context: { userId: disabledId },
       onEvent: (event) => events.push(event),
     });
     createdConversationIds.push(conversationId);
@@ -255,12 +258,12 @@ describe("runConversationTurn", () => {
   });
 
   test("permissions are read again when a tool runs, not when the turn starts", async () => {
-    const adminId = await createTestUser("Demoted admin", true);
-    cleanupUsers.push(adminId);
+    const memberId = await createTestUser("Soon disabled");
+    cleanupUsers.push(memberId);
     faux.setResponses([
       async () => {
-        // Demoted after the turn offered admin tools, before the model's call runs.
-        await db.update(users).set({ isAdmin: false }).where(eq(users.id, adminId));
+        // Disabled after the turn offered tools, before the model's call runs.
+        await db.update(users).set({ isDisabled: true }).where(eq(users.id, memberId));
         return fauxAssistantMessage([fauxToolCall("remove_movie", { movieId: 1 })], {
           stopReason: "toolUse",
         });
@@ -271,7 +274,7 @@ describe("runConversationTurn", () => {
     const { conversationId } = await runConversationTurn({
       interfaceType: "http",
       text: "remove it",
-      context: { userId: adminId },
+      context: { userId: memberId },
       onEvent: (event) => events.push(event),
     });
     createdConversationIds.push(conversationId);
