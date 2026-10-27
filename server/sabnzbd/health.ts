@@ -1,4 +1,4 @@
-import { getQueue, type SabQueue } from "./api.ts";
+import { getPostProcessingCount, getQueue, type SabQueue } from "./api.ts";
 import { alertAdmins } from "#server/slack/alerts.ts";
 import { readState, writeState } from "#server/db/jobs.ts";
 import { shouldAnnounce, type Announced } from "#server/jobs/announce.ts";
@@ -9,9 +9,13 @@ const log = createLogger("sabnzbd-health");
 
 export type Condition = "ok" | "paused" | "unreachable";
 
-/** A timed pause ends by itself; one without an end waits for a person, however long. */
-export function conditionFor(queue: SabQueue): Condition {
-  return queue.paused && queue.pause_int === "0" ? "paused" : "ok";
+/**
+ * A pause without an end waits for a person, however long. A timed pause ends
+ * by itself, and so does the pause SABnzbd takes while it unpacks a download.
+ */
+export function conditionFor(queue: SabQueue, postProcessing: number): Condition {
+  if (!queue.paused || queue.pause_int !== "0") return "ok";
+  return postProcessing > 0 ? "ok" : "paused";
 }
 
 export function announcement(condition: Condition, queue?: SabQueue, reason?: string): string {
@@ -32,15 +36,16 @@ const STATE_KEY = "sabnzbd-health:announced";
 /** Tells the admins when SABnzbd stops downloading, and when it starts again. */
 export async function checkSabnzbd(): Promise<{ condition: Condition; announced: boolean }> {
   let queue: SabQueue | undefined;
+  let postProcessing = 0;
   let reason: string | undefined;
 
   try {
-    queue = await getQueue();
+    [queue, postProcessing] = await Promise.all([getQueue(), getPostProcessingCount()]);
   } catch (error) {
     reason = errorMessage(error);
   }
 
-  const condition: Condition = queue ? conditionFor(queue) : "unreachable";
+  const condition: Condition = queue ? conditionFor(queue, postProcessing) : "unreachable";
   const now = Date.now();
   const last = await readState<Announced<Condition>>(STATE_KEY);
   const announced = shouldAnnounce(condition, last ?? null, now);

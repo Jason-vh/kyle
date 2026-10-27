@@ -16,9 +16,13 @@ const getUsenetQueueTool: Tool<typeof emptyParams> = {
   label: "Checking the usenet queue",
   summary: "Checked usenet queue",
   async execute() {
-    const queue = await sabnzbd.getQueue(QUEUE_LIMIT);
+    const [queue, postProcessing] = await Promise.all([
+      sabnzbd.getQueue(QUEUE_LIMIT),
+      sabnzbd.getPostProcessingCount(),
+    ]);
     return jsonResult({
-      pausedIndefinitely: conditionFor(queue) === "paused",
+      pausedIndefinitely: conditionFor(queue, postProcessing) === "paused",
+      unpacking: postProcessing,
       status: queue.status,
       speed: queue.speed,
       timeLeft: queue.timeleft,

@@ -16,15 +16,19 @@ const queue = (overrides: Partial<SabQueue> = {}): SabQueue => ({
 
 describe("conditionFor", () => {
   test("a running queue is fine", () => {
-    expect(conditionFor(queue())).toBe("ok");
+    expect(conditionFor(queue(), 0)).toBe("ok");
   });
 
   test("a pause with no end is paused", () => {
-    expect(conditionFor(queue({ paused: true }))).toBe("paused");
+    expect(conditionFor(queue({ paused: true }), 0)).toBe("paused");
   });
 
   test("a timed pause resumes by itself, so it is fine", () => {
-    expect(conditionFor(queue({ paused: true, pause_int: "30" }))).toBe("ok");
+    expect(conditionFor(queue({ paused: true, pause_int: "30" }), 0)).toBe("ok");
+  });
+
+  test("the pause taken while unpacking a download is fine", () => {
+    expect(conditionFor(queue({ paused: true }), 1)).toBe("ok");
   });
 });
 
