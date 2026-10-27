@@ -91,13 +91,14 @@ export const DEFAULT_LIMITS: SweepLimits = {
 };
 
 /**
- * Releases whose file is already in the library, under another name. Kyle
- * cannot import them and neither can anybody else, so they are worth
- * blocklisting rather than waiting on.
+ * Releases nobody can import: bait in place of a video, a sample, or a file
+ * the library already holds under another name. They are worth blocklisting
+ * rather than waiting on.
  */
 const HOPELESS_IMPORTS = [
   /\.exe\b/i,
   /\.scr\b/i,
+  /unsupported extension/i,
   /\bsample\b/i,
   /already been imported/i,
   /no files found are eligible/i,

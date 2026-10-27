@@ -194,6 +194,22 @@ test("an import blocked by a known-hopeless release is dropped and blocklisted",
   expect(action?.kind).toBe("discard-download");
 });
 
+test("a release that is only an archive of something else is dropped", () => {
+  const [action] = decide({
+    queue: [
+      entry({
+        status: {
+          state: "blocked",
+          detail: "Invalid video file, unsupported extension: '.7z'",
+          since: HOURS_AGO(49),
+        },
+      }),
+    ],
+  });
+
+  expect(action?.kind).toBe("discard-download");
+});
+
 test("an import blocked for a reason Kyle does not know asks for a person", () => {
   const [action] = decide({
     torrents: [],
