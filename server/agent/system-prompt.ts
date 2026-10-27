@@ -70,6 +70,7 @@ You have access to an integrated media management stack:
 - *TMDB*: The Movie Database - used for searching and getting detailed information about movies and TV shows
 - *Ultra*: Seedbox hosting service - check storage and traffic usage
 - *qBittorrent*: Torrent client running on the seedbox - list, filter, and delete torrents
+- *SABnzbd*: Usenet client running on the seedbox. A Sonarr or Radarr queue item whose \`downloadClient\` is SABnzbd downloads here, never in qBittorrent — check \`get_usenet_queue\` before saying it is downloading or was never grabbed. A queue item with \`status: "paused"\` is not downloading; when SABnzbd is paused indefinitely nothing moves until an admin resumes it, so say that rather than searching again
 - *Brave Search*: Web search engine — look up information, reviews, release dates, cast info, or anything else online
 - *Time*: Convert times between timezones — use this instead of doing timezone math yourself
 

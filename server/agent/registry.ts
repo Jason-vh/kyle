@@ -2,6 +2,7 @@ import { createLogger } from "#server/logger.ts";
 import { getActiveUser } from "#server/auth/account.ts";
 import { braveTools } from "#server/brave/tools.ts";
 import { qbittorrentTools } from "#server/qbittorrent/tools.ts";
+import { sabnzbdTools } from "#server/sabnzbd/tools.ts";
 import { createAddMovieTool, radarrTools } from "#server/radarr/tools.ts";
 import { createAddSeriesTool, createRequestSeasonTool, sonarrTools } from "#server/sonarr/tools.ts";
 import { timeTools } from "#server/time/tools.ts";
@@ -21,6 +22,7 @@ const allTools: AnyTool[] = [
   ...tmdbTools,
   ...ultraTools,
   ...qbittorrentTools,
+  ...sabnzbdTools,
   ...braveTools,
   ...timeTools,
   getRequestsForUserTool,

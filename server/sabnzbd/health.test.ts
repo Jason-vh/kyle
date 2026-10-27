@@ -3,10 +3,14 @@ import { announcement, conditionFor } from "./health.ts";
 import type { SabQueue } from "./api.ts";
 
 const queue = (overrides: Partial<SabQueue> = {}): SabQueue => ({
+  status: "Downloading",
+  speed: "40 M",
+  timeleft: "0:30:00",
   paused: false,
   pause_int: "0",
   noofslots: 81,
   sizeleft: "96.2 GB",
+  slots: [],
   ...overrides,
 });
 
