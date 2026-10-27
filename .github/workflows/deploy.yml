@@ -88,6 +88,8 @@ jobs:
           QBITTORRENT_HOST=${{ secrets.QBITTORRENT_HOST }}
           QBITTORRENT_USERNAME=${{ secrets.QBITTORRENT_USERNAME }}
           QBITTORRENT_PASSWORD=${{ secrets.QBITTORRENT_PASSWORD }}
+          SABNZBD_HOST=${{ secrets.SABNZBD_HOST }}
+          SABNZBD_API_KEY=${{ secrets.SABNZBD_API_KEY }}
           ULTRA_HOST=${{ secrets.ULTRA_HOST }}
           ULTRA_API_TOKEN=${{ secrets.ULTRA_API_TOKEN }}
           PLEX_CLIENT_IDENTIFIER=${{ secrets.PLEX_CLIENT_IDENTIFIER }}

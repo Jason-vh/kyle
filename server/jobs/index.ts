@@ -1,4 +1,5 @@
 import { checkSeedbox } from "#server/ultra/health.ts";
+import { checkSabnzbd } from "#server/sabnzbd/health.ts";
 import { sweep } from "#server/janitor/run.ts";
 import { warmArtwork } from "#server/tmdb/artwork.ts";
 import { DAY_MS, every, HOUR_MS } from "./schedule.ts";
@@ -11,6 +12,7 @@ export async function startJobs(): Promise<void> {
     every("webhook-delivery", 30_000, processWebhookJobs),
     every("slack-events", 30_000, processSlackEvents),
     every("seedbox-health", HOUR_MS, checkSeedbox),
+    every("sabnzbd-health", HOUR_MS, checkSabnzbd),
     every("janitor", DAY_MS, () => sweep(true)),
     every("artwork", DAY_MS, warmArtwork),
   ]);

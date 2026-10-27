@@ -3,6 +3,7 @@ import { getStorage } from "#server/dashboard/storage.ts";
 import { invalidateStats } from "./api.ts";
 import { alertAdmins } from "#server/slack/alerts.ts";
 import { readState, writeState } from "#server/db/jobs.ts";
+import { shouldAnnounce, type Announced } from "#server/jobs/announce.ts";
 import { createLogger } from "#server/logger.ts";
 import { errorMessage } from "#server/errors.ts";
 
@@ -11,30 +12,11 @@ const log = createLogger("seedbox-health");
 /** Under this much of the quota left, the box is about to stop accepting downloads. */
 const LOW_FRACTION = 0.05;
 
-/** How long a complaint stands before it is worth making again. */
-const REPEAT_AFTER_MS = 12 * 60 * 60 * 1000;
-
 export type Condition = "ok" | "low" | "unreachable";
 
 export function conditionFor(stat: StorageStat): Condition {
   if (stat.totalBytes <= 0) return "ok";
   return stat.freeBytes / stat.totalBytes < LOW_FRACTION ? "low" : "ok";
-}
-
-export interface Announced {
-  condition: Condition;
-  at: number;
-}
-
-/**
- * Whether this is worth saying out loud. A condition is announced when it
- * changes, and repeated only if it has not been said for half a day — a full
- * disk that stays full should not fill Slack as well.
- */
-export function shouldAnnounce(condition: Condition, last: Announced | null, now: number): boolean {
-  if (!last) return condition !== "ok";
-  if (last.condition !== condition) return true;
-  return condition !== "ok" && now - last.at >= REPEAT_AFTER_MS;
 }
 
 const UNITS = ["B", "KB", "MB", "GB", "TB"];
@@ -92,7 +74,7 @@ export async function checkSeedbox(): Promise<{ condition: Condition; announced:
 
   const condition: Condition = stat ? conditionFor(stat) : "unreachable";
   const now = Date.now();
-  const last = await readState<Announced>(STATE_KEY);
+  const last = await readState<Announced<Condition>>(STATE_KEY);
   const announced = shouldAnnounce(condition, last ?? null, now);
 
   if (announced) {
