@@ -33,6 +33,7 @@ function entry(overrides: Partial<QueueEntry> = {}): QueueEntry {
     mediaType: "movie",
     queueId: 7,
     serviceId: 11,
+    episodeIds: [],
     title: "A Film",
     status: { state: "downloading", since: HOURS_AGO(1) },
     ...overrides,
@@ -132,9 +133,37 @@ test("a stalled download is given another chance, not deleted", () => {
     mediaType: "movie",
     queueId: 7,
     serviceId: 11,
+    episodeIds: [],
     subject: "A Film",
     reason: "Download stalled",
   });
+});
+
+test("a stalled episode download is retried for its own episodes", () => {
+  const [action] = decide({
+    queue: [
+      entry({
+        mediaType: "series",
+        episodeIds: [101, 102],
+        status: { state: "stalled", detail: "Download stalled", since: HOURS_AGO(13) },
+      }),
+    ],
+  });
+
+  expect(action).toMatchObject({ kind: "retry-download", episodeIds: [101, 102] });
+});
+
+test("a stalled series download with no known episodes asks for a person", () => {
+  const [action] = decide({
+    queue: [
+      entry({
+        mediaType: "series",
+        status: { state: "stalled", detail: "Download stalled", since: HOURS_AGO(13) },
+      }),
+    ],
+  });
+
+  expect(action?.kind).toBe("flag");
 });
 
 test("a download stalled only just now is left alone", () => {

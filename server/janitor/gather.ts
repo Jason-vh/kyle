@@ -1,5 +1,5 @@
 import type { QBittorrentTorrent } from "#server/qbittorrent/api.ts";
-import type { SonarrSeries } from "#server/sonarr/types.ts";
+import type { SonarrQueueItem, SonarrSeries } from "#server/sonarr/types.ts";
 import type { HeldMedia, QueueEntry, SweepState, TorrentOrigin } from "./plan.ts";
 import * as qbittorrent from "#server/qbittorrent/api.ts";
 import * as radarr from "#server/radarr/api.ts";
@@ -66,6 +66,37 @@ async function resolve(torrent: QBittorrentTorrent, queued: Set<string>): Promis
   };
 }
 
+/**
+ * Sonarr lists a download once per episode in it. Removing any one record
+ * removes the whole download, so each download is one entry with all its episodes.
+ */
+function seriesEntries(records: SonarrQueueItem[]): QueueEntry[] {
+  const entries: QueueEntry[] = [];
+  const byDownload = new Map<string, QueueEntry>();
+
+  for (const record of records) {
+    const episodeIds = record.episodeId ? [record.episodeId] : [];
+    const existing = record.downloadId ? byDownload.get(record.downloadId) : undefined;
+    if (existing) {
+      existing.episodeIds.push(...episodeIds);
+      continue;
+    }
+
+    const entry: QueueEntry = {
+      mediaType: "series",
+      queueId: record.id,
+      serviceId: record.seriesId ?? record.series?.id ?? 0,
+      episodeIds,
+      title: record.series?.title ?? record.title,
+      status: classify(record),
+    };
+    entries.push(entry);
+    if (record.downloadId) byDownload.set(record.downloadId, entry);
+  }
+
+  return entries;
+}
+
 async function queueEntries(): Promise<{ entries: QueueEntry[]; downloadIds: Set<string> }> {
   const [movies, series] = await Promise.all([radarr.getQueue(), sonarr.getQueue()]);
 
@@ -74,16 +105,11 @@ async function queueEntries(): Promise<{ entries: QueueEntry[]; downloadIds: Set
       mediaType: "movie" as const,
       queueId: record.id,
       serviceId: record.movie?.id ?? 0,
+      episodeIds: [],
       title: record.movie?.title ?? record.title,
       status: classify(record),
     })),
-    ...series.records.map((record) => ({
-      mediaType: "series" as const,
-      queueId: record.id,
-      serviceId: record.seriesId ?? record.series?.id ?? 0,
-      title: record.series?.title ?? record.title,
-      status: classify(record),
-    })),
+    ...seriesEntries(series.records),
   ];
 
   const downloadIds = [...movies.records, ...series.records]

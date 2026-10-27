@@ -21,6 +21,8 @@ export interface QueueEntry {
   mediaType: LibraryMediaType;
   queueId: number;
   serviceId: number;
+  /** The episodes this one download carries; empty for a movie. */
+  episodeIds: number[];
   title: string;
   status: QueueStatus;
 }
@@ -48,6 +50,7 @@ export type JanitorAction =
       mediaType: LibraryMediaType;
       queueId: number;
       serviceId: number;
+      episodeIds: number[];
       subject: string;
       reason: string;
     }
@@ -162,11 +165,21 @@ function queueAction(
   const waited = ageMs(since, now);
 
   if (state === "stalled" && waited >= limits.stalledAfterMs) {
+    if (entry.mediaType === "series" && entry.episodeIds.length === 0) {
+      return {
+        kind: "flag",
+        subject: entry.title,
+        bytes: 0,
+        reason: "stalled, but Sonarr does not say which episodes it carries",
+      };
+    }
+
     return {
       kind: "retry-download",
       mediaType: entry.mediaType,
       queueId: entry.queueId,
       serviceId: entry.serviceId,
+      episodeIds: entry.episodeIds,
       subject: entry.title,
       reason: detail ?? "stalled, and no further along than hours ago",
     };

@@ -20,6 +20,7 @@ function services(
     importOnSecondPage?: boolean;
     queuedOnSecondPage?: boolean;
     series?: unknown[];
+    seriesQueue?: unknown[];
   } = {},
 ) {
   Object.assign(process.env, {
@@ -33,7 +34,9 @@ function services(
   });
   const deleted: string[] = [];
   const pages: string[] = [];
-  globalThis.fetch = (async (input: string | URL | Request) => {
+  const removedFromQueue: string[] = [];
+  const commands: unknown[] = [];
+  globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) => {
     const url = new URL(String(input));
     const path = url.pathname;
     const page = Number(url.searchParams.get("page") ?? "1");
@@ -55,7 +58,19 @@ function services(
           totalRecords: 2,
         });
       }
+      if (url.hostname === "sonarr.test" && options.seriesQueue) {
+        const records = page === 1 ? options.seriesQueue : [];
+        return Response.json({ records, totalRecords: options.seriesQueue.length });
+      }
       return Response.json({ records: [], totalRecords: 0 });
+    }
+    if (path.includes("/queue/") && init?.method === "DELETE") {
+      removedFromQueue.push(`${url.hostname}${path}?${url.searchParams}`);
+      return new Response("");
+    }
+    if (path.endsWith("/command")) {
+      commands.push(JSON.parse(String(init?.body)));
+      return Response.json({ id: 1 });
     }
     if (path.endsWith("/history")) {
       pages.push(`${url.hostname}:history:${page}`);
@@ -86,7 +101,7 @@ function services(
       return options.fileResponse ?? new Response("", { status: 404 });
     throw new Error(`Unexpected request: ${url}`);
   }) as typeof fetch;
-  return { deleted, pages };
+  return { deleted, pages, removedFromQueue, commands };
 }
 
 test.each([undefined, "bad", "12garbage", 0, -1, 1.5])(
@@ -166,4 +181,54 @@ test("removes a series only when nothing in it is monitored or followed", async 
     .map((action) => action.subject);
 
   expect(removed).toEqual(["Show 1", "Show 2"]);
+});
+
+function queued(episodeId: number, overrides: Record<string, unknown>) {
+  return {
+    id: episodeId,
+    seriesId: 591,
+    episodeId,
+    series: { id: 591, title: "The Block" },
+    title: "The.Block.S22E49.720p",
+    downloadId: "SABnzbd_nzo_49",
+    size: 1000,
+    sizeleft: 1000,
+    added: "2020-01-01T00:00:00Z",
+    status: "warning",
+    trackedDownloadStatus: "warning",
+    trackedDownloadState: "downloading",
+    errorMessage: "The download is stalled",
+    ...overrides,
+  };
+}
+
+test("retries a stalled download once, searching only the episodes it carried", async () => {
+  const { removedFromQueue, commands } = services({
+    fileId: 12,
+    fileResponse: Response.json({ id: 12 }),
+    seriesQueue: [queued(101, {}), queued(102, {})],
+  });
+
+  await sweep(true);
+
+  expect(removedFromQueue).toEqual([
+    "sonarr.test/api/v3/queue/101?removeFromClient=true&blocklist=true&skipRedownload=true",
+  ]);
+  expect(commands).toEqual([{ name: "EpisodeSearch", episodeIds: [101, 102] }]);
+});
+
+test("leaves downloads in a paused client alone, however long they wait", async () => {
+  const { removedFromQueue, commands } = services({
+    fileId: 12,
+    fileResponse: Response.json({ id: 12 }),
+    seriesQueue: [
+      queued(101, { status: "paused", trackedDownloadStatus: "ok", errorMessage: undefined }),
+    ],
+  });
+
+  const report = await sweep(true);
+
+  expect(report.actions).toEqual([]);
+  expect(removedFromQueue).toEqual([]);
+  expect(commands).toEqual([]);
 });

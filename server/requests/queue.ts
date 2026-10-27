@@ -40,6 +40,8 @@ const IMPORTING_STATES = new Set(["importing", "imported"]);
 
 const BLOCKED_STATUSES = new Set(["failed", "downloadclientunavailable"]);
 
+const PAUSED = "Paused in the download client";
+
 function lower(value: string | undefined): string {
   return value?.toLowerCase() ?? "";
 }
@@ -74,10 +76,15 @@ export function classify(record: QueueRecord): QueueStatus {
   if (IMPORTING_STATES.has(state)) return { state: "importing", since: record.added };
   if (status === "delay") return { state: "found", ...common };
 
+  // A paused client waits on a person; another release would only queue behind it.
+  if (status === "paused") {
+    return { state: "downloading", detail: PAUSED, since: record.added, ...progressOf(record) };
+  }
+
   if (lower(record.trackedDownloadStatus) !== "ok" && common.detail) {
     return { state: "stalled", ...common, ...progressOf(record) };
   }
-  if (status === "warning" || status === "paused") {
+  if (status === "warning") {
     return { state: "stalled", ...common, ...progressOf(record) };
   }
 

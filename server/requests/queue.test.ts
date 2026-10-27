@@ -74,6 +74,16 @@ describe("classify", () => {
     });
   });
 
+  test("a download in a paused client is waiting, not stalled", () => {
+    expect(classify(record({ status: "paused", sizeleft: 1000, timeleft: undefined }))).toEqual({
+      state: "downloading",
+      detail: "Paused in the download client",
+      since: "2025-03-01T10:00:00Z",
+      progress: 0,
+      eta: undefined,
+    });
+  });
+
   test("an import under way is nearly there", () => {
     expect(classify(record({ trackedDownloadState: "importing", sizeleft: 0 })).state).toBe(
       "importing",
