@@ -6,6 +6,7 @@ import type {
   TMDBTVShow,
   TMDBTVShowDetails,
 } from "./types.ts";
+import { datedRelease, type DatedRelease } from "#server/time/days.ts";
 
 export type ReleaseKind = "premiere" | "cinema" | "digital" | "physical" | "tv";
 
@@ -43,44 +44,21 @@ export function earliestReleases(movie: TMDBMovieDetails): Releases {
   return earliest;
 }
 
-export interface DatedRelease {
-  date: string;
-  /** "in 3 days", "today", "49 days ago" — so the model never compares dates itself. */
-  when: string;
-}
-
-const DAY_MS = 24 * 60 * 60 * 1000;
-
-export function relativeDay(date: string, today: string): string {
-  const days = Math.round((Date.parse(date) - Date.parse(today)) / DAY_MS);
-  if (days === 0) return "today";
-  if (days === 1) return "tomorrow";
-  if (days === -1) return "yesterday";
-  if (days > 0) return `in ${days} days`;
-  return `${-days} days ago`;
-}
-
 function datedReleases(
   releases: Releases,
   today: string,
 ): Record<ReleaseKind, DatedRelease | null> {
-  const dated = (date: string | null) => (date ? { date, when: relativeDay(date, today) } : null);
   return {
-    premiere: dated(releases.premiere),
-    cinema: dated(releases.cinema),
-    digital: dated(releases.digital),
-    physical: dated(releases.physical),
-    tv: dated(releases.tv),
+    premiere: datedRelease(releases.premiere, today),
+    cinema: datedRelease(releases.cinema, today),
+    digital: datedRelease(releases.digital, today),
+    physical: datedRelease(releases.physical, today),
+    tv: datedRelease(releases.tv, today),
   };
 }
 
 function isOutAtHome(releases: Releases, today: string): boolean {
   return [releases.digital, releases.physical].some((date) => date !== null && date <= today);
-}
-
-/** Today as YYYY-MM-DD, on the same clock as the date in the system prompt. */
-export function localToday(): string {
-  return new Date().toLocaleDateString("en-CA");
 }
 
 /** The year of a TMDB date, which is empty for anything unreleased. */

@@ -38,7 +38,10 @@ export const turnTools = new Map(toolCatalog.map((tool) => [tool.name, turnBound
 
 function stampTime(message: Message): Message {
   if (message.role !== "user") return message;
-  const time = new Date(message.timestamp).toLocaleTimeString("en-US", {
+  const time = new Date(message.timestamp).toLocaleString("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
     hour: "numeric",
     minute: "2-digit",
     timeZoneName: "short",

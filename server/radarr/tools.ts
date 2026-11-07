@@ -5,6 +5,7 @@ import { buildTable } from "#server/agent/table.ts";
 import { requestMovie, type Requester } from "#server/requests/service.ts";
 import { removeLibraryItem } from "#server/library/service.ts";
 import { retryRequest } from "#server/requests/retry.ts";
+import { localToday } from "#server/time/days.ts";
 import { titleWithYear } from "#shared/media.ts";
 import * as radarr from "./api.ts";
 import {
@@ -12,6 +13,8 @@ import {
   toMovieLookupResult,
   toPartialQueueItem,
   toPartialHistoryRecord,
+  toMovieDetails,
+  summarizeReleases,
 } from "./utils.ts";
 
 const emptyParams = Type.Object({});
@@ -54,19 +57,39 @@ const getRadarrMovieParams = Type.Object({
 
 const getRadarrMovieTool: Tool<typeof getRadarrMovieParams> = {
   name: "get_radarr_movie",
-  description: "Get information about a specific movie in Radarr by ID",
+  description:
+    "Get information about a specific movie in Radarr by ID, including when it is out in cinemas, digitally and physically. `isAvailable` is whether it has reached its `minimumAvailability`; until then Radarr's scheduled searches skip it.",
   parameters: getRadarrMovieParams,
   label: "Checking movie details in Radarr",
   summary: "Fetched movie details",
   async execute(params) {
     const movie = await radarr.getMovie(params.radarrMovieId);
-    return jsonResult(toPartialMovie(movie));
+    return jsonResult(toMovieDetails(movie, localToday()));
+  },
+};
+
+const findLibraryMovieParams = Type.Object({
+  tmdbId: Type.Number({ description: "The TMDB ID of the movie to look for" }),
+});
+
+const findLibraryMovieTool: Tool<typeof findLibraryMovieParams> = {
+  name: "find_library_movie",
+  description:
+    "Check whether a movie is in the Radarr library by its TMDB ID, and if so return the same details as get_radarr_movie. Use this rather than get_all_movies when asking about one movie.",
+  parameters: findLibraryMovieParams,
+  label: "Looking for movie in Radarr",
+  summary: "Checked the library for a movie",
+  async execute(params) {
+    const movie = await radarr.getLibraryMovieByTmdbId(params.tmdbId);
+    if (!movie) return jsonResult({ inLibrary: false });
+    return jsonResult({ inLibrary: true, ...toMovieDetails(movie, localToday()) });
   },
 };
 
 const getAllMoviesTool: Tool<typeof emptyParams> = {
   name: "get_all_movies",
-  description: "Get all movies in the Radarr library",
+  description:
+    "Get all movies in the Radarr library. For a single movie, find_library_movie is far cheaper.",
   parameters: emptyParams,
   label: "Fetching movies from Radarr",
   summary: "Checked movie library",
@@ -167,7 +190,7 @@ const downloadMovieParams = Type.Object({
 export const downloadMovieTool: Tool<typeof downloadMovieParams> = {
   name: "download_movie",
   description:
-    "Search indexers now for a movie already in Radarr and grab the best release, instead of waiting for Radarr's scheduled search. A stalled download of it is dropped and blocklisted first. Only finds a release in decent quality once the movie has had a digital or physical release.",
+    "Search indexers now for a movie already in Radarr and grab the best release, instead of waiting for Radarr's scheduled search. A stalled download of it is dropped and blocklisted first. A search started here ignores the movie's minimumAvailability, so check get_movie_releases first when the movie is not yet `isAvailable`, and only go ahead when it has an approved release that is not a camrip.",
   parameters: downloadMovieParams,
   label: "Downloading movie from Radarr",
   action: true,
@@ -185,6 +208,23 @@ export const downloadMovieTool: Tool<typeof downloadMovieParams> = {
       discardedStalledDownloads: discarded,
       message: `Radarr is searching for ${titleWithYear(movie.title, movie.year)}. Anything it grabs shows up in get_movie_queue within a minute or so.`,
     });
+  },
+};
+
+const getMovieReleasesParams = Type.Object({
+  movieId: Type.Number({ description: "The Radarr ID of the movie" }),
+});
+
+const getMovieReleasesTool: Tool<typeof getMovieReleasesParams> = {
+  name: "get_movie_releases",
+  description:
+    "Ask the indexers which releases they have right now for a movie in the library, best first by Radarr's own ranking. `approved` are ones Radarr would take, `rejected` the best it would refuse, with why. This is how to answer whether a good version is available — not web search. It grabs nothing; download_movie grabs the best approved release.",
+  parameters: getMovieReleasesParams,
+  label: "Searching indexers for releases",
+  summary: "Checked available releases",
+  async execute(params) {
+    const releases = await radarr.getReleases(params.movieId);
+    return jsonResult(summarizeReleases(releases));
   },
 };
 
@@ -215,7 +255,16 @@ const getMovieQueueTool: Tool<typeof getMovieQueueParams> = {
 };
 
 const getMovieHistoryParams = Type.Object({
-  pageSize: Type.Number({ description: "The number of items to return" }),
+  movieId: Type.Optional(
+    Type.Number({
+      description: "The Radarr ID of one movie, to get everything Radarr has done with it",
+    }),
+  ),
+  pageSize: Type.Optional(
+    Type.Number({
+      description: "How many of the latest events to return when no movieId is given",
+    }),
+  ),
 });
 
 const getMovieHistoryTool: Tool<typeof getMovieHistoryParams> = {
@@ -226,6 +275,10 @@ const getMovieHistoryTool: Tool<typeof getMovieHistoryParams> = {
   label: "Checking Radarr history",
   summary: "Checked movie history",
   async execute(params) {
+    if (params.movieId !== undefined) {
+      const records = await radarr.getMovieHistory(params.movieId);
+      return jsonResult(records.map(toPartialHistoryRecord));
+    }
     const history = await radarr.getHistory(params.pageSize);
     return jsonResult(history.records.map(toPartialHistoryRecord));
   },
@@ -234,9 +287,11 @@ const getMovieHistoryTool: Tool<typeof getMovieHistoryParams> = {
 export const radarrTools = [
   getRadarrMovieTool,
   getAllMoviesTool,
+  findLibraryMovieTool,
   searchMoviesTool,
   removeMovieTool,
   downloadMovieTool,
+  getMovieReleasesTool,
   getMovieQueueTool,
   getMovieHistoryTool,
 ];

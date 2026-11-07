@@ -210,3 +210,18 @@ export interface RadarrHistoryResponse {
   totalRecords: number;
   records: RadarrHistoryRecord[];
 }
+
+/** A release an indexer has for a movie, as Radarr's interactive search judges it. */
+export interface RadarrRelease {
+  guid: string;
+  title: string;
+  quality: RadarrQualityInfo;
+  customFormatScore?: number;
+  size: number;
+  ageHours: number;
+  indexer: string;
+  protocol: "torrent" | "usenet";
+  seeders?: number;
+  approved: boolean;
+  rejections: string[];
+}

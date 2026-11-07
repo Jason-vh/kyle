@@ -112,8 +112,10 @@ describe("runConversationTurn", () => {
     expect(second.conversationId).toBe(first.conversationId);
     expect(second.responseText).toBe("second reply");
     expect(shown.map((message) => message.role)).toEqual(["user", "assistant", "user"]);
-    // Each user message carries the time it was sent.
-    expect(textOf(shown[2])).toMatch(/^\[\d{1,2}:\d{2} [AP]M [A-Z+\d:]+\] again$/);
+    // Each user message carries the day and time it was sent.
+    expect(textOf(shown[2])).toMatch(
+      /^\[\w{3}, \w{3} \d{1,2} at \d{1,2}:\d{2} [AP]M [A-Z+\d:]+\] again$/,
+    );
 
     const conversation = await db.query.conversations.findFirst({
       where: eq(conversations.id, first.conversationId),

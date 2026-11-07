@@ -4,21 +4,24 @@ import type {
   RadarrMovie,
   RadarrMovieFile,
   RadarrQueueResponse,
+  RadarrRelease,
 } from "./types.ts";
 import { createApiClient, optional } from "#server/http/client.ts";
 import { readAllPages } from "#server/http/pagination.ts";
 import { requireEnv } from "#server/config.ts";
 
-const request = createApiClient({
-  service: "radarr",
-  config: () => {
-    const [host, apiKey] = requireEnv("RADARR_HOST", "RADARR_API_KEY");
-    return {
-      baseUrl: `${host}/api/v3`,
-      headers: { "X-Api-Key": apiKey, "Content-Type": "application/json" },
-    };
-  },
-});
+function config() {
+  const [host, apiKey] = requireEnv("RADARR_HOST", "RADARR_API_KEY");
+  return {
+    baseUrl: `${host}/api/v3`,
+    headers: { "X-Api-Key": apiKey, "Content-Type": "application/json" },
+  };
+}
+
+const request = createApiClient({ service: "radarr", config });
+
+/** Radarr answers an interactive search only once every indexer has. */
+const searchRequest = createApiClient({ service: "radarr", config, timeoutMs: 90_000 });
 
 export async function getMovie(id: number): Promise<RadarrMovie> {
   return request<RadarrMovie>(`/movie/${id}`);
@@ -66,6 +69,7 @@ export async function addMovie(title: string, year: number, tmdbId: number): Pro
     rootFolderPath: rootFolder.path,
     path: `${rootFolder.path}/${title} (${year})`,
     monitored: true,
+    minimumAvailability: "released",
     searchForMovie: true,
     addOptions: {
       searchForMovie: true,
@@ -118,6 +122,11 @@ export async function removeQueueItem(id: number, blocklist: boolean): Promise<v
     skipRedownload: "true",
   });
   await request<void>(`/queue/${id}?${params.toString()}`, { method: "DELETE" });
+}
+
+/** Asks every indexer what it has for the movie, best first by Radarr's own ranking; grabs nothing. */
+export async function getReleases(movieId: number): Promise<RadarrRelease[]> {
+  return searchRequest<RadarrRelease[]>(`/release?movieId=${movieId}`);
 }
 
 export async function getHistory(pageSize: number = 20): Promise<RadarrHistoryResponse> {

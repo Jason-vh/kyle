@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { earliestReleases, relativeDay, toPartialMovieDetails } from "./utils.ts";
+import { earliestReleases, toPartialMovieDetails } from "./utils.ts";
 import type { TMDBCountryReleases, TMDBMovieDetails } from "./types.ts";
 
 function movieReleasedAs(results: TMDBCountryReleases[]): TMDBMovieDetails {
@@ -62,10 +62,4 @@ describe("movie details as the agent sees them", () => {
     expect(toPartialMovieDetails(movie, "2026-11-07").outAtHome).toBe(false);
     expect(toPartialMovieDetails(movie, "2026-11-10").outAtHome).toBe(true);
   });
-});
-
-test("a day either side of today reads as a word", () => {
-  expect(relativeDay("2026-11-07", "2026-11-07")).toBe("today");
-  expect(relativeDay("2026-11-08", "2026-11-07")).toBe("tomorrow");
-  expect(relativeDay("2026-11-06", "2026-11-07")).toBe("yesterday");
 });
