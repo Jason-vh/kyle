@@ -288,10 +288,12 @@ async function runTurn(
         : undefined,
   });
 
-  const translate = createTurnEventTranslator();
   const events = await watchEvents(harness, durable.id, context);
+  const translate = createTurnEventTranslator(events.snapshot.entries);
   events.start(async (batch) => {
     for (const event of batch) {
+      if (event.type === "snapshot")
+        log.warn("agent events overflowed, replaying a snapshot", { conversationId });
       if (event.type === "message_end" || event.type === "entry_appended") projection.sync();
       for (const turnEvent of translate(event)) {
         try {
