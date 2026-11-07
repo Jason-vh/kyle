@@ -38,15 +38,19 @@ export const turnTools = new Map(toolCatalog.map((tool) => [tool.name, turnBound
 
 function stampTime(message: Message): Message {
   if (message.role !== "user") return message;
-  const time = new Date(message.timestamp).toLocaleString("en-US", {
+  const sent = new Date(message.timestamp);
+  // Formatted apart, since ICU versions disagree on how to join a date and a time.
+  const day = sent.toLocaleDateString("en-US", {
     weekday: "short",
     month: "short",
     day: "numeric",
+  });
+  const time = sent.toLocaleTimeString("en-US", {
     hour: "numeric",
     minute: "2-digit",
     timeZoneName: "short",
   });
-  const prefix = `[${time}] `;
+  const prefix = `[${day}, ${time}] `;
   if (typeof message.content === "string") return { ...message, content: prefix + message.content };
   return {
     ...message,
