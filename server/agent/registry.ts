@@ -1,6 +1,7 @@
 import { createLogger } from "#server/logger.ts";
 import { getActiveUser } from "#server/auth/account.ts";
 import { braveTools } from "#server/brave/tools.ts";
+import { createWatchHistoryTool, plexTools } from "#server/plex/tools.ts";
 import { qbittorrentTools } from "#server/qbittorrent/tools.ts";
 import { sabnzbdTools } from "#server/sabnzbd/tools.ts";
 import { createAddMovieTool, radarrTools } from "#server/radarr/tools.ts";
@@ -20,6 +21,7 @@ const allTools: AnyTool[] = [
   ...sonarrTools,
   ...radarrTools,
   ...tmdbTools,
+  ...plexTools,
   ...ultraTools,
   ...qbittorrentTools,
   ...sabnzbdTools,
@@ -40,6 +42,7 @@ export const toolCatalog: AnyTool[] = [
   createAddMovieTool(),
   createAddSeriesTool(),
   createRequestSeasonTool(),
+  createWatchHistoryTool(),
 ];
 
 /** The one place a tool name maps back to how it should be described. */
@@ -67,6 +70,7 @@ export async function toolsForTurn(context?: AgentContext): Promise<AnyTool[]> {
     createAddMovieTool(requestedBy),
     createAddSeriesTool(requestedBy),
     createRequestSeasonTool(requestedBy),
+    createWatchHistoryTool({ userId: user.id, name: user.displayName, isAdmin: user.isAdmin }),
   ].map(
     (tool): AnyTool => ({
       ...tool,

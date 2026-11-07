@@ -25,6 +25,15 @@ export async function viewerOf(user: { id: string; name: string }): Promise<View
   };
 }
 
+/** The linked account and any held before, since plays outlive an unlinking. */
+export async function plexAccountsOf(userId: string): Promise<string[]> {
+  const [linked, remembered] = await Promise.all([
+    getPlatformIdentity(userId, "plex"),
+    getPlexAccountIds(userId),
+  ]);
+  return [...new Set([linked?.platformUserId, ...remembered].filter((id) => id !== undefined))];
+}
+
 export function marked<T extends Person>(person: T, you: boolean): T {
   return you ? { ...person, you: true } : person;
 }

@@ -14,14 +14,13 @@ import * as sonarr from "#server/sonarr/api.ts";
 import { db } from "#server/db/index.ts";
 import { mediaRemovals, plexInvites } from "#server/db/schema.ts";
 import { getMediaRequestsForUser } from "#server/db/requests.ts";
-import { getPlatformIdentity, getPlexAccountIds } from "#server/db/users.ts";
 import { listThreadSummaries } from "#server/db/threads.ts";
 import { toThreadListItem } from "#server/threads/summaries.ts";
 import { toMovie, toSeries } from "#server/library/service.ts";
 import { attachPosters } from "#server/tmdb/artwork.ts";
 import { withState } from "#server/requests/state.ts";
 import { getPlaysBy, getWatchers, watchKey, type TitlePlay } from "#server/plex/history.ts";
-import type { Viewer } from "#server/people.ts";
+import { plexAccountsOf, type Viewer } from "#server/people.ts";
 import { getAdminUser } from "./directory.ts";
 import { createLogger } from "#server/logger.ts";
 import { errorMessage } from "#server/errors.ts";
@@ -144,15 +143,6 @@ async function removalsOf(userId: string, name: string): Promise<UserRemoval[]> 
     at: row.createdAt.toISOString(),
     deletedFiles: row.deletedFiles,
   }));
-}
-
-/** The linked account and any held before, since plays outlive an unlinking. */
-async function plexAccountsOf(userId: string): Promise<string[]> {
-  const [linked, remembered] = await Promise.all([
-    getPlatformIdentity(userId, "plex"),
-    getPlexAccountIds(userId),
-  ]);
-  return [...new Set([linked?.platformUserId, ...remembered].filter((id) => id !== undefined))];
 }
 
 function latest(dates: (string | undefined)[]): string | undefined {

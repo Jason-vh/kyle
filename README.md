@@ -173,7 +173,8 @@ server/
   qbittorrent/               → api, tools (torrents)
   brave/                     → types, api, utils, tools (web search)
   plex/                      → plex.tv client, owner token, share list, access policy,
-                               watch history, watch time, addition counts, title catalog
+                               watch history, watch time, addition counts, title catalog,
+                               tools (watch history, watch time)
   jobs/
     schedule.ts              → every(name, interval, task): the daily/hourly tick
     index.ts                 → startJobs(): the one list of what runs on its own

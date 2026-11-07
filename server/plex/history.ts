@@ -237,18 +237,24 @@ export interface TitlePlay extends Play {
   title?: string;
 }
 
+function newestFirst({ plays, titles }: WatchHistory): TitlePlay[] {
+  const all: TitlePlay[] = [];
+  for (const [key, titlePlays] of plays) {
+    for (const play of titlePlays) all.push({ ...play, key, title: titles.get(key) });
+  }
+  return all.sort((a, b) => b.at.localeCompare(a.at));
+}
+
 /** Everything these Plex accounts played, newest first. */
 export async function getPlaysBy(accountIds: string[]): Promise<TitlePlay[]> {
   const accounts = new Set(accountIds);
   if (accounts.size === 0) return [];
 
-  const { plays, titles } = await getWatchHistory();
-  const theirs: TitlePlay[] = [];
-  for (const [key, titlePlays] of plays) {
-    for (const play of titlePlays) {
-      if (accounts.has(play.person.accountId))
-        theirs.push({ ...play, key, title: titles.get(key) });
-    }
-  }
-  return theirs.sort((a, b) => b.at.localeCompare(a.at));
+  const plays = newestFirst(await getWatchHistory());
+  return plays.filter((play) => accounts.has(play.person.accountId));
+}
+
+/** Everything anyone played, newest first. Unlike the views above, an unreachable server throws. */
+export async function getAllPlays(): Promise<TitlePlay[]> {
+  return newestFirst(await watchHistory.get());
 }
