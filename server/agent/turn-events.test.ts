@@ -42,6 +42,8 @@ const delta = (text: string): AgentEvent =>
     type: "message_update",
     changes: [{ type: "text_delta", contentIndex: 0, delta: text }],
   }) as unknown as AgentEvent;
+const update = (...changes: unknown[]): AgentEvent =>
+  ({ type: "message_update", changes }) as unknown as AgentEvent;
 const end = (record: EntryRecord): AgentEvent =>
   ({ type: "message_end", entry: record }) as unknown as AgentEvent;
 
@@ -66,6 +68,28 @@ describe("createTurnEventTranslator", () => {
       start(),
       delta("Here is "),
       delta("the plan."),
+      end(entry("a1", assistant(reply))),
+    ]);
+
+    expect(said(events)).toBe(reply);
+    expect(answers(events)).toBe(1);
+  });
+
+  test("takes text a batch carried whole, not only its deltas", () => {
+    const events = run([
+      start(),
+      update(
+        { type: "thinking_start", contentIndex: 0, block: { type: "thinking", thinking: "" } },
+        { type: "text_start", contentIndex: 1, block: { type: "text", text: "Here is " } },
+      ),
+      update({
+        type: "block",
+        contentIndex: 1,
+        block: { type: "text", text: "Here is the plan." },
+      }),
+      update({ type: "text_delta", contentIndex: 1, delta: " I haven't" }),
+      update({ type: "message", message: assistant("Here is the plan. I haven't deleted") }),
+      update({ type: "text_delta", contentIndex: 0, delta: " anything yet." }),
       end(entry("a1", assistant(reply))),
     ]);
 

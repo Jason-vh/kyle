@@ -1,5 +1,10 @@
 import type { AssistantMessage, Message, ToolCall, ToolResultMessage } from "@earendil-works/pi-ai";
-import type { AgentEvent, EntryRecord, SnapshotEvent } from "@earendil-works/pi-durable";
+import type {
+  AgentEvent,
+  EntryRecord,
+  MessageChange,
+  SnapshotEvent,
+} from "@earendil-works/pi-durable";
 
 /** What the interfaces show of a turn while it runs. */
 export type TurnEvent =
@@ -14,6 +19,12 @@ export type TurnEvent =
       content: ToolResultMessage["content"];
     };
 
+type Block = AssistantMessage["content"][number];
+
+function textOf(block: Block | undefined): string | undefined {
+  return block?.type === "text" ? block.text : undefined;
+}
+
 function assistantText(message: Message | undefined): string {
   if (message?.role !== "assistant") return "";
   return (message as AssistantMessage).content
@@ -21,10 +32,37 @@ function assistantText(message: Message | undefined): string {
     .join("");
 }
 
+/** The text of each block of the message being written, by content index. */
+type PartialText = (string | undefined)[];
+
+function partialTextOf(message: Message): PartialText {
+  return message.role === "assistant" ? message.content.map(textOf) : [];
+}
+
+/** Text arrives as deltas, as a block's text so far, or as a block or message sent whole. */
+function applyChange(partial: PartialText, change: MessageChange): PartialText {
+  switch (change.type) {
+    case "text_start":
+    case "thinking_start":
+    case "toolcall_start":
+    case "block":
+      partial[change.contentIndex] = textOf(change.block);
+      return partial;
+    case "text_delta":
+      partial[change.contentIndex] = (partial[change.contentIndex] ?? "") + change.delta;
+      return partial;
+    case "message":
+      return partialTextOf(change.message);
+    default:
+      return partial;
+  }
+}
+
 /**
  * Translates pi-durable's experimental agent events, so only this file follows
- * their changes. Partial answers are committed at intervals, so the deltas seen
- * may stop short of the answer; the rest is sent when the answer is complete.
+ * their changes. Partial answers are committed at intervals, so a batch can
+ * carry a block's text whole rather than as deltas; the partial is rebuilt from
+ * every change and only what its text has grown by is passed on.
  *
  * A listener that falls behind has its undelivered batches replaced by one
  * snapshot, so the snapshot is replayed against what was already said: entries
@@ -38,6 +76,7 @@ export function createTurnEventTranslator(
   const endedTools = new Set<string>();
   let answering = false;
   let streamed = "";
+  let partial: PartialText = [];
 
   function textSoFar(text: string): TurnEvent[] {
     if (!text.startsWith(streamed) || text.length === streamed.length) return [];
@@ -100,8 +139,11 @@ export function createTurnEventTranslator(
       }
     }
 
-    const partial = snapshot.generation?.message;
-    if (partial) events.push(...catchUp(assistantText(partial)));
+    const inFlight = snapshot.generation?.message;
+    if (inFlight) {
+      partial = partialTextOf(inFlight);
+      events.push(...catchUp(assistantText(inFlight)));
+    }
     return events;
   }
 
@@ -111,11 +153,11 @@ export function createTurnEventTranslator(
         return replay(event);
       case "message_start":
         if (event.message.role !== "assistant") return [];
+        partial = partialTextOf(event.message);
         return startAnswer(assistantText(event.message));
       case "message_update":
-        return event.changes.flatMap((change) =>
-          change.type === "text_delta" ? textSoFar(streamed + change.delta) : [],
-        );
+        partial = event.changes.reduce(applyChange, partial);
+        return catchUp(partial.join(""));
       case "message_end": {
         if (accounted.has(event.entry.id)) return [];
         accounted.add(event.entry.id);
