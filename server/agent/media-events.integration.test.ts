@@ -112,7 +112,8 @@ describe("a tool's result and the event extracted from it", () => {
         titleSlug: "inception-2010",
       },
       "/queue": { totalRecords: 0, records: [] },
-      "/command": {},
+      "/command": { id: 7, status: "completed", queued: "2026-11-07T17:52:11Z" },
+      "/history/movie": [],
     });
 
     const args = { movieId: 42 };

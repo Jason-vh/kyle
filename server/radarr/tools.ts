@@ -4,7 +4,7 @@ import { jsonResult } from "#server/agent/tool-result.ts";
 import { buildTable } from "#server/agent/table.ts";
 import { requestMovie, type Requester } from "#server/requests/service.ts";
 import { removeLibraryItem } from "#server/library/service.ts";
-import { retryRequest } from "#server/requests/retry.ts";
+import { discardStalled } from "#server/requests/retry.ts";
 import { localToday } from "#server/time/days.ts";
 import { titleWithYear } from "#shared/media.ts";
 import * as radarr from "./api.ts";
@@ -187,6 +187,24 @@ const downloadMovieParams = Type.Object({
   movieId: Type.Number({ description: "The Radarr ID of the movie to download" }),
 });
 
+async function grabSince(movieId: number, since: string) {
+  const history = await radarr.getMovieHistory(movieId);
+  return history.find(
+    (record) => record.eventType === "grabbed" && Date.parse(record.date) >= Date.parse(since),
+  );
+}
+
+function searchOutcome(status: string | undefined, release: string | undefined): string {
+  if (status === undefined) {
+    return "Radarr is still searching after a minute; check get_movie_queue again later.";
+  }
+  if (status !== "completed") return `Radarr's search ended as ${status}.`;
+  if (release) {
+    return `Radarr grabbed ${release}. It shows in get_movie_queue once Radarr next checks the download client, usually within a minute.`;
+  }
+  return "Radarr searched and grabbed nothing; get_movie_releases says why.";
+}
+
 export const downloadMovieTool: Tool<typeof downloadMovieParams> = {
   name: "download_movie",
   description:
@@ -194,10 +212,16 @@ export const downloadMovieTool: Tool<typeof downloadMovieParams> = {
   parameters: downloadMovieParams,
   label: "Downloading movie from Radarr",
   action: true,
-  summary: (_args, payload) => `Started a search for ${movieName(payload)}`,
+  summary: (_args, payload) => {
+    if ((payload as { grabbed?: unknown })?.grabbed) return `Grabbed ${movieName(payload)}`;
+    return `Searched for ${movieName(payload)}`;
+  },
   async execute(params) {
     const movie = await radarr.getMovie(params.movieId);
-    const { discarded } = await retryRequest("movie", params.movieId);
+    const discarded = await discardStalled("movie", params.movieId);
+    const search = await radarr.searchMovie(params.movieId);
+    const finished = await radarr.waitForCommand(search.id);
+    const grab = finished ? await grabSince(params.movieId, search.queued) : undefined;
     return jsonResult({
       title: movie.title,
       year: movie.year,
@@ -206,7 +230,8 @@ export const downloadMovieTool: Tool<typeof downloadMovieParams> = {
       imdbId: movie.imdbId,
       titleSlug: movie.titleSlug,
       discardedStalledDownloads: discarded,
-      message: `Radarr is searching for ${titleWithYear(movie.title, movie.year)}. Anything it grabs shows up in get_movie_queue within a minute or so.`,
+      grabbed: grab ? { release: grab.sourceTitle, quality: grab.quality.quality.name } : null,
+      message: searchOutcome(finished?.status, grab?.sourceTitle),
     });
   },
 };

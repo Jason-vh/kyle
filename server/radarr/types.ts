@@ -211,6 +211,12 @@ export interface RadarrHistoryResponse {
   records: RadarrHistoryRecord[];
 }
 
+export interface RadarrCommand {
+  id: number;
+  status: string;
+  queued: string;
+}
+
 /** A release an indexer has for a movie, as Radarr's interactive search judges it. */
 export interface RadarrRelease {
   guid: string;

@@ -1,4 +1,5 @@
 import type {
+  RadarrCommand,
   RadarrHistoryRecord,
   RadarrHistoryResponse,
   RadarrMovie,
@@ -107,11 +108,34 @@ export async function getQueue(options?: { movieIds?: number[] }): Promise<Radar
   return response;
 }
 
-export async function searchMovie(movieId: number): Promise<void> {
-  await request<unknown>("/command", {
+export async function searchMovie(movieId: number): Promise<RadarrCommand> {
+  return request<RadarrCommand>("/command", {
     method: "POST",
     body: JSON.stringify({ name: "MoviesSearch", movieIds: [movieId] }),
   });
+}
+
+const FINISHED_COMMAND_STATUSES = new Set([
+  "completed",
+  "failed",
+  "aborted",
+  "cancelled",
+  "orphaned",
+]);
+
+/** The command once Radarr has run it, or undefined if it is still running at the deadline. */
+export async function waitForCommand(
+  id: number,
+  timeoutMs = 60_000,
+  intervalMs = 1_000,
+): Promise<RadarrCommand | undefined> {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const command = await request<RadarrCommand>(`/command/${id}`);
+    if (FINISHED_COMMAND_STATUSES.has(command.status)) return command;
+    await Bun.sleep(intervalMs);
+  }
+  return undefined;
 }
 
 /** Drops a download; blocklisting it stops the same release being grabbed again. */

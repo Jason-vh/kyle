@@ -61,7 +61,7 @@ test("a finished action names what it acted on", () => {
   ).toBe("Started downloading Dark season 3");
   expect(
     describeToolCall("download_movie", { movieId: 42 }, { title: "Inception", year: 2010 }),
-  ).toBe("Started a search for Inception (2010)");
+  ).toBe("Searched for Inception (2010)");
   expect(describeToolCall("delete_torrents", { hashes: ["a", "b"] })).toBe(
     "Deleted 2 torrents from qBittorrent",
   );
