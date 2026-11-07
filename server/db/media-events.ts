@@ -66,6 +66,19 @@ export function extractMediaEvent(
         },
       };
 
+    case "download_movie":
+      return {
+        action: "download",
+        mediaType: "movie",
+        title: parsed.title as string,
+        ids: {
+          radarr: parsed.radarrId as number,
+          tmdb: parsed.tmdbId as number,
+          imdb: parsed.imdbId as string | undefined,
+          titleSlug: parsed.titleSlug as string | undefined,
+        },
+      };
+
     case "add_series": {
       const series = parsed.series as Record<string, unknown> | undefined;
       return {

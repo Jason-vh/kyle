@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { createAddMovieTool, removeMovieTool } from "#server/radarr/tools.ts";
+import { createAddMovieTool, downloadMovieTool, removeMovieTool } from "#server/radarr/tools.ts";
 import { createAddSeriesTool, removeSeriesTool } from "#server/sonarr/tools.ts";
 import { extractMediaEvent } from "#server/db/media-events.ts";
 
@@ -95,6 +95,31 @@ describe("a tool's result and the event extracted from it", () => {
 
     expect(extractMediaEvent("remove_movie", args, output)).toMatchObject({
       action: "remove",
+      mediaType: "movie",
+      title: "Inception",
+      ids: { radarr: 42, tmdb: 27205, imdb: "tt1375666" },
+    });
+  });
+
+  test("download_movie", async () => {
+    stub({
+      "/movie/42": {
+        id: 42,
+        title: "Inception",
+        year: 2010,
+        tmdbId: 27205,
+        imdbId: "tt1375666",
+        titleSlug: "inception-2010",
+      },
+      "/queue": { totalRecords: 0, records: [] },
+      "/command": {},
+    });
+
+    const args = { movieId: 42 };
+    const output = await downloadMovieTool.execute(args);
+
+    expect(extractMediaEvent("download_movie", args, output)).toMatchObject({
+      action: "download",
       mediaType: "movie",
       title: "Inception",
       ids: { radarr: 42, tmdb: 27205, imdb: "tt1375666" },

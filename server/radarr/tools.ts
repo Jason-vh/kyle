@@ -4,6 +4,7 @@ import { jsonResult } from "#server/agent/tool-result.ts";
 import { buildTable } from "#server/agent/table.ts";
 import { requestMovie, type Requester } from "#server/requests/service.ts";
 import { removeLibraryItem } from "#server/library/service.ts";
+import { retryRequest } from "#server/requests/retry.ts";
 import { titleWithYear } from "#shared/media.ts";
 import * as radarr from "./api.ts";
 import {
@@ -159,6 +160,34 @@ export const removeMovieTool: Tool<typeof removeMovieParams> = {
   },
 };
 
+const downloadMovieParams = Type.Object({
+  movieId: Type.Number({ description: "The Radarr ID of the movie to download" }),
+});
+
+export const downloadMovieTool: Tool<typeof downloadMovieParams> = {
+  name: "download_movie",
+  description:
+    "Search indexers now for a movie already in Radarr and grab the best release, instead of waiting for Radarr's scheduled search. A stalled download of it is dropped and blocklisted first. Only finds a release in decent quality once the movie has had a digital or physical release.",
+  parameters: downloadMovieParams,
+  label: "Downloading movie from Radarr",
+  action: true,
+  summary: (_args, payload) => `Started a search for ${movieName(payload)}`,
+  async execute(params) {
+    const movie = await radarr.getMovie(params.movieId);
+    const { discarded } = await retryRequest("movie", params.movieId);
+    return jsonResult({
+      title: movie.title,
+      year: movie.year,
+      radarrId: movie.id,
+      tmdbId: movie.tmdbId,
+      imdbId: movie.imdbId,
+      titleSlug: movie.titleSlug,
+      discardedStalledDownloads: discarded,
+      message: `Radarr is searching for ${titleWithYear(movie.title, movie.year)}. Anything it grabs shows up in get_movie_queue within a minute or so.`,
+    });
+  },
+};
+
 const getMovieQueueParams = Type.Object({
   movieId: Type.Optional(
     Type.Number({
@@ -207,6 +236,7 @@ export const radarrTools = [
   getAllMoviesTool,
   searchMoviesTool,
   removeMovieTool,
+  downloadMovieTool,
   getMovieQueueTool,
   getMovieHistoryTool,
 ];

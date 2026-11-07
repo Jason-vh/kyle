@@ -239,7 +239,9 @@ export async function processMediaEvent(
     switch (event.action) {
       // An add subscribes where it happens, in requests/service.ts.
       case "download":
-        if (event.mediaType === "series" && event.ids.sonarr) {
+        if (event.mediaType === "movie" && event.ids.radarr) {
+          await upsertMovieSubscription(userId, event.ids.radarr, conversationId);
+        } else if (event.mediaType === "series" && event.ids.sonarr) {
           await upsertSeriesSubscription(
             userId,
             event.ids.sonarr,

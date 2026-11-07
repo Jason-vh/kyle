@@ -3,7 +3,13 @@ import { describeToolCall, describeToolDetails, isActionTool } from "./tool-disp
 import { bulletList } from "./tool-result.ts";
 
 test("library changes are actions", () => {
-  for (const tool of ["add_movie", "remove_series", "remove_season", "download_episodes"]) {
+  for (const tool of [
+    "add_movie",
+    "download_movie",
+    "remove_series",
+    "remove_season",
+    "download_episodes",
+  ]) {
     expect(isActionTool(tool)).toBe(true);
   }
 });
@@ -53,6 +59,9 @@ test("a finished action names what it acted on", () => {
       { seriesTitle: "Dark" },
     ),
   ).toBe("Started downloading Dark season 3");
+  expect(
+    describeToolCall("download_movie", { movieId: 42 }, { title: "Inception", year: 2010 }),
+  ).toBe("Started a search for Inception (2010)");
   expect(describeToolCall("delete_torrents", { hashes: ["a", "b"] })).toBe(
     "Deleted 2 torrents from qBittorrent",
   );
