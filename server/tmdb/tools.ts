@@ -7,6 +7,7 @@ import {
   toPartialTVShow,
   toPartialMultiResult,
   toPartialMovieDetails,
+  localToday,
   toPartialTVShowDetails,
 } from "./utils.ts";
 
@@ -121,13 +122,13 @@ const getTmdbMovieDetailsParams = Type.Object({
 const getTmdbMovieDetailsTool: Tool<typeof getTmdbMovieDetailsParams> = {
   name: "get_tmdb_movie_details",
   description:
-    "Get detailed information about a specific movie from TMDB by its TMDB ID. This provides comprehensive details including runtime, budget, revenue, genres, production companies, IMDB ID, and more. Use this after you've searched for a movie and have its TMDB ID. `releases` holds the earliest date worldwide for each kind of release (premiere, cinema, digital, physical, tv), null when none is announced. Only a digital or physical release can be downloaded in decent quality; a film only in cinemas has at best camrips.",
+    "Get detailed information about a specific movie from TMDB by its TMDB ID. This provides comprehensive details including runtime, budget, revenue, genres, production companies, IMDB ID, and more. Use this after you've searched for a movie and have its TMDB ID. `releases` holds the earliest date worldwide for each kind of release (premiere, cinema, digital, physical, tv), with `when` saying how far that is from today, null when none is announced. `outAtHome` is true once a digital or physical release has happened: only then can it be downloaded in decent quality, and before that a film has at best camrips. TMDB's `status` says Released as soon as a film is in cinemas, so go by `outAtHome` instead.",
   parameters: getTmdbMovieDetailsParams,
   label: "Fetching movie details from TMDB",
   summary: "Fetched TMDB movie details",
   async execute(params) {
     const movie = await tmdb.getMovie(params.tmdbMovieId);
-    return jsonResult(toPartialMovieDetails(movie));
+    return jsonResult(toPartialMovieDetails(movie, localToday()));
   },
 };
 

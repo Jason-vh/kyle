@@ -1,5 +1,5 @@
-import { expect, test } from "bun:test";
-import { earliestReleases } from "./utils.ts";
+import { describe, expect, test } from "bun:test";
+import { earliestReleases, relativeDay, toPartialMovieDetails } from "./utils.ts";
 import type { TMDBCountryReleases, TMDBMovieDetails } from "./types.ts";
 
 function movieReleasedAs(results: TMDBCountryReleases[]): TMDBMovieDetails {
@@ -38,4 +38,34 @@ test("unknown release types and missing release data are ignored", () => {
 
   expect(Object.values(earliestReleases(movie)).every((date) => date === null)).toBe(true);
   expect(earliestReleases({} as TMDBMovieDetails).cinema).toBeNull();
+});
+
+describe("movie details as the agent sees them", () => {
+  // Heart of the Beast on November 7: in cinemas for weeks, digital still three days off.
+  const movie = {
+    ...movieReleasedAs([
+      { iso_3166_1: "US", release_dates: [release(3, "2026-09-19"), release(4, "2026-11-10")] },
+    ]),
+    genres: [],
+    production_companies: [],
+  } as unknown as TMDBMovieDetails;
+
+  test("each release says how far it is from today", () => {
+    expect(toPartialMovieDetails(movie, "2026-11-07").releases).toMatchObject({
+      cinema: { date: "2026-09-19", when: "49 days ago" },
+      digital: { date: "2026-11-10", when: "in 3 days" },
+      physical: null,
+    });
+  });
+
+  test("a film only in cinemas is not out at home until its digital release", () => {
+    expect(toPartialMovieDetails(movie, "2026-11-07").outAtHome).toBe(false);
+    expect(toPartialMovieDetails(movie, "2026-11-10").outAtHome).toBe(true);
+  });
+});
+
+test("a day either side of today reads as a word", () => {
+  expect(relativeDay("2026-11-07", "2026-11-07")).toBe("today");
+  expect(relativeDay("2026-11-08", "2026-11-07")).toBe("tomorrow");
+  expect(relativeDay("2026-11-06", "2026-11-07")).toBe("yesterday");
 });
