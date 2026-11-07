@@ -579,7 +579,7 @@ context is dropped rather than passed to the agent as an opaque ID.
 | `DATABASE_URL`           | Postgres connection string (auto-injected in production)                                   |
 | `PORT`                   | Server port (default: 3000)                                                                |
 | `ANTHROPIC_API_KEY`      | Anthropic API key for Claude                                                               |
-| `ANTHROPIC_MODEL`        | Agent model override (default: `claude-sonnet-4-5`); unknown ids fall back to default      |
+| `ANTHROPIC_MODEL`        | Agent model override (default: `claude-opus-5-5`); unknown ids fall back to default        |
 | `JWT_SECRET`             | High-entropy secret for JWT signing (required)                                             |
 | `WEBAUTHN_RP_ID`         | WebAuthn relying party ID (`localhost` dev / `kyle.vhtm.eu` prod)                          |
 | `WEBAUTHN_ORIGIN`        | WebAuthn origin URL (`http://localhost:5173` dev / `https://kyle.vhtm.eu` prod)            |

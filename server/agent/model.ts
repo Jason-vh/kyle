@@ -4,7 +4,7 @@ import { createLogger } from "#server/logger.ts";
 
 const log = createLogger("agent:model");
 
-const DEFAULT_MODEL = "claude-sonnet-4-5";
+const DEFAULT_MODEL = "claude-opus-5-5";
 
 export const models = createModels();
 models.setProvider(anthropicProvider());
