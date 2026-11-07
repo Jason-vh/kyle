@@ -38,14 +38,14 @@ async function importedFiles(
     .filter((record) => record.eventType.toLowerCase() === IMPORTED)
     .map((record) => fileIdOf(record.data));
 
-  const imports = await Promise.all([
-    ...movieFileIds.map(async (fileId) => {
-      return { fileId, alive: (await radarr.getMovieFile(fileId)) !== undefined };
-    }),
-    ...episodeFileIds.map(async (fileId) => {
-      return { fileId, alive: (await sonarr.getEpisodeFile(fileId)) !== undefined };
-    }),
-  ]);
+  // One at a time: a season pack can hold more files than a service will queue requests for.
+  const imports: { fileId: number; alive: boolean }[] = [];
+  for (const fileId of movieFileIds) {
+    imports.push({ fileId, alive: (await radarr.getMovieFile(fileId)) !== undefined });
+  }
+  for (const fileId of episodeFileIds) {
+    imports.push({ fileId, alive: (await sonarr.getEpisodeFile(fileId)) !== undefined });
+  }
 
   return { known, imports };
 }

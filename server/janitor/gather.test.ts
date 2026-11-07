@@ -16,6 +16,7 @@ function services(
   options: {
     fileId?: unknown;
     fileResponse?: Response;
+    episodeImports?: number;
     historyTruncated?: boolean;
     importOnSecondPage?: boolean;
     queuedOnSecondPage?: boolean;
@@ -36,6 +37,7 @@ function services(
   const pages: string[] = [];
   const removedFromQueue: string[] = [];
   const commands: unknown[] = [];
+  const episodeFileChecks: string[] = [];
   globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) => {
     const url = new URL(String(input));
     const path = url.pathname;
@@ -74,7 +76,14 @@ function services(
     }
     if (path.endsWith("/history")) {
       pages.push(`${url.hostname}:history:${page}`);
-      if (url.hostname === "sonarr.test") return Response.json({ records: [], totalRecords: 0 });
+      if (url.hostname === "sonarr.test") {
+        const records = Array.from({ length: options.episodeImports ?? 0 }, (_, i) => ({
+          id: i + 1,
+          eventType: "downloadFolderImported",
+          data: { fileId: 100 + i },
+        }));
+        return Response.json({ records: page === 1 ? records : [], totalRecords: records.length });
+      }
       if (options.importOnSecondPage) {
         return Response.json({
           records: [
@@ -99,9 +108,13 @@ function services(
     if (path.endsWith("/series")) return Response.json(options.series ?? []);
     if (path.includes("/moviefile/"))
       return options.fileResponse ?? new Response("", { status: 404 });
+    if (path.includes("/episodefile/")) {
+      episodeFileChecks.push(path);
+      return new Response("", { status: 404 });
+    }
     throw new Error(`Unexpected request: ${url}`);
   }) as typeof fetch;
-  return { deleted, pages, removedFromQueue, commands };
+  return { deleted, pages, removedFromQueue, commands, episodeFileChecks };
 }
 
 test.each([undefined, "bad", "12garbage", 0, -1, 1.5])(
@@ -142,6 +155,13 @@ test("never treats an empty successful file response as a missing file", async (
   const { deleted } = services({ fileId: 12, fileResponse: new Response("") });
   await expect(sweep(true)).rejects.toThrow("Invalid movie file response");
   expect(deleted).toEqual([]);
+});
+
+test("checks every file of a season pack larger than a service will queue", async () => {
+  const { deleted, episodeFileChecks } = services({ fileId: 12, episodeImports: 60 });
+  expect((await sweep(true)).applied).toBe(1);
+  expect(episodeFileChecks).toHaveLength(60);
+  expect(deleted).toHaveLength(1);
 });
 
 test("deletes only after the file endpoint confirms absence", async () => {
